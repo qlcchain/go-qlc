@@ -12,6 +12,58 @@ import (
 	"github.com/qlcchain/go-qlc/trie"
 )
 
+const (
+	PovGlobalStatePrefixAcc = byte(1)
+	PovGlobalStatePrefixRep = byte(2)
+	PovGlobalStatePrefixCS  = byte(201) // Contract State
+
+	PovStatusOffline = 0
+	PovStatusOnline  = 1
+)
+
+// PovCreateGlobalStateKey used for global trie key only
+// prefix MUST be UNIQUE in global namespace
+func PovCreateGlobalStateKey(prefix byte, rawKey []byte) []byte {
+	var key []byte
+	key = append(key, storage.KeyPrefixTriePovState)
+	key = append(key, prefix)
+	if rawKey != nil {
+		key = append(key, rawKey...)
+	}
+	return key
+}
+
+func PovCreateAccountStateKey(address types.Address) []byte {
+	addrBytes := address.Bytes()
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixAcc, addrBytes)
+}
+
+func PovCreateRepStateKey(address types.Address) []byte {
+	addrBytes := address.Bytes()
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixRep, addrBytes)
+}
+
+func PovCreateContractStateKey(address types.Address) []byte {
+	addrBytes := address.Bytes()
+	return PovCreateGlobalStateKey(PovGlobalStatePrefixCS, addrBytes)
+}
+
+func PovStateKeyToAddress(key []byte) (types.Address, error) {
+	return types.BytesToAddress(key[2:])
+}
+
+// PovCreateContractLocalStateKey used for contract trie tree key only
+// prefix MUST be UNIQUE in contract namespace, not in global namespace
+func PovCreateContractLocalStateKey(prefix byte, rawKey []byte) []byte {
+	var key []byte
+	key = append(key, storage.KeyPrefixTriePovState)
+	key = append(key, prefix)
+	if rawKey != nil {
+		key = append(key, rawKey...)
+	}
+	return key
+}
+
 type PovGlobalStateDB struct {
 	db       storage.Store
 	logger   *zap.SugaredLogger
@@ -131,7 +183,7 @@ func (gsdb *PovGlobalStateDB) GetAccountState(address types.Address) (*types.Pov
 		return as, nil
 	}
 
-	keyBytes := types.PovCreateAccountStateKey(address)
+	keyBytes := PovCreateAccountStateKey(address)
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
 		return nil, errors.New("key not exist in trie")
@@ -159,7 +211,7 @@ func (gsdb *PovGlobalStateDB) GetRepState(address types.Address) (*types.PovRepS
 		return rs, nil
 	}
 
-	keyBytes := types.PovCreateRepStateKey(address)
+	keyBytes := PovCreateRepStateKey(address)
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
 		return nil, errors.New("key not exist in trie")
@@ -176,7 +228,7 @@ func (gsdb *PovGlobalStateDB) GetRepState(address types.Address) (*types.PovRepS
 }
 
 func (gsdb *PovGlobalStateDB) GetContractState(address types.Address) (*types.PovContractState, error) {
-	keyBytes := types.PovCreateContractStateKey(address)
+	keyBytes := PovCreateContractStateKey(address)
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) == 0 {
 		return nil, errors.New("key not exist in trie")
@@ -198,7 +250,7 @@ func (gsdb *PovGlobalStateDB) LookupContractStateDB(address types.Address) (*Pov
 
 	cs := types.NewPovContractState()
 
-	keyBytes := types.PovCreateContractStateKey(address)
+	keyBytes := PovCreateContractStateKey(address)
 	valBytes := gsdb.curTrie.GetValue(keyBytes)
 	if len(valBytes) > 0 {
 		err := cs.Deserialize(valBytes)
@@ -260,7 +312,7 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 				return errors.New("serialize new account state got empty value")
 			}
 
-			keyBytes := types.PovCreateAccountStateKey(address)
+			keyBytes := PovCreateAccountStateKey(address)
 			gsdb.curTrie.SetValue(keyBytes, valBytes)
 		}
 		gsdb.asDirty = make(map[types.Address]struct{})
@@ -282,7 +334,7 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 				return errors.New("serialize new rep state got empty value")
 			}
 
-			keyBytes := types.PovCreateRepStateKey(address)
+			keyBytes := PovCreateRepStateKey(address)
 			gsdb.curTrie.SetValue(keyBytes, valBytes)
 		}
 		gsdb.rsDirty = make(map[types.Address]struct{})
@@ -306,7 +358,7 @@ func (gsdb *PovGlobalStateDB) CommitToTrie() error {
 			return errors.New("serialize new contract state got empty value")
 		}
 
-		keyBytes := types.PovCreateContractStateKey(address)
+		keyBytes := PovCreateContractStateKey(address)
 		gsdb.curTrie.SetValue(keyBytes, valBytes)
 	}
 

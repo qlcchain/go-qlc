@@ -18,7 +18,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 )
 
@@ -44,7 +43,6 @@ func NewWalletStore(cfgFile string) *WalletStore {
 		}
 
 		cache[dir] = &WalletStore{
-			ledger: ledger.NewLedger(cfgFile),
 			logger: logger,
 			Store:  store,
 			dir:    dir,

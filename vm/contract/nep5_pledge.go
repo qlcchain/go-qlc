@@ -13,7 +13,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -38,7 +39,7 @@ func (p *Nep5Pledge) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (ty
 // transfer quota to beneficial address
 func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
 	// check pledge amount
-	amount, err := ctx.CalculateAmount(block)
+	amount, err := ctx.Ledger.CalculateAmount(block)
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 		return err
 	}
 
-	if block.Token != common.ChainToken() || amount.IsZero() || !b {
+	if block.Token != cfg.ChainToken() || amount.IsZero() || !b {
 		return errors.New("invalid block data")
 	}
 
@@ -88,7 +89,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	if err != nil {
 		return nil, err
 	}
-	amount, _ := ctx.CalculateAmount(input)
+	amount, _ := ctx.Ledger.CalculateAmount(input)
 
 	var withdrawTime int64
 	pt := cabi.PledgeType(param.PType)
@@ -146,9 +147,9 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		}
 	}
 
-	am, _ := ctx.GetAccountMeta(param.Beneficial)
+	am, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if am != nil {
-		tm := am.Token(common.ChainToken())
+		tm := am.Token(cfg.ChainToken())
 		block.Balance = am.CoinBalance
 		block.Vote = am.CoinVote
 		block.Network = am.CoinNetwork
@@ -237,7 +238,7 @@ func (*WithdrawNep5Pledge) GetFee(ctx *vmstore.VMContext, block *types.StateBloc
 }
 
 func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err error) {
-	if amount, err := ctx.CalculateAmount(block); err != nil {
+	if amount, err := ctx.Ledger.CalculateAmount(block); err != nil {
 		return err
 	} else {
 		if block.Type != types.ContractSend || amount.Compare(types.ZeroBalance) == types.BalanceCompEqual {
@@ -283,7 +284,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 
 	pledgeInfo := pledgeResult
 
-	amount, _ := ctx.CalculateAmount(input)
+	amount, _ := ctx.Ledger.CalculateAmount(input)
 
 	var pledgeData []byte
 	if pledgeData, err = ctx.GetStorage(nil, pledgeInfo.Key[1:]); err != nil && err != vmstore.ErrStorageNotFound {
@@ -312,11 +313,11 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		}
 	}
 
-	am, _ := ctx.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
+	am, _ := ctx.Ledger.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
 	if am == nil {
 		return nil, fmt.Errorf("%s do not found", pledgeInfo.PledgeInfo.PledgeAddress.String())
 	}
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(cfg.ChainToken())
 	if tm != nil {
 		block.Type = types.ContractReward
 		block.Address = pledgeInfo.PledgeInfo.PledgeAddress
@@ -343,7 +344,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 			},
 		}, nil
 	} else {
-		return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
+		return nil, fmt.Errorf("chain token %s do not found", cfg.ChainToken().String())
 	}
 }
 

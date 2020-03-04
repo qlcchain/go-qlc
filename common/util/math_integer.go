@@ -38,3 +38,19 @@ func Max(x, y uint64) uint64 {
 	}
 	return y
 }
+
+// UInt32Max returns the larger of x or y.
+func UInt32Max(x, y uint32) uint32 {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+// UInt32Max returns the smaller of x or y.
+func UInt32Min(a, b uint32) uint32 {
+	if a < b {
+		return a
+	}
+	return b
+}

@@ -2,9 +2,10 @@ package dpos
 
 import (
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/consensus"
 	"sync"
 	"sync/atomic"
+
+	"github.com/qlcchain/go-qlc/consensus"
 
 	"github.com/qlcchain/go-qlc/common/topic"
 

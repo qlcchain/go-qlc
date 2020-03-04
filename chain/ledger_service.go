@@ -48,14 +48,16 @@ func (ls *LedgerService) Init() error {
 	defer ls.PostInit()
 	l := ls.Ledger
 
-	if len(common.GenesisInfos) == 0 {
+	genesisInfos := config.GenesisInfos()
+
+	if len(genesisInfos) == 0 {
 		return errors.New("no genesis info")
-	} else if common.ChainToken() == types.ZeroHash || common.GasToken() == types.ZeroHash {
+	} else if config.ChainToken() == types.ZeroHash || config.GasToken() == types.ZeroHash {
 		return errors.New("no chain token info or gas token info")
 	} else {
 		if c, _ := l.CountStateBlocks(); c != 0 {
-			chainHash := common.GenesisBlockHash()
-			gasHash := common.GasBlockHash()
+			chainHash := config.GenesisBlockHash()
+			gasHash := config.GasBlockHash()
 			b1, _ := l.HasStateBlockConfirmed(chainHash)
 			b2, _ := l.HasStateBlockConfirmed(gasHash)
 			if !b1 || !b2 {
@@ -64,10 +66,10 @@ func (ls *LedgerService) Init() error {
 		}
 	}
 	ctx := vmstore.NewVMContext(l)
-	for _, v := range common.GenesisInfos {
-		mb := v.GenesisMintageBlock
-		gb := v.GenesisBlock
-		err := ctx.SetStorage(types.MintageAddress[:], v.GenesisBlock.Token[:], v.GenesisBlock.Data)
+	for _, v := range genesisInfos {
+		mb := v.Mintage
+		gb := v.Genesis
+		err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data)
 		if err != nil {
 			ls.logger.Error(err)
 		}
@@ -120,8 +122,4 @@ func (ls *LedgerService) Stop() error {
 
 func (ls *LedgerService) Status() int32 {
 	return ls.State()
-}
-
-func (ls *LedgerService) RpcCall(kind uint, in, out interface{}) {
-
 }

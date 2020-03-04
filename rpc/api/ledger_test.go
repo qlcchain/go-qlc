@@ -11,7 +11,6 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -25,17 +24,7 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	cfg, _ := cm.Load()
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
-
+	_, _ = cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
 
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
@@ -61,8 +50,8 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 	defer teardownTestCase(t)
 
 	ledgerApi.ledger.EB.Publish(topic.EventPovSyncState, topic.SyncDone)
-	chainToken := common.ChainToken()
-	gasToken := common.GasToken()
+	chainToken := config.ChainToken()
+	gasToken := config.GasToken()
 	addr, _ := types.HexToAddress("qlc_361j3uiqdkjrzirttrpu9pn7eeussymty4rz4gifs9ijdx1p46xnpu3je7sy")
 	_ = ledgerApi.getProcessLock(addr, chainToken)
 	if ledgerApi.processLock.Len() != 1 {

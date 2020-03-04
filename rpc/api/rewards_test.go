@@ -18,7 +18,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -81,7 +80,7 @@ func TestRewardsApi_GetRewardData(t *testing.T) {
 	am := mock.AccountMeta(tx.Address())
 	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err == nil {
 		token := mock.TokenMeta(tx.Address())
-		token.Type = common.GasToken()
+		token.Type = cfg.GasToken()
 		if err := l.AddTokenMetaConfirmed(token.BelongTo, token, l.Cache().GetCache()); err == nil {
 
 		} else {
@@ -171,7 +170,7 @@ func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
 	am := mock.AccountMeta(tx.Address())
 	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err == nil {
 		token := mock.TokenMeta(tx.Address())
-		token.Type = common.GasToken()
+		token.Type = cfg.GasToken()
 		if err := l.AddTokenMetaConfirmed(token.BelongTo, token, l.Cache().GetCache()); err == nil {
 
 		} else {

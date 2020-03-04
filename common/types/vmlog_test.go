@@ -26,6 +26,9 @@ func TestVmLogs(t *testing.T) {
 	_ = random.Bytes(d2)
 	logs := VmLogs{[]*VmLog{{Topics: []Hash{h1}, Data: d1}, {Topics: []Hash{h2}, Data: d2}}}
 	//t.Log(util.ToIndentString(logs))
+	if hash := logs.Hash(); hash.IsZero() {
+		t.Fatal("invalid hash")
+	}
 
 	buff, err := logs.MarshalMsg(nil)
 	if err != nil {

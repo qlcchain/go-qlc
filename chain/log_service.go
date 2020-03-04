@@ -11,6 +11,8 @@ import (
 	"errors"
 
 	"github.com/qlcchain/go-qlc/log"
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 
@@ -35,6 +37,14 @@ func (ls *LogService) Init() error {
 	}
 	defer ls.PostInit()
 
+	// enable rpc debug log
+	l := zap.ErrorLevel
+	if err := l.Set(ls.cfg.LogLevel); err == nil {
+		if l.Enabled(zap.DebugLevel) {
+			rpc.IsDebug = true
+		}
+	}
+
 	return log.Setup(ls.cfg)
 }
 
@@ -58,8 +68,4 @@ func (ls *LogService) Stop() error {
 
 func (ls *LogService) Status() int32 {
 	return ls.State()
-}
-
-func (ls *LogService) RpcCall(kind uint, in, out interface{}) {
-
 }

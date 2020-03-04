@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -47,7 +49,7 @@ func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *st
 		if err != nil {
 			return nil, err
 		}
-		if token.TokenId != common.ChainToken() {
+		if token.TokenId != config.ChainToken() {
 			b := new(big.Float).SetInt(big.NewInt(balance.Int64()))
 			d := new(big.Float).SetFloat64(math.Pow10(int(token.Decimals)))
 			r := new(big.Float).Quo(b, d)
@@ -67,7 +69,7 @@ func (u *UtilApi) BalanceToRaw(balance types.Balance, unit string, tokenName *st
 		if err != nil {
 			return types.ZeroBalance, err
 		}
-		if token.TokenId != common.ChainToken() {
+		if token.TokenId != config.ChainToken() {
 			d := decimal(token.Decimals)
 			if d == 0 {
 				return types.ZeroBalance, errors.New("error decimals")

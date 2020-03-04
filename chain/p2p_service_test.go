@@ -45,6 +45,10 @@ func TestNewP2PService(t *testing.T) {
 	if p.State() != 4 {
 		t.Fatal("p2p start failed")
 	}
+
+	if n := p.Node(); n == nil {
+		t.Fatal()
+	}
 	err = p.Stop()
 	if err != nil {
 		t.Fatal(err)

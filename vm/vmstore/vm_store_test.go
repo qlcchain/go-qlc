@@ -9,11 +9,12 @@ package vmstore
 
 import (
 	"bytes"
-	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/storage"
 
 	"github.com/qlcchain/go-qlc/common/types"
 
@@ -185,5 +186,51 @@ func TestVMCache_AppendLog(t *testing.T) {
 
 	if len(ctx.Cache.logList.Logs) != 0 {
 		t.Fatal("invalid logs ")
+	}
+}
+
+func TestVMContext_GetStorageByKey(t *testing.T) {
+	teardownTestCase, ctx := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	prefix := mock.Hash()
+	key := []byte{10, 20, 30}
+	value := []byte{10, 20, 30, 40}
+
+	if err := ctx.SetStorage(prefix[:], key, value); err != nil {
+		t.Fatal(err)
+	}
+
+	storageKey := getStorageKey(prefix[:], key)
+
+	if v, err := ctx.GetStorageByKey(storageKey); err != nil {
+		t.Fatal(err)
+	} else if !bytes.Equal(v, value) {
+		t.Fatalf("exp: %v, act: %v", value, v)
+	}
+
+	if err := ctx.RemoveStorageByKey(storageKey); err != nil {
+		t.Fatal(err)
+	}
+
+	if v, err := ctx.GetStorageByKey(storageKey); err == nil {
+		t.Fatal(err)
+	} else {
+		if err != ErrStorageNotFound {
+			t.Fatal(err)
+		}
+
+		if v != nil {
+			t.Fatal(v)
+		}
+	}
+}
+
+func TestVMContext_IsUserAccount(t *testing.T) {
+	teardownTestCase, ctx := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	if b, err := ctx.IsUserAccount(mock.Address()); err == nil || b {
+		t.Fatal()
 	}
 }

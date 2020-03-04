@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -39,7 +41,7 @@ func (m *MinerReward) GetRewardHistory(ctx *vmstore.VMContext, coinbase types.Ad
 }
 
 func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
-	latestBlock, err := ctx.GetLatestPovBlock()
+	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return 0, errors.New("failed to get latest block")
 	}
@@ -101,13 +103,13 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 		return nil, nil, ErrAccountInvalid
 	}
 
-	if block.Token != common.ChainToken() {
+	if block.Token != cfg.ChainToken() {
 		logger.Info("token is not chain token")
 		return nil, nil, ErrToken
 	}
 
 	// check account exist
-	amCb, _ := ctx.GetAccountMeta(param.Coinbase)
+	amCb, _ := ctx.Ledger.GetAccountMeta(param.Coinbase)
 	if amCb == nil {
 		logger.Info("coinbase account not exist")
 		return nil, nil, ErrAccountNotExist
@@ -175,7 +177,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 		}, &types.PendingInfo{
 			Source: types.Address(block.Link),
 			Amount: types.Balance{Int: param.RewardAmount},
-			Type:   common.GasToken(),
+			Type:   cfg.GasToken(),
 		}, nil
 }
 
@@ -193,7 +195,7 @@ func (m *MinerReward) DoPending(block *types.StateBlock) (*types.PendingKey, *ty
 		}, &types.PendingInfo{
 			Source: types.Address(block.Link),
 			Amount: types.Balance{Int: param.RewardAmount},
-			Type:   common.GasToken(),
+			Type:   cfg.GasToken(),
 		}, nil
 }
 
@@ -241,7 +243,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	// generate contract reward block
 	block.Type = types.ContractReward
 	block.Address = param.Beneficial
-	block.Token = common.GasToken()
+	block.Token = cfg.GasToken()
 	block.Link = input.GetHash()
 	block.PoVHeight = input.PoVHeight
 	block.Timestamp = common.TimeNow().Unix()
@@ -252,9 +254,9 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	block.Storage = types.ZeroBalance
 	block.Network = types.ZeroBalance
 
-	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
+	amBnf, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
-		tmBnf := amBnf.Token(common.GasToken())
+		tmBnf := amBnf.Token(cfg.GasToken())
 		if tmBnf != nil {
 			block.Balance = tmBnf.Balance.Add(types.Balance{Int: param.RewardAmount})
 			block.Representative = tmBnf.Representative
@@ -281,7 +283,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 			ToAddress: param.Beneficial,
 			BlockType: types.ContractReward,
 			Amount:    types.Balance{Int: param.RewardAmount},
-			Token:     common.GasToken(),
+			Token:     cfg.GasToken(),
 			Data:      []byte{},
 		},
 	}, nil
@@ -296,7 +298,7 @@ func (m *MinerReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (co
 
 	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
 
-	latestBlock, err := ctx.GetLatestPovBlock()
+	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return common.ContractRewardGapPov, needHeight, nil
 	}
@@ -341,7 +343,7 @@ func (m *MinerReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, coinbas
 
 	rewardAmount := types.NewBalance(0)
 	for dayIndex := startDayIndex; dayIndex <= endDayIndex; dayIndex++ {
-		dayStat, err := ctx.GetPovMinerStat(dayIndex)
+		dayStat, err := ctx.Ledger.GetPovMinerStat(dayIndex)
 		if err != nil {
 			return 0, types.NewBalance(0), fmt.Errorf("get pov miner state err[%d]", dayIndex)
 		}

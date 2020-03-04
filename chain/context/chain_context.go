@@ -387,6 +387,7 @@ func reloadService(s common.Service) error {
 	if err != nil {
 		return err
 	}
+
 	err = s.Init()
 	if err != nil {
 		return err

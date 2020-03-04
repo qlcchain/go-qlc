@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/ed25519"
@@ -92,7 +94,7 @@ func (param *DestroyParam) Verify() (bool, error) {
 		return false, errors.New("invalid previous")
 	}
 
-	if param.Token != common.GasToken() {
+	if param.Token != config.GasToken() {
 		return false, errors.New("invalid token to be destroyed")
 	}
 
@@ -129,7 +131,7 @@ func PackSendBlock(ctx *vmstore.VMContext, param *DestroyParam) (*types.StateBlo
 		return nil, errors.New("invalid sign of param")
 	}
 
-	if tm, err := ctx.GetTokenMeta(param.Owner, param.Token); err != nil {
+	if tm, err := ctx.Ledger.GetTokenMeta(param.Owner, param.Token); err != nil {
 		return nil, err
 	} else {
 		if tm.Balance.Compare(types.Balance{Int: param.Amount}) == types.BalanceCompSmaller {

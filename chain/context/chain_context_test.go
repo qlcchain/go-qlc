@@ -10,11 +10,17 @@ package context
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
+
+	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
@@ -40,17 +46,13 @@ func (*testService) Status() int32 {
 	panic("implement me")
 }
 
-func (*testService) RpcCall(kind uint, in, out interface{}) {
-
-}
-
 type waitService struct {
 	common.ServiceLifecycle
 }
 
 func (w *waitService) Init() error {
 	if !w.PreInit() {
-		return errors.New("pre init fail")
+		return errors.New("waitService pre init fail")
 	}
 	defer w.PostInit()
 	return nil
@@ -58,7 +60,7 @@ func (w *waitService) Init() error {
 
 func (w *waitService) Start() error {
 	if !w.PreStart() {
-		return errors.New("pre init fail")
+		return errors.New("waitService pre start fail")
 	}
 	defer w.PostStart()
 
@@ -68,18 +70,18 @@ func (w *waitService) Start() error {
 
 func (w *waitService) Stop() error {
 	if !w.PreStop() {
-		return errors.New("pre init fail")
+		return errors.New("waitService pre stop fail")
 	}
-	defer w.PostStop()
+	defer func() {
+		w.PostStop()
+		w.Reset()
+	}()
+
 	return nil
 }
 
 func (w *waitService) Status() int32 {
 	return w.State()
-}
-
-func (w *waitService) RpcCall(kind uint, in, out interface{}) {
-
 }
 
 func Test_serviceContainer(t *testing.T) {
@@ -169,6 +171,11 @@ func TestNewChainContext(t *testing.T) {
 	}()
 
 	c1 := NewChainContext(cfgFile1)
+
+	if f := c1.cfgFile; cfgFile1 != f {
+		t.Fatalf("invalid config, exp: %s, act: %s", cfgFile1, f)
+	}
+
 	c2 := NewChainContext(cfgFile2)
 	if c1 == nil || c2 == nil {
 		t.Fatal("failed to create context")
@@ -210,6 +217,21 @@ func TestNewChainContext(t *testing.T) {
 
 	if eb1 != eb3 {
 		t.Fatal("eb1 shouldn same as eb3")
+	}
+
+	feb1 := c1.FeedEventBus()
+	feb2 := c2.FeedEventBus()
+	feb3 := c3.FeedEventBus()
+	if feb1 == feb2 {
+		t.Fatal("eb1 shouldn't same as eb2")
+	}
+
+	if feb1 != feb3 {
+		t.Fatal("eb1 shouldn same as eb3")
+	}
+
+	if original := NewChainContextFromOriginal(c1); original == nil {
+		t.Fatal()
 	}
 }
 
@@ -312,4 +334,60 @@ func TestChainContext_ConfigManager(t *testing.T) {
 	if p1 != p2 {
 		t.Fatal("invalid cfg ptr", p1, "==>", p2)
 	}
+}
+
+func TestChainContext_P2PSyncState(t *testing.T) {
+	cfgFile := filepath.Join(config.QlcTestDataDir(), uuid.New().String(), "test.json")
+	ctx := NewChainContext(cfgFile)
+	const name = "waitService"
+	if err := ctx.Init(func() error {
+		return ctx.Register(name, &waitService{})
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ctx.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+	time.Sleep(10 * time.Millisecond)
+
+	if ctx.PoVState() != topic.SyncDone {
+		t.Fatalf("act: %s, exp: %s", ctx.PoVState(), topic.SyncDone)
+	}
+
+	if b := ctx.IsPoVDone(); !b {
+		t.Fatal()
+	}
+
+	if err := ctx.ReloadService(name); err != nil {
+		t.Fatal(err)
+	}
+
+	if b := ctx.HasService(name); !b {
+		t.Fatal()
+	}
+
+	if services, err := ctx.AllServices(); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(services) != 1 {
+			t.Fatal()
+		}
+	}
+
+	accounts := []*types.Account{mock.Account(), mock.Account()}
+	ctx.SetAccounts(accounts)
+	a2 := ctx.Accounts()
+
+	if !reflect.DeepEqual(accounts, a2) {
+		t.Fatal()
+	}
+
+	if err := ctx.Destroy(); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(ctx.Status())
 }

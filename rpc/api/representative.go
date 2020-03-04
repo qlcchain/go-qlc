@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -175,7 +177,7 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		return nil, fmt.Errorf("rep account not exist, %s", err)
 	}
 
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("rep account does not have chain token, %s", err)
 	}
@@ -192,7 +194,7 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 
 	send := &types.StateBlock{
 		Type:    types.ContractSend,
-		Token:   common.ChainToken(),
+		Token:   config.ChainToken(),
 		Address: param.Account,
 
 		Balance:        tm.Balance,
@@ -271,14 +273,14 @@ type RepStateParams struct {
 
 func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepState, error) {
 	ctx := vmstore.NewVMContext(r.ledger)
-	block, err := ctx.GetPovHeaderByHeight(params.Height)
+	block, err := ctx.Ledger.GetPovHeaderByHeight(params.Height)
 	if block == nil {
 		return nil, fmt.Errorf("get pov block with height[%d] err", params.Height)
 	}
 
 	stateHash := block.GetStateHash()
 	stateTrie := trie.NewTrie(ctx.Ledger.DBStore(), &stateHash, nil)
-	keyBytes := types.PovCreateRepStateKey(params.Account)
+	keyBytes := statedb.PovCreateRepStateKey(params.Account)
 
 	valBytes := stateTrie.GetValue(keyBytes)
 	if len(valBytes) <= 0 {

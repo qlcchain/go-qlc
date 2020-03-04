@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -119,7 +121,7 @@ type contractSendBlockCheck struct {
 
 func (c *contractSendBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	//ignore chain genesis block
-	if common.IsGenesisBlock(block) {
+	if config.IsGenesisBlock(block) {
 		return Progress, nil
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
@@ -170,7 +172,7 @@ type contractReceiveBlockCheck struct {
 
 func (c *contractReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	//ignore chain genesis block
-	if common.IsGenesisBlock(block) {
+	if config.IsGenesisBlock(block) {
 		return Progress, nil
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
@@ -231,8 +233,8 @@ func (c *changeBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 		return Other, fmt.Errorf("invalid link hash")
 	}
 	// check chain token
-	if block.GetToken() != common.ChainToken() {
-		return Other, fmt.Errorf("invalid token %s, common chain token is %s", block.GetToken().String(), common.ChainToken().String())
+	if block.GetToken() != config.ChainToken() {
+		return Other, fmt.Errorf("invalid token %s, common chain token is %s", block.GetToken().String(), config.ChainToken().String())
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
 		return r, err
@@ -258,8 +260,8 @@ func (c *onlineBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 		return Other, fmt.Errorf("invalid link hash")
 	}
 	// check chain token
-	if block.GetToken() != common.ChainToken() {
-		return Other, fmt.Errorf("invalid token %s, chain token is %s", block.GetToken().String(), common.ChainToken().String())
+	if block.GetToken() != config.ChainToken() {
+		return Other, fmt.Errorf("invalid token %s, chain token is %s", block.GetToken().String(), config.ChainToken().String())
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
 		return r, err
@@ -401,7 +403,7 @@ func (lv *LedgerVerifier) unlock(address types.Address) {
 }
 
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, cache *ledger.Cache) error {
-	if block.GetToken() == common.ChainToken() {
+	if block.GetToken() == config.ChainToken() {
 		if tm != nil && !tm.Representative.IsZero() {
 			lv.lock(block.Representative)
 			oldBenefit := &types.Benefit{
@@ -479,7 +481,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 	if am != nil {
 		am = am.Clone()
 		tm := am.Token(block.GetToken())
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == config.ChainToken() {
 			am.CoinBalance = balance
 			am.CoinOracle = block.GetOracle()
 			am.CoinNetwork = block.GetNetwork()
@@ -504,7 +506,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			Tokens:  []*types.TokenMeta{tmNew},
 		}
 
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == config.ChainToken() {
 			account.CoinBalance = balance
 			account.CoinOracle = block.GetOracle()
 			account.CoinNetwork = block.GetNetwork()
@@ -519,7 +521,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 }
 
 func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *ledger.Cache) error {
-	if !common.IsGenesisBlock(block) {
+	if !config.IsGenesisBlock(block) {
 		switch block.GetType() {
 		case types.ContractReward:
 			input, err := lv.l.GetStateBlock(block.GetLink())

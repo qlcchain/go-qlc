@@ -12,16 +12,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/google/uuid"
 	"math/big"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/chain"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -117,7 +117,7 @@ func main() {
 func rollback() {
 	accInfo, _ := l.Ledger.GetAccountMeta(qlcAccount.Address())
 	fmt.Println(accInfo)
-	tokenInfo, _ := l.Ledger.GetTokenMeta(qlcAccount.Address(), common.ChainToken())
+	tokenInfo, _ := l.Ledger.GetTokenMeta(qlcAccount.Address(), config.ChainToken())
 	fmt.Println(tokenInfo)
 
 	client, err := rs.RPC().Attach()

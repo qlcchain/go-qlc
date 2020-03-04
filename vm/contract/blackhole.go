@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	config2 "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -68,26 +70,22 @@ func (b *BlackHole) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	}
 }
 
-func (b *BlackHole) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(cabi.DestroyParam)
-	err := cabi.BlackHoleABI.UnpackMethod(param, cabi.MethodNameDestroy, block.Data)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &types.PendingKey{
-			Address: param.Owner,
-			Hash:    block.GetHash(),
-		}, &types.PendingInfo{
-			Source: types.Address(block.Link),
-			Amount: types.ZeroBalance,
-			Type:   block.Token,
-		}, nil
-}
-
-func (b *BlackHole) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
-}
+//func (b *BlackHole) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+//	param := new(cabi.DestroyParam)
+//	err := cabi.BlackHoleABI.UnpackMethod(param, cabi.MethodNameDestroy, block.Data)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	return &types.PendingKey{
+//			Address: param.Owner,
+//			Hash:    block.GetHash(),
+//		}, &types.PendingInfo{
+//			Source: types.Address(block.Link),
+//			Amount: types.ZeroBalance,
+//			Type:   block.Token,
+//		}, nil
+//}
 
 func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, block *types.StateBlock) error {
 	if verify, err := param.Verify(); err != nil {
@@ -96,10 +94,10 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 		return errors.New("invalid sign")
 	}
 
-	if block.Token != common.GasToken() {
+	if block.Token != config2.GasToken() {
 		return fmt.Errorf("invalid token: %s", block.Token.String())
 	}
-	if amount, err := ctx.CalculateAmount(block); err == nil {
+	if amount, err := ctx.Ledger.CalculateAmount(block); err == nil {
 		if amount.Compare(types.Balance{Int: param.Amount}) != types.BalanceCompEqual {
 			return fmt.Errorf("amount mistmatch, exp: %s,act:%s", param.Amount.String(), amount.String())
 		}
@@ -121,7 +119,7 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 		return nil, fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
 	}
 
-	rxMeta, _ := ctx.GetAccountMeta(input.Address)
+	rxMeta, _ := ctx.Ledger.GetAccountMeta(input.Address)
 	// qgas token should be exist
 	rxToken := rxMeta.Token(input.Token)
 	txHash := input.GetHash()
@@ -151,12 +149,4 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 			Data:      []byte{},
 		},
 	}, nil
-}
-
-func (b *BlackHole) GetRefundData() []byte {
-	return []byte{1}
-}
-
-func (b *BlackHole) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
-	return common.ContractNoGap, nil, nil
 }

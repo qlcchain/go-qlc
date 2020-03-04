@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 )
@@ -30,4 +29,43 @@ func openMysql(cfg *config.Config) (*sqlx.DB, error) {
 	}
 
 	return db, nil
+}
+
+type MySqlDB struct {
+	store *sqlx.DB
+}
+
+func NewMySqlDB(cfg *config.Config) (*MySqlDB, error) {
+	db, err := openMysql(cfg)
+	if err != nil {
+		return nil, err
+	}
+	s := &MySqlDB{
+		store: db,
+	}
+	return s, nil
+}
+
+func (MySqlDB) CreateTable(string, map[string]interface{}, string) string {
+	panic("implement me")
+}
+
+func (MySqlDB) ConvertSchemaType(typ interface{}) string {
+	panic("implement me")
+}
+
+func (MySqlDB) Set(string, map[string]interface{}) (string, []interface{}) {
+	panic("implement me")
+}
+
+func (MySqlDB) Delete(tableName string, vals map[string]interface{}) string {
+	panic("implement me")
+}
+
+func (MySqlDB) Store() *sqlx.DB {
+	panic("implement me")
+}
+
+func (MySqlDB) Close() error {
+	panic("implement me")
 }

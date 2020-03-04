@@ -3,6 +3,9 @@ package pov
 import (
 	"encoding/hex"
 	"fmt"
+
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -89,7 +92,7 @@ func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovGlobalStateDB, tx *t
 	}
 
 	if oldAs != nil {
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == config.ChainToken() {
 			newAs.Balance = balance
 			newAs.Oracle = block.GetOracle()
 			newAs.Network = block.GetNetwork()
@@ -108,7 +111,7 @@ func (bc *PovBlockChain) updateAccountState(sdb *statedb.PovGlobalStateDB, tx *t
 	} else {
 		newAs.TokenStates = []*types.PovTokenState{tsNew}
 
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == config.ChainToken() {
 			newAs.Balance = balance
 			newAs.Oracle = block.GetOracle()
 			newAs.Network = block.GetNetwork()
@@ -129,7 +132,7 @@ func (bc *PovBlockChain) updateRepState(sdb *statedb.PovGlobalStateDB, tx *types
 	oldBlkAs *types.PovAccountState, newBlkAs *types.PovAccountState) error {
 	block := tx.Block
 
-	if block.GetToken() != common.ChainToken() {
+	if block.GetToken() != config.ChainToken() {
 		return nil
 	}
 
@@ -214,7 +217,7 @@ func (bc *PovBlockChain) updateRepOnline(height uint64, sdb *statedb.PovGlobalSt
 		newRs = types.NewPovRepState()
 	}
 
-	newRs.Status = types.PovStatusOnline
+	newRs.Status = statedb.PovStatusOnline
 	newRs.Height = height
 
 	err := sdb.SetRepState(block.GetAddress(), newRs)
@@ -232,7 +235,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 
 	txBlock := tx.Block
 
-	if common.IsGenesisBlock(txBlock) {
+	if config.IsGenesisBlock(txBlock) {
 		bc.logger.Infof("no need to update contract state for genesis block %s", tx.Hash)
 		return nil
 	}
@@ -293,7 +296,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 
 func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
 	var allRss []*types.PovRepState
-	supply := common.GenesisBlock().Balance
+	supply := config.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	gsdb := statedb.NewPovGlobalStateDB(bc.TrieDb(), header.GetStateHash())
@@ -302,7 +305,7 @@ func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types
 		return nil
 	}
 
-	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
+	repPrefix := statedb.PovCreateGlobalStateKey(statedb.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	if it == nil {
 		return nil
@@ -321,7 +324,7 @@ func (bc *PovBlockChain) GetAllOnlineRepStates(header *types.PovHeader) []*types
 			return nil
 		}
 
-		if rs.Status != types.PovStatusOnline {
+		if rs.Status != statedb.PovStatusOnline {
 			continue
 		}
 

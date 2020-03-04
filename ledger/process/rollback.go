@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/yireyun/go-queue"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -274,7 +276,7 @@ func (lv *LedgerVerifier) rollbackCacheAccount(block *types.StateBlock, batch st
 	if err == nil {
 		preBlk, err := lv.l.GetBlockCache(block.GetPrevious())
 		if err == nil {
-			if preBlk.GetToken() == common.ChainToken() {
+			if preBlk.GetToken() == config.ChainToken() {
 				ac.CoinVote = preBlk.GetVote()
 				ac.CoinOracle = preBlk.GetOracle()
 				ac.CoinNetwork = preBlk.GetNetwork()
@@ -621,7 +623,7 @@ func (lv *LedgerVerifier) rollBackToken(token *types.TokenMeta, pre *types.State
 	if err != nil {
 		return err
 	}
-	if pre.GetToken() == common.ChainToken() {
+	if pre.GetToken() == config.ChainToken() {
 		ac.CoinVote = pre.GetVote()
 		ac.CoinOracle = pre.GetOracle()
 		ac.CoinNetwork = pre.GetNetwork()
@@ -669,7 +671,7 @@ func (lv *LedgerVerifier) rollBackTokenDel(tm *types.TokenMeta, cache *ledger.Ca
 }
 
 func (lv *LedgerVerifier) rollBackRep(representative types.Address, blockCur, blockPre *types.StateBlock, isSend bool, token types.Hash, cache *ledger.Cache) error {
-	if token == common.ChainToken() {
+	if token == config.ChainToken() {
 		if isSend {
 			diff := &types.Benefit{
 				Vote:    blockPre.GetVote().Sub(blockCur.GetVote()),

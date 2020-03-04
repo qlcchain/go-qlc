@@ -32,6 +32,10 @@ func TestSmartContractBlock_Serialize(t *testing.T) {
 	}
 	t.Log(b)
 
+	if hash := b.GetHash(); hash.IsZero() {
+		t.Fatal()
+	}
+
 	buff, err := b.Serialize()
 	if err != nil {
 		t.Fatal(err)
@@ -51,5 +55,9 @@ func TestSmartContractBlock_Serialize(t *testing.T) {
 	}
 	if b2.InternalAccount != b.InternalAccount {
 		t.Fatal("internalAccount error")
+	}
+
+	if s := b.IsValid(); s {
+		t.Fatal()
 	}
 }

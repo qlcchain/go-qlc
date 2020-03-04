@@ -4,48 +4,96 @@ import (
 	"encoding/hex"
 	"errors"
 
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
 type WalletApi struct {
 	wallet *wallet.WalletStore
-	ledger *ledger.Ledger
+	l      *ledger.Ledger
 	logger *zap.SugaredLogger
 }
 
 func NewWalletApi(l *ledger.Ledger, wallet *wallet.WalletStore) *WalletApi {
-	return &WalletApi{ledger: l, wallet: wallet, logger: log.NewLogger("api_wallet")}
+	return &WalletApi{l: l, wallet: wallet, logger: log.NewLogger("api_wallet")}
+}
+
+// GetAccounts
+func (w *WalletApi) GetAccounts(address types.Address, passphrase string) ([]types.Address, error) {
+	s := w.wallet.NewSession(address)
+	b, err := s.VerifyPassword(passphrase)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = s.Close()
+	}()
+
+	if !b {
+		return nil, errors.New("password is invalid")
+	}
+
+	index, err := s.GetDeterministicIndex()
+	if err != nil {
+		index = 0
+	}
+	var accounts []types.Address
+	if seedArray, err := s.GetSeed(); err == nil {
+		max := util.UInt32Max(uint32(index), uint32(100))
+		s, err := types.BytesToSeed(seedArray)
+		if err != nil {
+			return accounts, err
+		}
+		for i := uint32(0); i < max; i++ {
+			if account, err := s.Account(i); err == nil {
+				address := account.Address()
+				if _, err := w.l.GetAccountMeta(address); err == nil {
+					accounts = append(accounts, address)
+				} else {
+					break
+				}
+			}
+		}
+	} else {
+		return nil, err
+	}
+
+	return accounts, nil
 }
 
 // GetBalance returns balance for each token of the wallet
 func (w *WalletApi) GetBalances(address types.Address, passphrase string) (map[string]types.Balance, error) {
-	session := w.wallet.NewSession(address)
-	b, err := session.VerifyPassword(passphrase)
+	accounts, err := w.GetAccounts(address, passphrase)
 	if err != nil {
 		return nil, err
 	}
-	if !b {
-		return nil, errors.New("password is invalid")
-	}
-	balances, err := session.GetBalances()
-	if err != nil {
-		return nil, err
-	}
+
 	cache := make(map[string]types.Balance)
-	vmContext := vmstore.NewVMContext(w.ledger)
-	for token, balance := range balances {
-		info, err := abi.GetTokenById(vmContext, token)
-		if err != nil {
-			return nil, err
+	vmContext := vmstore.NewVMContext(w.l)
+
+	for _, account := range accounts {
+		if am, err := w.l.GetAccountMeta(account); err == nil {
+			for _, tm := range am.Tokens {
+				info, err := abi.GetTokenById(vmContext, tm.Type)
+				if err != nil {
+					return nil, err
+				}
+				if balance, ok := cache[info.TokenName]; ok {
+					//b := cache[tm.Type]
+					cache[info.TokenName] = balance.Add(tm.Balance)
+				} else {
+					cache[info.TokenName] = tm.Balance
+				}
+			}
 		}
-		cache[info.TokenName] = balance
 	}
 	return cache, nil
 }
@@ -56,6 +104,10 @@ func (w *WalletApi) GetRawKey(address types.Address, passphrase string) (map[str
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		_ = session.Close()
+	}()
+
 	if !b {
 		return nil, errors.New("password is invalid")
 	}

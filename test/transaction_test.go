@@ -24,7 +24,6 @@ import (
 	"github.com/google/uuid"
 	rpc "github.com/qlcchain/jsonrpc2"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/rpc/api"
@@ -237,7 +236,7 @@ func checkBlock(l *ledger.Ledger, blockCount int, t *testing.T) {
 }
 
 func checkAccount(l *ledger.Ledger, address types.Address, amount types.Balance, blockCount int, header types.Hash, open types.Hash, t *testing.T) {
-	tm, err := l.GetTokenMeta(address, common.ChainToken())
+	tm, err := l.GetTokenMeta(address, config.ChainToken())
 	if err != nil {
 		t.Fatal(err)
 	}

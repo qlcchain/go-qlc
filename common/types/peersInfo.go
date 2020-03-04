@@ -1,5 +1,6 @@
 package types
 
+//go:generate msgp
 type PeerInfo struct {
 	PeerID         string  `json:"peerid"`
 	Address        string  `json:"address"`

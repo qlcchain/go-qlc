@@ -28,3 +28,61 @@ func TestUnchecked_Serialize(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestSynchronizedKind_String(t *testing.T) {
+	tests := []struct {
+		name string
+		s    SynchronizedKind
+		want string
+	}{
+		{
+			name: "Synchronized",
+			s:    Synchronized,
+			want: "sync",
+		},
+		{
+			name: "UnSynchronized",
+			s:    UnSynchronized,
+			want: "unsync",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.String(); got != tt.want {
+				t.Errorf("String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStringToSyncKind(t *testing.T) {
+	type args struct {
+		str string
+	}
+	tests := []struct {
+		name string
+		args args
+		want SynchronizedKind
+	}{
+		{
+			name: "sync",
+			args: args{
+				str: "sync",
+			},
+			want: Synchronized,
+		}, {
+			name: "unsync",
+			args: args{
+				str: "unsync",
+			},
+			want: UnSynchronized,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := StringToSyncKind(tt.args.str); got != tt.want {
+				t.Errorf("StringToSyncKind() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

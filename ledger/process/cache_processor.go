@@ -3,6 +3,8 @@ package process
 import (
 	"fmt"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -65,7 +67,7 @@ type cacheContractSendBlockCheck struct {
 
 func (c *cacheContractSendBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	//ignore chain genesis block
-	if common.IsGenesisBlock(block) {
+	if config.IsGenesisBlock(block) {
 		return Progress, nil
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
@@ -116,7 +118,7 @@ type cacheContractReceiveBlockCheck struct {
 
 func (c *cacheContractReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	//ignore chain genesis block
-	if common.IsGenesisBlock(block) {
+	if config.IsGenesisBlock(block) {
 		return Progress, nil
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
@@ -177,7 +179,7 @@ func (c *cacheChangeBlockCheck) Check(lv *LedgerVerifier, block *types.StateBloc
 		return Other, fmt.Errorf("invalid link hash")
 	}
 	// check chain token
-	if block.Token != common.ChainToken() {
+	if block.Token != config.ChainToken() {
 		return Other, fmt.Errorf("invalid token Id")
 	}
 	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
@@ -228,7 +230,7 @@ func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *ty
 
 	if am != nil {
 		tm := am.Token(block.GetToken())
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == config.ChainToken() {
 			am.CoinBalance = balance
 			am.CoinOracle = block.GetOracle()
 			am.CoinNetwork = block.GetNetwork()
@@ -253,7 +255,7 @@ func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *ty
 			Tokens:  []*types.TokenMeta{tmNew},
 		}
 
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == config.ChainToken() {
 			account.CoinBalance = balance
 			account.CoinOracle = block.GetOracle()
 			account.CoinNetwork = block.GetNetwork()

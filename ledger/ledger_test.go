@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -20,17 +19,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	cfg, _ := cm.Load()
+	_, _ = cm.Load()
 	l := NewLedger(cm.ConfigFile)
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
+
 	return func(t *testing.T) {
 		//err := l.DBStore.Erase()
 		err := l.Close()
@@ -104,7 +95,7 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	genesis := common.GenesisBlock()
+	genesis := config.GenesisBlock()
 	if err := l.AddStateBlock(&genesis); err != nil {
 		t.Fatal()
 	}

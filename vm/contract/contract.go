@@ -120,12 +120,12 @@ func (c *BaseContract) GetTargetReceiver(ctx *vmstore.VMContext, block *types.St
 }
 
 func (c *BaseContract) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.NewBalance(0), nil
+	return types.ZeroBalance, nil
 }
 
 // refund data at receive error
 func (c *BaseContract) GetRefundData() []byte {
-	return nil
+	return []byte{1}
 }
 
 // DoPending generate pending info from send block
@@ -407,8 +407,4 @@ func GetAbiByContractAddress(addr types.Address) (string, error) {
 		return contract.abiJson, nil
 	}
 	return "", errors.New("contract not found")
-}
-
-func SetMinMintageTimeForTest() {
-	minMintageTime = &timeSpan{seconds: 1}
 }

@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
@@ -262,7 +264,7 @@ func (l *DebugApi) Representative(address types.Address) (*APIRepresentative, er
 	network := types.ZeroBalance
 	total := types.ZeroBalance
 	err := l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
-		t := am.Token(common.ChainToken())
+		t := am.Token(config.ChainToken())
 		if t != nil {
 			if t.Representative == address {
 				balance = balance.Add(t.Balance)
@@ -372,7 +374,7 @@ func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPoSOnlineInfo, nil, repOnline)
+	sv.(common.InterceptCall).RpcCall(common.RpcDPoSOnlineInfo, nil, repOnline)
 
 	return repOnline, nil
 }
@@ -455,7 +457,7 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPoSConsInfo, inArgs, outArgs)
+	sv.(common.InterceptCall).RpcCall(common.RpcDPoSConsInfo, inArgs, outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -478,7 +480,7 @@ func (l *DebugApi) SetConsPerf(op int) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPoSSetConsPerf, dpos.PerfType(op), outArgs)
+	sv.(common.InterceptCall).RpcCall(common.RpcDPoSSetConsPerf, dpos.PerfType(op), outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -502,7 +504,7 @@ func (l *DebugApi) GetConsPerf() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	sv.RpcCall(common.RpcDPoSGetConsPerf, inArgs, outArgs)
+	sv.(common.InterceptCall).RpcCall(common.RpcDPoSGetConsPerf, inArgs, outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -699,6 +701,6 @@ func (l *DebugApi) FeedConsensus() error {
 	if err != nil {
 		return err
 	}
-	sv.RpcCall(common.RpcDPoSFeed, nil, nil)
+	sv.(common.InterceptCall).RpcCall(common.RpcDPoSFeed, nil, nil)
 	return nil
 }

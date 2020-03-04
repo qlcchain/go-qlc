@@ -72,7 +72,3 @@ func (p *P2PService) Status() int32 {
 func (p *P2PService) Node() *p2p.QlcService {
 	return p.p2p
 }
-
-func (p *P2PService) RpcCall(kind uint, in, out interface{}) {
-
-}

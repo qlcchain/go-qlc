@@ -138,3 +138,49 @@ func TestU256(t *testing.T) {
 		}
 	}
 }
+
+func TestUInt32Max(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		x uint32
+		y uint32
+	}
+	tests := []struct {
+		name string
+		args args
+		want uint32
+	}{
+		{"max1", args{x: uint32(1), y: uint32(2)}, uint32(2)},
+		{"max2", args{x: uint32(3), y: uint32(1)}, uint32(3)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := UInt32Max(tt.args.x, tt.args.y); got != tt.want {
+				t.Errorf("max() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUInt32Min(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		a uint32
+		b uint32
+	}
+	tests := []struct {
+		name string
+		args args
+		want uint32
+	}{
+		{"min1", args{a: uint32(1), b: uint32(2)}, uint32(1)},
+		{"min2", args{a: uint32(3), b: uint32(1)}, uint32(1)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := UInt32Min(tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("min() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

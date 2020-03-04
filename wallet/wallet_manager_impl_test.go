@@ -9,11 +9,12 @@ package wallet
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"

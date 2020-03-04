@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"time"
 
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -23,10 +25,6 @@ import (
 
 type Mintage struct {
 	BaseContract
-}
-
-func (m *Mintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
 }
 
 func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
@@ -40,7 +38,7 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 	}
 
 	tokenId := cabi.NewTokenHash(block.Address, block.Previous, param.TokenName)
-	if _, err = cabi.GetTokenById(ctx, types.Hash(tokenId)); err == nil {
+	if _, err = cabi.GetTokenById(ctx, tokenId); err == nil {
 		return fmt.Errorf("token Id[%s] already exist", tokenId.String())
 	}
 
@@ -82,7 +80,7 @@ func verifyToken(param cabi.ParamMintage) error {
 	return nil
 }
 
-func (m *Mintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+func (m *Mintage) DoPending(_ *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
@@ -91,10 +89,10 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 	param := new(cabi.ParamMintage)
 	_ = cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
 	var tokenInfo []byte
-	amount, _ := ctx.CalculateAmount(input)
+	amount, _ := ctx.Ledger.CalculateAmount(input)
 	if amount.Sign() > 0 &&
 		amount.Compare(types.Balance{Int: MinPledgeAmount}) != types.BalanceCompSmaller &&
-		input.Token == common.ChainToken() {
+		input.Token == cfg.ChainToken() {
 		var err error
 		tokenInfo, err = cabi.MintageABI.PackVariable(
 			cabi.VariableNameToken,
@@ -160,10 +158,6 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 	}, nil
 }
 
-func (m *Mintage) GetRefundData() []byte {
-	return []byte{1}
-}
-
 func (m *Mintage) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	data := block.GetData()
 	tr := types.ZeroAddress
@@ -189,12 +183,8 @@ type WithdrawMintage struct {
 	BaseContract
 }
 
-func (m *WithdrawMintage) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
-}
-
 func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
-	if amount, err := ctx.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
+	if amount, err := ctx.Ledger.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
 		amount.Compare(types.ZeroBalance) != types.BalanceCompEqual {
 		return errors.New("invalid block ")
 	}
@@ -205,7 +195,7 @@ func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock
 	return nil
 }
 
-func (m *WithdrawMintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+func (m *WithdrawMintage) DoPending(_ *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
@@ -250,11 +240,11 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		return nil, err
 	}
 	var tm *types.TokenMeta
-	am, _ := ctx.GetAccountMeta(tokenInfo.PledgeAddress)
+	am, _ := ctx.Ledger.GetAccountMeta(tokenInfo.PledgeAddress)
 	if am != nil {
-		tm = am.Token(common.ChainToken())
+		tm = am.Token(cfg.ChainToken())
 		if tm == nil {
-			return nil, fmt.Errorf("chain token %s do not found", common.ChainToken().String())
+			return nil, fmt.Errorf("chain token %s do not found", cfg.ChainToken().String())
 		}
 	} else {
 		return nil, errors.New("accountMeta not found")
@@ -306,14 +296,10 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 				ToAddress: tokenInfo.PledgeAddress,
 				BlockType: types.ContractReward,
 				Amount:    types.Balance{Int: tokenInfo.PledgeAmount},
-				Token:     common.ChainToken(),
+				Token:     cfg.ChainToken(),
 				Data:      newTokenInfo,
 			},
 		}, nil
 	}
 	return nil, nil
-}
-
-func (m *WithdrawMintage) GetRefundData() []byte {
-	return []byte{2}
 }

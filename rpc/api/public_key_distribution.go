@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/qlcchain/go-qlc/config"
+
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -87,7 +89,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		return nil, err
 	}
 
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not have qlc token", param.Account)
 	}
@@ -167,7 +169,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 		return nil, err
 	}
 
-	tm := am.Token(common.ChainToken())
+	tm := am.Token(config.ChainToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not hava any chain token", param.Account)
 	}
@@ -270,7 +272,7 @@ func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*Verifier
 		return nil, err
 	}
 
-	pb, err := p.ctx.GetLatestPovBlock()
+	pb, err := p.ctx.Ledger.GetLatestPovBlock()
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +371,7 @@ func (p *PublicKeyDistributionApi) GetAllVerifierStatesByBlockHeight(height uint
 	rspData := new(PKDVerifierStateList)
 	rspData.AllVerifiers = make(map[types.Address]*types.PovVerifierState)
 
-	itor := csDB.NewCurTireIterator(types.PovCreateContractLocalStateKey(dpki.PovContractStatePrefixPKDVS, nil))
+	itor := csDB.NewCurTireIterator(statedb.PovCreateContractLocalStateKey(dpki.PovContractStatePrefixPKDVS, nil))
 
 	for key, val, ok := itor.Next(); ok; key, val, ok = itor.Next() {
 		verAddr, err := types.BytesToAddress(key[2:])
@@ -450,7 +452,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 		return nil, err
 	}
 
-	tm := am.Token(common.GasToken())
+	tm := am.Token(config.GasToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not have gas token", param.Account)
 	}
@@ -562,7 +564,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 		return nil, err
 	}
 
-	tm := am.Token(common.GasToken())
+	tm := am.Token(config.GasToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not have gas token", param.Account)
 	}
@@ -803,7 +805,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		return nil, err
 	}
 
-	tm := am.Token(common.GasToken())
+	tm := am.Token(config.GasToken())
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not have gas token", param.Account)
 	}
@@ -1005,7 +1007,7 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 		return nil, fmt.Errorf("rep account not exist, %s", err)
 	}
 
-	tm := am.Token(common.GasToken())
+	tm := am.Token(config.GasToken())
 	if tm == nil {
 		return nil, fmt.Errorf("rep account does not have gas token, %s", err)
 	}
@@ -1216,7 +1218,7 @@ func (p *PublicKeyDistributionApi) GetVerifierHeartBlock(account types.Address, 
 		return nil, contract.ErrAccountNotExist
 	}
 
-	tm := am.Token(common.GasToken())
+	tm := am.Token(config.GasToken())
 	if tm == nil {
 		return nil, ErrNoGas
 	}

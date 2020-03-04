@@ -169,18 +169,9 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 
 	_ = os.RemoveAll(dir)
 	cm := cfg.NewCfgManager(dir)
-	c, err := cm.Load()
+	_, err := cm.Load()
 	if err != nil {
 		t.Fatal(err)
-	}
-	for _, v := range c.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}
 	l := ledger.NewLedger(cm.ConfigFile)
 	var blocks []*types.StateBlock
@@ -274,7 +265,7 @@ func updateAccountMeta(l *ledger.Ledger, block *types.StateBlock, am *types.Acco
 
 	if am != nil {
 		tm := am.Token(block.GetToken())
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == cfg.ChainToken() {
 			am.CoinBalance = balance
 			am.CoinOracle = block.GetOracle()
 			am.CoinNetwork = block.GetNetwork()
@@ -299,7 +290,7 @@ func updateAccountMeta(l *ledger.Ledger, block *types.StateBlock, am *types.Acco
 			Tokens:  []*types.TokenMeta{tmNew},
 		}
 
-		if block.GetToken() == common.ChainToken() {
+		if block.GetToken() == cfg.ChainToken() {
 			account.CoinBalance = balance
 			account.CoinOracle = block.GetOracle()
 			account.CoinNetwork = block.GetNetwork()
@@ -317,14 +308,14 @@ func TestDestroyContract(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	tm, err := l.GetTokenMeta(acc.Address(), common.GasToken())
+	tm, err := l.GetTokenMeta(acc.Address(), cfg.GasToken())
 	if err != nil {
-		t.Fatal(err, common.GasToken())
+		t.Fatal(err, cfg.GasToken())
 	}
 
 	param := &abi.DestroyParam{
 		Owner:    acc.Address(),
-		Token:    common.GasToken(),
+		Token:    cfg.GasToken(),
 		Previous: tm.Header,
 		Amount:   big.NewInt(100),
 	}
@@ -353,8 +344,12 @@ func TestDestroyContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	} else {
+		if _, _, err = b.ProcessSend(vmContext, sendBlock); err != nil {
+			t.Fatal(err)
+		}
 		t.Log(util.ToIndentString(key), util.ToIndentString(info))
 	}
+
 	recv := &types.StateBlock{
 		Timestamp: common.TimeNow().Unix(),
 	}

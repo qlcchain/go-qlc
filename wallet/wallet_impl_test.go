@@ -8,25 +8,24 @@
 package wallet
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/storage"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto"
-	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
@@ -154,44 +153,6 @@ func TestSession_IsAccountExist(t *testing.T) {
 
 	addr := account.Address()
 	t.Log(addr.String())
-
-	am := mock.AccountMeta(addr)
-	l := session.ledger
-
-	err = l.AddAccountMeta(am, l.Cache().GetCache())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	am2, err := l.GetAccountMeta(addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if util.ToString(am) != util.ToString(am2) {
-		t.Log(util.ToIndentString(am))
-		t.Log(util.ToIndentString(am2))
-		t.Fatal("am!=am2")
-	}
-
-	if exist := session.IsAccountExist(addr); !exist {
-		t.Fatal("IsAccountExist1 failed", addr.String())
-	}
-
-	account2, err := seed.Account(101)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	addr2 := account2.Address()
-
-	if exist := session.IsAccountExist(addr2); exist {
-		t.Fatal("IsAccountExist2 failed", addr2.String())
-	}
-
-	addr3 := mock.Address()
-	if exist := session.IsAccountExist(addr3); exist {
-		t.Fatal("IsAccountExist3 failed", addr2.String())
-	}
 }
 
 func TestSession_GetRawKey(t *testing.T) {
@@ -374,77 +335,12 @@ func TestGenerateWork(t *testing.T) {
 	}
 }
 
-func TestSession_GetAccounts(t *testing.T) {
-	teardownTestCase, store := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	id, err := store.NewWallet()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	session := store.NewSession(id)
-	s := session.ledger
-
-	seed, err := session.GetSeed()
-	//seedString := hex.EncodeToString(seed)
-	//addresses, err := insertAccountMeta(session, seedString, t)
-	ss, _ := types.BytesToSeed(seed)
-	var addresses []types.Address
-	for i := 0; i < 5; i++ {
-		account, _ := ss.Account(uint32(i))
-		addr := account.Address()
-		am := mock.AccountMeta(addr)
-		err = s.AddAccountMeta(am, s.Cache().GetCache())
-		if err != nil {
-			t.Fatal(err)
-		}
-		meta, err := s.GetAccountMeta(addr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if util.ToString(am) != util.ToString(meta) {
-			t.Log(am, meta)
-			t.Fatal("save am failed")
-		}
-		addresses = append(addresses, addr)
-		t.Log(addr.String())
-	}
-
-	_ = session.SetDeterministicIndex(5)
-
-	accounts2, err := session.GetAccounts()
-	if err != nil {
-		t.Log(err)
-	}
-
-	if !reflect.DeepEqual(addresses, accounts2) {
-		t.Log("addresses", strings.Repeat("*", 20))
-		for _, a := range addresses {
-			t.Log(a.String())
-			meta, err := s.GetAccountMeta(a)
-			if err != nil {
-				t.Log(err)
-			}
-			t.Log(meta)
-		}
-
-		t.Log("accounts2", strings.Repeat("*", 20))
-		for _, a := range accounts2 {
-			t.Log(a.String())
-		}
-
-		t.Fatal("GetAccounts failed")
-	}
-}
-
 func TestSession_SetDeterministicIndex(t *testing.T) {
 	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
 	type fields struct {
 		Store storage.Store
 		//lock            sync.RWMutex
-		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
 		maxAccountCount uint64
 		walletId        []byte
@@ -466,7 +362,6 @@ func TestSession_SetDeterministicIndex(t *testing.T) {
 			s := &Session{
 				Store:           tt.fields.Store,
 				lock:            sync.RWMutex{},
-				ledger:          tt.fields.ledger,
 				logger:          tt.fields.logger,
 				maxAccountCount: tt.fields.maxAccountCount,
 				walletId:        tt.fields.walletId,
@@ -491,7 +386,6 @@ func TestSession_generateWork(t *testing.T) {
 	_ = hash.Of("2C353DA641277FD8379354307A54BECE090C51E52FB460EA5A8674B702BDCE5E")
 	type fields struct {
 		Store           storage.Store
-		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
 		maxAccountCount uint64
 		walletId        []byte
@@ -513,7 +407,6 @@ func TestSession_generateWork(t *testing.T) {
 			s := &Session{
 				Store:           tt.fields.Store,
 				lock:            sync.RWMutex{},
-				ledger:          tt.fields.ledger,
 				logger:          tt.fields.logger,
 				maxAccountCount: tt.fields.maxAccountCount,
 				walletId:        tt.fields.walletId,
@@ -532,7 +425,6 @@ func TestSession_setWork(t *testing.T) {
 
 	type fields struct {
 		Store           storage.Store
-		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
 		maxAccountCount uint64
 		walletId        []byte
@@ -555,7 +447,6 @@ func TestSession_setWork(t *testing.T) {
 			s := &Session{
 				Store:           tt.fields.Store,
 				lock:            sync.RWMutex{},
-				ledger:          tt.fields.ledger,
 				logger:          tt.fields.logger,
 				maxAccountCount: tt.fields.maxAccountCount,
 				walletId:        tt.fields.walletId,
@@ -578,7 +469,6 @@ func TestSession_getKey(t *testing.T) {
 	type fields struct {
 		Store storage.Store
 		//lock            sync.RWMutex
-		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
 		maxAccountCount uint64
 		walletId        []byte
@@ -600,7 +490,6 @@ func TestSession_getKey(t *testing.T) {
 			s := &Session{
 				Store:           tt.fields.Store,
 				lock:            sync.RWMutex{},
-				ledger:          tt.fields.ledger,
 				logger:          tt.fields.logger,
 				maxAccountCount: tt.fields.maxAccountCount,
 				walletId:        tt.fields.walletId,
@@ -621,7 +510,6 @@ func TestSession_getPassword(t *testing.T) {
 	type fields struct {
 		Store storage.Store
 		//lock            sync.RWMutex
-		ledger          *ledger.Ledger
 		logger          *zap.SugaredLogger
 		maxAccountCount uint64
 		walletId        []byte
@@ -639,7 +527,6 @@ func TestSession_getPassword(t *testing.T) {
 			s := &Session{
 				Store:           tt.fields.Store,
 				lock:            sync.RWMutex{},
-				ledger:          tt.fields.ledger,
 				logger:          tt.fields.logger,
 				maxAccountCount: tt.fields.maxAccountCount,
 				walletId:        tt.fields.walletId,
@@ -655,10 +542,11 @@ func TestSession_getPassword(t *testing.T) {
 func TestSession_setPassword(t *testing.T) {
 	teardownTestCase, store := setupTestCase(t)
 	defer teardownTestCase(t)
+
+	secureString, _ := crypto.NewSecureString("password")
+
 	type fields struct {
-		Store storage.Store
-		//lock            sync.RWMutex
-		ledger          *ledger.Ledger
+		Store           storage.Store
 		logger          *zap.SugaredLogger
 		maxAccountCount uint64
 		walletId        []byte
@@ -672,14 +560,29 @@ func TestSession_setPassword(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"setPassword", fields{Store: store, walletId: mock.Address().Bytes()}, args{"v3FGe68mFYGewjQ3zjb9"}},
+		{
+			name: "setPassword",
+			fields: fields{
+				Store:    store,
+				walletId: mock.Address().Bytes(),
+			},
+			args: args{"v3FGe68mFYGewjQ3zjb9"},
+		},
+		{
+			name: "setPassword",
+			fields: fields{
+				Store:    store,
+				walletId: mock.Address().Bytes(),
+				password: secureString,
+			},
+			args: args{"v3FGe68mFYGewjQ3zjb9"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Session{
 				Store:           tt.fields.Store,
 				lock:            sync.RWMutex{},
-				ledger:          tt.fields.ledger,
 				logger:          tt.fields.logger,
 				maxAccountCount: tt.fields.maxAccountCount,
 				walletId:        tt.fields.walletId,
@@ -693,48 +596,49 @@ func TestSession_setPassword(t *testing.T) {
 	}
 }
 
-func Test_max(t *testing.T) {
-	t.Parallel()
-	type args struct {
-		x uint32
-		y uint32
-	}
-	tests := []struct {
-		name string
-		args args
-		want uint32
-	}{
-		{"max1", args{x: uint32(1), y: uint32(2)}, uint32(2)},
-		{"max2", args{x: uint32(3), y: uint32(1)}, uint32(3)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := max(tt.args.x, tt.args.y); got != tt.want {
-				t.Errorf("max() = %v, want %v", got, tt.want)
-			}
-		})
+func TestSession_GetWalletId(t *testing.T) {
+	teardownTestCase, store := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	a := mock.Address()
+	s := store.NewSession(a)
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	if id, err := s.GetWalletId(); err != nil {
+		t.Fatal(err)
+	} else {
+		if !bytes.Equal(id, a[:]) {
+			t.Fatalf("exp: %v, act: %v", a[:], id)
+		}
 	}
 }
 
-func Test_min(t *testing.T) {
-	t.Parallel()
-	type args struct {
-		a uint32
-		b uint32
+func TestSession_GetRepresentative(t *testing.T) {
+	teardownTestCase, store := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	a := mock.Address()
+	s := store.NewSession(a)
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	rep := mock.Address()
+	if err := s.SetRepresentative(rep); err != nil {
+		t.Fatal(err)
 	}
-	tests := []struct {
-		name string
-		args args
-		want uint32
-	}{
-		{"min1", args{a: uint32(1), b: uint32(2)}, uint32(1)},
-		{"min2", args{a: uint32(3), b: uint32(1)}, uint32(1)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := min(tt.args.a, tt.args.b); got != tt.want {
-				t.Errorf("min() = %v, want %v", got, tt.want)
-			}
-		})
+
+	if rep2, err := s.GetRepresentative(); err != nil {
+		t.Fatal(err)
+	} else {
+		if rep != rep2 {
+			t.Fatalf("exp: %s, act: %s", rep, rep2)
+		}
 	}
 }

@@ -14,7 +14,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/process"
@@ -72,7 +71,7 @@ func TestPending(t *testing.T) {
 	sAmount := types.Balance{Int: big.NewInt(10000000000000)}
 	sb := types.StateBlock{
 		Address: testAccount.Address(),
-		Token:   common.ChainToken(),
+		Token:   config.ChainToken(),
 		Link:    tAddress.ToHash(),
 	}
 

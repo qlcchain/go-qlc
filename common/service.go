@@ -22,13 +22,16 @@ const (
 	Stopped
 )
 
+type InterceptCall interface {
+	RpcCall(kind uint, in, out interface{})
+}
+
 //Service action and status
 type Service interface {
 	Init() error
 	Start() error
 	Stop() error
 	Status() int32
-	RpcCall(kind uint, in, out interface{})
 }
 
 type ServiceLifecycle struct {
@@ -57,6 +60,10 @@ func (s *ServiceLifecycle) PreStop() bool {
 
 func (s *ServiceLifecycle) PostStop() bool {
 	return atomic.CompareAndSwapInt32(&s.Status, 5, 6)
+}
+
+func (s *ServiceLifecycle) Reset() bool {
+	return atomic.CompareAndSwapInt32(&s.Status, 6, 0)
 }
 
 func (s *ServiceLifecycle) Stopped() bool {

@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
@@ -294,7 +295,7 @@ func TestProcess_ContractSend(t *testing.T) {
 	lv := process.NewLedgerVerifier(l)
 
 	//test genesis contractSend block
-	genesis := common.GenesisMintageBlock()
+	genesis := config.GenesisMintageBlock()
 	p, _ := lv.BlockCheck(&genesis)
 	if p != process.Progress {
 		t.Fatal("process genesis contractSend block error")
@@ -381,7 +382,7 @@ func TestProcess_ContractReceive(t *testing.T) {
 	lv := process.NewLedgerVerifier(l)
 
 	//test genesis contractSend block
-	genesis := common.GenesisBlock()
+	genesis := config.GenesisBlock()
 	p, _ := lv.BlockCheck(&genesis)
 	if p != process.Progress {
 		t.Fatal("process genesis contractReceive block error")

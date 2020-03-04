@@ -145,24 +145,15 @@ func setupSettlementTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) 
 	dir := filepath.Join(cfg.QlcTestDataDir(), "settlement", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := cfg.NewCfgManager(dir)
-	c, err := cm.Load()
+	_, err := cm.Load()
 	if err != nil {
 		t.Fatal(err)
-	}
-	for _, v := range c.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
 	}
 	l := ledger.NewLedger(cm.ConfigFile)
 	//ctx := vmstore.NewVMContext(l)
 	//verifier := process.NewLedgerVerifier(l)
 	//
-	//for _, v := range common.GenesisInfos {
+	//for _, v := range common.genesisInfos {
 	//	mb := v.GenesisMintageBlock
 	//	gb := v.GenesisBlock
 	//	err := ctx.SetStorage(types.MintageAddress[:], v.GenesisBlock.Token[:], v.GenesisBlock.Data)
@@ -254,7 +245,7 @@ func buildContract(l *ledger.Ledger, t *testing.T) {
 		t.Log(util.ToIndentString(am))
 	}
 
-	tm, err := ctx.GetTokenMeta(a1, common.GasToken())
+	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +331,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 				t.Fatal(err)
 			} else {
 				terminateContract := &TerminateContract{}
-				tm, err := ctx.GetTokenMeta(a2, common.GasToken())
+				tm, err := ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -441,7 +432,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// add next stop
-			tm, err := ctx.GetTokenMeta(a1, common.GasToken())
+			tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -499,7 +490,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// update next stop
-			tm, err = ctx.GetTokenMeta(a1, common.GasToken())
+			tm, err = ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -565,7 +556,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// remove next stop
-			tm, err = ctx.GetTokenMeta(a1, common.GasToken())
+			tm, err = ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -626,7 +617,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// add pre stop
-			tm, err = ctx.GetTokenMeta(a2, common.GasToken())
+			tm, err = ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -688,7 +679,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// update pre stop
-			tm, err = ctx.GetTokenMeta(a2, common.GasToken())
+			tm, err = ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -754,7 +745,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// remove pre stop
-			tm, err = ctx.GetTokenMeta(a2, common.GasToken())
+			tm, err = ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -837,7 +828,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 
-	tm, err := ctx.GetTokenMeta(a1, common.GasToken())
+	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -942,7 +933,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 						ContractAddress: address,
 						ConfirmDate:     time.Now().Unix(),
 					}
-					tm2, err := ctx.GetTokenMeta(a2, common.GasToken())
+					tm2, err := ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -993,7 +984,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										t.Log(rb2.String())
 
 										// add prestop
-										tm, err = ctx.GetTokenMeta(a1, common.GasToken())
+										tm, err = ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 										if err != nil {
 											t.Fatal(err)
 										}
@@ -1055,7 +1046,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										}
 
 										// add prestop
-										tm2, err := ctx.GetTokenMeta(a2, common.GasToken())
+										tm2, err := ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
 										if err != nil {
 											t.Fatal(err)
 										}
@@ -1119,7 +1110,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										// start process CDR as ac1
 										cdrContract := &ProcessCDR{}
 
-										tm, err = ctx.GetTokenMeta(a1, common.GasToken())
+										tm, err = ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 										if err != nil {
 											t.Fatal(err)
 										}
@@ -1172,7 +1163,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											t.Log(pk, pi)
 										}
 										// start process CDR as ac2
-										tm2, err = ctx.GetTokenMeta(a2, common.GasToken())
+										tm2, err = ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
 										if err != nil {
 											t.Fatal(err)
 										}

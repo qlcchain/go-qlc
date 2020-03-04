@@ -1,8 +1,9 @@
 package common
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func TestBalanceToRaw(t *testing.T) {

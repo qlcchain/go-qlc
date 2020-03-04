@@ -1,16 +1,16 @@
 package api
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func setupTestCaseDebug(t *testing.T) (func(t *testing.T), *ledger.Ledger, *DebugApi) {
@@ -19,16 +19,7 @@ func setupTestCaseDebug(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Debu
 	dir := filepath.Join(config.QlcTestDataDir(), "debug", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	cfg, _ := cm.Load()
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
+	_, _ = cm.Load()
 
 	l := ledger.NewLedger(cm.ConfigFile)
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)

@@ -6,6 +6,7 @@ codecov:
 ignore:
 - "**/mock"
 - "**/edwards25519/*"
+- "**/*_gen.go"
 
 #comment: false
 

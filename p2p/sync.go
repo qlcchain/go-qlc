@@ -174,7 +174,7 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		}
 
 		ss.syncInit()
-		sv.RpcCall(common.RpcDPoSOnSyncStateChange, topic.Syncing, nil)
+		sv.(common.InterceptCall).RpcCall(common.RpcDPoSOnSyncStateChange, topic.Syncing, nil)
 		ss.logger.Warn("sync start")
 
 		var remoteFrontiers []*types.Frontier
@@ -187,13 +187,13 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		remoteFrontiersLen := len(remoteFrontiers)
 
 		if remoteFrontiersLen > 0 {
-			sv.RpcCall(common.RpcDPoSProcessFrontier, blks, nil)
+			sv.(common.InterceptCall).RpcCall(common.RpcDPoSProcessFrontier, blks, nil)
 			sort.Sort(types.Frontiers(remoteFrontiers))
 			zeroFrontier := new(types.Frontier)
 			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 			state := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
 			ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: state})
-			sv.RpcCall(common.RpcDPoSOnSyncStateChange, state, nil)
+			sv.(common.InterceptCall).RpcCall(common.RpcDPoSOnSyncStateChange, state, nil)
 		}
 		ss.logger.Warn("sync pull all blocks done")
 	}
@@ -605,12 +605,12 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	if len(blocks) == 0 {
 		return nil
 	}
-	if ss.netService.node.cfg.PerformanceEnabled {
-		for _, b := range blocks {
-			hash := b.GetHash()
-			ss.netService.msgService.addPerformanceTime(hash)
-		}
-	}
+	//if ss.netService.node.cfg.PerformanceEnabled {
+	//	for _, b := range blocks {
+	//		hash := b.GetHash()
+	//		ss.netService.msgService.addPerformanceTime(hash)
+	//	}
+	//}
 
 	for i, b := range blocks {
 		ss.logger.Debugf("sync block acc[%s]-index[%d]-hash[%s]-prev[%s]", b.Address, i, b.GetHash(), b.Previous)
@@ -671,12 +671,12 @@ func (ss *ServiceSync) onBulkPushBlock(message *Message) error {
 	}
 	blocks := blkPacket.Blocks
 
-	if ss.netService.node.cfg.PerformanceEnabled {
-		for _, b := range blocks {
-			hash := b.GetHash()
-			ss.netService.msgService.addPerformanceTime(hash)
-		}
-	}
+	//if ss.netService.node.cfg.PerformanceEnabled {
+	//	for _, b := range blocks {
+	//		hash := b.GetHash()
+	//		ss.netService.msgService.addPerformanceTime(hash)
+	//	}
+	//}
 	ss.netService.msgEvent.Publish(topic.EventSyncBlock, blocks)
 	return nil
 }

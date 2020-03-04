@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/abiosoft/ishell"
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"

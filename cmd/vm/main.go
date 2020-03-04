@@ -7,9 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/qlcchain/go-qlc/vm/exec"
-	"github.com/qlcchain/go-qlc/vm/platform"
-	"github.com/qlcchain/go-qlc/vm/resolver"
+	"github.com/perlin-network/life/exec"
+	"github.com/perlin-network/life/platform"
+
+	"github.com/qlcchain/go-qlc/cmd/vm/resolver"
 )
 
 func main() {

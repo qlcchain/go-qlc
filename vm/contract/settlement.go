@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"time"
 
+	cfg "github.com/qlcchain/go-qlc/config"
+
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -103,7 +105,7 @@ func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlo
 
 func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	// check token is QGAS
-	if block.Token != common.GasToken() {
+	if block.Token != cfg.GasToken() {
 		return nil, nil, fmt.Errorf("invalid token: %s", block.Token.String())
 	}
 
@@ -115,7 +117,7 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 
 	if b, err := param.Verify(); err == nil && b {
 		// check balance
-		amount, err := ctx.CalculateAmount(block)
+		amount, err := ctx.Ledger.CalculateAmount(block)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -601,7 +603,7 @@ func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types
 		return nil, err
 	}
 
-	txMeta, _ := ctx.GetAccountMeta(input.Address)
+	txMeta, _ := ctx.Ledger.GetAccountMeta(input.Address)
 	txToken := txMeta.Token(input.Token)
 	txHash := input.GetHash()
 
@@ -635,7 +637,7 @@ func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types
 func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, address types.Address,
 	process func(param *cabi.ContractParam) (err error)) (*types.PendingKey, *types.PendingInfo, error) {
 	// check token is QGAS
-	if block.Token != common.GasToken() {
+	if block.Token != cfg.GasToken() {
 		return nil, nil, fmt.Errorf("invalid token: %s", block.Token.String())
 	}
 

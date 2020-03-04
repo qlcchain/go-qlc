@@ -45,3 +45,13 @@ func TestNewChainManageService(t *testing.T) {
 		t.Fatal("stop failed.")
 	}
 }
+
+func Test_restartChain(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	cm := config.NewCfgManager(dir)
+	f := cm.ConfigFile
+	quit := restartChain(f, true)
+	<-quit
+	quit = restartChain(f, false)
+	<-quit
+}

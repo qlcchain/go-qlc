@@ -16,18 +16,6 @@ import (
 	"math"
 )
 
-// ToHex returns the hex representation of b, prefixed with '0x'.
-// For empty slices, the return value is "0x0".
-//
-// Deprecated: use hexutil.Encode instead.
-func ToHex(b []byte) string {
-	hex := Bytes2Hex(b)
-	if len(hex) == 0 {
-		hex = "0"
-	}
-	return "0x" + hex
-}
-
 // FromHex returns the bytes represented by the hexadecimal string s.
 // s may be prefixed with "0x".
 func FromHex(s string) []byte {
@@ -53,11 +41,6 @@ func CopyBytes(b []byte) (copiedBytes []byte) {
 	return
 }
 
-// hasHexPrefix validates str begins with '0x' or '0X'.
-func hasHexPrefix(str string) bool {
-	return len(str) >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')
-}
-
 // isHexCharacter returns bool of c being a valid hexadecimal.
 func isHexCharacter(c byte) bool {
 	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F')
@@ -76,29 +59,10 @@ func isHex(str string) bool {
 	return true
 }
 
-// Bytes2Hex returns the hexadecimal encoding of d.
-func Bytes2Hex(d []byte) string {
-	return hex.EncodeToString(d)
-}
-
 // Hex2Bytes returns the bytes represented by the hexadecimal string str.
 func Hex2Bytes(str string) []byte {
 	h, _ := hex.DecodeString(str)
 	return h
-}
-
-// Hex2BytesFixed returns bytes of a specified fixed length flen.
-func Hex2BytesFixed(str string, flen int) []byte {
-	h, _ := hex.DecodeString(str)
-	if len(h) == flen {
-		return h
-	}
-	if len(h) > flen {
-		return h[len(h)-flen:]
-	}
-	hh := make([]byte, flen)
-	copy(hh[flen-len(h):flen], h[:])
-	return hh
 }
 
 // RightPadBytes zero-pads slice to the right up to length l.
@@ -123,23 +87,6 @@ func LeftPadBytes(slice []byte, l int) []byte {
 	copy(padded[l-len(slice):], slice)
 
 	return padded
-}
-
-func BytesEqual(a, b []byte) bool {
-	if (a == nil) != (b == nil) {
-		return false
-	}
-
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func BE_Uint32ToBytes(i uint32) []byte {

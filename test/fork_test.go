@@ -16,7 +16,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -191,7 +190,7 @@ func TestFork(t *testing.T) {
 	var n2Sendblock types.StateBlock
 	n2Sendblock.Address = testAccount.Address()
 	n2Sendblock.Link = types.Hash(tAccount.Address())
-	n2Sendblock.Token = common.ChainToken()
+	n2Sendblock.Token = config.ChainToken()
 	amount1 := types.Balance{Int: big.NewInt(1000)}
 
 	l2 := ledger.NewLedger(ctx2.ConfigFile())
@@ -211,7 +210,7 @@ func TestFork(t *testing.T) {
 	var n1Sendblock types.StateBlock
 	n1Sendblock.Address = testAccount.Address()
 	n1Sendblock.Link = types.Hash(tAccount.Address())
-	n1Sendblock.Token = common.ChainToken()
+	n1Sendblock.Token = config.ChainToken()
 	amount2 := types.Balance{Int: big.NewInt(2000)}
 
 	l1 := ledger.NewLedger(ctx1.ConfigFile())
@@ -357,7 +356,7 @@ func TestPovFork(t *testing.T) {
 	var n2Sendblock types.StateBlock
 	n2Sendblock.Address = testAccount.Address()
 	n2Sendblock.Link = types.Hash(tAccount.Address())
-	n2Sendblock.Token = common.ChainToken()
+	n2Sendblock.Token = config.ChainToken()
 	amount1 := types.Balance{Int: big.NewInt(1000)}
 
 	l2 := ledger.NewLedger(ctx2.ConfigFile())
@@ -392,7 +391,7 @@ func TestPovFork(t *testing.T) {
 	var n1Sendblock types.StateBlock
 	n1Sendblock.Address = testAccount.Address()
 	n1Sendblock.Link = types.Hash(tAccount.Address())
-	n1Sendblock.Token = common.ChainToken()
+	n1Sendblock.Token = config.ChainToken()
 	amount2 := types.Balance{Int: big.NewInt(2000)}
 
 	l1 := ledger.NewLedger(ctx1.ConfigFile())
@@ -538,7 +537,7 @@ func TestCacheFork(t *testing.T) {
 	var n1Sendblock1 types.StateBlock
 	n1Sendblock1.Address = testAccount.Address()
 	n1Sendblock1.Link = types.Hash(tAccount.Address())
-	n1Sendblock1.Token = common.ChainToken()
+	n1Sendblock1.Token = config.ChainToken()
 	amount1 := types.Balance{Int: big.NewInt(1000)}
 
 	l1 := ledger.NewLedger(ctx1.ConfigFile())
@@ -553,7 +552,7 @@ func TestCacheFork(t *testing.T) {
 	var n1Sendblock2 types.StateBlock
 	n1Sendblock2.Address = testAccount.Address()
 	n1Sendblock2.Link = types.Hash(tAccount.Address())
-	n1Sendblock2.Token = common.ChainToken()
+	n1Sendblock2.Token = config.ChainToken()
 	amount2 := types.Balance{Int: big.NewInt(2000)}
 
 	blk2, err := l1.GenerateSendBlock(&n1Sendblock2, amount2, testAccount.PrivateKey())

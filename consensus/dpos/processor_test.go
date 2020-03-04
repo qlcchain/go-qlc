@@ -1,12 +1,14 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/consensus"
 	"math"
 	"math/big"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+
+	"github.com/qlcchain/go-qlc/consensus"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
@@ -26,9 +28,9 @@ func generateForkBlock() (block1, block2 *types.StateBlock) {
 	sb1.Network = types.ZeroBalance
 	sb1.Storage = types.ZeroBalance
 	sb1.Address = a.Address()
-	sb1.Token = common.ChainToken()
+	sb1.Token = config.ChainToken()
 	sb1.Previous = prev
-	sb1.Representative = common.GenesisAddress()
+	sb1.Representative = config.GenesisAddress()
 	addr1 := mock.Address()
 	sb1.Link = addr1.ToHash()
 	sb1.Signature = a.Sign(sb1.GetHash())
@@ -46,9 +48,9 @@ func generateForkBlock() (block1, block2 *types.StateBlock) {
 	sb2.Network = types.ZeroBalance
 	sb2.Storage = types.ZeroBalance
 	sb2.Address = a.Address()
-	sb2.Token = common.ChainToken()
+	sb2.Token = config.ChainToken()
 	sb2.Previous = prev
-	sb2.Representative = common.GenesisAddress()
+	sb2.Representative = config.GenesisAddress()
 	addr2 := mock.Address()
 	sb2.Link = addr2.ToHash()
 	sb2.Signature = a.Sign(sb2.GetHash())

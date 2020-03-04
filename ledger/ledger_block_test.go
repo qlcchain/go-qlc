@@ -6,14 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
 func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
 	blk := mock.StateBlockWithoutWork()
-	com := common.GenesisBlock()
+	com := config.GenesisBlock()
 	blk.Link = com.GetHash()
 	if err := l.AddStateBlock(&com); err != nil {
 		t.Fatal(err)
@@ -140,7 +141,7 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	genesis := common.GenesisBlock()
+	genesis := config.GenesisBlock()
 	if err := l.AddStateBlock(&genesis); err != nil {
 		t.Fatal(err)
 	}

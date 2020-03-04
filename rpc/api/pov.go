@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/storage"
+
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
@@ -507,19 +509,19 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 	db := api.l.DBStore()
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
-	it := stateTrie.NewIterator([]byte{types.TriePrefixPovState})
+	it := stateTrie.NewIterator([]byte{storage.KeyPrefixTriePovState})
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
 		if len(val) <= 0 {
 			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
 			continue
 		}
 
-		if key[0] != types.TriePrefixPovState {
+		if key[0] != storage.KeyPrefixTriePovState {
 			continue
 		}
 
-		if key[1] == types.PovGlobalStatePrefixAcc {
-			addr, err := types.PovStateKeyToAddress(key)
+		if key[1] == statedb.PovGlobalStatePrefixAcc {
+			addr, err := statedb.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
 			}
@@ -533,8 +535,8 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 			dump.Accounts[addr] = as
 		}
 
-		if key[1] == types.PovGlobalStatePrefixRep {
-			addr, err := types.PovStateKeyToAddress(key)
+		if key[1] == statedb.PovGlobalStatePrefixRep {
+			addr, err := statedb.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
 			}
@@ -548,8 +550,8 @@ func (api *PovApi) DumpBlockState(blockHash types.Hash) (*PovApiDumpState, error
 			dump.Reps[addr] = rs
 		}
 
-		if key[1] == types.PovGlobalStatePrefixCS {
-			addr, err := types.PovStateKeyToAddress(key)
+		if key[1] == statedb.PovGlobalStatePrefixCS {
+			addr, err := statedb.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
 			}
@@ -602,7 +604,7 @@ func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepS
 	db := api.l.DBStore()
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
-	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
+	repPrefix := statedb.PovCreateGlobalStateKey(statedb.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
 		if len(val) <= 0 {
@@ -610,7 +612,7 @@ func (api *PovApi) GetAllRepStatesByStateHash(stateHash types.Hash) (*PovApiRepS
 			continue
 		}
 
-		addr, err := types.PovStateKeyToAddress(key)
+		addr, err := statedb.PovStateKeyToAddress(key)
 		if err != nil {
 			return nil, err
 		}
@@ -1548,7 +1550,7 @@ func (api *PovApi) GetLastNHourInfo(endHeight uint64, timeSpan uint32) (*PovApiG
 
 func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
 	var allRss []*types.PovRepState
-	supply := common.GenesisBlock().Balance
+	supply := config.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	stateHash := header.GetStateHash()
@@ -1557,7 +1559,7 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 		return nil
 	}
 
-	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
+	repPrefix := statedb.PovCreateGlobalStateKey(statedb.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	if it == nil {
 		return nil
@@ -1576,7 +1578,7 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 			return nil
 		}
 
-		if rs.Status != types.PovStatusOnline {
+		if rs.Status != statedb.PovStatusOnline {
 			continue
 		}
 
@@ -1601,7 +1603,7 @@ func (api *PovApi) GetRepStatesByHeightAndAccount(header *types.PovHeader, acc t
 		return nil
 	}
 
-	repPrefix := types.PovCreateGlobalStateKey(types.PovGlobalStatePrefixRep, nil)
+	repPrefix := statedb.PovCreateGlobalStateKey(statedb.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	if it == nil {
 		return nil
@@ -1683,19 +1685,19 @@ func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
 	db := api.l.DBStore()
 	stateTrie := trie.NewTrie(db, &stateHash, nil)
 
-	it := stateTrie.NewIterator([]byte{types.TriePrefixPovState})
+	it := stateTrie.NewIterator([]byte{storage.KeyPrefixTriePovState})
 	for key, val, ok := it.Next(); ok; key, val, ok = it.Next() {
 		if len(val) <= 0 {
 			api.logger.Debugf("key %s got empty value", hex.EncodeToString(key))
 			continue
 		}
 
-		if key[0] != types.TriePrefixPovState {
+		if key[0] != storage.KeyPrefixTriePovState {
 			continue
 		}
 
-		if key[1] == types.PovGlobalStatePrefixAcc {
-			addr, err := types.PovStateKeyToAddress(key)
+		if key[1] == statedb.PovGlobalStatePrefixAcc {
+			addr, err := statedb.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
 			}
@@ -1746,8 +1748,8 @@ func (api *PovApi) CheckAllAccountStates() (*PovApiCheckStateRsp, error) {
 			}
 		}
 
-		if key[1] == types.PovGlobalStatePrefixRep {
-			addr, err := types.PovStateKeyToAddress(key)
+		if key[1] == statedb.PovGlobalStatePrefixRep {
+			addr, err := statedb.PovStateKeyToAddress(key)
 			if err != nil {
 				return nil, err
 			}
