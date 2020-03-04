@@ -136,6 +136,7 @@ type DPoS struct {
 	feb                 *event.FeedEventBus
 	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
 	repVH               chan *repVoteHeart
+	exited              *sync.WaitGroup
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -188,9 +189,11 @@ func NewDPoS(cfgFile string) *DPoS {
 		feb:                 cc.FeedEventBus(),
 		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
 		repVH:               make(chan *repVoteHeart, 409600),
+		exited:              new(sync.WaitGroup),
 	}
 
 	dps.pf.status.Store(perfTypeClose)
+	dps.exited.Add(5)
 
 	dps.acTrx.setDPoSService(dps)
 	for _, p := range dps.processors {
@@ -277,7 +280,8 @@ func (dps *DPoS) Start() {
 	for {
 		select {
 		case <-dps.ctx.Done():
-			dps.logger.Info("Stopped DPoS.")
+			dps.logger.Info("Stop DPoS.")
+			dps.exited.Done()
 			return
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
@@ -372,13 +376,14 @@ func (dps *DPoS) Start() {
 }
 
 func (dps *DPoS) Stop() {
-	dps.logger.Info("DPoS service stopped!")
-
 	// do this first
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
 		dps.logger.Error(err)
 	}
+
 	dps.cancel()
+	dps.exited.Wait()
+
 	dps.processorStop()
 	dps.acTrx.stop()
 }
@@ -390,6 +395,7 @@ func (dps *DPoS) stat() {
 		select {
 		case <-dps.ctx.Done():
 			dps.logger.Info("Stop stat.")
+			dps.exited.Done()
 			return
 		case <-timerStatInterval.C:
 			dps.tps[0] /= 15
@@ -438,6 +444,7 @@ func (dps *DPoS) processBlocks() {
 		select {
 		case <-dps.ctx.Done():
 			dps.logger.Info("Stop processBlocks.")
+			dps.exited.Done()
 			return
 		case bs := <-dps.recvBlocks:
 			if dps.povSyncState == topic.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
@@ -545,6 +552,8 @@ func (dps *DPoS) batchVoteStart() {
 	for {
 		select {
 		case <-dps.ctx.Done():
+			dps.logger.Info("Stop batch vote.")
+			dps.exited.Done()
 			return
 		case <-timerVote.C:
 			dps.localRepAccount.Range(func(key, value interface{}) bool {
@@ -585,6 +594,7 @@ func (dps *DPoS) processSubMsg() {
 	for {
 		select {
 		case <-dps.ctx.Done():
+			dps.exited.Done()
 			return
 		case msg := <-dps.subMsg:
 			switch msg.kind {

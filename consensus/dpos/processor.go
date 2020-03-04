@@ -55,6 +55,7 @@ type Processor struct {
 	confirmParallelNum int32
 	ctx                context.Context
 	cancel             context.CancelFunc
+	exited             chan struct{}
 }
 
 func newProcessors(num int) []*Processor {
@@ -82,6 +83,7 @@ func newProcessors(num int) []*Processor {
 			confirmParallelNum: ConfirmChainParallelNum,
 			ctx:                ctx,
 			cancel:             cancel,
+			exited:             make(chan struct{}, 1),
 		}
 		processors = append(processors, p)
 	}
@@ -100,6 +102,13 @@ func (p *Processor) start() {
 func (p *Processor) stop() {
 	p.quitCh <- true
 	p.cancel()
+
+	select {
+	case <-p.exited:
+		for atomic.LoadInt32(&p.confirmParallelNum) != ConfirmChainParallelNum {
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 }
 
 func (p *Processor) syncBlockCheck(block *types.StateBlock) {
@@ -148,6 +157,7 @@ func (p *Processor) processMsg() {
 	for {
 		select {
 		case <-p.quitCh:
+			p.exited <- struct{}{}
 			return
 		case p.syncState = <-p.syncStateChange:
 			p.dps.syncStateNotifyWait.Done()

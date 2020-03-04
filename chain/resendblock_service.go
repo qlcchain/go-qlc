@@ -154,10 +154,10 @@ func (rb *ResendBlockService) Start() error {
 			case <-rb.ctx.Done():
 				return
 			case <-ticker.C:
-				hsTemp := make([]*ResendTimes, 0)
 				rb.hashSet.Range(func(key, value interface{}) bool {
 					h := key.(types.Hash)
 					hs := value.([]*ResendTimes)
+					hsTemp := make([]*ResendTimes, 0)
 
 					for _, j := range hs {
 						if b, _ := l.HasStateBlockConfirmed(j.hash); b {
