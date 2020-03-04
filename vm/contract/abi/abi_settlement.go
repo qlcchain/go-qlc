@@ -676,21 +676,19 @@ func (z *CDRStatus) ToHash() (types.Hash, error) {
 	return types.ZeroHash, errors.New("no cdr record")
 }
 
-func (z *CDRStatus) State(addr *types.Address) (string, bool) {
-	if len(z.Params) > 0 {
-		if params, ok := z.Params[addr.String()]; ok {
-			switch size := len(params); {
-			case size == 1:
-				return params[0].Sender, params[0].Status()
-			case size > 1:
-				return params[0].Sender, false
-			default:
-				return "", false
-			}
+func (z *CDRStatus) State(addr *types.Address) (string, bool, error) {
+	if params, ok := z.Params[addr.String()]; ok {
+		switch size := len(params); {
+		case size == 1:
+			return params[0].Sender, params[0].Status(), nil
+		case size > 1: //upload multi-times or normalize time error
+			return params[0].Sender, false, nil
+		default:
+			return "", false, nil
 		}
+	} else {
+		return "", false, fmt.Errorf("can not find data of %s", addr.String())
 	}
-
-	return "", false
 }
 
 func (z *CDRStatus) IsInCycle(start, end int64) bool {
@@ -1113,111 +1111,82 @@ func (z *SummaryRecord) String() string {
 	return util.ToIndentString(z)
 }
 
-type CompareRecord struct {
-	PartyA   *SummaryRecord `json:"partyA"`
-	PartyB   *SummaryRecord `json:"partyB"`
-	Orphan   *SummaryRecord `json:"orphan"`
-	Matching *SummaryRecord `json:"matching"`
+type MatchingRecord struct {
+	Orphan   SummaryRecord `json:"orphan"`
+	Matching SummaryRecord `json:"matching"`
 }
 
-func newCompareRecord() *CompareRecord {
-	return &CompareRecord{
-		PartyA:   &SummaryRecord{},
-		PartyB:   &SummaryRecord{},
-		Orphan:   &SummaryRecord{},
-		Matching: &SummaryRecord{},
+type CompareRecord struct {
+	PartyA MatchingRecord `json:"partyA"`
+	PartyB MatchingRecord `json:"partyB"`
+}
+
+func (z *CompareRecord) UpdateCounter(isPartyA, isMatching, state bool) {
+	if isPartyA {
+		if isMatching {
+			if state {
+				z.PartyA.Matching.Success++
+			} else {
+				z.PartyA.Matching.Fail++
+			}
+		} else {
+			if state {
+				z.PartyA.Orphan.Success++
+			} else {
+				z.PartyA.Orphan.Fail++
+			}
+		}
+	} else {
+		if isMatching {
+			if state {
+				z.PartyB.Matching.Success++
+			} else {
+				z.PartyB.Matching.Fail++
+			}
+		} else {
+			if state {
+				z.PartyB.Orphan.Success++
+			} else {
+				z.PartyB.Orphan.Fail++
+			}
+		}
 	}
+}
+
+func (z *CompareRecord) DoCalculate() {
+	z.PartyA.Matching.DoCalculate()
+	z.PartyA.Orphan.DoCalculate()
+	z.PartyB.Matching.DoCalculate()
+	z.PartyB.Orphan.DoCalculate()
 }
 
 type SummaryResult struct {
 	Contract *ContractParam            `json:"contract"`
 	Records  map[string]*CompareRecord `json:"records"`
-	Total    *CompareRecord            `json:"total"`
+	Total    CompareRecord             `json:"total"`
 }
 
 func NewSummaryResult() *SummaryResult {
 	return &SummaryResult{
 		Records: make(map[string]*CompareRecord),
-		Total:   newCompareRecord(),
 	}
 }
 
-func (z *SummaryResult) UpdatePartyState(name string, isPartyA, state bool) {
-	if name == "" {
-		return
-	}
-	if _, ok := z.Records[name]; !ok {
-		z.Records[name] = newCompareRecord()
-	}
-
-	if isPartyA {
-		if state {
-			z.Total.PartyA.Success++
-			z.Records[name].PartyA.Success++
-		} else {
-			z.Total.PartyA.Fail++
-			z.Records[name].PartyA.Fail++
-		}
-	} else {
-		if state {
-			z.Total.PartyB.Success++
-			z.Records[name].PartyB.Success++
-		} else {
-			z.Total.PartyB.Fail++
-			z.Records[name].PartyB.Fail++
-		}
-	}
-}
-
-func (z *SummaryResult) UpdateGlobalState(name string, isMatching, state bool) {
-	flag := name != ""
-	if flag {
+func (z *SummaryResult) UpdateState(name string, isPartyA, isMatching, state bool) {
+	if name != "" {
 		if _, ok := z.Records[name]; !ok {
-			z.Records[name] = newCompareRecord()
+			z.Records[name] = &CompareRecord{}
 		}
+		z.Records[name].UpdateCounter(isPartyA, isMatching, state)
 	}
-
-	if isMatching {
-		if state {
-			z.Total.Matching.Success++
-		} else {
-			z.Total.Matching.Fail++
-		}
-		if flag {
-			if state {
-				z.Records[name].Matching.Success++
-			} else {
-				z.Records[name].Matching.Fail++
-			}
-		}
-	} else {
-		if state {
-			z.Total.Orphan.Success++
-		} else {
-			z.Total.Orphan.Fail++
-		}
-
-		if flag {
-			if state {
-				z.Records[name].Orphan.Success++
-			} else {
-				z.Records[name].Orphan.Fail++
-			}
-		}
-	}
+	z.Total.UpdateCounter(isPartyA, isMatching, state)
 }
 
 func (z *SummaryResult) DoCalculate() {
 	for k := range z.Records {
-		z.Records[k].PartyA.DoCalculate()
-		z.Records[k].PartyB.DoCalculate()
-		z.Records[k].Orphan.DoCalculate()
-		z.Records[k].Matching.DoCalculate()
+		z.Records[k].DoCalculate()
 	}
-	z.Total.PartyA.DoCalculate()
-	z.Total.PartyB.DoCalculate()
-	z.Total.Orphan.DoCalculate()
-	z.Total.Matching.DoCalculate()
+	z.Total.DoCalculate()
 }
 
 func (z *SummaryResult) String() string {
@@ -1243,31 +1212,15 @@ func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end in
 	partyB := c.PartyB.Address
 
 	for _, status := range records {
-		_, sender, _, _ := status.ExtractID()
-
-		settleState := false
-		switch status.Status {
-		case SettlementStatusSuccess:
-			settleState = true
-		case SettlementStatusStage1:
-			// if only one party update load data, calculate actual status
-			if len(status.Params) == 1 {
-				for _, v := range status.Params {
-					if len(v) > 0 {
-						settleState = v[0].Status()
-					}
-				}
-			}
+		//party A
+		if s1, b1, err := status.State(&partyA); err == nil {
+			result.UpdateState(s1, true, status.Status == SettlementStatusSuccess, b1)
 		}
 
-		result.UpdateGlobalState(sender, len(status.Params) > 1, settleState)
-		//party A
-		s1, b1 := status.State(&partyA)
-		result.UpdatePartyState(s1, true, b1)
-
 		//party B
-		s2, b2 := status.State(&partyB)
-		result.UpdatePartyState(s2, false, b2)
+		if s2, b2, err := status.State(&partyB); err == nil {
+			result.UpdateState(s2, false, status.Status == SettlementStatusSuccess, b2)
+		}
 	}
 
 	result.DoCalculate()
