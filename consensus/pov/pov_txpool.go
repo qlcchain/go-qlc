@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	MaxTxsInPool = 1000000
+	MaxTxsInPool = 10000000
 )
 
 type PovTxEvent struct {
@@ -610,9 +610,6 @@ func (tp *PovTxPool) LastUpdated() time.Time {
 }
 
 func (tp *PovTxPool) GetPendingTxNum() uint32 {
-	tp.txMu.RLock()
-	defer tp.txMu.RUnlock()
-
 	return uint32(len(tp.allTxs))
 }
 
