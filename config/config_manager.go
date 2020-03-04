@@ -304,6 +304,22 @@ func loadGenesisAccount(cfg *Config) {
 		for _, v := range cfg.Genesis.GenesisBlocks {
 			if v != nil {
 				genesisInfos = append(genesisInfos, v)
+				if v.ChainToken {
+					genesisAddress = v.Genesis.Address
+					chainToken = v.Genesis.Token
+					genesisMintageBlock = v.Mintage
+					genesisMintageHash = v.Mintage.GetHash()
+					genesisBlock = v.Genesis
+					genesisBlockHash = v.Genesis.GetHash()
+				}
+				if v.GasToken {
+					gasAddress = v.Genesis.Address
+					gasToken = v.Genesis.Token
+					gasMintageBlock = v.Mintage
+					gasMintageHash = v.Mintage.GetHash()
+					gasBlock = v.Genesis
+					gasBlockHash = v.Genesis.GetHash()
+				}
 			}
 		}
 	}

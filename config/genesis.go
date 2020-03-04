@@ -11,128 +11,83 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-var genesisInfos []*GenesisInfo
+var (
+	genesisInfos []*GenesisInfo
+
+	genesisAddress      types.Address
+	chainToken          types.Hash
+	genesisMintageBlock types.StateBlock
+	genesisMintageHash  types.Hash
+	genesisBlock        types.StateBlock
+	genesisBlockHash    types.Hash
+
+	gasAddress      types.Address
+	gasToken        types.Hash
+	gasMintageBlock types.StateBlock
+	gasMintageHash  types.Hash
+	gasBlock        types.StateBlock
+	gasBlockHash    types.Hash
+)
 
 func GenesisInfos() []*GenesisInfo {
 	return genesisInfos
 }
 
 func GenesisAddress() types.Address {
-	for _, v := range genesisInfos {
-		if v.ChainToken {
-			return v.Genesis.Address
-		}
-	}
-	return types.ZeroAddress
+	return genesisAddress
+}
+
+func GasAddress() types.Address {
+	return gasAddress
 }
 
 func ChainToken() types.Hash {
-	for _, v := range genesisInfos {
-		if v.ChainToken {
-			return v.Genesis.Token
-		}
-	}
-	return types.ZeroHash
+	return chainToken
 }
 
 func GasToken() types.Hash {
-	for _, v := range genesisInfos {
-		if v.GasToken {
-			return v.Genesis.Token
-		}
-	}
-	return types.ZeroHash
+	return gasToken
 }
 
 func GenesisMintageBlock() types.StateBlock {
-	for _, v := range genesisInfos {
-		if v.ChainToken {
-			return v.Mintage
-		}
-	}
-	return types.StateBlock{}
+	return genesisMintageBlock
 }
 
 func GenesisMintageHash() types.Hash {
-	for _, v := range genesisInfos {
-		if v.ChainToken {
-			return v.Mintage.GetHash()
-		}
-	}
-	return types.ZeroHash
+	return genesisMintageHash
 }
 
 func GenesisBlock() types.StateBlock {
-	for _, v := range genesisInfos {
-		if v.ChainToken {
-			return v.Genesis
-		}
-	}
-	return types.StateBlock{}
+	return genesisBlock
 }
 
 func GenesisBlockHash() types.Hash {
-	for _, v := range genesisInfos {
-		if v.ChainToken {
-			return v.Genesis.GetHash()
-		}
-	}
-	return types.ZeroHash
+	return genesisBlockHash
 }
 
 func GasBlockHash() types.Hash {
-	for _, v := range genesisInfos {
-		if v.GasToken {
-			return v.Genesis.GetHash()
-		}
-	}
-	return types.ZeroHash
+	return gasBlockHash
 }
 
 func GasMintageBlock() types.StateBlock {
-	for _, v := range genesisInfos {
-		if v.GasToken {
-			return v.Mintage
-		}
-	}
-	return types.StateBlock{}
+	return gasMintageBlock
 }
 
 func GasBlock() types.StateBlock {
-	for _, v := range genesisInfos {
-		if v.GasToken {
-			return v.Genesis
-		}
-	}
-	return types.StateBlock{}
+	return gasBlock
 }
 
 // IsGenesis check block is chain token genesis
 func IsGenesisBlock(block *types.StateBlock) bool {
 	hash := block.GetHash()
-	for _, v := range genesisInfos {
-		if hash == v.Genesis.GetHash() || hash == v.Mintage.GetHash() {
-			return true
-		}
-	}
-	return false
+	return hash == genesisMintageHash || hash == genesisBlockHash || hash == gasMintageHash || hash == gasBlockHash
 }
 
 // IsGenesis check token is chain token genesis
 func IsGenesisToken(hash types.Hash) bool {
-	for _, v := range genesisInfos {
-		if hash == v.Mintage.Token {
-			return true
-		}
-	}
-	return false
+	return hash == chainToken || hash == gasToken
 }
 
 func AllGenesisBlocks() []types.StateBlock {
-	var blocks []types.StateBlock
-	for _, v := range genesisInfos {
-		blocks = append(blocks, v.Mintage)
-		blocks = append(blocks, v.Genesis)
-	}
-	return blocks
+	return []types.StateBlock{genesisMintageBlock, genesisBlock, gasMintageBlock, gasBlock}
 }
