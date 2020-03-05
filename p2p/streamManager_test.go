@@ -242,6 +242,17 @@ func TestStreamManager_GetAllConnectPeersInfo(t *testing.T) {
 	if len(p) != 1 {
 		t.Fatal("get info error")
 	}
+	node1.node.streamManager.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		t.Log(stream.String())
+		return true
+	})
+	var p1 []*types.PeerInfo
+	node1.node.streamManager.GetOnlinePeersInfo(&p1)
+	if len(p1) != 2 {
+		return
+	}
+
 }
 
 func TestStreamManager_IsConnectWithPeerId(t *testing.T) {
@@ -460,6 +471,13 @@ func TestStreamManager_lowestLatencyPeer(t *testing.T) {
 	}
 	if peerId != node2.node.cfg.P2P.ID.PeerID {
 		t.Fatal("peerId error")
+	}
+	s1, err := node1.node.streamManager.randomLowerLatencyPeer()
+	if err != nil {
+		t.Fatal("err should not exist")
+	}
+	if s1 != node2.node.cfg.P2P.ID.PeerID {
+		t.Fatal("randomLowerLatencyPeer error")
 	}
 }
 
