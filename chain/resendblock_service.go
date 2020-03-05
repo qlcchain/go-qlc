@@ -34,7 +34,7 @@ import (
 
 const (
 	checkBlockCacheInterval = 3 * time.Second
-	maxResendBlockCache     = math.MaxInt64
+	maxResendBlockCache     = math.MaxInt32
 )
 
 type ResendBlockService struct {

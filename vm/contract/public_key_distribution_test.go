@@ -433,3 +433,185 @@ func TestVerifierHeart_DoSendOnPov(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestPublish_DoSendOnPov(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
+	ctx := vmstore.NewVMContext(l)
+	p := new(Publish)
+	blk := mock.StateBlockWithoutWork()
+	var err error
+
+	pt := common.OracleTypeEmail
+	id := mock.Hash()
+	vs := []types.Address{mock.Address(), mock.Address()}
+	cs := []types.Hash{mock.Hash(), mock.Hash()}
+	fee := common.PublishCost
+	pk := make([]byte, ed25519.PublicKeySize)
+	err = random.Bytes(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, pk, vs, cs, fee.Int)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = p.DoSendOnPov(ctx, csdb, 100, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pubInfoKey := &abi.PublishInfoKey{
+		PType:  pt,
+		PID:    id,
+		PubKey: pk,
+		Hash:   blk.Previous,
+	}
+	psRawKey := pubInfoKey.ToRawKey()
+
+	ps, _ := dpki.PovGetPublishState(csdb, psRawKey)
+	if ps == nil || ps.PublishHeight != 100 {
+		t.Fatal()
+	}
+}
+
+func TestOracle_DoSendOnPov(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
+	ctx := vmstore.NewVMContext(l)
+	o := new(Oracle)
+	blk1 := mock.StateBlockWithoutWork()
+	var err error
+
+	ot := common.OracleTypeEmail
+	id := mock.Hash()
+	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
+	hash := mock.Hash()
+	pk := make([]byte, ed25519.PublicKeySize)
+	random.Bytes(pk)
+
+	p := new(Publish)
+	pa := mock.Address()
+	vs := []types.Address{mock.Address()}
+	cs := []types.Hash{mock.Hash()}
+	err = p.SetStorage(ctx, pa, ot, id, pk, vs, cs, common.PublishCost, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk1.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = o.DoSendOnPov(ctx, csdb, 10, blk1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk2 := mock.StateBlockWithoutWork()
+	blk2.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = o.DoSendOnPov(ctx, csdb, 10, blk2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk3 := mock.StateBlockWithoutWork()
+	blk3.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = o.DoSendOnPov(ctx, csdb, 10, blk3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk4 := mock.StateBlockWithoutWork()
+	blk4.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = o.DoSendOnPov(ctx, csdb, 10, blk4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk5 := mock.StateBlockWithoutWork()
+	blk5.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = o.DoSendOnPov(ctx, csdb, 10, blk5)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk6 := mock.StateBlockWithoutWork()
+	blk6.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = o.DoSendOnPov(ctx, csdb, 10, blk6)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk7 := mock.StateBlockWithoutWork()
+	blk7.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = o.DoSendOnPov(ctx, csdb, 100, blk7)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pubInfoKey := &abi.PublishInfoKey{
+		PType:  ot,
+		PID:    id,
+		PubKey: pk,
+		Hash:   hash,
+	}
+	psRawKey := pubInfoKey.ToRawKey()
+
+	ps, _ := dpki.PovGetPublishState(csdb, psRawKey)
+	if ps == nil || ps.VerifiedHeight != 10 || ps.VerifiedStatus != types.PovPublishStatusVerified {
+		t.Fatal()
+	}
+
+	vrs, _ := dpki.PovGetVerifierState(csdb, blk1.Address[:])
+	if vrs == nil || vrs.TotalVerify == 0 || vrs.ActiveHeight["email"] != 10 {
+		t.Fatal()
+	}
+
+	vrs, _ = dpki.PovGetVerifierState(csdb, blk6.Address[:])
+	if vrs != nil {
+		t.Fatal()
+	}
+
+	vrs, _ = dpki.PovGetVerifierState(csdb, blk7.Address[:])
+	if vrs != nil {
+		t.Fatal()
+	}
+}

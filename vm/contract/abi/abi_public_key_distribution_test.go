@@ -660,13 +660,13 @@ func TestPublishInfoCheck(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	pk := make([]byte, ed25519.PublicKeySize)
-	err := PublishInfoCheck(ctx, mock.Address(), common.OracleTypeInvalid, mock.Hash(), pk, types.NewBalance(5e8))
+	err := PublishInfoCheck(ctx, mock.Address(), common.OracleTypeInvalid, mock.Hash(), pk, common.PublishCost)
 	if err == nil {
 		t.Fatal()
 	}
 
 	pk = make([]byte, ed25519.PublicKeySize+1)
-	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), pk, types.NewBalance(5e8))
+	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), pk, common.PublishCost)
 	if err == nil {
 		t.Fatal()
 	}
@@ -677,7 +677,7 @@ func TestPublishInfoCheck(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), pk, types.NewBalance(5e8))
+	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), pk, common.PublishCost)
 	if err != nil {
 		t.Fatal()
 	}
@@ -705,7 +705,7 @@ func TestCheckPublishInfoExist(t *testing.T) {
 
 	vs := []types.Address{mock.Address(), mock.Address()}
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
-	fee := types.NewBalance(5e8)
+	fee := common.PublishCost
 
 	if CheckPublishInfoExist(ctx, account, pt, id, pk, hash) {
 		t.Fatal()
@@ -738,7 +738,7 @@ func TestGetPublishInfoByTypeAndId(t *testing.T) {
 
 	vs := []types.Address{mock.Address(), mock.Address()}
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
-	fee := types.NewBalance(5e8)
+	fee := common.PublishCost
 
 	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
 	if err != nil {
@@ -787,7 +787,7 @@ func TestGetAllPublishInfo(t *testing.T) {
 
 	vs := []types.Address{mock.Address(), mock.Address()}
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
-	fee := types.NewBalance(5e8)
+	fee := common.PublishCost
 
 	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
 	if err != nil {
@@ -850,7 +850,7 @@ func TestGetPublishInfoByType(t *testing.T) {
 
 	vs := []types.Address{mock.Address(), mock.Address()}
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
-	fee := types.NewBalance(5e8)
+	fee := common.PublishCost
 
 	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
 	if err != nil {
@@ -891,7 +891,7 @@ func TestGetPublishInfoByAccount(t *testing.T) {
 
 	vs := []types.Address{mock.Address(), mock.Address()}
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
-	fee := types.NewBalance(5e8)
+	fee := common.PublishCost
 
 	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
 	if err != nil {
@@ -938,7 +938,7 @@ func TestGetPublishInfoByAccountAndType(t *testing.T) {
 
 	vs := []types.Address{mock.Address(), mock.Address()}
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
-	fee := types.NewBalance(5e8)
+	fee := common.PublishCost
 
 	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
 	if err != nil {
@@ -1004,6 +1004,261 @@ func TestDeletePublishInfo(t *testing.T) {
 	}
 
 	if CheckPublishInfoExist(ctx, account, pt, id, pk, hash) {
+		t.Fatal()
+	}
+}
+
+func TestVerifierRegInfoCheck(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+	vt := common.OracleTypeInvalid
+	vi := "123@test.com"
+
+	err := VerifierRegInfoCheck(ctx, account, vt, vi)
+	if err == nil {
+		t.Fatal()
+	}
+
+	vt = common.OracleTypeEmail
+	err = addTestVerifierInfo(ctx, account, vt, vi)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	if err == nil {
+		t.Fatal()
+	}
+
+	vt = common.OracleTypeWeChat
+	vi = "123456"
+	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = addTestVerifierInfo(ctx, account, vt, vi)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	if err == nil {
+		t.Fatal()
+	}
+}
+
+func TestVerifierUnRegInfoCheck(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+	vt := common.OracleTypeInvalid
+
+	err := VerifierUnRegInfoCheck(ctx, account, vt)
+	if err == nil {
+		t.Fatal()
+	}
+
+	vt = common.OracleTypeWeChat
+	err = VerifierUnRegInfoCheck(ctx, account, vt)
+	if err == nil {
+		t.Fatal()
+	}
+
+	vi := "123456"
+	err = addTestVerifierInfo(ctx, account, vt, vi)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = VerifierUnRegInfoCheck(ctx, account, vt)
+	if err != nil {
+		t.Fatal()
+	}
+}
+
+func TestVerifierPledgeCheck(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+
+	err := VerifierPledgeCheck(ctx, account)
+	if err == nil {
+		t.Fatal()
+	}
+
+	am := mock.AccountMeta(account)
+	am.CoinOracle = common.MinVerifierPledgeAmount
+	err = l.AddAccountMeta(am, l.Cache().GetCache())
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = VerifierPledgeCheck(ctx, account)
+	if err != nil {
+		t.Fatal()
+	}
+}
+
+func TestOracleInfoCheck(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+	ot := common.OracleTypeInvalid
+	id := mock.Hash()
+	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
+	hash := mock.Hash()
+	pk := make([]byte, ed25519.PublicKeySize+1)
+	err := random.Bytes(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = OracleInfoCheck(ctx, account, ot, id, pk, code, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	ot = common.OracleTypeEmail
+	err = OracleInfoCheck(ctx, account, ot, id, pk, code, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pk = pk[:32]
+	err = OracleInfoCheck(ctx, account, ot, id, pk, code, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	codeComb := append([]byte(types.NewHexBytesFromData(pk).String()), []byte(code)...)
+	codeHash, err := types.Sha256HashData(codeComb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	account1 := mock.Address()
+	code1 := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
+	vs := []types.Address{account1}
+	cs := []types.Hash{codeHash}
+	err = addTestPublishInfo(ctx, account, ot, id, pk, vs, cs, common.PublishCost, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = OracleInfoCheck(ctx, account, ot, id, pk, code1, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	vs = []types.Address{account}
+	err = addTestPublishInfo(ctx, account, ot, id, pk, vs, cs, common.PublishCost, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = OracleInfoCheck(ctx, account, ot, id, pk, code1, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	err = OracleInfoCheck(ctx, account, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCheckOracleInfoExist(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+	ot := common.OracleTypeEmail
+	id := mock.Hash()
+	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
+	hash := mock.Hash()
+	pk := make([]byte, ed25519.PublicKeySize)
+	err := random.Bytes(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !CheckOracleInfoExist(ctx, account, ot, id, pk, hash) {
+		t.Fatal()
+	}
+}
+
+func TestGetPublishInfoByKey(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+	pt := common.OracleTypeEmail
+	id := mock.Hash()
+	hash := mock.Hash()
+	pk := make([]byte, ed25519.PublicKeySize)
+	err := random.Bytes(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vs := []types.Address{mock.Address(), mock.Address()}
+	cs := []types.Hash{mock.Hash(), mock.Hash()}
+	fee := common.PublishCost
+
+	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info := GetPublishInfoByKey(ctx, pt, id, pk, hash)
+	if info == nil {
+		t.Fatal()
+	}
+}
+
+func TestGetPublishInfo(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+	pt := common.OracleTypeEmail
+	id := mock.Hash()
+	hash := mock.Hash()
+	pk := make([]byte, ed25519.PublicKeySize)
+	err := random.Bytes(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vs := []types.Address{mock.Address(), mock.Address()}
+	cs := []types.Hash{mock.Hash(), mock.Hash()}
+	fee := common.PublishCost
+
+	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info := GetPublishInfo(ctx, pt, id, pk, hash)
+	if info == nil {
 		t.Fatal()
 	}
 }
