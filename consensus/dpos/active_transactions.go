@@ -17,12 +17,14 @@ type ActiveTrx struct {
 	dps    *DPoS
 	roots  *sync.Map
 	quitCh chan bool
+	exited chan struct{}
 }
 
 func newActiveTrx() *ActiveTrx {
 	return &ActiveTrx{
 		roots:  new(sync.Map),
 		quitCh: make(chan bool, 1),
+		exited: make(chan struct{}, 1),
 	}
 }
 
@@ -37,6 +39,7 @@ func (act *ActiveTrx) start() {
 		select {
 		case <-act.quitCh:
 			act.dps.logger.Info("act stopped")
+			act.exited <- struct{}{}
 			return
 		case <-timerCheckVotes.C:
 			act.checkVotes()
@@ -46,6 +49,7 @@ func (act *ActiveTrx) start() {
 
 func (act *ActiveTrx) stop() {
 	act.quitCh <- true
+	<-act.exited
 }
 
 func getVoteKey(block *types.StateBlock) voteKey {

@@ -5,7 +5,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/vm/contract"
-
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -138,6 +137,7 @@ type DPoS struct {
 	feb                 *event.FeedEventBus
 	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
 	repVH               chan *repVoteHeart
+	exited              *sync.WaitGroup
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -190,9 +190,11 @@ func NewDPoS(cfgFile string) *DPoS {
 		feb:                 cc.FeedEventBus(),
 		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
 		repVH:               make(chan *repVoteHeart, 409600),
+		exited:              new(sync.WaitGroup),
 	}
 
 	dps.pf.status.Store(perfTypeClose)
+	dps.exited.Add(5)
 
 	dps.acTrx.setDPoSService(dps)
 	for _, p := range dps.processors {
@@ -205,13 +207,13 @@ func NewDPoS(cfgFile string) *DPoS {
 		dps.curPovHeight = pb.Header.BasHdr.Height
 	}
 
-	dps.confirmedBlocks.evictedFunc = func(key interface{}, val interface{}) {
-		hash := key.(types.Hash)
-		err = dps.ledger.CleanBlockVoteHistory(hash)
-		if err != nil {
-			dps.logger.Error("clean vote history err", err)
-		}
-	}
+	// dps.confirmedBlocks.evictedFunc = func(key interface{}, val interface{}) {
+	// 	hash := key.(types.Hash)
+	// 	err = dps.ledger.CleanBlockVoteHistory(hash)
+	// 	if err != nil {
+	// 		dps.logger.Error("clean vote history err", err)
+	// 	}
+	// }
 
 	return dps
 }
@@ -253,6 +255,7 @@ func (dps *DPoS) Init() {
 	} else {
 		dps.povSyncState = topic.SyncDone
 	}
+
 	if len(dps.accounts) != 0 {
 		dps.refreshAccount()
 	} else {
@@ -270,14 +273,6 @@ func (dps *DPoS) Start() {
 	go dps.stat()
 	dps.processorStart()
 
-	// if err := dps.blockSyncDone(); err != nil {
-	// 	dps.logger.Error("block sync down err", err)
-	// }
-
-	if err := dps.ledger.CleanAllVoteHistory(); err != nil {
-		dps.logger.Error("clean all vote history err")
-	}
-
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
 	timerDequeueGap := time.NewTicker(10 * time.Second)
 	timerUpdateSyncTime := time.NewTicker(5 * time.Second)
@@ -286,7 +281,8 @@ func (dps *DPoS) Start() {
 	for {
 		select {
 		case <-dps.ctx.Done():
-			dps.logger.Info("Stopped DPoS.")
+			dps.logger.Info("Stop DPoS.")
+			dps.exited.Done()
 			return
 		case <-timerRefreshPri.C:
 			dps.logger.Info("refresh pri info.")
@@ -381,13 +377,14 @@ func (dps *DPoS) Start() {
 }
 
 func (dps *DPoS) Stop() {
-	dps.logger.Info("DPoS service stopped!")
-
 	// do this first
 	if err := dps.subscriber.UnsubscribeAll(); err != nil {
 		dps.logger.Error(err)
 	}
+
 	dps.cancel()
+	dps.exited.Wait()
+
 	dps.processorStop()
 	dps.acTrx.stop()
 }
@@ -399,6 +396,7 @@ func (dps *DPoS) stat() {
 		select {
 		case <-dps.ctx.Done():
 			dps.logger.Info("Stop stat.")
+			dps.exited.Done()
 			return
 		case <-timerStatInterval.C:
 			dps.tps[0] /= 15
@@ -430,6 +428,8 @@ func (dps *DPoS) RPC(kind uint, in, out interface{}) {
 		dps.onSyncStateChange(state)
 	case common.RpcDPoSFeed:
 		go dps.feedBlocks()
+	case common.RpcDPoSDebug:
+		dps.debug()
 	}
 }
 
@@ -445,6 +445,7 @@ func (dps *DPoS) processBlocks() {
 		select {
 		case <-dps.ctx.Done():
 			dps.logger.Info("Stop processBlocks.")
+			dps.exited.Done()
 			return
 		case bs := <-dps.recvBlocks:
 			if dps.povSyncState == topic.SyncDone || bs.BlockFrom == types.Synchronized || bs.Type == consensus.MsgConfirmAck {
@@ -552,6 +553,8 @@ func (dps *DPoS) batchVoteStart() {
 	for {
 		select {
 		case <-dps.ctx.Done():
+			dps.logger.Info("Stop batch vote.")
+			dps.exited.Done()
 			return
 		case <-timerVote.C:
 			dps.localRepAccount.Range(func(key, value interface{}) bool {
@@ -592,6 +595,7 @@ func (dps *DPoS) processSubMsg() {
 	for {
 		select {
 		case <-dps.ctx.Done():
+			dps.exited.Done()
 			return
 		case msg := <-dps.subMsg:
 			switch msg.kind {
@@ -1303,8 +1307,7 @@ func (dps *DPoS) feedBlocks() {
 		}
 	}
 
-	dps.logger.Warnf("..............total %d blocks, will begin the test in 5 seconds.............", count)
-	time.Sleep(5 * time.Second)
+	dps.logger.Warnf("..............total %d blocks, begin feeding.............\n", count)
 
 	for _, b := range blks {
 		for i := len(b) - 1; i >= 0; i-- {
@@ -1317,4 +1320,8 @@ func (dps *DPoS) feedBlocks() {
 			dps.ProcessMsg(bs)
 		}
 	}
+}
+
+func (dps *DPoS) debug() {
+	// for debug
 }

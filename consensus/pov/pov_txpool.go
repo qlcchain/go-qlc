@@ -25,7 +25,11 @@ import (
 )
 
 const (
-	MaxTxsInPool = 1000000
+	MaxTxsInPool = 10000000
+
+	maxSelectRunTimeInPool  = 60 * time.Second
+	maxSelectKeepTimeInPool = 5 * time.Second
+	maxSelectWaitTimeInPool = 120 * time.Second
 )
 
 type PovTxEvent struct {
@@ -39,6 +43,16 @@ type PovTxEntry struct {
 	txBlock *types.StateBlock
 }
 
+type txPoolWorkResponse struct {
+	selectedTxs []*types.StateBlock
+}
+
+type txPoolWorkRequest struct {
+	gsdb   *statedb.PovGlobalStateDB
+	limit  int
+	respCh chan *txPoolWorkResponse
+}
+
 type PovTxPool struct {
 	logger      *zap.SugaredLogger
 	eb          event.EventBus
@@ -50,9 +64,13 @@ type PovTxPool struct {
 	quitCh      chan struct{}
 	accountTxs  map[types.AddressToken]*list.List
 	allTxs      map[types.Hash]*PovTxEntry
-	lastUpdated int64
+	lastUpdated time.Time
 	syncState   atomic.Value
 	poolMu      sync.Mutex
+
+	workCh       chan *txPoolWorkRequest
+	lastWorkRsp  *txPoolWorkResponse
+	lastWorkTime time.Time
 
 	statLimitTxNum     int64
 	statNotInOrderNum  int64
@@ -77,6 +95,7 @@ func NewPovTxPool(eb event.EventBus, l ledger.Store, chain PovTxChainReader) *Po
 	txPool.accountTxs = make(map[types.AddressToken]*list.List)
 	txPool.allTxs = make(map[types.Hash]*PovTxEntry)
 	txPool.syncState.Store(topic.SyncNotStart)
+	txPool.workCh = make(chan *txPoolWorkRequest, 10)
 	return txPool
 }
 
@@ -162,6 +181,11 @@ func (tp *PovTxPool) OnPovBlockEvent(evt byte, block *types.PovBlock) {
 		return
 	}
 
+	tp.txMu.Lock()
+	defer tp.txMu.Unlock()
+
+	tp.lastWorkRsp = nil
+
 	if evt == EventConnectPovBlock {
 		tp.logger.Debugf("connect pov block %s delete txs %d", block.GetHash(), len(txs))
 		for _, tx := range txs {
@@ -205,23 +229,14 @@ func (tp *PovTxPool) loop() {
 		time.Sleep(time.Second)
 	}
 
-	checkTicker := time.NewTicker(100 * time.Millisecond)
-	defer checkTicker.Stop()
-
-	txProcNum := 0
-
 	for {
 		select {
 		case <-tp.quitCh:
 			return
 		case txEvent := <-tp.txEventCh:
 			tp.processTxEvent(txEvent)
-			txProcNum++
-		case <-checkTicker.C:
-			if txProcNum >= 100 {
-				time.Sleep(1 * time.Millisecond)
-			}
-			txProcNum = 0
+		case txWork := <-tp.workCh:
+			tp.processTxWorkRequest(txWork)
 		}
 	}
 }
@@ -327,6 +342,11 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 		return
 	}
 
+	tp.txMu.Lock()
+	defer tp.txMu.Unlock()
+
+	tp.lastWorkRsp = nil
+
 	txStepNum := 5000
 	txAddNum := 0
 	for _, accountTxs := range unpackAccountTxs {
@@ -343,10 +363,17 @@ func (tp *PovTxPool) recoverUnconfirmedTxs() {
 }
 
 func (tp *PovTxPool) processTxEvent(txEvent *PovTxEvent) {
+	tp.txMu.Lock()
+	defer tp.txMu.Unlock()
+
 	if txEvent.event == topic.EventAddRelation || txEvent.event == topic.EventAddSyncBlocks {
 		tp.addTx(txEvent.txHash, txEvent.txBlock)
 	} else if txEvent.event == topic.EventDeleteRelation {
 		tp.delTx(txEvent.txHash)
+	}
+
+	if tp.lastWorkTime.Add(maxSelectKeepTimeInPool).Before(tp.lastUpdated) {
+		tp.lastWorkRsp = nil
 	}
 }
 
@@ -355,9 +382,6 @@ func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
 		tp.logger.Errorf("add tx %s but block is nil", txHash)
 		return
 	}
-
-	tp.txMu.Lock()
-	defer tp.txMu.Unlock()
 
 	txExist, ok := tp.allTxs[txHash]
 	if ok && txExist != nil {
@@ -408,13 +432,10 @@ func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
 	}
 	tp.allTxs[txHash] = txEntry
 
-	tp.lastUpdated = time.Now().Unix()
+	tp.lastUpdated = time.Now()
 }
 
 func (tp *PovTxPool) delTx(txHash types.Hash) {
-	tp.txMu.Lock()
-	defer tp.txMu.Unlock()
-
 	txEntry, ok := tp.allTxs[txHash]
 	if !ok {
 		return
@@ -446,13 +467,10 @@ func (tp *PovTxPool) delTx(txHash types.Hash) {
 		}
 	}
 
-	tp.lastUpdated = time.Now().Unix()
+	tp.lastUpdated = time.Now()
 }
 
 func (tp *PovTxPool) getTx(txHash types.Hash) *types.StateBlock {
-	tp.txMu.Lock()
-	defer tp.txMu.Unlock()
-
 	txEntry, ok := tp.allTxs[txHash]
 	if !ok {
 		return nil
@@ -462,19 +480,24 @@ func (tp *PovTxPool) getTx(txHash types.Hash) *types.StateBlock {
 }
 
 func (tp *PovTxPool) SelectPendingTxs(gsdb *statedb.PovGlobalStateDB, limit int) []*types.StateBlock {
-	tp.txMu.RLock()
-	defer tp.txMu.RUnlock()
+	// send request
+	workReq := &txPoolWorkRequest{gsdb: gsdb, limit: limit}
+	workReq.respCh = make(chan *txPoolWorkResponse, 0)
 
-	startTm := time.Now()
-
-	retTxs := tp.selectPendingTxsByFair(gsdb, limit)
-
-	tp.statLastSelectTime = time.Since(startTm).Microseconds()
-	if tp.statLastSelectTime > tp.statMaxSelectTime {
-		tp.statMaxSelectTime = tp.statLastSelectTime
+	select {
+	case tp.workCh <- workReq:
+		// ok, just wait response
+	case <-time.After(maxSelectWaitTimeInPool):
+		return nil
 	}
 
-	return retTxs
+	// receive response
+	select {
+	case workRsp := <-workReq.respCh:
+		return workRsp.selectedTxs
+	case <-time.After(maxSelectWaitTimeInPool):
+		return nil
+	}
 }
 
 func (tp *PovTxPool) selectPendingTxsByFair(gsdb *statedb.PovGlobalStateDB, limit int) []*types.StateBlock {
@@ -483,6 +506,15 @@ func (tp *PovTxPool) selectPendingTxsByFair(gsdb *statedb.PovGlobalStateDB, limi
 	if limit <= 0 || len(tp.accountTxs) == 0 {
 		return retTxs
 	}
+
+	startTm := time.Now()
+	defer func() {
+		tp.statLastSelectTime = time.Since(startTm).Microseconds()
+		if tp.statLastSelectTime > tp.statMaxSelectTime {
+			tp.statMaxSelectTime = tp.statLastSelectTime
+		}
+	}()
+
 	addrTokenNum := len(tp.accountTxs)
 
 	addrTokenNeedScans := make(map[types.AddressToken]struct{}, addrTokenNum)
@@ -594,6 +626,13 @@ LoopMain:
 				}
 			}
 
+			// check too much time for this selection
+			if len(retTxs)%100 == 0 {
+				if time.Since(startTm) >= maxSelectRunTimeInPool {
+					limit = 0
+				}
+			}
+
 			if limit == 0 {
 				break LoopAddrToken
 			}
@@ -602,19 +641,47 @@ LoopMain:
 		if limit == 0 {
 			break LoopMain
 		}
+
+		if time.Since(startTm) >= maxSelectRunTimeInPool {
+			limit = 0
+		}
 	}
 
 	return retTxs
 }
 
+func (tp *PovTxPool) processTxWorkRequest(workReq *txPoolWorkRequest) {
+	tp.txMu.Lock()
+	defer tp.txMu.Unlock()
+
+	if workReq.respCh == nil {
+		return
+	}
+
+	if workReq.gsdb == nil {
+		return
+	}
+
+	if tp.lastWorkRsp != nil {
+		if tp.lastWorkTime.Add(maxSelectKeepTimeInPool).Before(tp.lastUpdated) {
+			tp.lastWorkRsp = nil
+		}
+	}
+
+	if tp.lastWorkRsp == nil {
+		tp.lastWorkRsp = &txPoolWorkResponse{}
+		tp.lastWorkRsp.selectedTxs = tp.selectPendingTxsByFair(workReq.gsdb, workReq.limit)
+		tp.lastWorkTime = time.Now()
+	}
+
+	workReq.respCh <- tp.lastWorkRsp
+}
+
 func (tp *PovTxPool) LastUpdated() time.Time {
-	return time.Unix(tp.lastUpdated, 0)
+	return tp.lastUpdated
 }
 
 func (tp *PovTxPool) GetPendingTxNum() uint32 {
-	tp.txMu.RLock()
-	defer tp.txMu.RUnlock()
-
 	return uint32(len(tp.allTxs))
 }
 
@@ -624,6 +691,11 @@ func (tp *PovTxPool) GetDebugInfo() map[string]interface{} {
 	info := make(map[string]interface{})
 	info["allTxs"] = len(tp.allTxs)
 	info["accountTxs"] = len(tp.accountTxs)
+	if tp.lastWorkRsp != nil {
+		info["lastSelectedTxs"] = len(tp.lastWorkRsp.selectedTxs)
+	}
+	info["lastUpdated"] = tp.lastUpdated
+	info["lastWorkTime"] = tp.lastWorkTime
 	info["statLimitTxNum"] = tp.statLimitTxNum
 	info["statNotInOrderNum"] = tp.statNotInOrderNum
 	info["statLastSelectTime"] = tp.statLastSelectTime

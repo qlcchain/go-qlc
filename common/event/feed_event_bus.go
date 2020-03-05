@@ -49,7 +49,10 @@ func (eb *FeedEventBus) Publish(topic ct.TopicType, msg interface{}) {
 	f.Send(msg)
 }
 
-func (eb *FeedEventBus) RpcSyncCall(msg *ct.EventRPCSyncCallMsg) interface{} {
+func (eb *FeedEventBus) RpcSyncCallWithTime(msg *ct.EventRPCSyncCallMsg, waitTime time.Duration) interface{} {
+	if waitTime <= 0 {
+		waitTime = 60 * time.Second
+	}
 	if msg.ResponseChan == nil {
 		msg.ResponseChan = make(chan interface{})
 	}
@@ -57,9 +60,13 @@ func (eb *FeedEventBus) RpcSyncCall(msg *ct.EventRPCSyncCallMsg) interface{} {
 	select {
 	case outRsp := <-msg.ResponseChan:
 		return outRsp
-	case <-time.After(time.Second):
+	case <-time.After(waitTime):
 	}
 	return nil
+}
+
+func (eb *FeedEventBus) RpcSyncCall(msg *ct.EventRPCSyncCallMsg) interface{} {
+	return eb.RpcSyncCallWithTime(msg, 60*time.Second)
 }
 
 func (eb *FeedEventBus) LookupFeed(topic ct.TopicType) *Feed {

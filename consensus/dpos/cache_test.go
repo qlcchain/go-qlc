@@ -13,7 +13,7 @@ func TestCache_set(t *testing.T) {
 	dps.confirmedBlocks = newCache(1, confirmedCacheMaxTime)
 
 	hash := mock.Hash()
-	dps.confirmedBlocks.set(hash, nil)
+	dps.confirmedBlocks.set(hash, newVoteHistory())
 
 	if !dps.confirmedBlocks.has(hash) {
 		t.Fatal()
@@ -54,7 +54,7 @@ func TestCache_expiration(t *testing.T) {
 	dps.confirmedBlocks = newCache(1, 3*time.Second)
 
 	hash := mock.Hash()
-	dps.confirmedBlocks.set(hash, nil)
+	dps.confirmedBlocks.set(hash, newVoteHistory())
 
 	if !dps.confirmedBlocks.has(hash) {
 		t.Fatal()
@@ -77,14 +77,14 @@ func TestCache_len(t *testing.T) {
 	}
 
 	hash1 := mock.Hash()
-	dps.confirmedBlocks.set(hash1, nil)
+	dps.confirmedBlocks.set(hash1, newVoteHistory())
 
 	if dps.confirmedBlocks.len() != 1 {
 		t.Fatal()
 	}
 
 	hash2 := mock.Hash()
-	dps.confirmedBlocks.set(hash2, nil)
+	dps.confirmedBlocks.set(hash2, newVoteHistory())
 
 	if discardHash != hash1 {
 		t.Fatal()
@@ -100,19 +100,32 @@ func TestCache_gc(t *testing.T) {
 	dps.confirmedBlocks = newCache(3, 3*time.Second)
 
 	hash1 := mock.Hash()
-	dps.confirmedBlocks.set(hash1, nil)
+	dps.confirmedBlocks.set(hash1, newVoteHistory())
 
 	hash2 := mock.Hash()
-	dps.confirmedBlocks.set(hash2, nil)
+	dps.confirmedBlocks.set(hash2, newVoteHistory())
 
 	hash3 := mock.Hash()
-	dps.confirmedBlocks.set(hash3, nil)
+	dps.confirmedBlocks.set(hash3, newVoteHistory())
 
 	time.Sleep(3 * time.Second)
 
 	dps.confirmedBlocks.gc()
 
 	if dps.confirmedBlocks.len() != 0 {
+		t.Fatal()
+	}
+}
+
+func TestCache_get(t *testing.T) {
+	dps := getTestDpos()
+	dps.confirmedBlocks = newCache(100, confirmedCacheMaxTime)
+
+	hash := mock.Hash()
+	dps.confirmedBlocks.set(hash, int(1))
+
+	v := dps.confirmedBlocks.get(hash)
+	if v.(int) != 1 {
 		t.Fatal()
 	}
 }

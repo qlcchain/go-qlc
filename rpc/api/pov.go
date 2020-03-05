@@ -1289,7 +1289,7 @@ func (api *PovApi) GetWork(minerAddr types.Address, algoName string) (*PovApiGet
 	inArgs["minerAddr"] = minerAddr
 	inArgs["algoName"] = algoName
 	outArgs := make(map[interface{}]interface{})
-	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.GetWork", In: inArgs, Out: outArgs})
+	api.feb.RpcSyncCallWithTime(&topic.EventRPCSyncCallMsg{Name: "Miner.GetWork", In: inArgs, Out: outArgs}, 300*time.Second)
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1344,7 +1344,7 @@ func (api *PovApi) SubmitWork(work *PovApiSubmitWork) error {
 	inArgs["mineResult"] = mineResult
 
 	outArgs := make(map[interface{}]interface{})
-	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.SubmitWork", In: inArgs, Out: outArgs})
+	api.feb.RpcSyncCallWithTime(&topic.EventRPCSyncCallMsg{Name: "Miner.SubmitWork", In: inArgs, Out: outArgs}, 300*time.Second)
 
 	err, ok := outArgs["err"]
 	if !ok {

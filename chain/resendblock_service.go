@@ -10,6 +10,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"time"
 
@@ -32,8 +33,8 @@ import (
 )
 
 const (
-	checkBlockCacheInterval = 60 * time.Second
-	maxResendBlockCache     = 3
+	checkBlockCacheInterval = 3 * time.Second
+	maxResendBlockCache     = math.MaxInt32
 )
 
 type ResendBlockService struct {
@@ -99,28 +100,22 @@ func (rb *ResendBlockService) Start() error {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
+
 	l := ledgerService.(*LedgerService).Ledger
 	verifier := process.NewLedgerVerifier(l)
-	blocks := make([]*types.StateBlock, 0)
 	accountMetaCaches := make([]*types.AccountMeta, 0)
-	err := l.GetBlockCaches(func(block *types.StateBlock) error {
-		blocks = append(blocks, block)
-		return nil
-	})
-	if err != nil {
-		rb.logger.Error("get block cache error")
-	}
-	err = l.GetAccountMetaCaches(func(am *types.AccountMeta) error {
+
+	err := l.GetAccountMetaCaches(func(am *types.AccountMeta) error {
 		accountMetaCaches = append(accountMetaCaches, am)
 		return nil
 	})
 	if err != nil {
 		rb.logger.Error("get accountMeta cache error")
 	}
+
 	blockCaches := make([]*types.StateBlock, 0)
 	for _, am := range accountMetaCaches {
 		for _, v := range am.Tokens {
-			blockCaches = blockCaches[:0:0]
 			header := v.Header
 			for {
 				sb, _ := l.GetBlockCache(header)
@@ -131,6 +126,7 @@ func (rb *ResendBlockService) Start() error {
 				}
 				header = sb.Previous
 			}
+
 			for i := len(blockCaches) - 1; i >= 0; i-- {
 				rt := &ResendTimes{
 					hash:        blockCaches[i].GetHash(),
@@ -152,24 +148,22 @@ func (rb *ResendBlockService) Start() error {
 
 	go func() {
 		ticker := time.NewTicker(checkBlockCacheInterval)
-		var hs []*ResendTimes
-		var hsTemp []*ResendTimes
+
 		for {
 			select {
 			case <-rb.ctx.Done():
 				return
 			case <-ticker.C:
-				hs = hs[:0:0]
-				hsTemp = hsTemp[:0:0]
 				rb.hashSet.Range(func(key, value interface{}) bool {
 					h := key.(types.Hash)
-					hs = value.([]*ResendTimes)
+					hs := value.([]*ResendTimes)
+					hsTemp := make([]*ResendTimes, 0)
+
 					for _, j := range hs {
 						if b, _ := l.HasStateBlockConfirmed(j.hash); b {
 							hsTemp = append(hsTemp, j)
 						} else {
 							if j.resendTimes >= maxResendBlockCache {
-								hsTemp = hs
 								rb.hashSet.Delete(h)
 								_ = verifier.RollbackCache(j.hash)
 								break
@@ -183,10 +177,14 @@ func (rb *ResendBlockService) Start() error {
 							}
 						}
 					}
+
 					if len(hsTemp) < len(hs) {
 						hsDiff := sliceDiff(hs, hsTemp)
 						rb.hashSet.Store(h, hsDiff)
+					} else {
+						rb.hashSet.Delete(h)
 					}
+
 					return true
 				})
 			}
@@ -213,8 +211,51 @@ func (rb *ResendBlockService) Start() error {
 					rb.hashSet.Store(key, hs)
 				} else {
 					hs := v.([]*ResendTimes)
-					hs = append(hs, rt)
-					rb.hashSet.Store(key, hs)
+
+					// disorder
+					if len(hs) > 0 && blk.Previous != hs[len(hs)-1].hash {
+						am, err := l.GetAccountMeteCache(blk.Address)
+						if err != nil {
+							rb.logger.Error(err)
+							break
+						}
+
+						tm := am.Token(blk.Token)
+						if tm != nil {
+							header := tm.Header
+							blockCaches := make([]*types.StateBlock, 0)
+
+							for {
+								sb, _ := l.GetBlockCache(header)
+								if sb != nil {
+									blockCaches = append(blockCaches, sb)
+								} else {
+									break
+								}
+								header = sb.Previous
+							}
+
+							for i := len(blockCaches) - 1; i >= 0; i-- {
+								rt := &ResendTimes{
+									hash:        blockCaches[i].GetHash(),
+									resendTimes: 0,
+								}
+								key := rb.getKey(blockCaches[i].Address, blockCaches[i].Token)
+								if v, ok := rb.hashSet.Load(key); !ok {
+									var hs []*ResendTimes
+									hs = append(hs, rt)
+									rb.hashSet.Store(key, hs)
+								} else {
+									hs := v.([]*ResendTimes)
+									hs = append(hs, rt)
+									rb.hashSet.Store(key, hs)
+								}
+							}
+						}
+					} else {
+						hs = append(hs, rt)
+						rb.hashSet.Store(key, hs)
+					}
 				}
 			}
 		}
