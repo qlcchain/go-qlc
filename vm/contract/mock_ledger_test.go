@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 QLC Chain Team
+ * Copyright (c) 2020. QLC Chain Team
  *
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
@@ -20,74 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-)
-
-const (
-	accountBlocks = `[
-	{
-		"type": "Open",
-		"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
-		"address": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"balance": "100000000000",
-		"vote": "0",
-		"network": "0",
-		"storage": "0",
-		"oracle": "0",
-		"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-		"link": "c0d330096ec4ab6ccf5481e06cc54e74b14f534e99e38df486f47d1123cbd1ae",
-		"sender": "MTU4MTExMTAwMDA=",
-		"receiver": "MTU4MDAwMDExMTE=",
-		"message": "747648bafd344347582876662641c4b8ffbf20a85ba01dc559ff930435bc5bad",
-		"povHeight": 0,
-		"timestamp": 1580997079,
-		"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-		"representative": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"work": "000000000122e972",
-		"signature": "5460905ad2096d1822dc086e8fe375409f9fc87f0e8288ca215a399eb2fee6c6c5fc94b53a18f62fe6d124f869cbac1737b762c9a8f7654d1b7ecacc480f010a"
-	},
-	{
-		"type": "Send",
-		"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
-		"address": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"balance": "40000000000",
-		"vote": "0",
-		"network": "0",
-		"storage": "0",
-		"oracle": "0",
-		"previous": "cad0cad8a98813787dc11ba2413afca574f2d62e222fd2644cc33c7d70124d90",
-		"link": "d929630709e1a1442411a3c2159e8dba5742c6835e54757444f8af35bf1c7393",
-		"sender": "MTU4MTExMTAwMDA=",
-		"receiver": "MTU4MDAwMDExMTE=",
-		"message": "f82eae0fa0f56a53e9d217140eaa33219c7cb910439501f333383f4d6147618c",
-		"povHeight": 0,
-		"timestamp": 1580997083,
-		"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-		"representative": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"work": "0000000002aa56ad",
-		"signature": "dd0af652dc5acca94547b5e130a38a2728531235d224e6031f13d9958221fcd4852bee6684fa1b29c5170f71f7f301b64eda8d10208ecc12b2862b34ea049a0e"
-	},
-	{
-		"type": "Open",
-		"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
-		"address": "qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te",
-		"balance": "60000000000",
-		"vote": "0",
-		"network": "0",
-		"storage": "0",
-		"oracle": "0",
-		"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-		"link": "b05f7c462867df6f24b810c0b28b50d709667feb7d870a2b1db23bb3fa491249",
-		"sender": "MTU4MTExMTAwMDA=",
-		"receiver": "MTU4MDAwMDExMTE=",
-		"message": "eb9c1dcccaba3937d8745c364dadb1ca056cfa9540184277ad6fe8af66f81358",
-		"povHeight": 0,
-		"timestamp": 1580997093,
-		"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-		"representative": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"work": "00000000002389ad",
-		"signature": "5d35efd693b85ccf4a01e4f132aa0a248b328b10024af2a22e65474038a4aea3decb6c414c5563b326f509f4cf5eac852c81317a96a8c349b965849c31e5580d"
-	}
-]`
 )
 
 var (
@@ -132,7 +64,7 @@ func setupLedgerForTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	//_ = ctx.SaveStorage()
 
 	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(accountBlocks), &blocks); err != nil {
+	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
 

@@ -1009,7 +1009,7 @@ func TestDeletePublishInfo(t *testing.T) {
 }
 
 func TestVerifierRegInfoCheck(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -1052,7 +1052,7 @@ func TestVerifierRegInfoCheck(t *testing.T) {
 }
 
 func TestVerifierUnRegInfoCheck(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -1083,7 +1083,7 @@ func TestVerifierUnRegInfoCheck(t *testing.T) {
 }
 
 func TestVerifierPledgeCheck(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -1108,7 +1108,7 @@ func TestVerifierPledgeCheck(t *testing.T) {
 }
 
 func TestOracleInfoCheck(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -1178,7 +1178,7 @@ func TestOracleInfoCheck(t *testing.T) {
 }
 
 func TestCheckOracleInfoExist(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -1204,7 +1204,7 @@ func TestCheckOracleInfoExist(t *testing.T) {
 }
 
 func TestGetPublishInfoByKey(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -1234,7 +1234,7 @@ func TestGetPublishInfoByKey(t *testing.T) {
 }
 
 func TestGetPublishInfo(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)

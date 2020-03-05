@@ -80,11 +80,23 @@ func verifyToken(param cabi.ParamMintage) error {
 	return nil
 }
 
-func (m *Mintage) DoPending(_ *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return nil, nil, errors.New("not implemented")
+func (m *Mintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	param := new(cabi.ParamMintage)
+	err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, block.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &types.PendingKey{
+			Address: param.Beneficial,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: types.Balance{Int: param.TotalSupply},
+			Type:   block.Token,
+		}, nil
 }
 
-//TODO: verify input block timestamp
 func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.ParamMintage)
 	_ = cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
@@ -195,8 +207,22 @@ func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock
 	return nil
 }
 
-func (m *WithdrawMintage) DoPending(_ *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return nil, nil, errors.New("not implemented")
+func (m *WithdrawMintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	tokenId := new(types.Hash)
+	err := cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, block.Data)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &types.PendingKey{
+			Address: block.Address,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: types.ZeroBalance,
+			Type:   block.Token,
+		}, nil
 }
 
 func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
