@@ -369,12 +369,11 @@ func (l *DebugApi) PendingsCount() (int, error) {
 func (l *DebugApi) GetOnlineInfo() (map[uint64]*dpos.RepOnlinePeriod, error) {
 	repOnline := make(map[uint64]*dpos.RepOnlinePeriod, 0)
 
-	cc := qctx.NewChainContext(l.cfgFile)
-	sv, err := cc.Service(qctx.ConsensusService)
+	sv, err := l.getConsensusService()
 	if err != nil {
 		return nil, err
 	}
-	sv.(common.InterceptCall).RpcCall(common.RpcDPoSOnlineInfo, nil, repOnline)
+	sv.RpcCall(common.RpcDPoSOnlineInfo, nil, repOnline)
 
 	return repOnline, nil
 }
@@ -452,12 +451,11 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	cc := qctx.NewChainContext(l.cfgFile)
-	sv, err := cc.Service(qctx.ConsensusService)
+	sv, err := l.getConsensusService()
 	if err != nil {
 		return nil, err
 	}
-	sv.(common.InterceptCall).RpcCall(common.RpcDPoSConsInfo, inArgs, outArgs)
+	sv.RpcCall(common.RpcDPoSConsInfo, inArgs, outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -475,12 +473,11 @@ func (l *DebugApi) GetConsInfo() (map[string]interface{}, error) {
 func (l *DebugApi) SetConsPerf(op int) (map[string]interface{}, error) {
 	outArgs := make(map[string]interface{})
 
-	cc := qctx.NewChainContext(l.cfgFile)
-	sv, err := cc.Service(qctx.ConsensusService)
+	sv, err := l.getConsensusService()
 	if err != nil {
 		return nil, err
 	}
-	sv.(common.InterceptCall).RpcCall(common.RpcDPoSSetConsPerf, dpos.PerfType(op), outArgs)
+	sv.RpcCall(common.RpcDPoSSetConsPerf, dpos.PerfType(op), outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -499,12 +496,11 @@ func (l *DebugApi) GetConsPerf() (map[string]interface{}, error) {
 	inArgs := make(map[string]interface{})
 	outArgs := make(map[string]interface{})
 
-	cc := qctx.NewChainContext(l.cfgFile)
-	sv, err := cc.Service(qctx.ConsensusService)
+	sv, err := l.getConsensusService()
 	if err != nil {
 		return nil, err
 	}
-	sv.(common.InterceptCall).RpcCall(common.RpcDPoSGetConsPerf, inArgs, outArgs)
+	sv.RpcCall(common.RpcDPoSGetConsPerf, inArgs, outArgs)
 
 	er, ok := outArgs["err"]
 	if !ok {
@@ -696,21 +692,28 @@ func (l *DebugApi) UncheckBlock(hash types.Hash) ([]*UncheckInfo, error) {
 }
 
 func (l *DebugApi) FeedConsensus() error {
-	cc := qctx.NewChainContext(l.cfgFile)
-	sv, err := cc.Service(qctx.ConsensusService)
+	sv, err := l.getConsensusService()
 	if err != nil {
 		return err
 	}
-	sv.(common.InterceptCall).RpcCall(common.RpcDPoSFeed, nil, nil)
+	sv.RpcCall(common.RpcDPoSFeed, nil, nil)
 	return nil
 }
 
 func (l *DebugApi) DebugConsensus() error {
-	cc := qctx.NewChainContext(l.cfgFile)
-	sv, err := cc.Service(qctx.ConsensusService)
+	sv, err := l.getConsensusService()
 	if err != nil {
 		return err
 	}
 	sv.RpcCall(common.RpcDPoSDebug, nil, nil)
 	return nil
+}
+
+func (l *DebugApi) getConsensusService() (common.InterceptCall, error) {
+	cc := qctx.NewChainContext(l.cfgFile)
+	sv, err := cc.Service(qctx.ConsensusService)
+	if err != nil {
+		return nil, err
+	}
+	return sv.(common.InterceptCall), nil
 }
