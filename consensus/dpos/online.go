@@ -78,10 +78,10 @@ func (dps *DPoS) voteHistoryUpdate(hash types.Hash, addr types.Address) bool {
 		vh := val.(*voteHistory)
 		if _, ok := vh.reps[addr]; ok {
 			return false
-		} else {
-			vh.reps[addr] = struct{}{}
-			return true
 		}
+
+		vh.reps[addr] = struct{}{}
+		return true
 	}
 
 	return false

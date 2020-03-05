@@ -103,11 +103,9 @@ func (p *Processor) stop() {
 	p.quitCh <- true
 	p.cancel()
 
-	select {
-	case <-p.exited:
-		for atomic.LoadInt32(&p.confirmParallelNum) != ConfirmChainParallelNum {
-			time.Sleep(10 * time.Millisecond)
-		}
+	<-p.exited
+	for atomic.LoadInt32(&p.confirmParallelNum) != ConfirmChainParallelNum {
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

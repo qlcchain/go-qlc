@@ -49,9 +49,7 @@ func (act *ActiveTrx) start() {
 
 func (act *ActiveTrx) stop() {
 	act.quitCh <- true
-	select {
-	case <-act.exited:
-	}
+	<-act.exited
 }
 
 func getVoteKey(block *types.StateBlock) voteKey {
