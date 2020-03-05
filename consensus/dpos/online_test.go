@@ -39,7 +39,6 @@ func TestGetOnlineInfo(t *testing.T) {
 
 	repg := val.(*RepOnlinePeriod)
 	if val, ok := repg.Statistic.Load(addr); ok {
-		t.Log(repg)
 		s := val.(*RepAckStatistics)
 		if s.VoteCount != 20 || s.HeartCount != 10 {
 			t.Fatal()
