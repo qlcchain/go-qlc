@@ -5173,7 +5173,7 @@ func buildContractParam() (param *ContractParam) {
 }
 
 func TestGetContractsByAddress(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -5369,7 +5369,7 @@ func TestCDRStatus(t *testing.T) {
 }
 
 func TestGetAllSettlementContract(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -5753,7 +5753,7 @@ func TestCDRParam_ToHash(t *testing.T) {
 }
 
 func TestGetContracts(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	data := mockContractData(2)
@@ -6808,7 +6808,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 }
 
 func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 	data := mockContractData(2)
@@ -6873,7 +6873,7 @@ func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
 }
 
 func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 	data := mockContractData(2)
@@ -6939,7 +6939,7 @@ func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
 }
 
 func TestIsContractAvailable(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -7042,7 +7042,7 @@ func TestSignContractParam_ToABI(t *testing.T) {
 }
 
 func TestGetSettlementContract(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -7802,7 +7802,7 @@ func buildCDRStatus() *CDRStatus {
 }
 
 func TestGetAllCDRStatus(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -7878,7 +7878,7 @@ func TestGetAllCDRStatus(t *testing.T) {
 }
 
 func TestGetCDRStatus(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8299,7 +8299,7 @@ type mockCDR struct {
 }
 
 func TestGetSummaryReport(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8393,7 +8393,7 @@ func TestGetSummaryReport(t *testing.T) {
 }
 
 func TestGetStopNames(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8526,7 +8526,7 @@ func TestContractAddressList_ToABI(t *testing.T) {
 }
 
 func TestSaveCDRStatus(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8563,7 +8563,7 @@ func TestSaveCDRStatus(t *testing.T) {
 }
 
 func TestGetCDRMapping(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8590,7 +8590,7 @@ func TestGetCDRMapping(t *testing.T) {
 }
 
 func TestGenerateMultiPartyInvoice(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 

@@ -146,7 +146,7 @@ func delTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType ui
 }
 
 func TestCheckVerifierExist(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -169,7 +169,7 @@ func TestCheckVerifierExist(t *testing.T) {
 }
 
 func TestCheckVerifierInfoExist(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -192,7 +192,7 @@ func TestCheckVerifierInfoExist(t *testing.T) {
 }
 
 func TestGetAllVerifiers(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -226,7 +226,7 @@ func TestGetAllVerifiers(t *testing.T) {
 }
 
 func TestGetVerifiersByType(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -264,7 +264,7 @@ func TestGetVerifiersByType(t *testing.T) {
 }
 
 func TestGetVerifiersByAccount(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -294,7 +294,7 @@ func TestGetVerifiersByAccount(t *testing.T) {
 }
 
 func TestGetVerifierInfoByAccountAndType(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -314,7 +314,7 @@ func TestGetVerifierInfoByAccountAndType(t *testing.T) {
 }
 
 func TestDeleteVerifier(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -368,7 +368,7 @@ func addTestOracleInfo(ctx *vmstore.VMContext, account types.Address, ot uint32,
 }
 
 func TestGetAllOracleInfo(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -411,7 +411,7 @@ func TestGetAllOracleInfo(t *testing.T) {
 }
 
 func TestGetOracleInfoByAccount(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -444,7 +444,7 @@ func TestGetOracleInfoByAccount(t *testing.T) {
 }
 
 func TestGetOracleInfoByType(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -477,7 +477,7 @@ func TestGetOracleInfoByType(t *testing.T) {
 }
 
 func TestGetOracleInfoByAccountAndType(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -504,7 +504,7 @@ func TestGetOracleInfoByAccountAndType(t *testing.T) {
 }
 
 func TestGetOracleInfoByTypeAndID(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -531,7 +531,7 @@ func TestGetOracleInfoByTypeAndID(t *testing.T) {
 }
 
 func TestGetOracleInfoByTypeAndIDAndPk(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -558,7 +558,7 @@ func TestGetOracleInfoByTypeAndIDAndPk(t *testing.T) {
 }
 
 func TestGetOracleInfoByHash(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	pblk := mock.StateBlock()
@@ -655,7 +655,7 @@ func delTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32
 }
 
 func TestPublishInfoCheck(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -689,7 +689,7 @@ func TestPublishInfoCheck(t *testing.T) {
 }
 
 func TestCheckPublishInfoExist(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -722,7 +722,7 @@ func TestCheckPublishInfoExist(t *testing.T) {
 }
 
 func TestGetPublishInfoByTypeAndId(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -771,7 +771,7 @@ func TestGetPublishInfoByTypeAndId(t *testing.T) {
 }
 
 func TestGetAllPublishInfo(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -834,7 +834,7 @@ func TestGetAllPublishInfo(t *testing.T) {
 }
 
 func TestGetPublishInfoByType(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -875,7 +875,7 @@ func TestGetPublishInfoByType(t *testing.T) {
 }
 
 func TestGetPublishInfoByAccount(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -922,7 +922,7 @@ func TestGetPublishInfoByAccount(t *testing.T) {
 }
 
 func TestGetPublishInfoByAccountAndType(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -971,7 +971,7 @@ func TestGetPublishInfoByAccountAndType(t *testing.T) {
 }
 
 func TestDeletePublishInfo(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
