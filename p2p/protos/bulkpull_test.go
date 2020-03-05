@@ -33,6 +33,8 @@ func TestBulkPullReqPacket(t *testing.T) {
 		t.Fatal("Of EndHash error")
 	}
 	bp := NewBulkPullReqPacket(start, end)
+	bp.Hashes = append(bp.Hashes, &start)
+	bp.Hashes = append(bp.Hashes, &end)
 	bpBytes, err := BulkPullReqPacketToProto(bp)
 	if err != nil {
 		t.Fatal("BulkPullPacketToProto error")

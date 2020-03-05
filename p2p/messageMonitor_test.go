@@ -260,6 +260,50 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data15, data16) != 0 {
 		t.Fatal("Marshal BulkPushBlock err3")
 	}
+	var start1, start2 types.Hash
+	err = start1.Of("D2F6F6A6422000C60C0CB2708B10C8CA664C874EB8501D2E109CB4830EA41D47")
+	if err != nil {
+		t.Fatal("Of StartHash1 error")
+	}
+	err = start2.Of("12F6F6A6422000C60C0CB2708B10C8CA664C874EB8501D2E109CB4830EA41D47")
+	if err != nil {
+		t.Fatal("Of StartHash2 error")
+	}
+	var Locators []*types.Hash
+	Locators = append(Locators, &start1)
+	Locators = append(Locators, &start2)
+	povReq := &protos.PovBulkPullReq{
+		StartHash:   start1,
+		StartHeight: 1000,
+		Count:       2,
+		PullType:    protos.PovPullTypeBackward,
+		Reason:      protos.PovReasonFetch,
+		Locators:    Locators,
+	}
+
+	_, err = marshalMessage(PovBulkPullReq, povReq)
+	if err != nil {
+		t.Fatal("Marshal PovBulkPullReq err")
+	}
+	blk1, _ := mock.GeneratePovBlock(nil, 0)
+	blk2, _ := mock.GeneratePovBlock(nil, 0)
+	rsp := &protos.PovBulkPullRsp{
+		Count:  2,
+		Reason: protos.PovReasonFetch,
+		Blocks: types.PovBlocks{blk1, blk2},
+	}
+	_, err = marshalMessage(PovBulkPullRsp, rsp)
+	if err != nil {
+		t.Fatal("Marshal PovBulkPullRsp err")
+	}
+	_, err = marshalMessage(MessageResponse, start1)
+	if err != nil {
+		t.Fatal("Marshal MessageResponse err")
+	}
+	_, err = marshalMessage(MessageType(100), start1)
+	if err == nil {
+		t.Fatal("should return unKnown Message Type")
+	}
 }
 
 func Test_SendMessage(t *testing.T) {
@@ -272,6 +316,7 @@ func Test_SendMessage(t *testing.T) {
 	cfg.P2P.BootNodes = []string{}
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19740"
 	cfg.P2P.Discovery.MDNSEnabled = false
+	cfg.LogLevel = "error"
 
 	//start bootNode
 	node, err := NewQlcService(dir)
@@ -288,6 +333,7 @@ func Test_SendMessage(t *testing.T) {
 	cfg1.P2P.BootNodes = []string{b}
 	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
+	cfg1.LogLevel = "error"
 
 	//start1 node
 	node1, err := NewQlcService(dir1)
@@ -304,6 +350,7 @@ func Test_SendMessage(t *testing.T) {
 	cfg2.P2P.BootNodes = []string{b}
 	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
+	cfg2.LogLevel = "error"
 
 	//start node2
 	node2, err := NewQlcService(dir2)
@@ -359,7 +406,8 @@ func Test_SendMessage(t *testing.T) {
 		}
 		break
 	}
-	node2.msgService.Stop()
+
+	//test send message to peers
 	blk := mock.StateBlockWithoutWork()
 	//test send message to peers
 	peerID := cfg2.P2P.ID.PeerID
@@ -367,50 +415,69 @@ func Test_SendMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(500 * time.Millisecond)
-	if len(node2.msgService.publishMessageCh) != 1 {
-		return
-	}
-	msg := <-node2.msgService.publishMessageCh
-	if msg.MessageType() != MessageType(PublishReq) {
-		t.Fatal("receive message type error")
-	}
-	if msg.MessageFrom() != node1.node.ID.Pretty() {
-		t.Fatal("message from error")
-	}
-	s, err := protos.PublishBlockFromProto(msg.Data())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if blk.GetHash().String() != s.Blk.GetHash().String() {
-		t.Fatal("receive data error")
-	}
-
-	//test send message to peers
 	node1.Broadcast(PublishReq, blk)
-	time.Sleep(500 * time.Millisecond)
-	if len(node2.msgService.publishMessageCh) != 0 {
-		t.Fatal("Send Message To Peers error")
-	}
-
-	//test broadcast message
-	node1.Broadcast(PublishReq, blk)
-	time.Sleep(500 * time.Millisecond)
-	if len(node2.msgService.publishMessageCh) != 1 {
-		return
-	}
-	msg = <-node2.msgService.publishMessageCh
-	if msg.MessageType() != MessageType(PublishReq) {
-		t.Fatal("receive message type error")
-	}
-	if msg.MessageFrom() != node1.node.ID.Pretty() {
-		t.Fatal("message from error")
-	}
-	s, err = protos.PublishBlockFromProto(msg.Data())
+	var start1, start2 types.Hash
+	err = start1.Of("D2F6F6A6422000C60C0CB2708B10C8CA664C874EB8501D2E109CB4830EA41D47")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("Of StartHash1 error")
 	}
-	if blk.GetHash().String() != s.Blk.GetHash().String() {
-		t.Fatal("receive broadcast data error")
+	err = start2.Of("12F6F6A6422000C60C0CB2708B10C8CA664C874EB8501D2E109CB4830EA41D47")
+	if err != nil {
+		t.Fatal("Of StartHash2 error")
 	}
+	var Locators []*types.Hash
+	Locators = append(Locators, &start1)
+	Locators = append(Locators, &start2)
+	povReq := &protos.PovBulkPullReq{
+		StartHash:   start1,
+		StartHeight: 1000,
+		Count:       2,
+		PullType:    protos.PovPullTypeBackward,
+		Reason:      protos.PovReasonFetch,
+		Locators:    Locators,
+	}
+	node1.Broadcast(PovBulkPullReq, povReq)
+	blk1, _ := mock.GeneratePovBlock(nil, 0)
+	blk2, _ := mock.GeneratePovBlock(nil, 0)
+	rsp := &protos.PovBulkPullRsp{
+		Count:  2,
+		Reason: protos.PovReasonFetch,
+		Blocks: types.PovBlocks{blk1, blk2},
+	}
+	node1.Broadcast(PovBulkPullRsp, rsp)
+	node1.Broadcast(MessageResponse, start1)
+	address := types.Address{}
+	Req := protos.NewFrontierReq(address, math.MaxUint32, math.MaxUint32)
+	node1.Broadcast(FrontierRequest, Req)
+	frontier := &types.Frontier{
+		HeaderBlock: start1,
+		OpenBlock:   start2,
+	}
+	frs := &types.FrontierBlock{
+		HeaderBlk: blk,
+		Fr:        frontier,
+	}
+	var f []*types.FrontierBlock
+	f = append(f, frs)
+	fs := &protos.FrontierResponse{
+		Fs: f,
+	}
+	node1.Broadcast(FrontierRsp, fs)
+	bp := protos.NewBulkPullReqPacket(start1, start2)
+	bp.Hashes = append(bp.Hashes, &start1)
+	bp.Hashes = append(bp.Hashes, &start2)
+	node1.Broadcast(BulkPullRequest, bp)
+
+	blk = mock.StateBlockWithoutWork()
+	br := &protos.BulkPullRspPacket{}
+	br.Blocks = append(br.Blocks, blk)
+	br.PullType = protos.PullTypeSegment
+	node1.Broadcast(BulkPullRsp, br)
+	var blks types.StateBlockList
+	blks = append(blks, blk)
+	node1.Broadcast(BulkPushBlock, blks)
+	node1.Broadcast(MessageType(100), "")
+	_ = node1.node.SendMessageToPeer(FrontierRsp, fs, node2.node.ID.Pretty())
+	_ = node1.node.SendMessageToPeer(MessageResponse, start1, node2.node.ID.Pretty())
+	time.Sleep(500 * time.Millisecond)
 }
