@@ -1184,11 +1184,60 @@ func (l *LedgerAPI) NewPending(ctx context.Context, address types.Address) (*rpc
 	})
 }
 
-func (l *LedgerAPI) GenesisBlocks() (map[string]types.StateBlock, error) {
-	genesisBlk := make(map[string]types.StateBlock)
-	genesisBlk["chain"] = config.GenesisBlock()
-	genesisBlk["chain-mintage"] = config.GenesisMintageBlock()
-	genesisBlk["gas"] = config.GasBlock()
-	genesisBlk["gas-mintage"] = config.GasMintageBlock()
-	return genesisBlk, nil
+func (l *LedgerAPI) GenesisAddress() types.Address {
+	return config.GenesisAddress()
+}
+
+func (l *LedgerAPI) GasAddress() types.Address {
+	return config.GasAddress()
+}
+
+func (l *LedgerAPI) ChainToken() types.Hash {
+	return config.ChainToken()
+}
+
+func (l *LedgerAPI) GasToken() types.Hash {
+	return config.GasToken()
+}
+
+func (l *LedgerAPI) GenesisMintageBlock() types.StateBlock {
+	return config.GenesisMintageBlock()
+}
+
+func (l *LedgerAPI) GenesisMintageHash() types.Hash {
+	return config.GenesisMintageHash()
+}
+
+func (l *LedgerAPI) GenesisBlock() types.StateBlock {
+	return config.GenesisBlock()
+}
+
+func (l *LedgerAPI) GenesisBlockHash() types.Hash {
+	return config.GenesisBlockHash()
+}
+
+func (l *LedgerAPI) GasBlockHash() types.Hash {
+	return config.GasBlockHash()
+}
+
+func (l *LedgerAPI) GasMintageBlock() types.StateBlock {
+	return config.GasMintageBlock()
+}
+
+func (l *LedgerAPI) GasBlock() types.StateBlock {
+	return config.GasBlock()
+}
+
+// IsGenesis check block is chain token genesis
+func (l *LedgerAPI) IsGenesisBlock(block *types.StateBlock) bool {
+	return config.IsGenesisBlock(block)
+}
+
+// IsGenesis check token is chain token genesis
+func (l *LedgerAPI) IsGenesisToken(hash types.Hash) bool {
+	return config.IsGenesisToken(hash)
+}
+
+func (l *LedgerAPI) AllGenesisBlocks() []types.StateBlock {
+	return config.AllGenesisBlocks()
 }
