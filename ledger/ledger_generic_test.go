@@ -1,9 +1,11 @@
 package ledger
 
 import (
-	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common/types"
 	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func addGenericType(t *testing.T, l *Ledger) (*types.GenericKey, *types.GenericType) {

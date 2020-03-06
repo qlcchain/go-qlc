@@ -2,16 +2,17 @@ package migration
 
 import (
 	"encoding/binary"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
-	"github.com/qlcchain/go-qlc/common"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func TestMigration_Migrate(t *testing.T) {
@@ -43,9 +44,9 @@ func TestMigration_Migrate(t *testing.T) {
 	}
 
 	acc1 := mock.AccountMeta(mock.Address())
-	acc1.Tokens[0].Type = common.ChainToken()
+	acc1.Tokens[0].Type = config.ChainToken()
 	acc2 := mock.AccountMeta(mock.Address())
-	acc2.Tokens[0].Type = common.ChainToken()
+	acc2.Tokens[0].Type = config.ChainToken()
 
 	acc1K, _ := storage.GetKeyOfParts(storage.KeyPrefixAccount, acc1.Address)
 	acc2K, _ := storage.GetKeyOfParts(storage.KeyPrefixAccount, acc2.Address)

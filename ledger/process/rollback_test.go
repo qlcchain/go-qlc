@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/trie"
@@ -44,7 +44,7 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	fmt.Println("----blocks----")
 	err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		fmt.Println(block)
-		if block.GetHash() != common.GenesisBlockHash() {
+		if block.GetHash() != config.GenesisBlockHash() {
 			if _, ok := addrs[block.GetAddress()]; !ok {
 				addrs[block.GetAddress()] = 0
 			}

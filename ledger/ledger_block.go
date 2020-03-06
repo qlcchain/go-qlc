@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 type BlockStore interface {
