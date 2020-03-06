@@ -161,6 +161,8 @@ func NewLedger(cfgFile string) *Ledger {
 }
 
 func DefaultStore() Store {
+	lock.Lock()
+	defer lock.Unlock()
 	dir := filepath.Join(config.DefaultDataDir(), "ledger")
 	if l, ok := lcache[dir]; ok {
 		return l
@@ -639,6 +641,16 @@ func (l *Ledger) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) 
 	return nil, v, nil
 }
 
+func (l *Ledger) Put(key []byte, value interface{}) error {
+	c := l.cache.GetCache()
+	return c.Put(key, value)
+}
+
+func (l *Ledger) Delete(k []byte) error {
+	c := l.cache.GetCache()
+	return c.Delete(k)
+}
+
 func (l *Ledger) getFromStore(key []byte, batch ...storage.Batch) ([]byte, error) {
 	if len(batch) > 0 {
 		v, err := batch[0].Get(key)
@@ -707,23 +719,6 @@ func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte)
 	return nil
 }
 
-// TODO-cache
-//func (l *Ledger) Size() (int64, int64) {
-//	return l.DBStore.Size()
-//}
-//
-//func (l *Ledger) GC() error {
-//	return l.DBStore.Purge()
-//}
-
-//func (l *Ledger) LockCache() {
-//	l.dbCache.GetCache().Lock()
-//}
-//
-//func (l *Ledger) UnLockCache() {
-//	l.dbCache.GetCache().UnLock()
-//}
-
 func NewTestLedger() (func(), *Ledger) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
@@ -737,28 +732,18 @@ func NewTestLedger() (func(), *Ledger) {
 	}, l
 }
 
-type ActionType byte
-
-const (
-	Dump ActionType = iota
-	GC
-	BackUp
-)
-
-// TODO-cache
-//func (l *Ledger) Action(action ActionType) (string, error) {
-//	switch action {
-//	case Dump:
-//		return l.Dump()
-//	case GC:
-//		if err := l.GC(); err != nil {
-//			return "", err
-//		}
-//		return "", nil
-//	default:
-//		return "", nil
-//	}
-//}
+func (l *Ledger) Action(at storage.ActionType, t int) (interface{}, error) {
+	switch at {
+	case storage.Dump:
+		return l.Dump(t)
+	case storage.GC:
+		return l.store.Action(at)
+	case storage.Size:
+		return l.store.Action(at)
+	default:
+		return "", errors.New("invalid action type")
+	}
+}
 
 type CacheStat struct {
 	Index int

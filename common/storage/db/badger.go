@@ -7,6 +7,7 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/options"
 	"github.com/pkg/errors"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -219,7 +220,9 @@ func (b *BadgerStore) Drop(prefix []byte) error {
 			key := item.Key()
 			k := make([]byte, len(key))
 			copy(k, key)
-			txn.Delete(k)
+			if err := txn.Delete(k); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -227,6 +230,25 @@ func (b *BadgerStore) Drop(prefix []byte) error {
 
 func (b *BadgerStore) Close() error {
 	return b.db.Close()
+}
+
+func (b *BadgerStore) Action(at storage.ActionType) (interface{}, error) {
+	switch at {
+	case storage.GC:
+		err := b.db.RunValueLogGC(0.5)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	case storage.Size:
+		lsm, vlog := b.db.Size()
+		s := make(map[string]int64)
+		s["lsm"] = lsm
+		s["vlog"] = vlog
+		return s, nil
+	default:
+		return "", errors.New("invalid action type")
+	}
 }
 
 type BadgerTransaction struct {
@@ -310,7 +332,9 @@ func (b *BadgerTransaction) Drop(prefix []byte) error {
 		key := item.Key()
 		k := make([]byte, len(key))
 		copy(k, key)
-		b.Delete(k)
+		if err := b.Delete(k); err != nil {
+			return err
+		}
 	}
 	return nil
 }

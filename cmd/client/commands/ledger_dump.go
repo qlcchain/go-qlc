@@ -9,13 +9,15 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
+	"strings"
+	"time"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/ledger"
 )
 
 func addLedgerDumpByIshell(parentCmd *ishell.Cmd) {
@@ -70,18 +72,32 @@ func dump() error {
 	}
 
 	var path string
-	err = client.Call(&path, "debug_action", ledger.Dump)
+	err = client.Call(&path, "debug_action", storage.Dump, 0)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 
-	s = fmt.Sprintf("dump to %s  ", path)
-	if interactive {
-		util.Info(s)
-	} else {
-		fmt.Println(s)
-	}
+	fmt.Println(fmt.Sprintf("dump to %s  ", path))
 
-	return nil
+	timer := time.NewTicker(1 * time.Second)
+	for {
+		select {
+		case <-timer.C:
+			var r string
+			err = client.Call(&r, "debug_action", storage.Dump, 1)
+			if err != nil {
+				return err
+			}
+			if strings.EqualFold(r, "done") {
+				s = fmt.Sprintf("dump successfully  ")
+				if interactive {
+					util.Info(s)
+				} else {
+					fmt.Println(s)
+				}
+				return nil
+			}
+		}
+	}
 }

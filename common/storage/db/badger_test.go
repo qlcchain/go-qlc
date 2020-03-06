@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgraph-io/badger"
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
@@ -15,7 +16,7 @@ import (
 
 func setupTestCase(t *testing.T) (func(t *testing.T), storage.Store) {
 	t.Parallel()
-	dir := filepath.Join(config.QlcTestDataDir(), "badger", uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "store", uuid.New().String())
 	db, err := NewBadgerStore(dir)
 	if err != nil {
 		t.Fatal(err)

@@ -65,7 +65,10 @@ func TestLedger_GetPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("pending,", p)
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
+	if _, err := l.GetPending(&pendingkey); err != nil {
+		t.Fatal(err)
+	}
 	count := 0
 	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
 		t.Log(pendingKey, pendingInfo)
@@ -153,6 +156,7 @@ func TestLedger_PendingAmount(t *testing.T) {
 	defer teardownTestCase(t)
 
 	pendingkey, pendinginfo := addPending(t, l)
+	time.Sleep(2 * time.Second)
 	if _, err := l.rcache.GetAccountPending(pendingkey.Address, pendinginfo.Type); err == nil {
 		t.Fatal("pending should not found")
 	}

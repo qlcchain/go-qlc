@@ -3,16 +3,15 @@ package process
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 )
 
 func (lv *LedgerVerifier) BlockCacheCheck(block *types.StateBlock) (ProcessResult, error) {
-	lv.logger.Info("check cache block, ", block.GetHash())
+	lv.logger.Infof("check cache block, %s(%s)", block.GetHash(), block.GetType().String())
 	if c, ok := lv.cacheBlockCheck[block.Type]; ok {
 		r, err := c.Check(lv, block)
 		if err != nil {

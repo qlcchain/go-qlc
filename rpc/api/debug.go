@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"strconv"
 	"time"
 
@@ -156,9 +157,30 @@ func (l *DebugApi) UncheckBlocksCount() (map[string]int, error) {
 	return unchecks, nil
 }
 
-//func (l *DebugApi) Action(t ledger.ActionType) (string, error) {
-//	return l.ledger.Action(t)
-//}
+func (l *DebugApi) Action(at storage.ActionType, t int) (string, error) {
+	r, err := l.ledger.Action(at, t)
+	if err != nil {
+		return "", err
+	}
+	if s, ok := r.(string); ok {
+		return s, nil
+	} else {
+		return "", errors.New("error action")
+	}
+}
+
+func (c *DebugApi) LedgerSize() (map[string]int64, error) {
+	result, err := c.ledger.Action(storage.Size, 0)
+	if err != nil {
+		return nil, err
+	}
+	s := result.(map[string]int64)
+	r := make(map[string]int64)
+	r["lsm"] = s["lsm"]
+	r["vlog"] = s["vlog"]
+	r["total"] = s["lsm"] + s["vlog"]
+	return r, nil
+}
 
 func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
 	r := make(map[string]types.Hash)

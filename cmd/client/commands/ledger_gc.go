@@ -9,13 +9,13 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
-	"github.com/qlcchain/go-qlc/ledger"
 )
 
 func addLedgerGCByIshell(parentCmd *ishell.Cmd) {
@@ -62,7 +62,7 @@ func gc() error {
 	defer client.Close()
 
 	var path string
-	err = client.Call(&path, "debug_action", ledger.GC)
+	err = client.Call(&path, "debug_action", storage.GC, 0)
 	if err != nil {
 		fmt.Println(err)
 		return err

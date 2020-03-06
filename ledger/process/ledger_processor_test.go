@@ -62,3 +62,22 @@ func TestProcess_BlockProcess(t *testing.T) {
 		}
 	}
 }
+
+func TestProcess_ContractBlockProcess(t *testing.T) {
+	teardownTestCase, _, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	bs := mock.ContractBlocks()
+	if err := lv.BlockProcess(bs[0]); err != nil {
+		t.Fatal(err)
+	}
+	for i, b := range bs[1:] {
+		fmt.Println(i)
+		if r, err := lv.BlockCheck(b); r != Progress || err != nil {
+			t.Fatal(r, err)
+		}
+		if err := lv.BlockProcess(b); err != nil {
+			t.Fatal(Other, err)
+		}
+	}
+}

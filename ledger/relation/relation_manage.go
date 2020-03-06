@@ -6,12 +6,13 @@ import (
 	"sync"
 
 	"github.com/jmoiron/sqlx"
+	"go.uber.org/zap"
+
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/storage/relationdb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/zap"
 )
 
 type Relation struct {
@@ -213,7 +214,7 @@ func (r *Relation) EmptyStore() error {
 	for _, s := range r.tables {
 		sql := fmt.Sprintf("delete from %s ", s.TableName())
 		if _, err := r.db.Store().Exec(sql); err != nil {
-			r.logger.Errorf("exec error, sql: %s, err: %s", sql, err.Error())
+			r.logger.Errorf("exec delete error, sql: %s, err: %s", sql, err.Error())
 			return err
 		}
 	}

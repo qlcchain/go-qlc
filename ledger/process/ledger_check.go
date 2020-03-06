@@ -78,7 +78,7 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	checkWork := true
 	checkSign := true
 
-	lv.logger.Debug("check block ", hash)
+	lv.logger.Debug("check cache block base info: ", hash)
 	if err := checkReceiveBlockRepeat(lv, block); err != Progress {
 		return err, nil
 	}
@@ -541,6 +541,7 @@ func (cacheBlockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBloc
 func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	input, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 	if err != nil {
+		lv.logger.Errorf("send block must be confirmed: %s", err)
 		return GapSource, nil
 	}
 

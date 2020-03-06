@@ -39,8 +39,8 @@ type Block struct {
 	Work           types.Work      `msg:"work,extension" json:"work"`
 	Signature      types.Signature `msg:"signature,extension" json:"signature"`
 	Hash           types.Hash      `msg:"hash" json:"hash"`
-	BlockHeight    int64           `msg:"blockHeight" json:"blockHeight"`
-	InChain        int             `msg:"inChain" json:"inChain"`
+	BlockHeight    int             `msg:"blockHeight" json:"blockHeight"` // 0（block is isolated）
+	InChain        int             `msg:"inChain" json:"inChain"`         // 0（false）, 1（true）。
 	Reason         string          `msg:"reason" json:"reason"`
 }
 
@@ -53,7 +53,8 @@ type Account struct {
 	Balance        types.Balance `msg:"balance,extension" json:"balance"`
 	Modified       int64         `msg:"modified" json:"modified"`
 	BlockCount     int64         `msg:"blockCount," json:"blockCount"`
-	Certain        int           `msg:"certain" json:"certain"` // 0（false）, 1（true）。
+	Certain        int           `msg:"certain" json:"certain"`         // 0（false）, 1（true）。
+	Consecutive    int           `msg:"consecutive" json:"consecutive"` // 0（false）, 1（true）。
 }
 
 type BlockLink struct {
@@ -63,24 +64,37 @@ type BlockLink struct {
 	Link  types.Hash      `msg:"link" json:"link"`
 }
 
-func (l *Ledger) Dump() (string, error) {
+func (l *Ledger) Dump(t int) (string, error) {
 	p := path.Join(l.dir, "relation")
 	if err := util.CreateDirIfNotExist(p); err != nil {
 		return "", err
 	}
 	dir := path.Join(p, "dump.db")
 	dirPro := path.Join(p, "dump.processing")
+
+	if t == 1 {
+		if _, err := os.Stat(dirPro); err == nil {
+			return "", nil
+		} else {
+			return "done", nil
+		}
+	}
+
 	if _, err := os.Stat(dir); err == nil {
 		if err := os.Remove(dir); err != nil {
 			return "", err
 		}
 	}
-	if _, err := os.Stat(dir); err != nil {
-		file, err := os.Create(dirPro)
-		if err != nil {
+
+	if _, err := os.Stat(dirPro); err == nil {
+		if err := os.Remove(dirPro); err != nil {
 			return "", err
 		}
-		defer file.Close()
+	}
+
+	file, err := os.Create(dirPro)
+	if err != nil {
+		return "", err
 	}
 
 	db, err := sqlx.Connect("sqlite3", dir)
@@ -88,14 +102,23 @@ func (l *Ledger) Dump() (string, error) {
 		return "", fmt.Errorf("connect sqlite error: %s", err)
 	}
 	go func() {
-		if err := l.dump(dirPro, db); err != nil {
+		defer func() {
+			if err := file.Close(); err != nil {
+				l.logger.Error(err)
+			}
+			if err := os.Remove(dirPro); err != nil {
+				l.logger.Error(err)
+			}
+		}()
+		if err := l.dump(db); err != nil {
 			l.logger.Error(err)
 		}
+		fmt.Println("dump done")
 	}()
 	return dir, nil
 }
 
-func (l *Ledger) dump(dir string, db *sqlx.DB) error {
+func (l *Ledger) dump(db *sqlx.DB) error {
 	if err := initDumpTables(db); err != nil {
 		return fmt.Errorf("init dump tables error: %s", err)
 	}
@@ -111,117 +134,135 @@ func (l *Ledger) dump(dir string, db *sqlx.DB) error {
 	if err := l.dumpBlockUnchecked(db); err != nil {
 		return fmt.Errorf("dump block unchecked error: %s", err)
 	}
-	return os.Remove(dir)
+	return nil
 }
 
 func (l *Ledger) dumpBlock(db *sqlx.DB) error {
-	inChainBlocksMap := make(map[types.Hash]*Block)
+	batchAccounts := make([]*types.AccountMeta, 0)
 	err := l.GetAccountMetas(func(am *types.AccountMeta) error {
-		for _, tm := range am.Tokens {
-			blkHash := tm.OpenBlock
-			var h int64
-			h = 1
-			for {
-				blk, err := l.GetStateBlockConfirmed(blkHash)
-				if err != nil {
-					break
-				}
-				inBlock := convertToDumpBlock(blk)
-				inBlock.InChain = 1
-				inBlock.BlockHeight = h
-
-				inChainBlocksMap[blk.GetHash()] = inBlock
-				h++
-				if blkHash, err = l.GetBlockChild(blkHash); err != nil {
-					break
-				}
+		batchAccounts = append(batchAccounts, am)
+		if len(batchAccounts) > 200 {
+			if err := l.dumpBlockByAccount(batchAccounts, db); err != nil {
+				return err
 			}
+			batchAccounts = batchAccounts[:0]
 		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-
-	offChainBlocksMap := make(map[types.Hash]*Block, 0)
-	err = l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
-		if _, ok := inChainBlocksMap[block.GetHash()]; !ok {
-			b := convertToDumpBlock(block)
-			b.InChain = 0
-			offChainBlocksMap[block.GetHash()] = b
+	if len(batchAccounts) > 0 {
+		if err := l.dumpBlockByAccount(batchAccounts, db); err != nil {
+			return err
 		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	if len(offChainBlocksMap) > 0 {
-		for _, blk := range offChainBlocksMap {
-			if b, ok := inChainBlocksMap[blk.Previous]; ok {
-				offChainBlocksMap[blk.Hash].BlockHeight = b.BlockHeight + 1
-
-				cBlk := blk
-				for {
-					findPre := false
-					for _, b := range offChainBlocksMap {
-						if b.Previous == cBlk.Hash {
-							offChainBlocksMap[b.Hash].BlockHeight = offChainBlocksMap[cBlk.Hash].BlockHeight + 1
-							cBlk = b
-							findPre = true
-							break
-						}
-					}
-					if !findPre {
-						break
-					}
-				}
-			}
-		}
-	}
-	if err := dumpBlocks(inChainBlocksMap, tableBlock, db); err != nil {
-		return err
-	}
-	if err := dumpBlocks(offChainBlocksMap, tableBlock, db); err != nil {
-		return err
-	}
-	if err := l.dumpAccount(offChainBlocksMap, db); err != nil {
-		return err
 	}
 	return nil
 }
 
-func (l *Ledger) dumpAccount(offChainBlocks map[types.Hash]*Block, db *sqlx.DB) error {
-	unCertains := make(map[types.Hash]int, 0)
-	for _, blk := range offChainBlocks {
-		accountHash, _ := types.HashBytes(blk.Address[:], blk.Token[:])
-		unCertains[accountHash] = 0
+func (l *Ledger) dumpBlockByAccount(batchAccounts []*types.AccountMeta, db *sqlx.DB) error {
+	allBlocks := make(map[string][]*Block, 0)
+	allAccounts := make([]*Account, 0)
+
+	batchAccountsMap := make(map[types.Address]int, 0)
+	for _, a := range batchAccounts {
+		batchAccountsMap[a.Address] = 1
 	}
 
-	certainAccounts := make([]*Account, 0)
-	unCertainAccounts := make([]*Account, 0)
-	err := l.GetAccountMetas(func(am *types.AccountMeta) error {
-		for _, tm := range am.Tokens {
-			accountHash, _ := types.HashBytes(tm.BelongTo[:], tm.Type[:])
-			if _, ok := unCertains[accountHash]; ok {
-				a := convertToDumpAccount(tm)
-				a.Certain = 0
-				unCertainAccounts = append(unCertainAccounts, a)
-			} else {
-				a := convertToDumpAccount(tm)
-				a.Certain = 1
-				certainAccounts = append(certainAccounts, a)
-			}
+	if err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
+		if _, ok := batchAccountsMap[block.Address]; ok {
+			hash, _ := types.HashBytes(block.Address[:], block.Token[:])
+			allBlocks[hash.String()] = append(allBlocks[hash.String()], convertToDumpBlock(block))
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
-	if err := dumpAccounts(certainAccounts, tableBlock, db); err != nil {
-		return err
+
+	for _, acc := range batchAccounts {
+		for _, tm := range acc.Tokens {
+			a := convertToDumpAccount(tm)
+			tokenBlocksMap := make(map[types.Hash]*Block)
+			tokenOffChainBlocks := make([]types.Hash, 0)
+
+			hash, _ := types.HashBytes(tm.BelongTo[:], tm.Type[:])
+			for _, blk := range allBlocks[hash.String()] {
+				tokenBlocksMap[blk.Hash] = blk
+			}
+
+			curHash := tm.Header
+			curBlock := tokenBlocksMap[curHash]
+			index := 1
+			for {
+				curBlock = tokenBlocksMap[curHash]
+				if curBlock == nil {
+					l.logger.Error("block is not found: ", curHash.String())
+					break
+				} else {
+					curBlock.BlockHeight = index
+					curBlock.InChain = 1
+
+					curHash = curBlock.Previous
+					if curHash == types.ZeroHash {
+						if curBlock.Hash == tm.OpenBlock {
+							a.Consecutive = 1
+						}
+						break
+					}
+					index = index + 1
+				}
+			}
+
+			for h, b := range tokenBlocksMap {
+				if b.InChain == 0 {
+					tokenOffChainBlocks = append(tokenOffChainBlocks, h)
+				}
+			}
+
+			if len(tokenOffChainBlocks) > 0 {
+				for _, hash := range tokenOffChainBlocks {
+					if !tokenBlocksMap[hash].Previous.IsZero() {
+						if tokenBlocksMap[tokenBlocksMap[hash].Previous].InChain == 1 {
+							tokenBlocksMap[hash].BlockHeight = tokenBlocksMap[tokenBlocksMap[hash].Previous].BlockHeight - 1
+
+							chash := hash
+							for {
+								findPre := false
+								for _, b := range tokenOffChainBlocks {
+									if tokenBlocksMap[hash].Previous == chash {
+										tokenBlocksMap[b].BlockHeight = tokenBlocksMap[chash].BlockHeight - 1
+										chash = b
+										findPre = true
+										break
+									}
+								}
+								if !findPre {
+									break
+								}
+							}
+						}
+					}
+				}
+			}
+
+			totalCount := index + 1
+			for _, b := range tokenBlocksMap {
+				b.BlockHeight = totalCount - b.BlockHeight
+			}
+
+			if err := dumpBlocks(tokenBlocksMap, tableBlock, db); err != nil {
+				return err
+			}
+
+			if len(tokenOffChainBlocks) > 0 {
+				a.Certain = 0
+			} else {
+				a.Certain = 1
+			}
+			allAccounts = append(allAccounts, a)
+		}
 	}
-	if err := dumpAccounts(unCertainAccounts, tableBlock, db); err != nil {
+	if err := dumpAccounts(allAccounts, tableBlock, db); err != nil {
 		return err
 	}
 	return nil
@@ -500,73 +541,38 @@ func dumpBlockLinks(bLinks []*BlockLink, db *sqlx.DB) error {
 	return nil
 }
 
-func initDumpTables(db *sqlx.DB) error {
-	block := new(Block)
-	rv := reflect.ValueOf(*block)
-	rt := reflect.TypeOf(*block)
+// create tables schema
+func createTables(obj interface{}, tableName string, db *sqlx.DB) error {
+	rv := reflect.ValueOf(obj)
+	rt := reflect.TypeOf(obj)
 	fields := getTableField(rv, rt)
-	tableName := strings.ToLower(rt.Name())
 	sql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id integer PRIMARY KEY AUTOINCREMENT,  %s ) ", tableName, strings.Join(fields, ","))
 	if _, err := db.Exec(sql); err != nil {
-		fmt.Printf("exec error, sql: %s, err: %s \n", sql, err.Error())
+		fmt.Printf("exec create error, sql: %s, err: %s \n", sql, err.Error())
 		return err
 	}
+	return nil
+}
 
-	account := new(Account)
-	rv2 := reflect.ValueOf(*account)
-	rt2 := reflect.TypeOf(*account)
-	fields2 := getTableField(rv2, rt2)
-	tableName2 := strings.ToLower(rt2.Name())
-	sql2 := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id integer PRIMARY KEY AUTOINCREMENT,  %s ) ", tableName2, strings.Join(fields2, ","))
-	if _, err := db.Exec(sql2); err != nil {
-		fmt.Printf("exec error, sql: %s, err: %s \n", sql2, err.Error())
+func initDumpTables(db *sqlx.DB) error {
+	if err := createTables(Block{}, "block", db); err != nil {
 		return err
 	}
-
-	blkLink := new(BlockLink)
-	rv3 := reflect.ValueOf(*blkLink)
-	rt3 := reflect.TypeOf(*blkLink)
-	fields3 := getTableField(rv3, rt3)
-	tableName3 := strings.ToLower(rt3.Name())
-	sql3 := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id integer PRIMARY KEY AUTOINCREMENT,  %s ) ", tableName3, strings.Join(fields3, ","))
-	if _, err := db.Exec(sql3); err != nil {
-		fmt.Printf("exec error, sql: %s, err: %s \n", sql3, err.Error())
+	if err := createTables(Account{}, "account", db); err != nil {
 		return err
 	}
-
-	blockcache := new(Block)
-	rv4 := reflect.ValueOf(*blockcache)
-	rt4 := reflect.TypeOf(*blockcache)
-	fields4 := getTableField(rv4, rt4)
-	tableName4 := "blockcache"
-	sql4 := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id integer PRIMARY KEY AUTOINCREMENT,  %s ) ", tableName4, strings.Join(fields4, ","))
-	if _, err := db.Exec(sql4); err != nil {
-		fmt.Printf("exec error, sql: %s, err: %s \n", sql4, err.Error())
+	if err := createTables(BlockLink{}, "blocklink", db); err != nil {
 		return err
 	}
-
-	accountcache := new(Account)
-	rv5 := reflect.ValueOf(*accountcache)
-	rt5 := reflect.TypeOf(*accountcache)
-	fields5 := getTableField(rv5, rt5)
-	tableName5 := "accountcache"
-	sql5 := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id integer PRIMARY KEY AUTOINCREMENT,  %s ) ", tableName5, strings.Join(fields5, ","))
-	if _, err := db.Exec(sql5); err != nil {
-		fmt.Printf("exec error, sql: %s, err: %s \n", sql5, err.Error())
+	if err := createTables(Block{}, "blockcache", db); err != nil {
 		return err
 	}
-
-	blockUncheck := new(Block)
-	rv6 := reflect.ValueOf(*blockUncheck)
-	rt6 := reflect.TypeOf(*blockUncheck)
-	fields6 := getTableField(rv6, rt6)
-	tableName6 := "blockunchecked"
-	sql6 := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id integer PRIMARY KEY AUTOINCREMENT,  %s ) ", tableName6, strings.Join(fields6, ","))
-	if _, err := db.Exec(sql6); err != nil {
-		fmt.Printf("exec error, sql: %s, err: %s \n", sql6, err.Error())
+	if err := createTables(Account{}, "accountcache", db); err != nil {
 		return err
 	}
-
+	if err := createTables(Block{}, "blockunchecked", db); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -587,6 +593,7 @@ func getTableField(rv reflect.Value, rt reflect.Type) []string {
 	return fields
 }
 
+// exec sql
 func execSql(table string, cols []string, rows [][]interface{}, db *sqlx.DB) error {
 	MaxProcess := 100
 
@@ -600,8 +607,10 @@ func execSql(table string, cols []string, rows [][]interface{}, db *sqlx.DB) err
 			exVals = make([][]interface{}, 0)
 		}
 	}
-	if err := batchSql(table, cols, exVals, db); err != nil {
-		return err
+	if len(exVals) > 0 {
+		if err := batchSql(table, cols, exVals, db); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -631,7 +640,7 @@ func batchSql(table string, cols []string, rows [][]interface{}, db *sqlx.DB) er
 	}
 	sql := fmt.Sprintf("insert into %s (%s) values %s", string(table), strings.Join(keys, ","), strings.Join(values, ","))
 	if _, err := db.Exec(sql); err != nil {
-		return fmt.Errorf("exec error, sql: %s, err: %s \n", sql, err.Error())
+		return fmt.Errorf("exec insert error, sql: %s, err: %s \n", sql, err.Error())
 	}
 	return nil
 }
