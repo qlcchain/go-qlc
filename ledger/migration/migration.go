@@ -17,7 +17,7 @@ func (m MigrationV1ToV11) Migrate(store storage.Store) error {
 	return store.BatchWrite(true, func(batch storage.Batch) error {
 		if b, err := checkVersion(m, store); err == nil && b {
 			fmt.Println("migrate ledger to v11")
-			if err := batch.Drop(nil); err == nil {
+			if err := store.Drop(nil); err == nil {
 				return updateVersion(m, batch)
 			} else {
 				return err

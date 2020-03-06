@@ -42,6 +42,9 @@ func TestProcess_CacheContractBlockProcess(t *testing.T) {
 	if err := lv.BlockCacheProcess(bs[0]); err != nil {
 		t.Fatal(err)
 	}
+	if err := lv.BlockProcess(bs[0]); err != nil {
+		t.Fatal(Other, err)
+	}
 	for i, b := range bs[1:] {
 		fmt.Println(i)
 		if r, err := lv.BlockCacheCheck(b); r != Progress || err != nil {
