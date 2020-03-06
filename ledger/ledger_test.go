@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/storage"
-
 	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
