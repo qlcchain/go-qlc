@@ -299,6 +299,17 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		return nil, nil, err
 	}
 
+	// verify sms date and uploading date
+	if block.Timestamp <= 0 || block.Timestamp < contract.StartDate || block.Timestamp > contract.EndDate {
+		return nil, nil, fmt.Errorf("invalid uploading date, should be in [%s, %s], got %s",
+			timeString(contract.StartDate), timeString(contract.EndDate), timeString(block.Timestamp))
+	}
+
+	if param.SmsDt <= 0 || param.SmsDt < contract.StartDate || param.SmsDt > contract.EndDate {
+		return nil, nil, fmt.Errorf("invalid SMS date, should be in [%s, %s], got %s",
+			timeString(contract.StartDate), timeString(contract.EndDate), timeString(param.SmsDt))
+	}
+
 	if !(contract.PartyA.Address == block.Address || contract.PartyB.Address == block.Address) {
 		return nil, nil, fmt.Errorf("%s can not upload CDR data to contract %s", block.Address.String(), contractAddress.String())
 	}
@@ -778,4 +789,8 @@ func (t *TerminateContract) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 			return nil, nil, fmt.Errorf("invalid saved contract data of %s", param.ContractAddress.String())
 		}
 	}
+}
+
+func timeString(t int64) string {
+	return time.Unix(t, 0).Format(time.RFC3339)
 }

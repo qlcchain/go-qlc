@@ -41,6 +41,7 @@ var (
 	NEP5PledgeABI, _ = abi.JSONToABIContract(strings.NewReader(JsonNEP5Pledge))
 )
 
+//go:generate stringer -type=PledgeType
 type PledgeType uint8
 
 const (

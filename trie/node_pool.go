@@ -56,9 +56,6 @@ func (p *NodePool) Len() int {
 	return p.cache.Len(false)
 }
 
-func (p *NodePool) clear() {
-}
-
 var initGlobalTriePoolOnce sync.Once
 var globalTriePool *NodePool
 

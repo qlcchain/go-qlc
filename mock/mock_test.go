@@ -9,12 +9,20 @@ package mock
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -321,4 +329,44 @@ func TestStateBlockWithAddress(t *testing.T) {
 	if blk := StateBlockWithAddress(a); blk.Address != a {
 		t.Fatal()
 	}
+}
+
+func TestMockChain(t *testing.T) {
+	t.Skip()
+	dir := filepath.Join(config.QlcTestDataDir(), "mock", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	_, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var blocks []*types.StateBlock
+	priv1, _ := hex.DecodeString("7098c089e66bd66476e3b88df8699bcd4dacdd5e1e5b41b3c598a8a36d851184d992a03b7326b7041f689ae727292d761b329a960f3e4335e0a7dcf2c43c4bcf")
+	// qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te
+	priv2, _ := hex.DecodeString("31ee4e16826569dc631b969e71bd4c46d5c0df0daeca6933f46586f36f49537cd929630709e1a1442411a3c2159e8dba5742c6835e54757444f8af35bf1c7393")
+	ac1 := types.NewAccount(priv1)
+	ac2 := types.NewAccount(priv2)
+
+	tuples := []*types.Tuple{{
+		First:  config.GasToken(),
+		Second: config.GenesisMintageHash(),
+	}, {
+		First:  config.ChainToken(),
+		Second: config.GenesisBlockHash(),
+	}}
+	for _, tuple := range tuples {
+		token := tuple.First.(types.Hash)
+		genesis := tuple.Second.(types.Hash)
+		b0 := createBlock(types.Open, *ac1, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(1e15))}, genesis, ac1.Address()) //a1 open
+		blocks = append(blocks, b0)
+
+		b1 := createBlock(types.Send, *ac1, b0.GetHash(), token, types.Balance{Int: big.NewInt(int64(1e14))}, types.Hash(ac2.Address()), ac1.Address()) //a1 send
+		blocks = append(blocks, b1)
+
+		b2 := createBlock(types.Open, *ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(1e14))}, b1.GetHash(), ac1.Address()) //a2 open
+		blocks = append(blocks, b2)
+	}
+
+	fmt.Println(util.ToIndentString(blocks))
 }

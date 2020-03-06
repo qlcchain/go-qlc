@@ -38,7 +38,6 @@ const (
 	P2PService         = "P2PService"
 	ConsensusService   = "consensusService"
 	RPCService         = "rpcService"
-	IndexService       = "indexService"
 	PovService         = "povService"
 	MinerService       = "minerService"
 	AutoReceiveService = "autoReceiveService"

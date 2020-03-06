@@ -8,6 +8,7 @@
 package trie
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/mock"
@@ -25,19 +26,35 @@ func TestTrieNode_Deserialize(t *testing.T) {
 			byte(73): node1,
 		},
 	}
-	bytes, err := node.Serialize()
+	data, err := node.Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	newNode := new(TrieNode)
-	err = newNode.Deserialize(bytes)
+	err = newNode.Deserialize(data)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if newNode.nodeType != node.nodeType {
 		t.Fatal("invalid type")
+	}
+
+	v1 := node.Value()
+	v2 := newNode.Value()
+	if !bytes.Equal(v1, v2) {
+		t.Fatal()
+	}
+
+	children := node.Children()
+	if len(children) != 1 {
+		t.Fatal()
+	}
+
+	nodes := node.SortedChildren()
+	for _, n := range nodes {
+		t.Log(n.String())
 	}
 
 	//if !reflect.DeepEqual(newNode.children, node.children) {

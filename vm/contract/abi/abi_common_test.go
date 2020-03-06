@@ -1,10 +1,11 @@
 package abi
 
 import (
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"testing"
 )
 
 func TestPovHeightToCount(t *testing.T) {
@@ -23,7 +24,7 @@ func TestPovHeightRound(t *testing.T) {
 }
 
 func TestPovGetNodeRewardHeightByDay(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
