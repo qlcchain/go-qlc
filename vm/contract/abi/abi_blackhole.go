@@ -13,11 +13,12 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/common/util"
+
 	"github.com/qlcchain/go-qlc/config"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/crypto/ed25519"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -69,19 +70,27 @@ type DestroyParam struct {
 
 func (param *DestroyParam) Signature(acc *types.Account) (types.Signature, error) {
 	if acc.Address() == param.Owner {
-		var data []byte
-
-		data = append(data, param.Owner[:]...)
-		data = append(data, param.Previous[:]...)
-		data = append(data, param.Token[:]...)
-		data = append(data, param.Amount.Bytes()...)
-		var sig types.Signature
-		copy(sig[:], ed25519.Sign(acc.PrivateKey(), data))
+		data := param.toBytes()
+		sig := acc.SignData(data)
 		return sig, nil
 	} else {
 		return types.ZeroSignature, fmt.Errorf("invalid address, exp: %s, act: %s",
 			param.Owner.String(), acc.Address().String())
 	}
+}
+
+func (param *DestroyParam) String() string {
+	return util.ToIndentString(param)
+}
+
+func (param *DestroyParam) toBytes() []byte {
+	var data []byte
+
+	data = append(data, param.Owner[:]...)
+	data = append(data, param.Previous[:]...)
+	data = append(data, param.Token[:]...)
+	data = append(data, param.Amount.Bytes()...)
+	return data
 }
 
 // Verify destroy params
@@ -102,12 +111,7 @@ func (param *DestroyParam) Verify() (bool, error) {
 		return false, errors.New("invalid amount")
 	}
 
-	var data []byte
-
-	data = append(data, param.Owner[:]...)
-	data = append(data, param.Previous[:]...)
-	data = append(data, param.Token[:]...)
-	data = append(data, param.Amount.Bytes()...)
+	data := param.toBytes()
 
 	return param.Owner.Verify(data, param.Sign[:]), nil
 }

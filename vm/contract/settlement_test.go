@@ -10,19 +10,12 @@
 package contract
 
 import (
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/bluele/gcache"
-	"github.com/google/uuid"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/sync"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -34,82 +27,7 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-const (
-	accountBlocks = `[
-	{
-		"type": "Open",
-		"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
-		"address": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"balance": "100000000000",
-		"vote": "0",
-		"network": "0",
-		"storage": "0",
-		"oracle": "0",
-		"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-		"link": "c0d330096ec4ab6ccf5481e06cc54e74b14f534e99e38df486f47d1123cbd1ae",
-		"sender": "MTU4MTExMTAwMDA=",
-		"receiver": "MTU4MDAwMDExMTE=",
-		"message": "747648bafd344347582876662641c4b8ffbf20a85ba01dc559ff930435bc5bad",
-		"povHeight": 0,
-		"timestamp": 1580997079,
-		"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-		"representative": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"work": "000000000122e972",
-		"signature": "5460905ad2096d1822dc086e8fe375409f9fc87f0e8288ca215a399eb2fee6c6c5fc94b53a18f62fe6d124f869cbac1737b762c9a8f7654d1b7ecacc480f010a"
-	},
-	{
-		"type": "Send",
-		"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
-		"address": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"balance": "40000000000",
-		"vote": "0",
-		"network": "0",
-		"storage": "0",
-		"oracle": "0",
-		"previous": "cad0cad8a98813787dc11ba2413afca574f2d62e222fd2644cc33c7d70124d90",
-		"link": "d929630709e1a1442411a3c2159e8dba5742c6835e54757444f8af35bf1c7393",
-		"sender": "MTU4MTExMTAwMDA=",
-		"receiver": "MTU4MDAwMDExMTE=",
-		"message": "f82eae0fa0f56a53e9d217140eaa33219c7cb910439501f333383f4d6147618c",
-		"povHeight": 0,
-		"timestamp": 1580997083,
-		"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-		"representative": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"work": "0000000002aa56ad",
-		"signature": "dd0af652dc5acca94547b5e130a38a2728531235d224e6031f13d9958221fcd4852bee6684fa1b29c5170f71f7f301b64eda8d10208ecc12b2862b34ea049a0e"
-	},
-	{
-		"type": "Open",
-		"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
-		"address": "qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te",
-		"balance": "60000000000",
-		"vote": "0",
-		"network": "0",
-		"storage": "0",
-		"oracle": "0",
-		"previous": "0000000000000000000000000000000000000000000000000000000000000000",
-		"link": "b05f7c462867df6f24b810c0b28b50d709667feb7d870a2b1db23bb3fa491249",
-		"sender": "MTU4MTExMTAwMDA=",
-		"receiver": "MTU4MDAwMDExMTE=",
-		"message": "eb9c1dcccaba3937d8745c364dadb1ca056cfa9540184277ad6fe8af66f81358",
-		"povHeight": 0,
-		"timestamp": 1580997093,
-		"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-		"representative": "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq",
-		"work": "00000000002389ad",
-		"signature": "5d35efd693b85ccf4a01e4f132aa0a248b328b10024af2a22e65474038a4aea3decb6c414c5563b326f509f4cf5eac852c81317a96a8c349b965849c31e5580d"
-	}
-]`
-)
-
 var (
-	// qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq
-	priv1, _ = hex.DecodeString("7098c089e66bd66476e3b88df8699bcd4dacdd5e1e5b41b3c598a8a36d851184d992a03b7326b7041f689ae727292d761b329a960f3e4335e0a7dcf2c43c4bcf")
-	// qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te
-	priv2, _ = hex.DecodeString("31ee4e16826569dc631b969e71bd4c46d5c0df0daeca6933f46586f36f49537cd929630709e1a1442411a3c2159e8dba5742c6835e54757444f8af35bf1c7393")
-	ac1      = types.NewAccount(priv1)
-	ac2      = types.NewAccount(priv2)
-
 	createContractParam = cabi.CreateContractParam{
 		PartyA: cabi.Contractor{
 			Address: mock.Address(),
@@ -141,96 +59,10 @@ var (
 	}
 )
 
-func setupSettlementTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
-	dir := filepath.Join(cfg.QlcTestDataDir(), "settlement", uuid.New().String())
-	_ = os.RemoveAll(dir)
-	cm := cfg.NewCfgManager(dir)
-	_, err := cm.Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	l := ledger.NewLedger(cm.ConfigFile)
-	//ctx := vmstore.NewVMContext(l)
-	//verifier := process.NewLedgerVerifier(l)
-	//
-	//for _, v := range common.genesisInfos {
-	//	mb := v.GenesisMintageBlock
-	//	gb := v.GenesisBlock
-	//	err := ctx.SetStorage(types.MintageAddress[:], v.GenesisBlock.Token[:], v.GenesisBlock.Data)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	if b, err := l.HasStateBlock(mb.GetHash()); !b && err == nil {
-	//		if err := l.AddStateBlock(&mb); err != nil {
-	//			t.Fatal(err)
-	//		}
-	//	}
-	//	if b, err := l.HasStateBlock(gb.GetHash()); !b && err == nil {
-	//		if err := verifier.BlockProcess(&gb); err != nil {
-	//			t.Fatal(err)
-	//		}
-	//	}
-	//}
-	//_ = ctx.SaveStorage()
-
-	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(accountBlocks), &blocks); err != nil {
-		t.Fatal(err)
-	}
-
-	for i := range blocks {
-		block := blocks[i]
-		//if err := verifier.BlockProcess(block); err != nil {
-		//	t.Fatal(err)
-		//}
-		if err := updateBlock(l, block); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	return func(t *testing.T) {
-		//err := l.DBStore.Erase()
-		err := l.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		//CloseLedger()
-		err = os.RemoveAll(dir)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}, l
-}
-
-func updateBlock(l *ledger.Ledger, block *types.StateBlock) error {
-	return l.Cache().BatchUpdate(func(c *ledger.Cache) error {
-		err := l.UpdateStateBlock(block, c)
-		if err != nil {
-			return err
-		}
-		am, err := l.GetAccountMetaConfirmed(block.GetAddress(), c)
-		if err != nil && err != ledger.ErrAccountNotFound {
-			return fmt.Errorf("get account meta error: %s", err)
-		}
-		tm, err := l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken())
-		if err != nil && err != ledger.ErrAccountNotFound && err != ledger.ErrTokenNotFound {
-			return fmt.Errorf("get token meta error: %s", err)
-		}
-		err = updateFrontier(l, block, tm, c)
-		if err != nil {
-			return err
-		}
-		err = updateAccountMeta(l, block, am, c)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
 func buildContract(l *ledger.Ledger, t *testing.T) {
-	a1 := ac1.Address()
-	a2 := ac2.Address()
+	a1 := account1.Address()
+	a2 := account2.Address()
+
 	ctx := vmstore.NewVMContext(l)
 
 	if am, err := l.GetAccountMeta(a1); err != nil {
@@ -239,7 +71,7 @@ func buildContract(l *ledger.Ledger, t *testing.T) {
 		t.Log(util.ToIndentString(am))
 	}
 
-	if am, err := l.GetAccountMeta(ac2.Address()); err != nil {
+	if am, err := l.GetAccountMeta(a2); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(util.ToIndentString(am))
@@ -280,7 +112,7 @@ func buildContract(l *ledger.Ledger, t *testing.T) {
 			Timestamp:      common.TimeNow().Unix(),
 		}
 
-		sb.Signature = ac1.Sign(sb.GetHash())
+		sb.Signature = account1.Sign(sb.GetHash())
 
 		h := ctx.Cache.Trie().Hash()
 		if h != nil {
@@ -308,12 +140,13 @@ func buildContract(l *ledger.Ledger, t *testing.T) {
 }
 
 func TestCreate_And_Terminate_Contract(t *testing.T) {
-	teardownTestCase, l := setupSettlementTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	buildContract(l, t)
-	a1 := ac1.Address()
-	a2 := ac2.Address()
+	a1 := account1.Address()
+	a2 := account2.Address()
+
 	ctx := vmstore.NewVMContext(l)
 
 	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
@@ -353,7 +186,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 						Timestamp:      common.TimeNow().Unix(),
 					}
 
-					sb.Signature = ac2.Sign(sb.GetHash())
+					sb.Signature = account2.Sign(sb.GetHash())
 
 					h := ctx.Cache.Trie().Hash()
 					if h != nil {
@@ -407,12 +240,12 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 }
 
 func TestEdit_Pre_Next_Stops(t *testing.T) {
-	teardownTestCase, l := setupSettlementTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	buildContract(l, t)
-	a1 := ac1.Address()
-	a2 := ac2.Address()
+	a1 := account1.Address()
+	a2 := account2.Address()
 	ctx := vmstore.NewVMContext(l)
 
 	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
@@ -457,7 +290,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Timestamp:      common.TimeNow().Unix(),
 			}
 
-			sb.Signature = ac1.Sign(sb.GetHash())
+			sb.Signature = account1.Sign(sb.GetHash())
 
 			h := ctx.Cache.Trie().Hash()
 			if h != nil {
@@ -519,7 +352,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Timestamp:      common.TimeNow().Unix(),
 			}
 
-			sb.Signature = ac1.Sign(sb.GetHash())
+			sb.Signature = account1.Sign(sb.GetHash())
 
 			h = ctx.Cache.Trie().Hash()
 			if h != nil {
@@ -584,7 +417,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Timestamp:      common.TimeNow().Unix(),
 			}
 
-			sb.Signature = ac1.Sign(sb.GetHash())
+			sb.Signature = account1.Sign(sb.GetHash())
 
 			h = ctx.Cache.Trie().Hash()
 			if h != nil {
@@ -642,7 +475,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Timestamp:      common.TimeNow().Unix(),
 			}
 
-			sb.Signature = ac2.Sign(sb.GetHash())
+			sb.Signature = account2.Sign(sb.GetHash())
 
 			h = ctx.Cache.Trie().Hash()
 			if h != nil {
@@ -708,7 +541,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Timestamp:      common.TimeNow().Unix(),
 			}
 
-			sb.Signature = ac2.Sign(sb.GetHash())
+			sb.Signature = account2.Sign(sb.GetHash())
 
 			h = ctx.Cache.Trie().Hash()
 			if h != nil {
@@ -773,7 +606,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Timestamp:      common.TimeNow().Unix(),
 			}
 
-			sb.Signature = ac2.Sign(sb.GetHash())
+			sb.Signature = account2.Sign(sb.GetHash())
 
 			h = ctx.Cache.Trie().Hash()
 			if h != nil {
@@ -809,18 +642,18 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 }
 
 func TestCreate_And_Sign_Contract(t *testing.T) {
-	teardownTestCase, l := setupSettlementTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	a1 := ac1.Address()
-	a2 := ac2.Address()
+	a1 := account1.Address()
+	a2 := account2.Address()
 	if am, err := l.GetAccountMeta(a1); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(util.ToIndentString(am))
 	}
 
-	if am, err := l.GetAccountMeta(ac2.Address()); err != nil {
+	if am, err := l.GetAccountMeta(a2); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(util.ToIndentString(am))
@@ -863,7 +696,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			Timestamp:      common.TimeNow().Unix(),
 		}
 
-		sb.Signature = ac1.Sign(sb.GetHash())
+		sb.Signature = account1.Sign(sb.GetHash())
 
 		h := ctx.Cache.Trie().Hash()
 		if h != nil {
@@ -908,7 +741,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 		} else {
 			if len(rb) > 0 {
 				rb1 := rb[0].Block
-				rb1.Signature = ac1.Sign(rb1.GetHash())
+				rb1.Signature = account1.Sign(rb1.GetHash())
 				t.Log(rb1.String())
 			} else {
 				t.Fatal("fail to generate create contract reward block")
@@ -960,7 +793,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 							Timestamp:      common.TimeNow().Unix(),
 						}
 
-						sb2.Signature = ac2.Sign(sb2.GetHash())
+						sb2.Signature = account2.Sign(sb2.GetHash())
 						if pk, info, err := signContract.ProcessSend(ctx, sb2); err != nil {
 							t.Fatal(err)
 						} else {
@@ -969,9 +802,13 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 								t.Fatal(err)
 							}
 
-							if available := cabi.IsContractAvailable(ctx, &address); !available {
-								t.Fatalf("failed to verify contract %s", address.String())
+							if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+								t.Fatal(err)
 							} else {
+								if !c.IsAvailable() {
+									t.Fatalf("failed to verify contract %s", address.String())
+								}
+
 								rev2 := &types.StateBlock{
 									Timestamp: common.TimeNow().Unix(),
 								}
@@ -980,7 +817,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 								} else {
 									if len(rb) > 0 {
 										rb2 := rb[0].Block
-										rb2.Signature = ac2.Sign(rb2.GetHash())
+										rb2.Signature = account2.Sign(rb2.GetHash())
 										t.Log(rb2.String())
 
 										// add prestop
@@ -1009,7 +846,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											Timestamp:      common.TimeNow().Unix(),
 										}
 
-										sb.Signature = ac1.Sign(sb.GetHash())
+										sb.Signature = account1.Sign(sb.GetHash())
 
 										h := ctx.Cache.Trie().Hash()
 										if h != nil {
@@ -1038,7 +875,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										} else {
 											if len(rb) > 0 {
 												rb1 := rb[0].Block
-												rb1.Signature = ac1.Sign(rb1.GetHash())
+												rb1.Signature = account1.Sign(rb1.GetHash())
 												t.Log(rb1.String())
 											} else {
 												t.Fatal("fail to generate add next stop reward block")
@@ -1072,7 +909,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											Timestamp:      common.TimeNow().Unix(),
 										}
 
-										sb2.Signature = ac2.Sign(sb.GetHash())
+										sb2.Signature = account2.Sign(sb.GetHash())
 
 										h = ctx.Cache.Trie().Hash()
 										if h != nil {
@@ -1101,7 +938,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										} else {
 											if len(rb) > 0 {
 												rb1 := rb[0].Block
-												rb1.Signature = ac2.Sign(rb1.GetHash())
+												rb1.Signature = account2.Sign(rb1.GetHash())
 												t.Log(rb1.String())
 											} else {
 												t.Fatal("fail to generate add pre stop reward block")
@@ -1145,7 +982,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											Timestamp:      common.TimeNow().Unix(),
 										}
 
-										sb.Signature = ac1.Sign(sb.GetHash())
+										sb.Signature = account1.Sign(sb.GetHash())
 
 										h = ctx.Cache.Trie().Hash()
 										if h != nil {
@@ -1198,7 +1035,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											Timestamp:      common.TimeNow().Unix(),
 										}
 
-										sb.Signature = ac2.Sign(sb.GetHash())
+										sb.Signature = account2.Sign(sb.GetHash())
 
 										h = ctx.Cache.Trie().Hash()
 										if h != nil {
@@ -1725,7 +1562,13 @@ func Test_verifyStopName(t *testing.T) {
 func Test_internalContract_DoPending(t *testing.T) {
 	i := internalContract{}
 	i.DoGap(nil, nil)
-	i.DoPending(nil)
-	i.DoReceiveOnPov(nil, nil, 0, nil, nil)
-	i.DoSendOnPov(nil, nil, 0, nil)
+	_, _, _ = i.DoPending(nil)
+	_ = i.DoReceiveOnPov(nil, nil, 0, nil, nil)
+	_ = i.DoSendOnPov(nil, nil, 0, nil)
+}
+
+func Test_timeString(t *testing.T) {
+	t.Log(timeString(0))
+	t.Log(timeString(-1))
+	t.Log(timeString(time.Now().Unix()))
 }

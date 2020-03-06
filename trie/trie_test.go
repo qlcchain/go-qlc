@@ -752,3 +752,27 @@ func TestTrie_Remove(t *testing.T) {
 		t.Fatal("load trie error")
 	}
 }
+
+func TestTrie_Clone(t *testing.T) {
+	teardownTestCase, t1 := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	k := []byte{1}
+	v := []byte{1, 2, 3}
+	t1.SetValue(k, v)
+
+	nodes := t1.NewNodeIterator(func(node *TrieNode) bool {
+		return true
+	})
+
+	for n := range nodes {
+		t.Log(n.String())
+	}
+
+	t2 := t1.Clone()
+	h1 := t1.Hash()
+	h2 := t2.Hash()
+	if !bytes.Equal(h1[:], h2[:]) {
+		t.Fatalf("%v,%v", h1, h2)
+	}
+}

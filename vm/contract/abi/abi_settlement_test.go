@@ -8,7 +8,6 @@
 package abi
 
 import (
-	"bytes"
 	"encoding/json"
 	"math"
 	"math/big"
@@ -5173,7 +5172,7 @@ func buildContractParam() (param *ContractParam) {
 }
 
 func TestGetContractsByAddress(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -5369,7 +5368,7 @@ func TestCDRStatus(t *testing.T) {
 }
 
 func TestGetAllSettlementContract(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -5753,7 +5752,7 @@ func TestCDRParam_ToHash(t *testing.T) {
 }
 
 func TestGetContracts(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	data := mockContractData(2)
@@ -6808,7 +6807,7 @@ func TestCreateContractParam_Verify(t *testing.T) {
 }
 
 func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 	data := mockContractData(2)
@@ -6873,7 +6872,7 @@ func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
 }
 
 func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 	data := mockContractData(2)
@@ -6938,89 +6937,6 @@ func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
 	}
 }
 
-func TestIsContractAvailable(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	ctx := vmstore.NewVMContext(l)
-
-	var contracts []*ContractParam
-
-	for i := 0; i < 2; i++ {
-		param := buildContractParam()
-
-		if i%2 == 1 {
-			param.Status = ContractStatusActiveStage1
-		}
-
-		contracts = append(contracts, param)
-		a, _ := param.Address()
-		abi, _ := param.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
-			t.Fatal(err)
-		}
-
-		if storage, err := ctx.GetStorage(types.SettlementAddress[:], a[:]); err == nil {
-			if !bytes.Equal(storage, abi) {
-				t.Fatalf("invalid saved contract, exp: %v, act: %v", abi, storage)
-			} else {
-				if p, err := ParseContractParam(storage); err == nil {
-					t.Log(a.String(), ": ", p.String())
-				} else {
-					t.Fatal(err)
-				}
-			}
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
-		t.Fatal(err)
-	}
-
-	if contracts == nil || len(contracts) != 2 {
-		t.Fatal("invalid mock contract data")
-	}
-
-	a1, _ := contracts[0].Address()
-	a2, _ := contracts[1].Address()
-
-	t.Log(a1.String(), " >>> ", a2.String())
-
-	type args struct {
-		ctx  *vmstore.VMContext
-		addr *types.Address
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "ok",
-			args: args{
-				ctx:  ctx,
-				addr: &a1,
-			},
-			want: true,
-		},
-		{
-			name: "fail",
-			args: args{
-				ctx:  ctx,
-				addr: &a2,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsContractAvailable(tt.args.ctx, tt.args.addr); got != tt.want {
-				t.Errorf("IsContractAvailable() of %s = %v, want %v", tt.args.addr.String(), got, tt.want)
-			}
-		})
-	}
-}
-
 func TestSignContractParam_ToABI(t *testing.T) {
 	sc := &SignContractParam{
 		ContractAddress: mock.Address(),
@@ -7042,7 +6958,7 @@ func TestSignContractParam_ToABI(t *testing.T) {
 }
 
 func TestGetSettlementContract(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
@@ -7802,7 +7718,7 @@ func buildCDRStatus() *CDRStatus {
 }
 
 func TestGetAllCDRStatus(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -7878,7 +7794,7 @@ func TestGetAllCDRStatus(t *testing.T) {
 }
 
 func TestGetCDRStatus(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8299,7 +8215,7 @@ type mockCDR struct {
 }
 
 func TestGetSummaryReport(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8393,7 +8309,7 @@ func TestGetSummaryReport(t *testing.T) {
 }
 
 func TestGetStopNames(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8526,7 +8442,7 @@ func TestContractAddressList_ToABI(t *testing.T) {
 }
 
 func TestSaveCDRStatus(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8563,7 +8479,7 @@ func TestSaveCDRStatus(t *testing.T) {
 }
 
 func TestGetCDRMapping(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8590,7 +8506,7 @@ func TestGetCDRMapping(t *testing.T) {
 }
 
 func TestGenerateMultiPartyInvoice(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 	ctx := vmstore.NewVMContext(l)
 
@@ -8737,5 +8653,208 @@ func TestGenerateMultiPartyInvoice(t *testing.T) {
 			t.Fatal("invalid invoice")
 		}
 		t.Log(util.ToIndentString(invoice))
+	}
+}
+
+func TestContractParam_IsAvailable(t *testing.T) {
+	cp := buildContractParam()
+	cp.StartDate = time.Now().AddDate(0, 0, -1).Unix()
+	cp.EndDate = time.Now().AddDate(0, 0, 5).Unix()
+	cp.Status = ContractStatusActivated
+
+	cp2 := buildContractParam()
+	cp2.StartDate = time.Now().AddDate(0, 0, -3).Unix()
+	cp2.EndDate = time.Now().AddDate(0, 0, -2).Unix()
+
+	cp3 := buildContractParam()
+	cp3.StartDate = time.Now().AddDate(0, 0, 1).Unix()
+	cp3.EndDate = time.Now().AddDate(0, 0, 2).Unix()
+
+	type fields struct {
+		CreateContractParam CreateContractParam
+		PreStops            []string
+		NextStops           []string
+		ConfirmDate         int64
+		Status              ContractStatus
+		Terminator          *types.Address
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              cp.Status,
+				Terminator:          nil,
+			},
+			want: true,
+		}, {
+			name: "f1",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              ContractStatusActiveStage1,
+				Terminator:          nil,
+			},
+			want: false,
+		}, {
+			name: "f2",
+			fields: fields{
+				CreateContractParam: cp2.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              cp.Status,
+				Terminator:          nil,
+			},
+			want: false,
+		}, {
+			name: "f3",
+			fields: fields{
+				CreateContractParam: cp2.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              cp.Status,
+				Terminator:          nil,
+			},
+			want: false,
+		}, {
+			name: "f4",
+			fields: fields{
+				CreateContractParam: cp3.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              cp.Status,
+				Terminator:          nil,
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractParam{
+				CreateContractParam: tt.fields.CreateContractParam,
+				PreStops:            tt.fields.PreStops,
+				NextStops:           tt.fields.NextStops,
+				ConfirmDate:         tt.fields.ConfirmDate,
+				Status:              tt.fields.Status,
+				Terminator:          tt.fields.Terminator,
+			}
+			if got := z.IsAvailable(); got != tt.want {
+				t.Errorf("IsAvailable() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestContractParam_IsExpired(t *testing.T) {
+	cp := buildContractParam()
+	cp.StartDate = time.Now().Unix()
+	cp.EndDate = time.Now().AddDate(0, 0, -5).Unix()
+	cp.Status = ContractStatusActivated
+
+	cp2 := buildContractParam()
+	cp2.StartDate = time.Now().AddDate(0, 0, -1).Unix()
+	cp2.EndDate = time.Now().AddDate(0, 0, 2).Unix()
+
+	cp3 := buildContractParam()
+	cp3.StartDate = time.Now().AddDate(0, 0, 1).Unix()
+	cp3.EndDate = time.Now().AddDate(0, 0, 2).Unix()
+
+	type fields struct {
+		CreateContractParam CreateContractParam
+		PreStops            []string
+		NextStops           []string
+		ConfirmDate         int64
+		Status              ContractStatus
+		Terminator          *types.Address
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              cp.Status,
+				Terminator:          nil,
+			},
+			want: true,
+		}, {
+			name: "f1",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              ContractStatusActiveStage1,
+				Terminator:          nil,
+			},
+			want: false,
+		}, {
+			name: "f2",
+			fields: fields{
+				CreateContractParam: cp2.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              cp.Status,
+				Terminator:          nil,
+			},
+			want: false,
+		}, {
+			name: "f3",
+			fields: fields{
+				CreateContractParam: cp2.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              cp.Status,
+				Terminator:          nil,
+			},
+			want: false,
+		}, {
+			name: "f4",
+			fields: fields{
+				CreateContractParam: cp3.CreateContractParam,
+				PreStops:            nil,
+				NextStops:           nil,
+				ConfirmDate:         0,
+				Status:              cp.Status,
+				Terminator:          nil,
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &ContractParam{
+				CreateContractParam: tt.fields.CreateContractParam,
+				PreStops:            tt.fields.PreStops,
+				NextStops:           tt.fields.NextStops,
+				ConfirmDate:         tt.fields.ConfirmDate,
+				Status:              tt.fields.Status,
+				Terminator:          tt.fields.Terminator,
+			}
+			if got := z.IsExpired(); got != tt.want {
+				t.Errorf("IsExpired() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

@@ -305,6 +305,10 @@ func (z *CreateContractParam) Verify() (bool, error) {
 		return false, fmt.Errorf("invalid end date %d", z.EndDate)
 	}
 
+	if z.EndDate < z.StartDate {
+		return false, fmt.Errorf("invalid end date, should bigger than %d, got: %d", z.StartDate, z.EndDate)
+	}
+
 	return true, nil
 }
 
@@ -437,6 +441,16 @@ func (z *ContractParam) IsNextStop(n string) bool {
 	return false
 }
 
+func (z *ContractParam) IsAvailable() bool {
+	unix := common.TimeNow().Unix()
+	return z.Status == ContractStatusActivated && unix >= z.StartDate && unix <= z.EndDate
+}
+
+func (z *ContractParam) IsExpired() bool {
+	unix := common.TimeNow().Unix()
+	return z.Status == ContractStatusActivated && unix > z.EndDate
+}
+
 func (z *ContractParam) IsContractor(addr types.Address) bool {
 	return z.PartyA.Address == addr || z.PartyB.Address == addr
 }
@@ -467,9 +481,8 @@ func (z *ContractParam) Equal(cp *CreateContractParam) (bool, error) {
 
 	if a1 == a2 {
 		return true, nil
-	} else {
-		return false, fmt.Errorf("invalid address, exp: %s,act: %s", a1.String(), a2.String())
 	}
+	return false, fmt.Errorf("invalid address, exp: %s,act: %s", a1.String(), a2.String())
 }
 
 func (z *ContractParam) DoActive(operator types.Address) error {
@@ -846,17 +859,6 @@ func (z *UpdateStopParam) Verify() error {
 	return validator.Validate(z)
 }
 
-// IsContractAvailable check contract status by contract ID
-func IsContractAvailable(ctx *vmstore.VMContext, addr *types.Address) bool {
-	if value, err := ctx.GetStorage(types.SettlementAddress[:], addr[:]); err == nil {
-		if param, err := ParseContractParam(value); err == nil {
-			unix := common.TimeNow().Unix()
-			return param.Status == ContractStatusActivated && unix >= param.StartDate && unix <= param.EndDate
-		}
-	}
-	return false
-}
-
 // GetCDRStatus
 // @param addr settlement contract address
 // @param CDR data hash
@@ -1072,7 +1074,21 @@ func GetAllSettlementContract(ctx *vmstore.VMContext) ([]*ContractParam, error) 
 // GetContractsByAddress get all contract data by address both Party A and Party B
 func GetContractsByAddress(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
 	return queryContractParamByAddress(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
-		return cp.PartyA.Address == *addr || cp.PartyB.Address == *addr
+		return cp.IsContractor(*addr)
+	})
+}
+
+// GetContractsByStatus get all contract data by address both Party A and Party B
+func GetContractsByStatus(ctx *vmstore.VMContext, addr *types.Address, status ContractStatus) ([]*ContractParam, error) {
+	return queryContractParamByAddress(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
+		return cp.IsContractor(*addr) && status == cp.Status
+	})
+}
+
+// GetContractsByStatus get all expired contract data by address both Party A and Party B
+func GetExpiredContracts(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
+	return queryContractParamByAddress(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
+		return cp.IsContractor(*addr) && cp.IsExpired()
 	})
 }
 

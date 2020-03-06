@@ -4,9 +4,20 @@ package abi
 
 import "strconv"
 
-const _PledgeType_name = "NetowrkVoteStorageOracle"
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the stringer command to generate them again.
+	var x [1]struct{}
+	_ = x[Network-0]
+	_ = x[Vote-1]
+	_ = x[Storage-2]
+	_ = x[Oracle-3]
+	_ = x[Invalid-4]
+}
 
-var _PledgeType_index = [...]uint8{0, 7, 11, 18, 24}
+const _PledgeType_name = "NetworkVoteStorageOracleInvalid"
+
+var _PledgeType_index = [...]uint8{0, 7, 11, 18, 24, 31}
 
 func (i PledgeType) String() string {
 	if i >= PledgeType(len(_PledgeType_index)-1) {

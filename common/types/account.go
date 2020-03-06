@@ -177,8 +177,12 @@ func (a *Account) PrivateKey() ed25519.PrivateKey {
 }
 
 func (a *Account) Sign(hash Hash) Signature {
+	return a.SignData(hash[:])
+}
+
+func (a *Account) SignData(data []byte) Signature {
 	var sig Signature
-	copy(sig[:], ed25519.Sign(a.privKey, hash[:]))
+	copy(sig[:], ed25519.Sign(a.privKey, data))
 	return sig
 }
 

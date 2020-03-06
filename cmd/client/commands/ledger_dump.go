@@ -9,9 +9,10 @@ package commands
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
 	"strings"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/storage"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"

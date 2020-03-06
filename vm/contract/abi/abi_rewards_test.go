@@ -22,7 +22,7 @@ import (
 )
 
 func TestGetRewardsDetail(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	vmContext := vmstore.NewVMContext(l)
@@ -75,7 +75,7 @@ func TestGetRewardsDetail(t *testing.T) {
 }
 
 func TestGetConfidantDetail(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
+	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	vmContext := vmstore.NewVMContext(l)
