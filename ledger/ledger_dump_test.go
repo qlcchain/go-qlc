@@ -31,6 +31,16 @@ func TestLedger_dump(t *testing.T) {
 	blk3.Token = acc.Tokens[0].Type
 	blk3.Previous = blk2.GetHash()
 
+	blk4 := mock.StateBlockWithoutWork()
+	blk4.Address = acc.Address
+	blk4.Token = acc.Tokens[0].Type
+	blk4.Previous = blk3.GetHash() // off chain
+
+	blk5 := mock.StateBlockWithoutWork()
+	blk5.Address = acc.Address
+	blk5.Token = acc.Tokens[0].Type
+	blk5.Previous = blk4.GetHash() // off chain
+
 	acc.Tokens[0].Header = blk3.GetHash()
 	fmt.Println(acc)
 
@@ -41,6 +51,9 @@ func TestLedger_dump(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := l.AddStateBlock(blk3); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(blk4); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.AddAccountMeta(acc, l.cache.GetCache()); err != nil {
@@ -66,8 +79,9 @@ func TestLedger_dump(t *testing.T) {
 		fmt.Println(err)
 		return
 	}
+	time.Sleep(2 * time.Second)
 	if _, err := l.Dump(0); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 }
