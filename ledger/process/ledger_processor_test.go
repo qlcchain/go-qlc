@@ -15,7 +15,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -29,17 +28,8 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	cfg, _ := cm.Load()
+	_, _ = cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
-	for _, v := range cfg.Genesis.GenesisBlocks {
-		genesisInfo := &common.GenesisInfo{
-			ChainToken:          v.ChainToken,
-			GasToken:            v.GasToken,
-			GenesisMintageBlock: v.Mintage,
-			GenesisBlock:        v.Genesis,
-		}
-		common.GenesisInfos = append(common.GenesisInfos, genesisInfo)
-	}
 
 	return func(t *testing.T) {
 		//err := l.db.Erase()
