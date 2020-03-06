@@ -40,9 +40,9 @@ func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
 		l:               l,
 		blockCheck:      newBlockCheck(),
 		cacheBlockCheck: newCacheBlockCheck(),
-		syncBlockCheck:  newSyncBlockCheck(),
-		representLock:   &hashmap.HashMap{},
-		logger:          log.NewLogger("ledger_verifier"),
+		//syncBlockCheck:  newSyncBlockCheck(),
+		representLock: &hashmap.HashMap{},
+		logger:        log.NewLogger("ledger_verifier"),
 	}
 }
 

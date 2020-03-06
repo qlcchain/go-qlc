@@ -9,172 +9,133 @@ package ledger
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/types"
 )
-
-const idPrefixGenericType byte = iota
 
 var (
 	ErrGenericTypeExists   = errors.New("the GenericType is empty")
 	ErrGenericTypeNotFound = errors.New("GenericType not found")
 )
 
-//
-//func (l *Ledger) AddGenericType(key types.GenericKey, value *types.GenericType, txns ...db.StoreTxn) error {
-//	txn, flag := l.getTxn(true, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	k, err := getKeyOfParts(idPrefixGenericType, key)
-//	if err != nil {
-//		return err
-//	}
-//	v, err := value.Serialize()
-//	if err != nil {
-//		return err
-//	}
-//
-//	err = txn.Get(k, func(v []byte, b byte) error {
-//		return nil
-//	})
-//	if err == nil {
-//		return ErrGenericTypeExists
-//	} else if err != badger.ErrKeyNotFound {
-//		return err
-//	}
-//	return txn.Set(k, v)
-//}
-//
-//func (l *Ledger) GetGenericType(key types.GenericKey, txns ...db.StoreTxn) (*types.GenericType, error) {
-//	txn, flag := l.getTxn(false, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	k, err := getKeyOfParts(idPrefixGenericType, key)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	value := new(types.GenericType)
-//	err = txn.Get(k, func(v []byte, b byte) error {
-//		if err := value.Deserialize(v); err != nil {
-//			return err
-//		}
-//		return nil
-//	})
-//	if err != nil {
-//		if err == badger.ErrKeyNotFound {
-//			return nil, ErrGenericTypeNotFound
-//		}
-//		return nil, err
-//	}
-//	return value, nil
-//}
-//
-//func (l *Ledger) DeleteGenericType(key types.GenericKey, txns ...db.StoreTxn) error {
-//	txn, flag := l.getTxn(true, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	k, err := getKeyOfParts(idPrefixGenericType, key)
-//	if err != nil {
-//		return err
-//	}
-//
-//	err = txn.Get(k, func(v []byte, b byte) error {
-//		return nil
-//	})
-//	if err != nil {
-//		return err
-//	}
-//
-//	return txn.Delete(k)
-//}
-//
-//func (l *Ledger) UpdateGenericType(key types.GenericKey, value *types.GenericType, txns ...db.StoreTxn) error {
-//	txn, flag := l.getTxn(true, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	k, err := getKeyOfParts(idPrefixGenericType, key)
-//	if err != nil {
-//		return err
-//	}
-//	v, err := value.Serialize()
-//	if err != nil {
-//		return err
-//	}
-//
-//	err = txn.Get(k, func(v []byte, b byte) error {
-//		return nil
-//	})
-//	if err != nil {
-//		if err == badger.ErrKeyNotFound {
-//			return ErrGenericTypeNotFound
-//		}
-//		return err
-//	}
-//	return txn.Set(k, v)
-//}
-//
-//func (l *Ledger) AddOrUpdateGenericType(key types.GenericKey, value *types.GenericType, txns ...db.StoreTxn) error {
-//	txn, flag := l.getTxn(true, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	k, err := getKeyOfParts(idPrefixGenericType, key)
-//	if err != nil {
-//		return err
-//	}
-//	v, err := value.Serialize()
-//	if err != nil {
-//		return err
-//	}
-//	return txn.Set(k, v)
-//}
-//
-//func (l *Ledger) GetGenericTypes(fn func(key types.GenericKey, value *types.GenericType) error, txns ...db.StoreTxn) error {
-//	txn, flag := l.getTxn(false, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	err := txn.Iterator(idPrefixGenericType, func(k []byte, v []byte, b byte) error {
-//		key := new(types.GenericKey)
-//		if err := key.Deserialize(k); err != nil {
-//			return err
-//		}
-//		value := new(types.GenericType)
-//		if err := value.Deserialize(v); err != nil {
-//			return err
-//		}
-//		if err := fn(*key, value); err != nil {
-//			return err
-//		}
-//		return nil
-//	})
-//
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
-//
-//func (l *Ledger) HasGenericType(key types.GenericKey, txns ...db.StoreTxn) (bool, error) {
-//	txn, flag := l.getTxn(false, txns...)
-//	defer l.releaseTxn(txn, flag)
-//
-//	k, err := getKeyOfParts(idPrefixGenericType, key)
-//	if err != nil {
-//		return false, err
-//	}
-//	err = txn.Get(k, func(v []byte, b byte) error {
-//		return nil
-//	})
-//
-//	if err != nil {
-//		if err == badger.ErrKeyNotFound {
-//			return false, nil
-//		}
-//		return false, err
-//	}
-//	return true, nil
-//}
-//
-//func (l *Ledger) CountGenericTypes(txns ...db.StoreTxn) (uint64, error) {
-//	txn, flag := l.getTxn(false, txns...)
-//	defer l.releaseTxn(txn, flag)
-//	return txn.Count([]byte{idPrefixGenericType})
-//}
+func (l *Ledger) AddGenericType(key *types.GenericKey, value *types.GenericType) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGenericType, key)
+	if err != nil {
+		return err
+	}
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+
+	if _, err := l.store.Get(k); err == nil {
+		return ErrGenericTypeExists
+	} else if err != storage.KeyNotFound {
+		return err
+	}
+	return l.store.Put(k, v)
+}
+
+func (l *Ledger) GetGenericType(key *types.GenericKey) (*types.GenericType, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGenericType, key)
+	if err != nil {
+		return nil, err
+	}
+
+	value := new(types.GenericType)
+	v, err := l.store.Get(k)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return nil, ErrGenericTypeNotFound
+		}
+		return nil, err
+	}
+	if err := value.Deserialize(v); err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+func (l *Ledger) DeleteGenericType(key *types.GenericKey) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGenericType, key)
+	if err != nil {
+		return err
+	}
+	_, err = l.store.Get(k)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return ErrGenericTypeNotFound
+		}
+		return err
+	}
+
+	return l.store.Delete(k)
+}
+
+func (l *Ledger) UpdateGenericType(key *types.GenericKey, value *types.GenericType) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGenericType, key)
+	if err != nil {
+		return err
+	}
+	_, err = l.store.Get(k)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return ErrGenericTypeNotFound
+		}
+		return err
+	}
+
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+	return l.store.Put(k, v)
+}
+
+func (l *Ledger) AddOrUpdateGenericType(key *types.GenericKey, value *types.GenericType) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGenericType, key)
+	if err != nil {
+		return err
+	}
+	v, err := value.Serialize()
+	if err != nil {
+		return err
+	}
+	return l.store.Put(k, v)
+}
+
+func (l *Ledger) GetGenericTypes(fn func(key *types.GenericKey, value *types.GenericType) error) error {
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixGenericType)
+
+	err := l.store.Iterator(prefix, nil, func(k []byte, v []byte) error {
+		key := new(types.GenericKey)
+		if err := key.Deserialize(k[1:]); err != nil {
+			return err
+		}
+		value := new(types.GenericType)
+		if err := value.Deserialize(v); err != nil {
+			return err
+		}
+		if err := fn(key, value); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) HasGenericType(key *types.GenericKey) (bool, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGenericType, key)
+	if err != nil {
+		return false, err
+	}
+	return l.store.Has(k)
+}
+
+func (l *Ledger) CountGenericTypes() (uint64, error) {
+	return l.store.Count([]byte{storage.KeyPrefixGenericType})
+}

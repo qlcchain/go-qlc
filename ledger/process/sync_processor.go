@@ -1,100 +1,91 @@
 package process
 
-import (
-	"errors"
-	"fmt"
-
-	"github.com/qlcchain/go-qlc/config"
-
-	"github.com/qlcchain/go-qlc/common/types"
-)
-
-func (lv *LedgerVerifier) BlockSyncCheck(block types.Block) (ProcessResult, error) {
-	if b, ok := block.(*types.StateBlock); ok {
-		lv.logger.Info("check sync block, ", b.GetHash())
-		if c, ok := lv.syncBlockCheck[b.Type]; ok {
-			r, err := c.Check(lv, b)
-			if err != nil {
-				lv.logger.Error(fmt.Sprintf("error:%s, sync block:%s", err.Error(), b.GetHash().String()))
-			}
-			if r != Progress {
-				lv.logger.Infof(fmt.Sprintf("check sync result:%s, (%s)", r.String(), b.GetHash().String()))
-			}
-			return r, err
-		} else {
-			return Other, fmt.Errorf("unsupport block type %s", b.Type.String())
-		}
-	} else if _, ok := block.(*types.SmartContractBlock); ok {
-		return Other, errors.New("smart contract block")
-	}
-	return Other, errors.New("invalid block")
-}
-
-func newSyncBlockCheck() map[types.BlockType]blockCheck {
-	c := make(map[types.BlockType]blockCheck)
-	c[types.Open] = &syncOpenBlockCheck{}
-	c[types.Send] = &sendBlockCheck{}
-	c[types.Receive] = &syncReceiveBlockCheck{}
-	c[types.Change] = &changeBlockCheck{}
-	c[types.Online] = &changeBlockCheck{}
-	c[types.ContractSend] = &contractSendBlockCheck{}
-	c[types.ContractReward] = &syncContractReceiveBlockCheck{}
-	return c
-}
-
-type syncReceiveBlockCheck struct {
-	syncBlockBaseInfoCheck
-	blockForkCheck
-}
-
-func (c *syncReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	if r, err := c.fork(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
-}
-
-type syncOpenBlockCheck struct {
-	syncBlockBaseInfoCheck
-	blockForkCheck
-}
-
-func (c *syncOpenBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	//check previous
-	if !block.Previous.IsZero() {
-		return Other, fmt.Errorf("open block previous is not zero")
-	}
-
-	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	if r, err := c.fork(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
-}
-
-type syncContractReceiveBlockCheck struct {
-	syncBlockBaseInfoCheck
-	blockForkCheck
-}
-
-func (c *syncContractReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	//ignore chain genesis block
-	if config.IsGenesisBlock(block) {
-		return Progress, nil
-	}
-	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	if r, err := c.fork(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
-}
+//func (lv *LedgerVerifier) BlockSyncCheck(block types.Block) (ProcessResult, error) {
+//	if b, ok := block.(*types.StateBlock); ok {
+//		lv.logger.Info("check sync block, ", b.GetHash())
+//		if c, ok := lv.syncBlockCheck[b.Type]; ok {
+//			r, err := c.Check(lv, b)
+//			if err != nil {
+//				lv.logger.Error(fmt.Sprintf("error:%s, sync block:%s", err.Error(), b.GetHash().String()))
+//			}
+//			if r != Progress {
+//				lv.logger.Infof(fmt.Sprintf("check sync result:%s, (%s)", r.String(), b.GetHash().String()))
+//			}
+//			return r, err
+//		} else {
+//			return Other, fmt.Errorf("unsupport block type %s", b.Type.String())
+//		}
+//	} else if _, ok := block.(*types.SmartContractBlock); ok {
+//		return Other, errors.New("smart contract block")
+//	}
+//	return Other, errors.New("invalid block")
+//}
+//
+//func newSyncBlockCheck() map[types.BlockType]blockCheck {
+//	c := make(map[types.BlockType]blockCheck)
+//	c[types.Open] = &syncOpenBlockCheck{}
+//	c[types.Send] = &sendBlockCheck{}
+//	c[types.Receive] = &syncReceiveBlockCheck{}
+//	c[types.Change] = &changeBlockCheck{}
+//	c[types.Online] = &changeBlockCheck{}
+//	c[types.ContractSend] = &contractSendBlockCheck{}
+//	c[types.ContractReward] = &syncContractReceiveBlockCheck{}
+//	return c
+//}
+//
+//type syncReceiveBlockCheck struct {
+//	syncBlockBaseInfoCheck
+//	blockForkCheck
+//}
+//
+//func (c *syncReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+//	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
+//		return r, err
+//	}
+//	if r, err := c.fork(lv, block); r != Progress || err != nil {
+//		return r, err
+//	}
+//	return Progress, nil
+//}
+//
+//type syncOpenBlockCheck struct {
+//	syncBlockBaseInfoCheck
+//	blockForkCheck
+//}
+//
+//func (c *syncOpenBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+//	//check previous
+//	if !block.Previous.IsZero() {
+//		return Other, fmt.Errorf("open block previous is not zero")
+//	}
+//
+//	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
+//		return r, err
+//	}
+//	if r, err := c.fork(lv, block); r != Progress || err != nil {
+//		return r, err
+//	}
+//	return Progress, nil
+//}
+//
+//type syncContractReceiveBlockCheck struct {
+//	syncBlockBaseInfoCheck
+//	blockForkCheck
+//}
+//
+//func (c *syncContractReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+//	//ignore chain genesis block
+//	if common.IsGenesisBlock(block) {
+//		return Progress, nil
+//	}
+//	if r, err := c.baseInfo(lv, block); r != Progress || err != nil {
+//		return r, err
+//	}
+//	if r, err := c.fork(lv, block); r != Progress || err != nil {
+//		return r, err
+//	}
+//	return Progress, nil
+//}
 
 //
 //func (lv *LedgerVerifier) BlockSyncProcess(block types.Block) error {

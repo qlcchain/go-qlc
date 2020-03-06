@@ -5,8 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/config"
-
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -14,7 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/trie"
 )
 
-func TestProcess_Rollback(t *testing.T) {
+func TestRollback_Block(t *testing.T) {
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 	var bc, _ = mock.BlockChain(false)
@@ -30,7 +29,7 @@ func TestProcess_Rollback(t *testing.T) {
 		}
 	}
 
-	rb := bc[4]
+	rb := bc[2]
 	fmt.Println("rollback")
 	fmt.Println("rollback hash: ", rb.GetHash(), rb.GetType(), rb.GetPrevious().String())
 	if err := lv.Rollback(rb.GetHash()); err != nil {
@@ -45,7 +44,7 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	fmt.Println("----blocks----")
 	err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		fmt.Println(block)
-		if block.GetHash() != config.GenesisBlockHash() {
+		if block.GetHash() != common.GenesisBlockHash() {
 			if _, ok := addrs[block.GetAddress()]; !ok {
 				addrs[block.GetAddress()] = 0
 			}
@@ -98,7 +97,7 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	}
 }
 
-func TestLedgerVerifier_BlockCacheCheck(t *testing.T) {
+func TestRollback_BlockCache(t *testing.T) {
 	teardownTestCase, _, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 	addr := mock.Address()
@@ -130,7 +129,26 @@ func TestLedgerVerifier_BlockCacheCheck(t *testing.T) {
 	}
 }
 
-func TestLedger_Rollback_ContractData(t *testing.T) {
+func TestRollback_UncheckedBlock(t *testing.T) {
+	teardownTestCase, l, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	h1 := mock.Hash()
+	preBlock := mock.StateBlockWithoutWork()
+	preBlock.Previous = h1
+	linkBlock := mock.StateBlockWithoutWork()
+	linkBlock.Link = h1
+	if err := l.AddUncheckedBlock(h1, preBlock, types.UncheckedKindPrevious, types.Synchronized); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddUncheckedBlock(h1, linkBlock, types.UncheckedKindLink, types.Synchronized); err != nil {
+		t.Fatal(err)
+	}
+	lv.RollbackUnchecked(h1)
+
+}
+
+func TestRollback_ContractData(t *testing.T) {
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 

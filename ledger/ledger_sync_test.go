@@ -70,3 +70,28 @@ func TestLedger_UnconfirmedSyncBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLedger_CleanSyncCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	block := mock.StateBlockWithoutWork()
+	if err := l.AddUncheckedSyncBlock(block.Previous, block); err != nil {
+		t.Fatal(err)
+	}
+
+	block2 := mock.StateBlockWithoutWork()
+	hash2 := block2.GetHash()
+	if err := l.AddUnconfirmedSyncBlock(hash2, block); err != nil {
+		t.Fatal(err)
+	}
+
+	l.CleanSyncCache()
+	if _, err := l.GetUncheckedSyncBlock(block.Previous); err == nil {
+		t.Fatal(err)
+	}
+
+	if _, err := l.GetUnconfirmedSyncBlock(hash2); err == nil {
+		t.Fatal(err)
+	}
+}

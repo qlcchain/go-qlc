@@ -110,6 +110,44 @@ func TestLedger_GetPeersInfo(t *testing.T) {
 	}
 }
 
+func TestLedger_UpdatePeerInfo(t *testing.T) {
+	teardownTestCase, l := setupPovTestCase(t)
+	defer teardownTestCase(t)
+
+	pi := generatePeersInfo()
+	err := l.UpdatePeerInfo(pi)
+	if err == nil {
+		t.Fatal(err)
+	}
+	err = l.AddPeerInfo(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pi.Rtt = 2
+	err = l.UpdatePeerInfo(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pi2, err := l.GetPeerInfo(pi.PeerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pis := make([]*types.PeerInfo, 0)
+	err = l.GetPeersInfo(func(pi *types.PeerInfo) error {
+		pis = append(pis, pi)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pis) != 1 {
+		t.Fatal("UpdatePeerInfo err")
+	}
+	if pi2.Rtt != 2 {
+		t.Fatal("rtt error")
+	}
+}
+
 func TestLedger_AddOrUpdatePeerInfo(t *testing.T) {
 	teardownTestCase, l := setupPovTestCase(t)
 	defer teardownTestCase(t)
@@ -141,5 +179,28 @@ func TestLedger_AddOrUpdatePeerInfo(t *testing.T) {
 	}
 	if pi2.Rtt != 2 {
 		t.Fatal("rtt error")
+	}
+}
+
+func TestLedger_CountPeersInfo(t *testing.T) {
+	teardownTestCase, l := setupPovTestCase(t)
+	defer teardownTestCase(t)
+
+	pi := generatePeersInfo()
+	err := l.AddPeerInfo(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pi2 := generatePeersInfo()
+	err = l.AddPeerInfo(pi2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pis, err := l.CountPeersInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pis != 2 {
+		t.Fatal("PeerInfo Count err")
 	}
 }

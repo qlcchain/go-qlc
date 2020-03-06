@@ -22,6 +22,7 @@ type Store interface {
 	Purge() error
 	Drop(prefix []byte) error
 	Upgrade(version int) error
+	Action(at ActionType) (interface{}, error)
 	Close() error
 }
 
@@ -84,6 +85,8 @@ const (
 	KeyPrefixTrieVMStorage = 100 // vm_store.go, idPrefixStorage
 	KeyPrefixTrie          = 101 // 101 is used for trie intermediate node, trie.go, idPrefixTrie
 	KeyPrefixTriePovState  = 102
+
+	KeyPrefixGenericType = 255
 )
 
 func GetKeyOfParts(t KeyPrefix, partList ...interface{}) ([]byte, error) {
@@ -131,3 +134,13 @@ type Cache interface {
 	Delete(key []byte) error
 	Len() int64
 }
+
+type ActionType byte
+
+const (
+	Dump ActionType = iota
+	GC
+	Backup
+	Restore
+	Size
+)
