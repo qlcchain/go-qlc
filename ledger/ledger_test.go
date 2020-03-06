@@ -2,7 +2,7 @@ package ledger
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
+	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -178,4 +180,109 @@ func TestReleaseLedger(t *testing.T) {
 		_ = os.RemoveAll(dir)
 		_ = os.RemoveAll(dir2)
 	}()
+}
+
+func TestLedger_GenerateSendBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ac1 := mock.Account()
+
+	balance := types.Balance{Int: big.NewInt(int64(100000000000))}
+	blk := new(types.StateBlock)
+	blk.Type = types.Open
+	blk.Address = ac1.Address()
+	blk.Previous = types.ZeroHash
+	blk.Token = config.ChainToken()
+	blk.Balance = balance
+	blk.Timestamp = common.TimeNow().Unix()
+	blk.Link = mock.Hash()
+	blk.Representative = ac1.Address()
+
+	am := mock.AccountMeta(ac1.Address())
+	tm := &types.TokenMeta{
+		Type:           config.ChainToken(),
+		Header:         blk.GetHash(),
+		OpenBlock:      types.ZeroHash,
+		Representative: ac1.Address(),
+		Balance:        balance,
+		BelongTo:       ac1.Address(),
+	}
+	am.Tokens = append(am.Tokens, tm)
+
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddAccountMeta(am, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	block, td := generatePovBlock(nil)
+	err := l.AddPovBlock(block, td)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(block.GetHeight(), block.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(block.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ac2 := mock.Account()
+	ac2Addr := ac2.Address()
+	balance2 := types.Balance{Int: big.NewInt(int64(100000))}
+	sendBlk, err := l.GenerateSendBlock(&types.StateBlock{
+		Address: ac1.Address(),
+		Token:   config.ChainToken(),
+		Link:    ac2Addr.ToHash(),
+	}, balance2, ac1.PrivateKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(sendBlk)
+
+	if err := l.AddStateBlock(sendBlk); err != nil {
+		t.Fatal(err)
+	}
+
+	pendingKey := &types.PendingKey{
+		Address: ac2.Address(),
+		Hash:    sendBlk.GetHash(),
+	}
+	pendingInfo := &types.PendingInfo{
+		Source: ac1.Address(),
+		Type:   config.ChainToken(),
+		Amount: balance2,
+	}
+	if err := l.AddPending(pendingKey, pendingInfo, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	receBlk, err := l.GenerateReceiveBlock(sendBlk, ac2.PrivateKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(receBlk)
+
+	ac3 := mock.AccountMeta(mock.Address())
+	if err := l.AddAccountMeta(ac3, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	changeBlk, err := l.GenerateChangeBlock(ac1.Address(), ac3.Address, ac1.PrivateKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(changeBlk)
+
+	onlineBlk, err := l.GenerateOnlineBlock(ac1.Address(), ac1.PrivateKey(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(onlineBlk)
 }
