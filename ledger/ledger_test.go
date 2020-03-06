@@ -2,10 +2,12 @@ package ledger
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -112,6 +114,28 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	if ok, _ := l.HasStateBlock(blk.GetHash()); !ok {
 		t.Fatal()
 	}
+}
+
+func TestLedger_Cache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(1 * time.Second)
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock)
+	count := 0
+	if err := l.Iterator(prefix, nil, func(k []byte, v []byte) error {
+		count = count + 1
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(count)
+	t.Log(l.GetCacheStatue())
 }
 
 func TestReleaseLedger(t *testing.T) {

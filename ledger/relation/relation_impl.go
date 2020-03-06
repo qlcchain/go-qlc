@@ -97,28 +97,29 @@ func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
 	return nil
 }
 
-func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
-	if len(blocks) == 0 {
-		return nil
-	}
-	blksHashes := make([]*blocksHash, 0)
-	//r.logger.Info("batch block count: ", len(blocks))
-	for _, block := range blocks {
-		blksHashes = append(blksHashes, &blocksHash{
-			Hash:      block.GetHash().String(),
-			Type:      block.GetType().String(),
-			Address:   block.GetAddress().String(),
-			Timestamp: block.GetTimestamp(),
-		})
-	}
-	if len(blksHashes) > 0 {
-		if _, err := txn.NamedExec("INSERT INTO BLOCKHASH(hash, type,address,timestamp) VALUES (:hash,:type,:address,:timestamp) ", blksHashes); err != nil {
-			r.logger.Errorf("insert block hash, ", err)
-			return err
-		}
-	}
-	return nil
-}
+//
+//func (r *Relation) AddBlocks(txn *sqlx.Tx, blocks []*types.StateBlock) error {
+//	if len(blocks) == 0 {
+//		return nil
+//	}
+//	blksHashes := make([]*blocksHash, 0)
+//	//r.logger.Info("batch block count: ", len(blocks))
+//	for _, block := range blocks {
+//		blksHashes = append(blksHashes, &blocksHash{
+//			Hash:      block.GetHash().String(),
+//			Type:      block.GetType().String(),
+//			Address:   block.GetAddress().String(),
+//			Timestamp: block.GetTimestamp(),
+//		})
+//	}
+//	if len(blksHashes) > 0 {
+//		if _, err := txn.NamedExec("INSERT INTO BLOCKHASH(hash, type,address,timestamp) VALUES (:hash,:type,:address,:timestamp) ", blksHashes); err != nil {
+//			r.logger.Errorf("insert block hash, ", err)
+//			return err
+//		}
+//	}
+//	return nil
+//}
 
 type blocksHash struct {
 	Id        int64

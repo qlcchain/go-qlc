@@ -1,27 +1,79 @@
 package relation
 
 import (
+	"github.com/qlcchain/go-qlc/mock"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/config"
 )
 
-func setupTestCase(t *testing.T) (func(t *testing.T), string) {
-	t.Log("setup test case")
-	configDir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
+func setupTestCase(t *testing.T) (func(t *testing.T), *Relation) {
+	dir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+	r, err := NewRelation(cm.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	return func(t *testing.T) {
 		t.Log("teardown test case")
-		err := os.RemoveAll(configDir)
+		if err := r.Close(); err != nil {
+			t.Fatal(err)
+		}
+		err := os.RemoveAll(dir)
 		if err != nil {
 			t.Fatal(err)
 		}
-	}, configDir
+	}, r
+}
+
+func TestRelation_Blocks(t *testing.T) {
+	teardownTestCase, r := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk1 := mock.StateBlockWithoutWork()
+	blk2 := mock.StateBlockWithoutWork()
+	r.Add(blk1)
+	r.Add(blk2)
+	time.Sleep(1 * time.Second)
+	c, err := r.BlocksCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c != 2 {
+		t.Fatal()
+	}
+
+	m, err := r.BlocksCountByType()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(m)
+
+	bs, err := r.Blocks(-1, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bs) != 2 {
+		t.Fatal(err)
+	}
+
+	bs, err = r.BlocksByAccount(blk1.Address, -1, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bs) != 1 {
+		t.Fatal(err)
+	}
+
 }
 
 //
@@ -78,8 +130,8 @@ func setupTestCase(t *testing.T) (func(t *testing.T), string) {
 //}
 
 func TestNewRelation(t *testing.T) {
-	teardownTestCase, dir := setupTestCase(t)
-	defer teardownTestCase(t)
+	dir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
+	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 
