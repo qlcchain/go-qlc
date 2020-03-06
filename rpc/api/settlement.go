@@ -137,17 +137,14 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 
 	now := time.Now().Unix()
 
-	if param.StartDate < now {
-		return nil, fmt.Errorf("invalid start date, should bigger than %d, got: %d", now, param.StartDate)
-	}
-
-	if param.EndDate < now {
-		return nil, fmt.Errorf("invalid start end, should bigger than %d, got: %d", now, param.EndDate)
-	}
-
-	if param.EndDate < param.StartDate {
-		return nil, fmt.Errorf("invalid end date, should bigger than %d, got: %d", param.StartDate, param.EndDate)
-	}
+	// WTF
+	//if param.StartDate < now {
+	//	return nil, fmt.Errorf("invalid start date, should bigger than %d, got: %d", now, param.StartDate)
+	//}
+	//
+	//if param.EndDate < now {
+	//	return nil, fmt.Errorf("invalid start end, should bigger than %d, got: %d", now, param.EndDate)
+	//}
 
 	ctx := vmstore.NewVMContext(s.l)
 
@@ -464,6 +461,36 @@ func (s *SettlementAPI) GetContractsByAddress(addr *types.Address, count int, of
 	})
 }
 
+// GetContractsByStatus query all related settlement contracts info by address and contract status
+// @param addr user qlcchain address
+// @param status contract status string
+// @param count max settlement contract records size
+// @param offset offset of all settlement contract records(optional)
+// @return matched settlement contract
+func (s *SettlementAPI) GetContractsByStatus(addr *types.Address, status string, count int, offset *int) ([]*SettlementContract, error) {
+	state, err := cabi.ParseContractStatus(status)
+	if err != nil {
+		return nil, err
+	}
+	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
+		ctx := vmstore.NewVMContext(s.l)
+		return cabi.GetContractsByStatus(ctx, addr, state)
+	})
+}
+
+// GetExpiredContracts query all expired settlement contracts info by user's address
+// @param addr user qlcchain address
+// @param status contract status
+// @param count max settlement contract records size
+// @param offset offset of all settlement contract records(optional)
+// @return matched settlement contract
+func (s *SettlementAPI) GetExpiredContracts(addr *types.Address, count int, offset *int) ([]*SettlementContract, error) {
+	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
+		ctx := vmstore.NewVMContext(s.l)
+		return cabi.GetExpiredContracts(ctx, addr)
+	})
+}
+
 // GetContractsAsPartyA query all settlement contracts as Party A info by address
 // @param addr user qlcchain address
 // @param count max settlement contract records size
@@ -515,8 +542,9 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 			}
 			param.ContractAddress = address
 
-			if !cabi.IsContractAvailable(ctx, &address) {
-				return nil, fmt.Errorf("contract %s is invalid", address.String())
+			if !c.IsAvailable() {
+				return nil, fmt.Errorf("contract %s is invalid, please check contract status and start/end date",
+					address.String())
 			}
 
 			if singedData, err := param.ToABI(); err == nil {

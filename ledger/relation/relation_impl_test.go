@@ -1,12 +1,13 @@
 package relation
 
 import (
-	"github.com/qlcchain/go-qlc/mock"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/mock"
 
 	"github.com/google/uuid"
 

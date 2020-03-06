@@ -802,9 +802,13 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 								t.Fatal(err)
 							}
 
-							if available := cabi.IsContractAvailable(ctx, &address); !available {
-								t.Fatalf("failed to verify contract %s", address.String())
+							if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
+								t.Fatal(err)
 							} else {
+								if !c.IsAvailable() {
+									t.Fatalf("failed to verify contract %s", address.String())
+								}
+
 								rev2 := &types.StateBlock{
 									Timestamp: common.TimeNow().Unix(),
 								}
@@ -1558,7 +1562,13 @@ func Test_verifyStopName(t *testing.T) {
 func Test_internalContract_DoPending(t *testing.T) {
 	i := internalContract{}
 	i.DoGap(nil, nil)
-	i.DoPending(nil)
-	i.DoReceiveOnPov(nil, nil, 0, nil, nil)
-	i.DoSendOnPov(nil, nil, 0, nil)
+	_, _, _ = i.DoPending(nil)
+	_ = i.DoReceiveOnPov(nil, nil, 0, nil, nil)
+	_ = i.DoSendOnPov(nil, nil, 0, nil)
+}
+
+func Test_timeString(t *testing.T) {
+	t.Log(timeString(0))
+	t.Log(timeString(-1))
+	t.Log(timeString(time.Now().Unix()))
 }

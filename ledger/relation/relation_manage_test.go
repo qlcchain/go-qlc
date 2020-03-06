@@ -1,9 +1,10 @@
 package relation
 
 import (
-	"github.com/qlcchain/go-qlc/mock"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestRelation_Relation(t *testing.T) {
