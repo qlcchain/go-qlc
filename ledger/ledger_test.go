@@ -136,6 +136,29 @@ func TestLedger_Cache(t *testing.T) {
 	}
 	t.Log(count)
 	t.Log(l.GetCacheStatue())
+
+	if err := l.Put([]byte{100, 2, 3}, []byte{1, 2, 3, 5}); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Put([]byte{100, 2, 4}, []byte{1, 2, 3, 6}); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Put([]byte{100, 2, 5}, []byte{1, 2, 3, 7}); err != nil {
+		t.Fatal(err)
+	}
+	count = 0
+	if err := l.Iterator([]byte{100}, nil, func(k []byte, v []byte) error {
+		count = count + 1
+		t.Log(k, v)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(count)
+	if count != 3 {
+		t.Fatal()
+	}
+	t.Log(l.GetCacheStatue())
 }
 
 func TestReleaseLedger(t *testing.T) {
