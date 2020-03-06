@@ -195,7 +195,6 @@ func NewDPoS(cfgFile string) *DPoS {
 	}
 
 	dps.pf.status.Store(perfTypeClose)
-	dps.exited.Add(5)
 
 	dps.acTrx.setDPoSService(dps)
 	for _, p := range dps.processors {
@@ -266,6 +265,7 @@ func (dps *DPoS) Init() {
 
 func (dps *DPoS) Start() {
 	dps.logger.Info("DPoS service started!")
+	var dealGapPovToken int
 
 	go dps.acTrx.start()
 	go dps.batchVoteStart()
@@ -278,6 +278,7 @@ func (dps *DPoS) Start() {
 	timerDequeueGap := time.NewTicker(10 * time.Second)
 	timerUpdateSyncTime := time.NewTicker(5 * time.Second)
 	timerGC := time.NewTicker(1 * time.Minute)
+	dps.exited.Add(1)
 
 	for {
 		select {
@@ -319,8 +320,9 @@ func (dps *DPoS) Start() {
 				dps.updateLastProcessSyncTime()
 			}
 		case <-timerDequeueGap.C:
+			dealGapPovToken = 10
 			for {
-				if dps.lastGapHeight <= dps.curPovHeight {
+				if dps.lastGapHeight <= dps.curPovHeight && dealGapPovToken > 0 {
 					if dps.dequeueGapPovBlocksFromDb(dps.lastGapHeight) {
 						err := dps.ledger.SetLastGapPovHeight(dps.lastGapHeight)
 						if err != nil {
@@ -328,6 +330,7 @@ func (dps *DPoS) Start() {
 						}
 
 						dps.lastGapHeight++
+						dealGapPovToken--
 					} else {
 						break
 					}
@@ -388,10 +391,12 @@ func (dps *DPoS) Stop() {
 
 	dps.processorStop()
 	dps.acTrx.stop()
+	dps.logger.Infof("dpos stopped")
 }
 
 func (dps *DPoS) stat() {
 	timerStatInterval := time.NewTicker(15 * time.Second)
+	dps.exited.Add(1)
 
 	for {
 		select {
@@ -442,6 +447,8 @@ func (dps *DPoS) statBlockInc() {
 }
 
 func (dps *DPoS) processBlocks() {
+	dps.exited.Add(1)
+
 	for {
 		select {
 		case <-dps.ctx.Done():
@@ -550,6 +557,7 @@ func (dps *DPoS) onPovSyncState(state topic.SyncState) {
 
 func (dps *DPoS) batchVoteStart() {
 	timerVote := time.NewTicker(time.Second)
+	dps.exited.Add(1)
 
 	for {
 		select {
@@ -593,9 +601,12 @@ func (dps *DPoS) pubAck(index int, ack *voteInfo) {
 }
 
 func (dps *DPoS) processSubMsg() {
+	dps.exited.Add(1)
+
 	for {
 		select {
 		case <-dps.ctx.Done():
+			dps.logger.Info("Stop process sub msg.")
 			dps.exited.Done()
 			return
 		case msg := <-dps.subMsg:
