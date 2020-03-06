@@ -125,7 +125,7 @@ func TestLedger_Cache(t *testing.T) {
 	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(1 * time.Second)
+	time.Sleep(5 * time.Second)
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock)
 	count := 0
 	if err := l.Iterator(prefix, nil, func(k []byte, v []byte) error {
