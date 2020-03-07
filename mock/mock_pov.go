@@ -95,6 +95,22 @@ func doGeneratePovBlock(prevBlock *types.PovBlock, txNum uint32, fakePow bool) (
 	return block, nextTD
 }
 
+func UpdatePovHash(povBlk *types.PovBlock) {
+	povBlk.Header.CbTx.Hash = povBlk.Header.CbTx.ComputeHash()
+	povBlk.Body.Txs[0].Hash = povBlk.Header.CbTx.Hash
+
+	allTxs := povBlk.GetAllTxs()
+	txHashes := make([]*types.Hash, 0, len(allTxs))
+
+	for _, tx := range povBlk.GetAllTxs() {
+		txHash := tx.GetHash()
+		txHashes = append(txHashes, &txHash)
+	}
+
+	povBlk.Header.BasHdr.MerkleRoot = merkle.CalcMerkleTreeRootHash(txHashes)
+	povBlk.Header.BasHdr.Hash = povBlk.ComputeHash()
+}
+
 func PovHeader() *types.PovHeader {
 	i, _ := random.Intn(math.MaxInt16)
 	return &types.PovHeader{
