@@ -13,6 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/contract/dpki"
@@ -616,4 +617,214 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	if vrs != nil {
 		t.Fatal()
 	}
+}
+
+func TestPKDReward_DoGap(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	r := new(PKDReward)
+
+	ctx := vmstore.NewVMContext(l)
+
+	blk := mock.StateBlockWithoutWork()
+
+	_ = l.DropAllPovBlocks()
+	mockPovHeight := uint64(1440*3 - 1)
+	mockPKDRewardAddPovBlock(t, l, mockPovHeight, blk, 100)
+
+	param1 := new(dpki.PKDRewardParam)
+	param1.Account = blk.Address
+	param1.Beneficial = blk.Address
+	param1.EndHeight = 1439
+	param1.RewardAmount = big.NewInt(100000000)
+
+	blk.Data, _ = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDReward,
+		param1.Account, param1.Beneficial, param1.EndHeight, param1.RewardAmount)
+
+	gapType, gapData, err := r.DoGap(ctx, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gapType != common.ContractNoGap {
+		t.Fatal("gapType is not NoGap", gapType, gapData)
+	}
+	if gapData != nil {
+		t.Fatal("gapData is not nil", gapData, gapData)
+	}
+
+	param2 := new(dpki.PKDRewardParam)
+	param2.Account = blk.Address
+	param2.Beneficial = blk.Address
+	param2.EndHeight = mockPovHeight - 1
+	param2.RewardAmount = big.NewInt(100000000)
+	blk.Data, _ = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDReward,
+		param2.Account, param2.Beneficial, param2.EndHeight, param2.RewardAmount)
+
+	gapType, gapData, err = r.DoGap(ctx, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gapType != common.ContractRewardGapPov {
+		t.Fatal("gapType is not GapPov", gapType, gapData)
+	}
+	if gapData == nil {
+		t.Fatal("gapData is nil")
+	}
+}
+
+func TestPKDReward_ProcessSend(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	r := new(PKDReward)
+
+	ctx := vmstore.NewVMContext(l)
+
+	sendBlk := mock.StateBlockWithoutWork()
+	sendBlk.Token = cfg.GasToken()
+
+	am := mock.AccountMeta(sendBlk.Address)
+	am.CoinOracle = common.MinVerifierPledgeAmount
+	l.AddAccountMeta(am, l.Cache().GetCache())
+
+	_ = l.DropAllPovBlocks()
+	mockPKDRewardAddPovBlock(t, l, 1439, sendBlk, 100)
+	mockPKDRewardAddPovBlock(t, l, 2879, sendBlk, 200)
+	mockPKDRewardAddPovBlock(t, l, 4319, sendBlk, 300)
+
+	param1 := new(dpki.PKDRewardParam)
+	param1.Account = sendBlk.Address
+	param1.Beneficial = sendBlk.Address
+	param1.EndHeight = 1439
+	param1.RewardAmount = big.NewInt(100 * 100000000)
+
+	sendBlk.Data, _ = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDReward,
+		param1.Account, param1.Beneficial, param1.EndHeight, param1.RewardAmount)
+
+	pendKey, pendInfo, err := r.ProcessSend(ctx, sendBlk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pendKey == nil {
+		t.Fatal("ProcessSend pendKey is nil")
+	}
+	if pendKey.Address != param1.Account {
+		t.Fatal("ProcessSend pendKey address not equal", pendKey.Address, param1.Account)
+	}
+	if pendInfo == nil {
+		t.Fatal("ProcessSend pendInfo is nil")
+	}
+	if pendInfo.Amount.Compare(types.NewBalanceFromBigInt(param1.RewardAmount)) != types.BalanceCompEqual {
+		t.Fatal("ProcessSend pendInfo amount not equal", pendInfo.Amount, param1.RewardAmount)
+	}
+
+	doPendKey, doPendInfo, err := r.DoPending(sendBlk)
+	if doPendKey == nil {
+		t.Fatal("DoPending pendKey is nil")
+	}
+	if doPendKey.Address != param1.Account {
+		t.Fatal("DoPending pendKey address not equal", doPendKey.Address, param1.Account)
+	}
+	if doPendInfo == nil {
+		t.Fatal("DoPending pendInfo is nil")
+	}
+	if doPendInfo.Amount.Compare(types.NewBalanceFromBigInt(param1.RewardAmount)) != types.BalanceCompEqual {
+		t.Fatal("DoPending pendInfo amount not equal", doPendInfo.Amount, param1.RewardAmount)
+	}
+
+	recvBlk := new(types.StateBlock)
+	retConBlks, err := r.DoReceive(ctx, recvBlk, sendBlk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(retConBlks) == 0 {
+		t.Fatal("return contract blocks is nil")
+	}
+	if retConBlks[0].Block.Address != param1.Beneficial {
+		t.Fatal("recvBlk address not equal", retConBlks[0].Block.Address, param1.Beneficial)
+	}
+	if retConBlks[0].Amount.Compare(types.NewBalanceFromBigInt(param1.RewardAmount)) != types.BalanceCompEqual {
+		t.Fatal("recvBlk amount not equal", retConBlks[0].Amount, param1.RewardAmount)
+	}
+}
+
+func mockPKDRewardAddPovBlock(t *testing.T, l ledger.Store, povHeight uint64, txBlock *types.StateBlock, rwdCnt uint) {
+	// blk1
+	povBlk1, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk1.Header.BasHdr.Height = povHeight
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ps := types.NewPovVerifierState()
+	ps.TotalVerify = uint64(rwdCnt)
+	ps.TotalReward = types.NewBigNumFromInt(int64(rwdCnt * 100000000))
+	if povHeight > 240 {
+		ps.ActiveHeight["email"] = povHeight - 240
+	}
+	err = dpki.PovSetVerifierState(csdb, txBlock.Address.Bytes(), ps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = gsdb.CommitToTrie()
+	if err != nil {
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk1.Header.CbTx.StateHash = gsdb.GetCurHash()
+
+	mock.UpdatePovHash(povBlk1)
+
+	t.Log("add pov block", povBlk1)
+
+	err = l.AddPovBlock(povBlk1, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk1.GetHeight(), povBlk1.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk1.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	/*
+		{
+			gsdb2 := statedb.NewPovGlobalStateDB(l.DBStore(), povBlk1.Header.CbTx.StateHash)
+			csdb2, err := gsdb2.LookupContractStateDB(types.PubKeyDistributionAddress)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			retPs, err := dpki.PovGetVerifierState(csdb2, txBlock.Address.Bytes())
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log("PovGetVerifierState", retPs)
+		}
+	*/
 }
