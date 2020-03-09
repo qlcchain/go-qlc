@@ -8,8 +8,88 @@
 package api
 
 import (
+	"encoding/hex"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
+	cfg "github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/mock"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
+
+var (
+	// qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq
+	priv1, _ = hex.DecodeString("7098c089e66bd66476e3b88df8699bcd4dacdd5e1e5b41b3c598a8a36d851184d992a03b7326b7041f689ae727292d761b329a960f3e4335e0a7dcf2c43c4bcf")
+	// qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te
+	priv2, _ = hex.DecodeString("31ee4e16826569dc631b969e71bd4c46d5c0df0daeca6933f46586f36f49537cd929630709e1a1442411a3c2159e8dba5742c6835e54757444f8af35bf1c7393")
+	account1 = types.NewAccount(priv1)
+	account2 = types.NewAccount(priv2)
+)
+
+func setupSettlementAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *SettlementAPI) {
+	dir := filepath.Join(cfg.QlcTestDataDir(), "settlement_api", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := cfg.NewCfgManager(dir)
+	_, err := cm.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc := context.NewChainContext(cm.ConfigFile)
+	l := ledger.NewLedger(cm.ConfigFile)
+	verifier := process.NewLedgerVerifier(l)
+	block, td := mock.GeneratePovBlock(nil, 0)
+	_ = l.AddPovBlock(block, td)
+
+	err = l.AddPovBestHash(block.GetHeight(), block.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(block.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = cc.Init(func() error {
+		return nil
+	})
+	_ = cc.Start()
+	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+
+	api := NewSettlement(l, cc)
+
+	var blocks []*types.StateBlock
+	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range blocks {
+		block := blocks[i]
+		if err := verifier.BlockProcess(block); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	return func(t *testing.T) {
+		err := l.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = cc.Stop()
+	}, verifier, api
+}
 
 func Test_calculateRange(t *testing.T) {
 	type args struct {
@@ -135,4 +215,51 @@ func Test_calculateRange(t *testing.T) {
 
 func offset(o int) *int {
 	return &o
+}
+
+func TestSettlementAPI_GetCreateContractBlock(t *testing.T) {
+	testcase, verifier, api := setupSettlementAPI(t)
+	defer testcase(t)
+
+	if blk, err := api.GetCreateContractBlock(&CreateContractParam{
+		PartyA: cabi.Contractor{
+			Address: account1.Address(),
+			Name:    "PCCWG",
+		},
+		PartyB: cabi.Contractor{
+			Address: account2.Address(),
+			Name:    "HTK-CSL",
+		},
+		Services: []cabi.ContractService{{
+			ServiceId:   mock.Hash().String(),
+			Mcc:         1,
+			Mnc:         2,
+			TotalAmount: 10,
+			UnitPrice:   2,
+			Currency:    "USD",
+		}, {
+			ServiceId:   mock.Hash().String(),
+			Mcc:         22,
+			Mnc:         1,
+			TotalAmount: 30,
+			UnitPrice:   4,
+			Currency:    "USD",
+		}},
+		StartDate: time.Now().AddDate(0, 0, 1).Unix(),
+		EndDate:   time.Now().AddDate(1, 0, 1).Unix(),
+	}); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(blk)
+		txHash := blk.GetHash()
+		blk.Signature = account1.Sign(txHash)
+		if err := verifier.BlockProcess(blk); err != nil {
+			t.Fatal(err)
+		}
+		if rx, err := api.GetSettlementRewardsBlock(&txHash); err != nil {
+			t.Fatal(err)
+		} else {
+			t.Log(rx)
+		}
+	}
 }
