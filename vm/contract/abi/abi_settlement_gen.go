@@ -1146,12 +1146,41 @@ func (z *ContractParam) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.Terminator = nil
 			} else {
 				if z.Terminator == nil {
-					z.Terminator = new(types.Address)
+					z.Terminator = new(Terminator)
 				}
-				err = dc.ReadExtension(z.Terminator)
+				var zb0005 uint32
+				zb0005, err = dc.ReadMapHeader()
 				if err != nil {
 					err = msgp.WrapError(err, "Terminator")
 					return
+				}
+				for zb0005 > 0 {
+					zb0005--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						err = msgp.WrapError(err, "Terminator")
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "a":
+						err = dc.ReadExtension(&z.Terminator.Address)
+						if err != nil {
+							err = msgp.WrapError(err, "Terminator", "Address")
+							return
+						}
+					case "r":
+						z.Terminator.Request, err = dc.ReadBool()
+						if err != nil {
+							err = msgp.WrapError(err, "Terminator", "Request")
+							return
+						}
+					default:
+						err = dc.Skip()
+						if err != nil {
+							err = msgp.WrapError(err, "Terminator")
+							return
+						}
+					}
 				}
 			}
 		default:
@@ -1243,9 +1272,25 @@ func (z *ContractParam) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	} else {
-		err = en.WriteExtension(z.Terminator)
+		// map header, size 2
+		// write "a"
+		err = en.Append(0x82, 0xa1, 0x61)
 		if err != nil {
-			err = msgp.WrapError(err, "Terminator")
+			return
+		}
+		err = en.WriteExtension(&z.Terminator.Address)
+		if err != nil {
+			err = msgp.WrapError(err, "Terminator", "Address")
+			return
+		}
+		// write "r"
+		err = en.Append(0xa1, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.Terminator.Request)
+		if err != nil {
+			err = msgp.WrapError(err, "Terminator", "Request")
 			return
 		}
 	}
@@ -1286,11 +1331,17 @@ func (z *ContractParam) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.Terminator == nil {
 		o = msgp.AppendNil(o)
 	} else {
-		o, err = msgp.AppendExtension(o, z.Terminator)
+		// map header, size 2
+		// string "a"
+		o = append(o, 0x82, 0xa1, 0x61)
+		o, err = msgp.AppendExtension(o, &z.Terminator.Address)
 		if err != nil {
-			err = msgp.WrapError(err, "Terminator")
+			err = msgp.WrapError(err, "Terminator", "Address")
 			return
 		}
+		// string "r"
+		o = append(o, 0xa1, 0x72)
+		o = msgp.AppendBool(o, z.Terminator.Request)
 	}
 	return
 }
@@ -1382,12 +1433,41 @@ func (z *ContractParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.Terminator = nil
 			} else {
 				if z.Terminator == nil {
-					z.Terminator = new(types.Address)
+					z.Terminator = new(Terminator)
 				}
-				bts, err = msgp.ReadExtensionBytes(bts, z.Terminator)
+				var zb0005 uint32
+				zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "Terminator")
 					return
+				}
+				for zb0005 > 0 {
+					zb0005--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Terminator")
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "a":
+						bts, err = msgp.ReadExtensionBytes(bts, &z.Terminator.Address)
+						if err != nil {
+							err = msgp.WrapError(err, "Terminator", "Address")
+							return
+						}
+					case "r":
+						z.Terminator.Request, bts, err = msgp.ReadBoolBytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Terminator", "Request")
+							return
+						}
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Terminator")
+							return
+						}
+					}
 				}
 			}
 		default:
@@ -1416,7 +1496,7 @@ func (z *ContractParam) Msgsize() (s int) {
 	if z.Terminator == nil {
 		s += msgp.NilSize
 	} else {
-		s += msgp.ExtensionPrefixSize + z.Terminator.Len()
+		s += 1 + 2 + msgp.ExtensionPrefixSize + z.Terminator.Address.Len() + 2 + msgp.BoolSize
 	}
 	return
 }
@@ -3933,6 +4013,12 @@ func (z *TerminateParam) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ContractAddress")
 				return
 			}
+		case "r":
+			z.Request, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "Request")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -3946,9 +4032,9 @@ func (z *TerminateParam) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z TerminateParam) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
+	// map header, size 2
 	// write "a"
-	err = en.Append(0x81, 0xa1, 0x61)
+	err = en.Append(0x82, 0xa1, 0x61)
 	if err != nil {
 		return
 	}
@@ -3957,20 +4043,33 @@ func (z TerminateParam) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "ContractAddress")
 		return
 	}
+	// write "r"
+	err = en.Append(0xa1, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.Request)
+	if err != nil {
+		err = msgp.WrapError(err, "Request")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z TerminateParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
+	// map header, size 2
 	// string "a"
-	o = append(o, 0x81, 0xa1, 0x61)
+	o = append(o, 0x82, 0xa1, 0x61)
 	o, err = msgp.AppendExtension(o, &z.ContractAddress)
 	if err != nil {
 		err = msgp.WrapError(err, "ContractAddress")
 		return
 	}
+	// string "r"
+	o = append(o, 0xa1, 0x72)
+	o = msgp.AppendBool(o, z.Request)
 	return
 }
 
@@ -3998,6 +4097,12 @@ func (z *TerminateParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ContractAddress")
 				return
 			}
+		case "r":
+			z.Request, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Request")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -4012,7 +4117,139 @@ func (z *TerminateParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z TerminateParam) Msgsize() (s int) {
-	s = 1 + 2 + msgp.ExtensionPrefixSize + z.ContractAddress.Len()
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.ContractAddress.Len() + 2 + msgp.BoolSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *Terminator) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "a":
+			err = dc.ReadExtension(&z.Address)
+			if err != nil {
+				err = msgp.WrapError(err, "Address")
+				return
+			}
+		case "r":
+			z.Request, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "Request")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z Terminator) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "a"
+	err = en.Append(0x82, 0xa1, 0x61)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Address)
+	if err != nil {
+		err = msgp.WrapError(err, "Address")
+		return
+	}
+	// write "r"
+	err = en.Append(0xa1, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.Request)
+	if err != nil {
+		err = msgp.WrapError(err, "Request")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z Terminator) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "a"
+	o = append(o, 0x82, 0xa1, 0x61)
+	o, err = msgp.AppendExtension(o, &z.Address)
+	if err != nil {
+		err = msgp.WrapError(err, "Address")
+		return
+	}
+	// string "r"
+	o = append(o, 0xa1, 0x72)
+	o = msgp.AppendBool(o, z.Request)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Terminator) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "a":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
+			if err != nil {
+				err = msgp.WrapError(err, "Address")
+				return
+			}
+		case "r":
+			z.Request, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Request")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z Terminator) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Address.Len() + 2 + msgp.BoolSize
 	return
 }
 

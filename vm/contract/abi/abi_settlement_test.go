@@ -6781,6 +6781,19 @@ func TestCreateContractParam_Verify(t *testing.T) {
 			},
 			want:    false,
 			wantErr: true,
+		}, {
+			name: "f10",
+			fields: fields{
+				PartyA:    cp.PartyA,
+				PartyB:    cp.PartyB,
+				Previous:  cp.Previous,
+				Services:  cp.Services,
+				SignDate:  cp.SignDate,
+				StartDate: cp.EndDate,
+				EndDate:   cp.StartDate,
+			},
+			want:    false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -7359,7 +7372,7 @@ func TestUpdateStopParam_ToABI(t *testing.T) {
 }
 
 func TestTerminateParam_ToABI(t *testing.T) {
-	param := &TerminateParam{ContractAddress: mock.Address()}
+	param := &TerminateParam{ContractAddress: mock.Address(), Request: true}
 	if abi, err := param.ToABI(); err != nil {
 		t.Fatal(err)
 	} else {
@@ -7385,7 +7398,7 @@ func TestContractParam_IsContractor(t *testing.T) {
 		NextStops           []string
 		ConfirmDate         int64
 		Status              ContractStatus
-		Terminator          *types.Address
+		Terminator          *Terminator
 	}
 	type args struct {
 		addr types.Address
@@ -7463,7 +7476,7 @@ func TestContractParam_DoActive(t *testing.T) {
 		NextStops           []string
 		ConfirmDate         int64
 		Status              ContractStatus
-		Terminator          *types.Address
+		Terminator          *Terminator
 	}
 	type args struct {
 		operator types.Address
@@ -7564,10 +7577,10 @@ func TestContractParam_DoTerminate(t *testing.T) {
 		NextStops           []string
 		ConfirmDate         int64
 		Status              ContractStatus
-		Terminator          *types.Address
+		Terminator          *Terminator
 	}
 	type args struct {
-		operator types.Address
+		operator *Terminator
 		status   ContractStatus
 	}
 	tests := []struct {
@@ -7586,7 +7599,7 @@ func TestContractParam_DoTerminate(t *testing.T) {
 				Status:              ContractStatusActiveStage1,
 			},
 			args: args{
-				operator: cp.PartyA.Address,
+				operator: &Terminator{Request: true, Address: cp.PartyA.Address},
 				status:   ContractStatusDestroyed,
 			},
 			wantErr: false,
@@ -7600,12 +7613,12 @@ func TestContractParam_DoTerminate(t *testing.T) {
 				Status:              ContractStatusActiveStage1,
 			},
 			args: args{
-				operator: cp.PartyB.Address,
+				operator: &Terminator{Request: true, Address: cp.PartyB.Address},
 				status:   ContractStatusRejected,
 			},
 			wantErr: false,
 		}, {
-			name: "partyA_destroy_stage1",
+			name: "partyA_destroy_activated",
 			fields: fields{
 				CreateContractParam: cp.CreateContractParam,
 				PreStops:            cp.PreStops,
@@ -7614,23 +7627,53 @@ func TestContractParam_DoTerminate(t *testing.T) {
 				Status:              ContractStatusActivated,
 			},
 			args: args{
-				operator: cp.PartyA.Address,
+				operator: &Terminator{Request: true, Address: cp.PartyA.Address},
 				status:   ContractStatusDestroyStage1,
 			},
 			wantErr: false,
 		}, {
-			name: "partyB_destroy",
+			name: "partyA_cancel_destroyed",
 			fields: fields{
 				CreateContractParam: cp.CreateContractParam,
 				PreStops:            cp.PreStops,
 				NextStops:           cp.NextStops,
 				ConfirmDate:         cp.ConfirmDate,
 				Status:              ContractStatusDestroyStage1,
-				Terminator:          &cp.PartyA.Address,
+				Terminator:          &Terminator{Request: true, Address: cp.PartyA.Address},
 			},
 			args: args{
-				operator: cp.PartyB.Address,
+				operator: &Terminator{Request: false, Address: cp.PartyA.Address},
+				status:   ContractStatusActivated,
+			},
+			wantErr: false,
+		}, {
+			name: "partyB_confirm_destroy",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusDestroyStage1,
+				Terminator:          &Terminator{Request: true, Address: cp.PartyA.Address},
+			},
+			args: args{
+				operator: &Terminator{Request: true, Address: cp.PartyB.Address},
 				status:   ContractStatusDestroyed,
+			},
+			wantErr: false,
+		}, {
+			name: "partyB_reject_destroy",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusDestroyStage1,
+				Terminator:          &Terminator{Request: true, Address: cp.PartyA.Address},
+			},
+			args: args{
+				operator: &Terminator{Request: false, Address: cp.PartyB.Address},
+				status:   ContractStatusActivated,
 			},
 			wantErr: false,
 		},
@@ -7642,10 +7685,10 @@ func TestContractParam_DoTerminate(t *testing.T) {
 				NextStops:           cp.NextStops,
 				ConfirmDate:         cp.ConfirmDate,
 				Status:              ContractStatusDestroyStage1,
-				Terminator:          &cp.PartyA.Address,
+				Terminator:          &Terminator{Request: true, Address: cp.PartyA.Address},
 			},
 			args: args{
-				operator: cp.PartyA.Address,
+				operator: &Terminator{Request: true, Address: cp.PartyA.Address},
 				status:   ContractStatusDestroyed,
 			},
 			wantErr: true,
@@ -7657,10 +7700,10 @@ func TestContractParam_DoTerminate(t *testing.T) {
 				NextStops:           cp.NextStops,
 				ConfirmDate:         cp.ConfirmDate,
 				Status:              ContractStatusDestroyStage1,
-				Terminator:          &cp.PartyA.Address,
+				Terminator:          &Terminator{Request: true, Address: cp.PartyA.Address},
 			},
 			args: args{
-				operator: mock.Address(),
+				operator: &Terminator{Request: true, Address: mock.Address()},
 				status:   ContractStatusDestroyed,
 			},
 			wantErr: true,
@@ -7672,11 +7715,55 @@ func TestContractParam_DoTerminate(t *testing.T) {
 				NextStops:           cp.NextStops,
 				ConfirmDate:         cp.ConfirmDate,
 				Status:              ContractStatusDestroyed,
-				Terminator:          &cp.PartyA.Address,
+				Terminator:          &Terminator{Request: true, Address: cp.PartyA.Address},
 			},
 			args: args{
-				operator: cp.PartyB.Address,
+				operator: &Terminator{Request: true, Address: cp.PartyB.Address},
 				status:   ContractStatusDestroyed,
+			},
+			wantErr: true,
+		}, {
+			name: "f4",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusDestroyed,
+				Terminator:          &Terminator{Request: true, Address: cp.PartyA.Address},
+			},
+			args: args{
+				operator: nil,
+				status:   ContractStatusDestroyed,
+			},
+			wantErr: true,
+		}, {
+			name: "f5",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusActivated,
+			},
+			args: args{
+				operator: &Terminator{Request: false, Address: cp.PartyA.Address},
+				status:   ContractStatusDestroyed,
+			},
+			wantErr: true,
+		},
+		{
+			name: "f6",
+			fields: fields{
+				CreateContractParam: cp.CreateContractParam,
+				PreStops:            cp.PreStops,
+				NextStops:           cp.NextStops,
+				ConfirmDate:         cp.ConfirmDate,
+				Status:              ContractStatusRejected,
+			},
+			args: args{
+				operator: &Terminator{Request: true, Address: cp.PartyA.Address},
+				status:   ContractStatusRejected,
 			},
 			wantErr: true,
 		},
@@ -8676,7 +8763,7 @@ func TestContractParam_IsAvailable(t *testing.T) {
 		NextStops           []string
 		ConfirmDate         int64
 		Status              ContractStatus
-		Terminator          *types.Address
+		Terminator          *Terminator
 	}
 	tests := []struct {
 		name   string
@@ -8778,7 +8865,7 @@ func TestContractParam_IsExpired(t *testing.T) {
 		NextStops           []string
 		ConfirmDate         int64
 		Status              ContractStatus
-		Terminator          *types.Address
+		Terminator          *Terminator
 	}
 	tests := []struct {
 		name   string

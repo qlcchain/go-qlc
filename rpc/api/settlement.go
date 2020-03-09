@@ -583,7 +583,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 
 type TerminateParam struct {
 	cabi.TerminateParam
-	Address types.Address // PartyB address
+	Address types.Address
 }
 
 // GetTerminateContractBlock
@@ -746,6 +746,18 @@ func (s *SettlementAPI) GenerateInvoicesByContract(addr *types.Address, start, e
 func (s *SettlementAPI) GenerateMultiPartyInvoice(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
 	ctx := vmstore.NewVMContext(s.l)
 	return cabi.GenerateMultiPartyInvoice(ctx, addr, start, end)
+}
+
+// GetPreStopNames get all previous stop names by user address
+func (s *SettlementAPI) GetPreStopNames(addr *types.Address) ([]string, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetPreStopNames(ctx, addr)
+}
+
+// GetNextStopNames get all next stop names by user address
+func (s *SettlementAPI) GetNextStopNames(addr *types.Address) ([]string, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetNextStopNames(ctx, addr)
 }
 
 var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {

@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"reflect"
 	"sort"
 	"strings"
 
@@ -187,6 +186,7 @@ func (z *SignContractParam) FromABI(data []byte) error {
 //go:generate msgp
 type TerminateParam struct {
 	ContractAddress types.Address `msg:"a,extension" json:"contractAddress"`
+	Request         bool          `msg:"r" json:"request"`
 }
 
 func (z *TerminateParam) ToABI() ([]byte, error) {
@@ -408,13 +408,23 @@ Rejected
 type ContractStatus int
 
 //go:generate msgp
+type Terminator struct {
+	Address types.Address `msg:"a,extension" json:"address"` // terminator qlc address
+	Request bool          `msg:"r" json:"request"`           // request operate, true or false
+}
+
+func (z *Terminator) String() string {
+	return util.ToString(z)
+}
+
+//go:generate msgp
 type ContractParam struct {
 	CreateContractParam
 	PreStops    []string       `msg:"pre" json:"preStops,omitempty"`
 	NextStops   []string       `msg:"nex" json:"nextStops,omitempty"`
 	ConfirmDate int64          `msg:"t2" json:"confirmDate"`
 	Status      ContractStatus `msg:"s" json:"status"`
-	Terminator  *types.Address `msg:"t,extension" json:"terminator,omitempty"`
+	Terminator  *Terminator    `msg:"t" json:"terminator,omitempty"`
 }
 
 func (z *ContractParam) IsPreStop(n string) bool {
@@ -500,32 +510,66 @@ func (z *ContractParam) DoActive(operator types.Address) error {
 	}
 }
 
-func (z *ContractParam) DoTerminate(operator types.Address) error {
-	if b := z.IsContractor(operator); !b {
+func (z *ContractParam) DoTerminate(operator *Terminator) error {
+	if operator == nil || operator.Address.IsZero() {
+		return errors.New("invalid terminal operator")
+	}
+
+	if b := z.IsContractor(operator.Address); !b {
 		return fmt.Errorf("permission denied, only contractor can terminate it, exp: %s or %s, act: %s",
-			z.PartyA.Address.String(), z.PartyB.Address.String(), operator.String())
+			z.PartyA.Address.String(), z.PartyB.Address.String(), operator.Address.String())
 	}
 
 	if z.Terminator != nil {
-		if reflect.DeepEqual(z.Terminator, &operator) {
+		if operator.Address == z.Terminator.Address && operator.Request == z.Terminator.Request {
 			return fmt.Errorf("%s already terminated contract", operator.String())
 		}
-	} else {
-		z.Terminator = &operator
-	}
 
-	if z.Status == ContractStatusActiveStage1 {
-		if z.PartyA.Address == operator {
-			z.Status = ContractStatusDestroyed
+		// confirmed, only allow deal with ContractStatusDestroyStage1
+		// - terminator cancel by himself, request is false
+		// - confirm by the other one, request is true
+		// - reject by the other one, request is false
+		if z.Status == ContractStatusDestroyStage1 {
+			// cancel himself
+			if operator.Address == z.Terminator.Address {
+				if !operator.Request {
+					z.Status = ContractStatusActivated
+					z.Terminator = nil
+				}
+			} else {
+				// confirm by the other one
+				if operator.Request {
+					z.Status = ContractStatusDestroyed
+				} else {
+					// reject, back to activated
+					z.Status = ContractStatusActivated
+					z.Terminator = nil
+				}
+			}
 		} else {
-			z.Status = ContractStatusRejected
+			return fmt.Errorf("invalid contract status, %s", z.Status.String())
 		}
-	} else if z.Status == ContractStatusActivated {
-		z.Status = ContractStatusDestroyStage1
-	} else if z.Status == ContractStatusDestroyStage1 {
-		z.Status = ContractStatusDestroyed
 	} else {
-		return fmt.Errorf("invalid contract status, %s", z.Status.String())
+		if !operator.Request {
+			return fmt.Errorf("invalid request(%s) on %s", operator.String(), z.Status.String())
+		}
+		if z.Status == ContractStatusActiveStage1 {
+			// request only allow true
+			// first operate, request should always true, allow
+			// - partyA close contract by himself
+			// - partyB reject partyA's contract
+			// - partyA or partyB start to close a signed contract
+			if z.PartyA.Address == operator.Address {
+				z.Status = ContractStatusDestroyed
+			} else {
+				z.Status = ContractStatusRejected
+			}
+		} else if z.Status == ContractStatusActivated {
+			z.Terminator = operator
+			z.Status = ContractStatusDestroyStage1
+		} else {
+			return fmt.Errorf("invalid contract status, %s", z.Status.String())
+		}
 	}
 
 	return nil
