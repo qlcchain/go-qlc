@@ -7,6 +7,9 @@ import (
 
 type SmartBlockStore interface {
 	HasSmartContractBlock(key types.Hash) (bool, error)
+	GetSmartContractBlock(key types.Hash) (*types.SmartContractBlock, error)
+	GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error) error
+	CountSmartContractBlocks() (uint64, error)
 }
 
 func (l *Ledger) AddSmartContractBlock(value *types.SmartContractBlock) error {

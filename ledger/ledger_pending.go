@@ -9,7 +9,9 @@ type PendingStore interface {
 	GetPending(pendingKey *types.PendingKey) (*types.PendingInfo, error)
 	GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error) error
 	GetPendingsByAddress(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error) error
+	GetPendingsByToken(account types.Address, token types.Hash, fn func(key *types.PendingKey, value *types.PendingInfo) error) error
 	PendingAmount(address types.Address, token types.Hash) (types.Balance, error)
+	AddPending(key *types.PendingKey, value *types.PendingInfo, c *Cache) error
 }
 
 func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, c *Cache) error {

@@ -5,6 +5,10 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 )
 
+type DposStore interface {
+	GetLastGapPovHeight() uint64
+}
+
 const (
 	DPoSDataLastGapPovHeight byte = iota
 )

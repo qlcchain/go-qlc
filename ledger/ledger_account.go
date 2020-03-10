@@ -13,6 +13,7 @@ type AccountStore interface {
 	GetAccountMetas(fn func(am *types.AccountMeta) error) error
 	CountAccountMetas() (uint64, error)
 	HasAccountMetaConfirmed(address types.Address) (bool, error)
+	AddAccountMeta(value *types.AccountMeta, c storage.Cache) error
 
 	GetAccountMetaConfirmed(address types.Address, c ...storage.Cache) (*types.AccountMeta, error)
 

@@ -22,6 +22,9 @@ type Store interface {
 	FrontierStore
 	RepresentationStore
 	UncheckedBlockStore
+	PeerInfoStore
+	SyncStore
+	DposStore
 	PovStore
 	Relation
 
@@ -35,4 +38,5 @@ type Store interface {
 	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error)
+	Action(at storage.ActionType, t int) (interface{}, error)
 }
