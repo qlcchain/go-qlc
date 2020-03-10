@@ -361,6 +361,7 @@ func SearchPledgeInfoWithNEP5TxId(ctx *vmstore.VMContext, param *WithdrawPledgeP
 	return result
 }
 
+// FIXME: can't sleep to waiting...
 func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
 	result := searchBeneficialPledgeInfoByTxId(ctx, param)
 	if result != nil {
@@ -417,7 +418,7 @@ func searchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 }
 
 func SearchBeneficialPledgeInfoIgnoreWithdrawTime(ctx *vmstore.VMContext, param *WithdrawPledgeParam) []*PledgeResult {
-	logger := log.NewLogger("GetBeneficialPledgeInfos")
+	logger := log.NewLogger("SearchBeneficialPledgeInfoIgnoreWithdrawTime")
 	defer func() {
 		_ = logger.Sync()
 	}()
