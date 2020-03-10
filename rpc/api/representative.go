@@ -69,7 +69,7 @@ func (r *RepApi) GetRewardData(param *RepRewardParam) ([]byte, error) {
 
 func (r *RepApi) UnpackRewardData(data []byte) (*RepRewardParam, error) {
 	abiParam := new(cabi.RepRewardParam)
-	err := cabi.MinerABI.UnpackMethod(abiParam, cabi.MethodNameRepReward, data)
+	err := cabi.RepABI.UnpackMethod(abiParam, cabi.MethodNameRepReward, data)
 	if err != nil {
 		return nil, err
 	}

@@ -367,7 +367,7 @@ func TestPublicKeyDistributionApi_GetAllVerifiers(t *testing.T) {
 
 	addTestVerifierInfo(t, ctx, account, common.OracleTypeEmail, "123@test.com", vk[:])
 	vs, _ := pkd.GetAllVerifiers()
-	if vs == nil || len(vs) != 1 || vk.String() != vs[0].VKey {
+	if len(vs) != 1 || vk.String() != vs[0].VKey {
 		t.Fatal()
 	}
 }
@@ -1000,6 +1000,11 @@ func TestPublicKeyDistributionApi_GetOracleInfosByAccountAndType(t *testing.T) {
 
 	os, _ = pkd.GetOracleInfosByAccountAndType(account, "invalid")
 	if len(os) != 0 {
+		t.Fatal()
+	}
+
+	os, _ = pkd.GetOracleInfosByAccountAndType(account, "")
+	if len(os) != 1 {
 		t.Fatal()
 	}
 }

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 	"os"
 	"path/filepath"
 
@@ -21,4 +23,13 @@ func getTestLedger() (func(), *ledger.Ledger, string) {
 		l.Close()
 		os.RemoveAll(dir)
 	}, l, cm.ConfigFile
+}
+
+func addPovBlock(l *ledger.Ledger, prevBlock *types.PovBlock, height uint64) *types.PovBlock {
+	pb, td := mock.GeneratePovBlock(prevBlock, 0)
+	pb.Header.BasHdr.Height = height
+	l.AddPovBlock(pb, td)
+	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
+	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
+	return pb
 }

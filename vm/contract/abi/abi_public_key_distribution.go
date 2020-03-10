@@ -260,6 +260,7 @@ func GetAllVerifiers(ctx *vmstore.VMContext) ([]*VerifierRegInfo, error) {
 			Account: addr,
 			VType:   util.BE_BytesToUint32(key[VerifierTypeIndexS:VerifierTypeIndexE]),
 			VInfo:   vs.VInfo,
+			VKey:    vs.VKey,
 		}
 
 		vrs = append(vrs, vr)
@@ -294,6 +295,7 @@ func GetVerifiersByType(ctx *vmstore.VMContext, vType uint32) ([]*VerifierRegInf
 			Account: addr,
 			VType:   util.BE_BytesToUint32(key[VerifierTypeIndexS:VerifierTypeIndexE]),
 			VInfo:   vs.VInfo,
+			VKey:    vs.VKey,
 		}
 
 		vrs = append(vrs, vr)
@@ -326,6 +328,7 @@ func GetVerifiersByAccount(ctx *vmstore.VMContext, account types.Address) ([]*Ve
 			Account: account,
 			VType:   util.BE_BytesToUint32(key[VerifierTypeIndexS:VerifierTypeIndexE]),
 			VInfo:   vs.VInfo,
+			VKey:    vs.VKey,
 		}
 
 		vrs = append(vrs, vr)
