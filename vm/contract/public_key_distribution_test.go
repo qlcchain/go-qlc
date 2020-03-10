@@ -44,7 +44,8 @@ func TestVerifierRegister(t *testing.T) {
 		t.Fatal()
 	}
 
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, common.OracleTypeEmail, "test@126.com")
+	vk := mock.Hash()
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, common.OracleTypeEmail, "test@126.com", vk[:])
 	_, _, err = vr.ProcessSend(ctx, blk)
 	if err != ErrNotEnoughPledge {
 		t.Fatal()
@@ -58,7 +59,7 @@ func TestVerifierRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, common.OracleTypeInvalid, "test@126.com")
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, common.OracleTypeInvalid, "test@126.com", vk[:])
 	_, _, err = vr.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal()
@@ -97,7 +98,8 @@ func TestVerifierUnregister(t *testing.T) {
 
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierUnregister, common.OracleTypeEmail)
 	vr := new(VerifierRegister)
-	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com")
+	vk := mock.Hash()
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com", vk[:])
 	_, _, err = vu.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal()
@@ -270,7 +272,8 @@ func TestOracle(t *testing.T) {
 	ot = common.OracleTypeEmail
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
 	vr := new(VerifierRegister)
-	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com")
+	vk := mock.Hash()
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com", vk[:])
 	p := new(Publish)
 	vs := []types.Address{blk.Address}
 	codeComb := append([]byte(types.NewHexBytesFromData(pk).String()), []byte(code)...)
@@ -374,7 +377,8 @@ func TestVerifierHeart(t *testing.T) {
 	}
 
 	vr := new(VerifierRegister)
-	vr.SetStorage(ctx, blk.Address, common.OracleTypeWeChat, "wcid12345")
+	vk := mock.Hash()
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeWeChat, "wcid12345", vk[:])
 	am := mock.AccountMeta(blk.Address)
 	am.CoinOracle = common.MinVerifierPledgeAmount
 	l.AddAccountMeta(am, l.Cache().GetCache())
@@ -384,7 +388,7 @@ func TestVerifierHeart(t *testing.T) {
 	}
 
 	ht = []uint32{common.OracleTypeEmail, common.OracleTypeWeChat}
-	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com")
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com", vk[:])
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, ht)
 	_, _, err = vh.ProcessSend(ctx, blk)
 	if err != ErrCalcAmount {

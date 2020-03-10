@@ -39,19 +39,19 @@ func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 		return nil, nil, ErrNotEnoughPledge
 	}
 
-	err = abi.VerifierRegInfoCheck(ctx, block.Address, reg.VType, reg.VInfo)
+	err = abi.VerifierRegInfoCheck(ctx, block.Address, reg.VType, reg.VInfo, reg.VKey)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
-	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, reg.VType, reg.VInfo)
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, reg.VType, reg.VInfo, reg.VKey)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrPackMethod
 	}
 
-	err = vr.SetStorage(ctx, block.Address, reg.VType, reg.VInfo)
+	err = vr.SetStorage(ctx, block.Address, reg.VType, reg.VInfo, reg.VKey)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrSetStorage
@@ -60,8 +60,8 @@ func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 	return nil, nil, nil
 }
 
-func (vr *VerifierRegister) SetStorage(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDVerifierInfo, vInfo, true)
+func (vr *VerifierRegister) SetStorage(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDVerifierInfo, vInfo, vKey, true)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.S
 	}
 
 	vs, _ := abi.GetVerifierInfoByAccountAndType(ctx, block.Address, reg.VType)
-	err = vu.SetStorage(ctx, block.Address, reg.VType, vs.VInfo)
+	err = vu.SetStorage(ctx, block.Address, reg.VType, vs.VInfo, vs.VKey)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrSetStorage
@@ -117,8 +117,8 @@ func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.S
 	return nil, nil, nil
 }
 
-func (vu *VerifierUnregister) SetStorage(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDVerifierInfo, vInfo, false)
+func (vu *VerifierUnregister) SetStorage(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDVerifierInfo, vInfo, vKey, false)
 	if err != nil {
 		return err
 	}

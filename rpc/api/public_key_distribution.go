@@ -57,6 +57,7 @@ type VerifierRegParam struct {
 	Account types.Address `json:"account"`
 	VType   string        `json:"type"`
 	VInfo   string        `json:"id"`
+	VKey    string        `json:"key"`
 }
 
 type VerifierUnRegParam struct {
@@ -79,8 +80,13 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
+	vk := types.NewHexBytesFromHex(param.VKey)
+	if vk == nil {
+		return nil, ErrInvalidParam
+	}
+
 	vt := common.OracleStringToType(param.VType)
-	if err := abi.VerifierRegInfoCheck(p.ctx, param.Account, vt, param.VInfo); err != nil {
+	if err := abi.VerifierRegInfoCheck(p.ctx, param.Account, vt, param.VInfo, vk); err != nil {
 		return nil, err
 	}
 
@@ -98,7 +104,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		return nil, fmt.Errorf("%s have not enough oracle pledge %s, expect %s", param.Account, am.CoinOracle, common.MinVerifierPledgeAmount)
 	}
 
-	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, vt, param.VInfo)
+	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, vt, param.VInfo, vk)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +132,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.vr.SetStorage(vmContext, param.Account, vt, param.VInfo)
+	err = p.vr.SetStorage(vmContext, param.Account, vt, param.VInfo, vk)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +203,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.vu.SetStorage(vmContext, param.Account, vt, vs.VInfo)
+	err = p.vu.SetStorage(vmContext, param.Account, vt, vs.VInfo, vs.VKey)
 	if err != nil {
 		return nil, err
 	}
@@ -223,6 +229,7 @@ func (p *PublicKeyDistributionApi) GetAllVerifiers() ([]*VerifierRegParam, error
 			Account: v.Account,
 			VType:   common.OracleTypeToString(v.VType),
 			VInfo:   v.VInfo,
+			VKey:    types.NewHexBytesFromData(v.VKey).String(),
 		}
 		vrs = append(vrs, vr)
 	}
@@ -248,6 +255,7 @@ func (p *PublicKeyDistributionApi) GetVerifiersByType(vType string) ([]*Verifier
 			Account: v.Account,
 			VType:   common.OracleTypeToString(v.VType),
 			VInfo:   v.VInfo,
+			VKey:    types.NewHexBytesFromData(v.VKey).String(),
 		}
 		vrs = append(vrs, vr)
 	}
@@ -297,6 +305,7 @@ func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*Verifier
 			Account: v.Account,
 			VType:   common.OracleTypeToString(v.VType),
 			VInfo:   v.VInfo,
+			VKey:    types.NewHexBytesFromData(v.VKey).String(),
 		}
 
 		vrs = append(vrs, vr)
@@ -317,15 +326,10 @@ func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*Verifier
 	}
 }
 
-func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account string) ([]*VerifierRegParam, error) {
+func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account types.Address) ([]*VerifierRegParam, error) {
 	vrs := make([]*VerifierRegParam, 0)
 
-	addr, err := types.HexToAddress(account)
-	if err != nil {
-		return nil, fmt.Errorf("account format err(%s)", err)
-	}
-
-	rawVr, err := abi.GetVerifiersByAccount(p.ctx, addr)
+	rawVr, err := abi.GetVerifiersByAccount(p.ctx, account)
 	if err != nil {
 		return nil, err
 	}
@@ -335,6 +339,7 @@ func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account string) ([]*Ver
 			Account: v.Account,
 			VType:   common.OracleTypeToString(v.VType),
 			VInfo:   v.VInfo,
+			VKey:    types.NewHexBytesFromData(v.VKey).String(),
 		}
 		vrs = append(vrs, vr)
 	}

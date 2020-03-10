@@ -23,7 +23,8 @@ func TestPackAndUnpack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := PublicKeyDistributionABI.PackMethod(MethodNamePKDVerifierRegister, common.OracleTypeWeChat, "123@gmail.com")
+	vk := mock.Hash()
+	data, err := PublicKeyDistributionABI.PackMethod(MethodNamePKDVerifierRegister, common.OracleTypeWeChat, "123@gmail.com", vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +35,7 @@ func TestPackAndUnpack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reg.VType != common.OracleTypeWeChat || reg.VInfo != "123@gmail.com" {
+	if reg.VType != common.OracleTypeWeChat || reg.VInfo != "123@gmail.com" || !bytes.Equal(reg.VKey, vk[:]) {
 		t.Fatal()
 	}
 
@@ -99,8 +100,8 @@ func TestPackAndUnpack(t *testing.T) {
 	}
 }
 
-func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
-	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, true)
+func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, vKey, true)
 	if err != nil {
 		return err
 	}
@@ -122,8 +123,8 @@ func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType ui
 	return nil
 }
 
-func delTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
-	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, false)
+func delTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, vKey, false)
 	if err != nil {
 		return err
 	}
@@ -153,12 +154,13 @@ func TestCheckVerifierExist(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
 	if CheckVerifierExist(ctx, account, vt) {
 		t.Fatal()
 	}
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,17 +178,28 @@ func TestCheckVerifierInfoExist(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk1 := mock.Hash()
+	vk2 := mock.Hash()
 
-	if CheckVerifierInfoExist(ctx, account, vt, vi) {
+	if CheckVerifierInfoExist(ctx, account, vt, vi, vk1[:]) {
 		t.Fatal()
 	}
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk2[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !CheckVerifierInfoExist(ctx, account, vt, vi) {
+	if CheckVerifierInfoExist(ctx, account, vt, vi, vk1[:]) {
+		t.Fatal()
+	}
+
+	err = addTestVerifierInfo(ctx, account, vt, vi, vk1[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !CheckVerifierInfoExist(ctx, account, vt, vi, vk1[:]) {
 		t.Fatal()
 	}
 }
@@ -199,14 +212,15 @@ func TestGetAllVerifiers(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account2 := mock.Address()
-	err = addTestVerifierInfo(ctx, account2, vt, vi)
+	err = addTestVerifierInfo(ctx, account2, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,22 +247,23 @@ func TestGetVerifiersByType(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	vt2 := common.OracleTypeWeChat
 	vi2 := "1234"
-	err = addTestVerifierInfo(ctx, account, vt2, vi2)
+	err = addTestVerifierInfo(ctx, account, vt2, vi2, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account3 := mock.Address()
 	vi3 := "1234123"
-	err = addTestVerifierInfo(ctx, account3, vt2, vi3)
+	err = addTestVerifierInfo(ctx, account3, vt2, vi3, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,14 +286,15 @@ func TestGetVerifiersByAccount(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account2 := mock.Address()
-	err = addTestVerifierInfo(ctx, account2, vt, vi)
+	err = addTestVerifierInfo(ctx, account2, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,8 +317,9 @@ func TestGetVerifierInfoByAccountAndType(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,8 +338,9 @@ func TestDeleteVerifier(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +349,7 @@ func TestDeleteVerifier(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = delTestVerifierInfo(ctx, account, vt, vi)
+	err = delTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1016,36 +1034,37 @@ func TestVerifierRegInfoCheck(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeInvalid
 	vi := "123@test.com"
+	vk := mock.Hash()
 
-	err := VerifierRegInfoCheck(ctx, account, vt, vi)
+	err := VerifierRegInfoCheck(ctx, account, vt, vi, vk[:])
 	if err == nil {
 		t.Fatal()
 	}
 
 	vt = common.OracleTypeEmail
-	err = addTestVerifierInfo(ctx, account, vt, vi)
+	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	err = VerifierRegInfoCheck(ctx, account, vt, vi, vk[:])
 	if err == nil {
 		t.Fatal()
 	}
 
 	vt = common.OracleTypeWeChat
 	vi = "123456"
-	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	err = VerifierRegInfoCheck(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = addTestVerifierInfo(ctx, account, vt, vi)
+	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	err = VerifierRegInfoCheck(ctx, account, vt, vi, vk[:])
 	if err == nil {
 		t.Fatal()
 	}
@@ -1071,7 +1090,8 @@ func TestVerifierUnRegInfoCheck(t *testing.T) {
 	}
 
 	vi := "123456"
-	err = addTestVerifierInfo(ctx, account, vt, vi)
+	vk := mock.Hash()
+	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}

@@ -20,7 +20,8 @@ const (
 	[
 		{"type":"function","name":"PKDVerifierRegister","inputs":[
 			{"name":"vType","type":"uint32"},
-			{"name":"vInfo","type":"string"}
+			{"name":"vInfo","type":"string"},
+			{"name":"vKey","type":"uint8[]"}
 		]},
 		{"type":"function","name":"PKDVerifierUnregister","inputs":[
 			{"name":"vType","type":"uint32"}
@@ -57,6 +58,7 @@ const (
 		]},
 		{"type":"variable","name":"PKDVerifierInfo","inputs":[
 			{"name":"vInfo","type":"string"},
+			{"name":"vKey","type":"uint8[]"},
 			{"name":"valid","type":"bool"}
 		]},
 		{"type":"variable","name":"PKDOracleInfo","inputs":[
@@ -113,6 +115,7 @@ type VerifierRegInfo struct {
 	Account types.Address
 	VType   uint32
 	VInfo   string
+	VKey    []byte
 }
 
 type VerifierUnRegInfo struct {
@@ -122,6 +125,7 @@ type VerifierUnRegInfo struct {
 
 type VerifierStorage struct {
 	VInfo string
+	VKey  []byte
 	Valid bool
 }
 
@@ -129,18 +133,18 @@ type VerifierHeartInfo struct {
 	VType []uint32
 }
 
-func VerifierRegInfoCheck(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
+func VerifierRegInfoCheck(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
 	switch vType {
 	case common.OracleTypeEmail:
 		if !util.VerifyEmailFormat(vInfo) {
 			return fmt.Errorf("invalid email format (%s)", vInfo)
 		}
 
-		if CheckVerifierInfoExist(ctx, account, vType, vInfo) {
+		if CheckVerifierInfoExist(ctx, account, vType, vInfo, vKey) {
 			return fmt.Errorf("email has been registered (%s)", vInfo)
 		}
 	case common.OracleTypeWeChat:
-		if CheckVerifierInfoExist(ctx, account, vType, vInfo) {
+		if CheckVerifierInfoExist(ctx, account, vType, vInfo, vKey) {
 			return fmt.Errorf("weChat id has been registered (%s)", vInfo)
 		}
 	default:
@@ -175,7 +179,7 @@ func VerifierPledgeCheck(ctx *vmstore.VMContext, account types.Address) error {
 	return nil
 }
 
-func CheckVerifierInfoExist(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) bool {
+func CheckVerifierInfoExist(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) bool {
 	var key []byte
 	key = append(key, PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
@@ -191,7 +195,7 @@ func CheckVerifierInfoExist(ctx *vmstore.VMContext, account types.Address, vType
 		return false
 	}
 
-	if info.Valid && info.VInfo == vInfo {
+	if info.Valid && info.VInfo == vInfo && bytes.Equal(info.VKey, vKey) {
 		return true
 	}
 

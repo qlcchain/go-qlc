@@ -33,6 +33,7 @@ var (
 	ErrVerifierType = errors.New("invalid verifier type")
 	ErrNoGas        = errors.New("there is no gas token")
 	ErrGetPovHeader = errors.New("get pov header err")
+	ErrInvalidParam = errors.New("invalid parameter")
 )
 
 type lockStatus uint8
