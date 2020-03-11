@@ -54,11 +54,11 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 	gasToken := config.GasToken()
 	addr, _ := types.HexToAddress("qlc_361j3uiqdkjrzirttrpu9pn7eeussymty4rz4gifs9ijdx1p46xnpu3je7sy")
 	_ = ledgerApi.getProcessLock(addr, chainToken)
-	if ledgerApi.processLock.Len() != 1 {
+	if ledgerApi.processLockLen() != 1 {
 		t.Fatal("lock len error for addr")
 	}
 	_ = ledgerApi.getProcessLock(addr, gasToken)
-	if ledgerApi.processLock.Len() != 2 {
+	if ledgerApi.processLockLen() != 2 {
 		t.Fatal("lock error for different token")
 	}
 
@@ -66,14 +66,14 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 		a := mock.Address()
 		ledgerApi.getProcessLock(a, chainToken)
 	}
-	if ledgerApi.processLock.Len() != 1000 {
+	if ledgerApi.processLockLen() != 1000 {
 		t.Fatal("lock len error for 1000 addresses")
 	}
 	sb := mock.StateBlockWithAddress(addr)
 	_, _ = ledgerApi.Process(sb)
 	addr2, _ := types.HexToAddress("qlc_1gnggt8b6cwro3b4z9gootipykqd6x5gucfd7exsi4xqkryiijciegfhon4u")
 	_ = ledgerApi.getProcessLock(addr2, chainToken)
-	if ledgerApi.processLock.Len() != 1001 {
+	if ledgerApi.processLockLen() != 1001 {
 		t.Fatal("get error when delete idle lock")
 	}
 }
