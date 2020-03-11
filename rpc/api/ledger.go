@@ -10,8 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
@@ -20,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
@@ -51,7 +50,7 @@ type lockValue struct {
 }
 
 type LedgerAPI struct {
-	ledger *ledger.Ledger
+	ledger ledger.Store
 	//vmContext *vmstore.VMContext
 	eb                event.EventBus
 	logger            *zap.SugaredLogger
@@ -110,7 +109,7 @@ type ApiTokenInfo struct {
 	types.TokenInfo
 }
 
-func NewLedgerApi(ctx context.Context, l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *LedgerAPI {
+func NewLedgerApi(ctx context.Context, l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *LedgerAPI {
 	api := LedgerAPI{
 		ledger:            l,
 		eb:                eb,
@@ -122,12 +121,6 @@ func NewLedgerApi(ctx context.Context, l *ledger.Ledger, eb event.EventBus, cc *
 	}
 	go api.checkProcessLockTimeout()
 	return &api
-}
-
-func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
-	b.StateBlock = block
-	b.Hash = block.GetHash()
-	return b
 }
 
 func (l *LedgerAPI) AccountBlocksCount(addr types.Address) (int64, error) {
@@ -196,7 +189,6 @@ func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset 
 	}
 	hashes, err := l.ledger.BlocksByAccount(address, c, o)
 	if err != nil {
-		l.logger.Error(err)
 		return nil, err
 	}
 	bs := make([]*APIBlock, 0)
@@ -283,7 +275,10 @@ func (l *LedgerAPI) AccountRepresentative(addr types.Address) (types.Address, er
 func (l *LedgerAPI) AccountVotingWeight(addr types.Address) (types.Balance, error) {
 	b, err := l.ledger.GetRepresentation(addr)
 	if err != nil {
-		return types.ZeroBalance, nil
+		if err == ledger.ErrRepresentationNotFound {
+			return types.ZeroBalance, nil
+		}
+		return types.ZeroBalance, err
 	}
 	return b.Total, err
 }
@@ -675,21 +670,11 @@ func (l *LedgerAPI) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 		return nil, err
 	}
 
-	s, err := phoneNumberSeri(para.Sender)
-	if err != nil {
-		return nil, errors.New("error sender")
-	}
-	r, err := phoneNumberSeri(para.Receiver)
-	if err != nil {
-		return nil, errors.New("error receiver")
-	}
 	sb := types.StateBlock{
-		Address:  para.From,
-		Token:    info.TokenId,
-		Link:     para.To.ToHash(),
-		Sender:   s,
-		Receiver: r,
-		Message:  para.Message,
+		Address: para.From,
+		Token:   info.TokenId,
+		Link:    para.To.ToHash(),
+		Message: para.Message,
 	}
 	block, err := l.ledger.GenerateSendBlock(&sb, para.Amount, prk)
 	if err != nil {
@@ -868,7 +853,8 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 		lv.mutex.Unlock()
 		lv.lockStatus.Store(idle)
 	}()
-	verifier := process.NewLedgerVerifier(l.ledger)
+	ledger := l.ledger.(*ledger.Ledger)
+	verifier := process.NewLedgerVerifier(ledger)
 	flag, err := verifier.BlockCacheCheck(block)
 	if err != nil {
 		l.logger.Error(err)
@@ -879,7 +865,7 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 	switch flag {
 	case process.Progress:
 		hash := block.GetHash()
-		verify := process.NewLedgerVerifier(l.ledger)
+		verify := process.NewLedgerVerifier(ledger)
 		err := verify.BlockCacheProcess(block)
 		if err != nil {
 			l.logger.Errorf("Block %s add to blockCache error[%s]", hash, err)

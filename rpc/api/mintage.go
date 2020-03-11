@@ -11,14 +11,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -28,13 +27,13 @@ import (
 
 type MintageAPI struct {
 	logger   *zap.SugaredLogger
-	l        *ledger.Ledger
+	l        ledger.Store
 	mintage  *contract.Mintage
 	withdraw *contract.WithdrawMintage
 	cc       *chainctx.ChainContext
 }
 
-func NewMintageApi(cfgFile string, l *ledger.Ledger) *MintageAPI {
+func NewMintageApi(cfgFile string, l ledger.Store) *MintageAPI {
 	api := &MintageAPI{
 		l:        l,
 		mintage:  &contract.Mintage{},

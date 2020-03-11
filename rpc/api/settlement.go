@@ -13,14 +13,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -30,7 +29,7 @@ import (
 
 type SettlementAPI struct {
 	logger            *zap.SugaredLogger
-	l                 *ledger.Ledger
+	l                 ledger.Store
 	createContract    *contract.CreateContract
 	signContract      *contract.SignContract
 	cdrContract       *contract.ProcessCDR
@@ -50,7 +49,7 @@ type SignContractParam struct {
 	Address         types.Address `json:"address"`
 }
 
-func NewSettlement(l *ledger.Ledger, cc *context.ChainContext) *SettlementAPI {
+func NewSettlement(l ledger.Store, cc *context.ChainContext) *SettlementAPI {
 	return &SettlementAPI{
 		logger:         log.NewLogger("rpc/settlement"),
 		l:              l,

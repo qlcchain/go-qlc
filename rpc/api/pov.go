@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/storage"
-
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -27,7 +26,7 @@ import (
 
 type PovApi struct {
 	cfg    *config.Config
-	l      *ledger.Ledger
+	l      ledger.Store
 	logger *zap.SugaredLogger
 	eb     event.EventBus
 	feb    *event.FeedEventBus
@@ -165,7 +164,7 @@ type PovRepStats struct {
 	LatestBlockHeight uint64                            `json:"latestBlockHeight"`
 }
 
-func NewPovApi(ctx context.Context, cfg *config.Config, l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *PovApi {
+func NewPovApi(ctx context.Context, cfg *config.Config, l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *PovApi {
 	api := &PovApi{
 		cfg:    cfg,
 		l:      l,

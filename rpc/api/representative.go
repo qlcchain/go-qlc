@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/qlcchain/go-qlc/common/statedb"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -23,7 +22,7 @@ import (
 type RepApi struct {
 	cfg    *config.Config
 	logger *zap.SugaredLogger
-	ledger *ledger.Ledger
+	ledger ledger.Store
 	reward *contract.RepReward
 }
 
@@ -54,7 +53,7 @@ type RepHistoryRewardInfo struct {
 	LastRewardTime int64         `json:"lastRewardTime"`
 }
 
-func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
+func NewRepApi(cfg *config.Config, ledger ledger.Store) *RepApi {
 	return &RepApi{
 		cfg:    cfg,
 		logger: log.NewLogger("api_representative"),

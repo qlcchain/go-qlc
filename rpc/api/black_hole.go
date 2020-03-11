@@ -25,12 +25,12 @@ import (
 
 type BlackHoleAPI struct {
 	logger            *zap.SugaredLogger
-	l                 *ledger.Ledger
+	l                 ledger.Store
 	blackHoleContract *contract.BlackHole
 	cc                *context.ChainContext
 }
 
-func NewBlackHoleApi(l *ledger.Ledger, cc *context.ChainContext) *BlackHoleAPI {
+func NewBlackHoleApi(l ledger.Store, cc *context.ChainContext) *BlackHoleAPI {
 	api := &BlackHoleAPI{
 		logger:            log.NewLogger("rpc/black_hole"),
 		l:                 l,

@@ -8,8 +8,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -17,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -27,7 +26,7 @@ import (
 
 type PublicKeyDistributionApi struct {
 	logger *zap.SugaredLogger
-	l      *ledger.Ledger
+	l      ledger.Store
 	cc     *chainctx.ChainContext
 	vr     *contract.VerifierRegister
 	vu     *contract.VerifierUnregister
@@ -38,7 +37,7 @@ type PublicKeyDistributionApi struct {
 	ctx    *vmstore.VMContext
 }
 
-func NewPublicKeyDistributionApi(cfgFile string, l *ledger.Ledger) *PublicKeyDistributionApi {
+func NewPublicKeyDistributionApi(cfgFile string, l ledger.Store) *PublicKeyDistributionApi {
 	api := &PublicKeyDistributionApi{
 		l:      l,
 		logger: log.NewLogger("api_verifier"),

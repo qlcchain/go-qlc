@@ -63,7 +63,7 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 	if c, ok := lv.blockCheck[block.Type]; ok {
 		r, err := c.Check(lv, block)
 		if err != nil {
-			lv.logger.Error(fmt.Sprintf("error:%s, block:%s", err.Error(), block.GetHash().String()))
+			lv.logger.Errorf("error:%s, block:%s", err.Error(), block.GetHash().String())
 		}
 		if r != Progress {
 			if r == UnReceivable {
@@ -71,7 +71,7 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 					return Progress, nil
 				}
 			}
-			lv.logger.Debugf(fmt.Sprintf("process result:%s, block:%s, type: %s", r.String(), block.GetHash().String(), block.GetType().String()))
+			lv.logger.Debugf("process result:%s, block:%s, type: %s", r.String(), block.GetHash().String(), block.GetType().String())
 		}
 		return r, err
 	} else {
@@ -279,7 +279,7 @@ func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 	err := lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
 		err := lv.processStateBlock(block, c)
 		if err != nil {
-			lv.logger.Error(fmt.Sprintf("block  process error: %s, block:%s", err.Error(), block.GetHash().String()))
+			lv.logger.Errorf("block  process error: %s, block:%s", err.Error(), block.GetHash().String())
 			return err
 		}
 		return nil

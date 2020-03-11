@@ -13,13 +13,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -29,7 +28,7 @@ import (
 
 type RewardsApi struct {
 	logger           *zap.SugaredLogger
-	ledger           *ledger.Ledger
+	ledger           ledger.Store
 	rewards          *contract.AirdropRewords
 	confidantRewards *contract.ConfidantRewards
 	cc               *chainctx.ChainContext
@@ -42,7 +41,7 @@ type sendParam struct {
 	tm *types.TokenMeta
 }
 
-func NewRewardsApi(l *ledger.Ledger, cc *chainctx.ChainContext) *RewardsApi {
+func NewRewardsApi(l ledger.Store, cc *chainctx.ChainContext) *RewardsApi {
 	api := &RewardsApi{
 		ledger:           l,
 		logger:           log.NewLogger("api_rewards"),

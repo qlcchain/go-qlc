@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -46,23 +46,7 @@ func setupSettlementAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifi
 	cc := context.NewChainContext(cm.ConfigFile)
 	l := ledger.NewLedger(cm.ConfigFile)
 	verifier := process.NewLedgerVerifier(l)
-	block, td := mock.GeneratePovBlock(nil, 0)
-	_ = l.AddPovBlock(block, td)
-
-	err = l.AddPovBestHash(block.GetHeight(), block.GetHash())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = l.SetPovLatestHeight(block.GetHeight())
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = cc.Init(func() error {
-		return nil
-	})
-	_ = cc.Start()
-	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+	setPovStatus(l, cc, t)
 
 	api := NewSettlement(l, cc)
 
