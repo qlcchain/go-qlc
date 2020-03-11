@@ -1,53 +1,200 @@
 package contract
 
 import (
-	"encoding/json"
+	"math/big"
 	"testing"
+	"time"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+
+	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-func TestAirdropRewords_GetTargetReceiver(t *testing.T) {
-	clear, l := getTestLedger()
-	if l == nil {
-		t.Fatal()
-	}
-	defer clear()
+func TestAirdropRewards(t *testing.T) {
+	testCase, l := setupLedgerForTestCase(t)
+	defer testCase(t)
 
-	var jsonSend = `
-		{
-			"type": "ContractSend",
-			"token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
-			"address": "qlc_35dyxo7wwg5rzwmipiu19u99ayh3qcrnjwnnekij7oijby466qnqy9hbs5td",
-			"balance": "8516298185573",
-			"vote": "0",
-			"network": "0",
-			"storage": "0",
-			"oracle": "0",
-			"previous": "9963e0b7d9798bb137e7d40cfc7bec27615d77e29d978aa481dfb97cbc51fc61",
-			"link": "d614bb9d5e20ad063316ce091148e77c99136c6194d55c7ecc7ffa9620dbcaeb",
-			"message": "0000000000000000000000000000000000000000000000000000000000000000",
-			"data": "jEWRCk8mS05D3Rpl6xkMdhRem9+8Z7uPTpSWcBASbunxRgwbr/oqPs02onf1Trq9RZvN54hRiZXRLKWgXdqVC27HClSZY+C32XmLsTfn1Az8e+wnYV134p2XiqSB37l8vFH8YeuK0HJelB0uj4sC8AMydR9du/iygkHV9jsfJg0oTx7BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABooo+Sr8OJAEL4pKJGZjKCG+iGdOAADYohd7rD9aqAA/r56m4wa4wZ8lnrXYc5Of/bPDtF0dki0fRB7U0pcs76ZnUsA",
-			"povHeight": 0,
-			"timestamp": 1565395308,
-			"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-			"representative": "qlc_1111111111111111111111111111111111111111111111111111hifc8npp",
-			"work": "0000000000000000",
-			"signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-			"tokenName": "QGAS",
-			"amount": "438871012",
-			"hash": "8cbacbe054e57dd44e69f7b2f5b87291eb50c253ae94f7c75cb3c9eda1b6de4d",
-			"povConfirmHeight": 6,
-			"povConfirmCount": 69180
-		}
-	`
-	blk := new(types.StateBlock)
-	_ = json.Unmarshal([]byte(jsonSend), blk)
-	ar := new(AirdropRewords)
 	ctx := vmstore.NewVMContext(l)
-	addr, err := ar.GetTargetReceiver(ctx, blk)
-	if err != nil || addr.String() != "qlc_3dzt7azetfo4gztnxgoxapfwuswac86sdnbenpi7upno3fqeg4knnnb7d94x" {
+
+	addr1 := account1.Address()
+	b := mock.Address()
+	am, err := l.GetAccountMeta(addr1)
+	if err != nil {
 		t.Fatal(err)
+	}
+	tm := am.Token(cfg.GasToken())
+
+	param := &cabi.RewardsParam{
+		Id:         mock.Hash(),
+		Beneficial: b,
+		TxHeader:   tm.Header,
+		RxHeader:   types.Hash{},
+		Amount:     big.NewInt(1e8),
+		Sign:       types.Signature{},
+	}
+
+	if data, err := param.ToUnsignedABI(cabi.MethodNameUnsignedAirdropRewards); err != nil {
+		t.Fatal(err)
+	} else {
+		h := types.HashData(data)
+		param.Sign = account1.Sign(h)
+		if abi, err := param.ToSignedABI(cabi.MethodNameAirdropRewards); err != nil {
+			t.Fatal(err)
+		} else {
+			sb := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        addr1,
+				Balance:        tm.Balance.Sub(types.Balance{Int: param.Amount}),
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.RewardsAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				PoVHeight:      0,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			rewards := AirdropRewards{}
+			if err := rewards.DoSend(ctx, sb); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := ctx.SaveStorage(); err != nil {
+				t.Fatal(err)
+			}
+
+			if pending, info, err := rewards.DoPending(sb); err != nil {
+				t.Fatal(err)
+			} else {
+				t.Log(pending, info)
+			}
+
+			if r, err := rewards.GetTargetReceiver(ctx, sb); err != nil {
+				t.Fatal(err)
+			} else if r != b {
+				t.Fatalf("invalid receive address, exp: %s, act: %s", b.String(), r.String())
+			}
+
+			_ = rewards.GetRefundData()
+
+			rev := &types.StateBlock{
+				Timestamp: time.Now().Unix(),
+			}
+			if r, err := rewards.DoReceive(ctx, rev, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				if len(r) == 0 {
+					t.Fatal()
+				}
+				t.Log(r[0])
+			}
+		}
+	}
+}
+
+func TestConfidantRewards(t *testing.T) {
+	testCase, l := setupLedgerForTestCase(t)
+	defer testCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+
+	addr1 := account1.Address()
+	b := account2.Address()
+	am, err := l.GetAccountMeta(addr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tm := am.Token(cfg.GasToken())
+
+	param := &cabi.RewardsParam{
+		Id:         mock.Hash(),
+		Beneficial: b,
+		TxHeader:   tm.Header,
+		RxHeader:   types.Hash{},
+		Amount:     big.NewInt(1e8),
+		Sign:       types.Signature{},
+	}
+
+	if data, err := param.ToUnsignedABI(cabi.MethodNameUnsignedConfidantRewards); err != nil {
+		t.Fatal(err)
+	} else {
+		h := types.HashData(data)
+		param.Sign = account1.Sign(h)
+		if abi, err := param.ToSignedABI(cabi.MethodNameConfidantRewards); err != nil {
+			t.Fatal(err)
+		} else {
+			sb := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        addr1,
+				Balance:        tm.Balance.Sub(types.Balance{Int: param.Amount}),
+				Vote:           types.ZeroBalance,
+				Network:        types.ZeroBalance,
+				Oracle:         types.ZeroBalance,
+				Storage:        types.ZeroBalance,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.RewardsAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				PoVHeight:      0,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+
+			rewards := ConfidantRewards{}
+			if err := rewards.DoSend(ctx, sb); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := ctx.SaveStorage(); err != nil {
+				t.Fatal(err)
+			}
+
+			if pending, info, err := rewards.DoPending(sb); err != nil {
+				t.Fatal(err)
+			} else {
+				t.Log(pending, info)
+			}
+
+			if r, err := rewards.GetTargetReceiver(ctx, sb); err != nil {
+				t.Fatal(err)
+			} else if r != b {
+				t.Fatalf("invalid receive address, exp: %s, act: %s", b.String(), r.String())
+			}
+
+			_ = rewards.GetRefundData()
+
+			rev := &types.StateBlock{
+				Timestamp: time.Now().Unix(),
+			}
+
+			if r, err := rewards.DoReceive(ctx, rev, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				if len(r) == 0 {
+					t.Fatal()
+				}
+				t.Log(r[0])
+			}
+
+			rev2 := &types.StateBlock{
+				Timestamp: time.Now().Unix(),
+			}
+			if r, err := rewards.DoReceive(ctx, rev2, sb); err != nil {
+				t.Fatal(err)
+			} else {
+				if len(r) == 0 {
+					t.Fatal()
+				}
+				t.Log(r[0])
+			}
+		}
 	}
 }

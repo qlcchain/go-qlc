@@ -90,6 +90,10 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		}
 	}
 
+	if _, err := pledge.DoReceive(ctx, rev, send); err == nil {
+		t.Fatal()
+	}
+
 	if err = ctx.SaveStorage(); err != nil {
 		t.Fatal(err)
 	}

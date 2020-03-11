@@ -29,7 +29,7 @@ import (
 type RewardsApi struct {
 	logger           *zap.SugaredLogger
 	ledger           ledger.Store
-	rewards          *contract.AirdropRewords
+	rewards          *contract.AirdropRewards
 	confidantRewards *contract.ConfidantRewards
 	cc               *chainctx.ChainContext
 }
@@ -45,7 +45,7 @@ func NewRewardsApi(l ledger.Store, cc *chainctx.ChainContext) *RewardsApi {
 	api := &RewardsApi{
 		ledger:           l,
 		logger:           log.NewLogger("api_rewards"),
-		rewards:          &contract.AirdropRewords{},
+		rewards:          &contract.AirdropRewards{},
 		confidantRewards: &contract.ConfidantRewards{},
 		cc:               cc,
 	}
@@ -113,7 +113,15 @@ func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn fun
 
 	r.logger.Debugf("%s %s %s %s %s", methodName, param.To.String(), txHash.String(), rxHash.String(), param.Amount.Int)
 
-	if data, err := cabi.RewardsABI.PackMethod(methodName, id, param.To, txHash, rxHash, param.Amount.Int); err == nil {
+	p2 := &cabi.RewardsParam{
+		Beneficial: param.To,
+		TxHeader:   txHash,
+		RxHeader:   rxHash,
+		Amount:     param.Amount.Int,
+	}
+	p2.Id, _ = types.BytesToHash(id)
+
+	if data, err := p2.ToUnsignedABI(methodName); err == nil {
 		return types.HashData(data), nil
 	} else {
 		return types.ZeroHash, err
@@ -229,7 +237,8 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 	if err != nil {
 		return nil, fmt.Errorf("get pov header error: %s", err)
 	}
-	if singedData, err := cabi.RewardsABI.PackMethod(methodName, param.Id, param.Beneficial, param.TxHeader, param.RxHeader, param.Amount, param.Sign); err == nil {
+
+	if singedData, err := param.ToSignedABI(methodName); err == nil {
 		return &types.StateBlock{
 			Type:           types.ContractSend,
 			Token:          param.tm.Type,

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/pkg/errors"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"

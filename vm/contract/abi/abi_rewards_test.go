@@ -37,8 +37,7 @@ func TestGetRewardsDetail(t *testing.T) {
 			t.Fatal(err)
 		}
 		key := GetRewardsKey(md.Param.Id[:], md.Param.TxHeader[:], md.Param.RxHeader[:])
-		if data, err := RewardsABI.PackVariable(VariableNameRewards, md.Info.Type, md.Info.From, md.Info.To,
-			md.Info.TxHeader, md.Info.RxHeader, md.Info.Amount); err == nil {
+		if data, err := md.Info.ToABI(); err == nil {
 			if err := vmContext.SetStorage(types.RewardsAddress[:], key, data); err != nil {
 				t.Error(err)
 			} else {
@@ -96,8 +95,7 @@ func TestGetConfidantDetail(t *testing.T) {
 			t.Fatal(err)
 		}
 		key := GetConfidantKey(md.Param.Beneficial, md.Param.Id[:], md.Param.TxHeader[:], md.Param.RxHeader[:])
-		if data, err := RewardsABI.PackVariable(VariableNameRewards, md.Info.Type, md.Info.From, md.Info.To,
-			md.Info.TxHeader, md.Info.RxHeader, md.Info.Amount); err == nil {
+		if data, err := md.Info.ToABI(); err == nil {
 			if err := vmContext.SetStorage(types.RewardsAddress[:], key, data); err != nil {
 				t.Error(err)
 			} else {
@@ -235,18 +233,28 @@ func TestGetConfidantKey(t *testing.T) {
 func TestParseRewardsInfo(t *testing.T) {
 	tx, _ := hex.DecodeString("0d8e899aee3fd8acf707841e04463cf3d8f151cbe8870495febc5f47cfadfe1a")
 	rx, _ := hex.DecodeString("52112688922647245083902739812993217025393153372347545601073710280271530289093")
-	h1, _ := types.BytesToAddress(tx)
+	h1, _ := types.BytesToHash(tx)
 	h2, _ := types.BytesToHash(rx)
 	a1, _ := types.HexToAddress("qlc_1kk5xst583y8hpn9c48ruizs5cxprdeptw6s5wm6ezz6i1h5srpz3mnjgxao")
 	a2, _ := types.HexToAddress("qlc_3pj83yuemoegkn6ejskd8bustgunmfqpbhu3pnpa6jsdjf9isybzffwq7s4p")
-	bytes, e := RewardsABI.PackVariable(VariableNameRewards, uint8(1), a1, a2, h1, h2, big.NewInt(83020000000))
+
+	r := &RewardsInfo{
+		Type:     uint8(1),
+		From:     a1,
+		To:       a2,
+		TxHeader: h1,
+		RxHeader: h2,
+		Amount:   big.NewInt(83020000000),
+	}
+
+	data, e := r.ToABI()
 	if e != nil {
 		t.Fatal(e)
 	} else {
-		fmt.Println(bytes)
+		fmt.Println(data)
 	}
 
-	info, e := ParseRewardsInfo(bytes)
+	info, e := ParseRewardsInfo(data)
 	if e != nil {
 		t.Fatal(e)
 	} else {
@@ -265,8 +273,7 @@ func TestRewardsParam_Verify(t *testing.T) {
 		Sign:       types.Signature{},
 	}
 
-	if data, err := RewardsABI.PackMethod(MethodNameUnsignedConfidantRewards, param.Id, param.Beneficial, param.TxHeader,
-		param.RxHeader, param.Amount); err == nil {
+	if data, err := param.ToUnsignedABI(MethodNameUnsignedConfidantRewards); err == nil {
 		param.Sign = a.Sign(types.HashData(data))
 	} else {
 		t.Fatal(err)
@@ -280,8 +287,7 @@ func TestRewardsParam_Verify(t *testing.T) {
 		Amount:     big.NewInt(200),
 		Sign:       types.Signature{},
 	}
-	if data, err := RewardsABI.PackMethod(MethodNameUnsignedAirdropRewards, param2.Id, param2.Beneficial, param2.TxHeader,
-		param2.RxHeader, param2.Amount); err == nil {
+	if data, err := param2.ToUnsignedABI(MethodNameUnsignedAirdropRewards); err == nil {
 		param2.Sign = a.Sign(types.HashData(data))
 	} else {
 		t.Fatal(err)

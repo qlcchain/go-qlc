@@ -123,35 +123,44 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		}
 	}
 
+	// save data
 	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, param.NEP5TxId)
-
-	var pledgeData []byte
-	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
+	pledgeData, err := info.ToABI()
+	if err != nil {
 		return nil, err
-	} else {
-		// already exist,verify data
-		if len(pledgeData) > 0 {
-			oldPledge, err := cabi.ParsePledgeInfo(pledgeData)
-			if err != nil {
-				return nil, err
-			}
-			if oldPledge.PledgeAddress != info.PledgeAddress || oldPledge.WithdrawTime != info.WithdrawTime ||
-				oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType ||
-				oldPledge.NEP5TxId != info.NEP5TxId {
-				return nil, errors.New("invalid saved pledge info")
-			}
-		} else {
-			// save data
-			pledgeData, err = info.ToABI()
-			if err != nil {
-				return nil, err
-			}
-			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
+	err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData)
+	if err != nil {
+		return nil, err
+	}
+
+	//var pledgeData []byte
+	//if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
+	//	return nil, err
+	//} else {
+	//	// already exist,verify data
+	//	if len(pledgeData) > 0 {
+	//		oldPledge, err := cabi.ParsePledgeInfo(pledgeData)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		if oldPledge.PledgeAddress != info.PledgeAddress || oldPledge.WithdrawTime != info.WithdrawTime ||
+	//			oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType ||
+	//			oldPledge.NEP5TxId != info.NEP5TxId {
+	//			return nil, errors.New("invalid saved pledge info")
+	//		}
+	//	} else {
+	//		// save data
+	//		pledgeData, err = info.ToABI()
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//	}
+	//}
 
 	am, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if am != nil {
