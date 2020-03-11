@@ -6950,6 +6950,125 @@ func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
 	}
 }
 
+func TestGetContractsAddressByPartyANextStop(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+	data := mockContractData(2)
+	data[0].NextStops = append(data[0].NextStops, "PCCWG")
+
+	if len(data) != 2 {
+		t.Fatalf("invalid mock data, %v", data)
+	}
+
+	for _, d := range data {
+		a, _ := d.Address()
+		abi, _ := d.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	a1 := data[0].PartyA.Address
+
+	type args struct {
+		ctx  *vmstore.VMContext
+		addr *types.Address
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*ContractParam
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				ctx:  ctx,
+				addr: &a1,
+			},
+			want:    []*ContractParam{data[0]},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetContractsAddressByPartyANextStop(tt.args.ctx, tt.args.addr, "PCCWG")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestGetContractsAddressByPartyANextStop() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			a2, _ := tt.want[0].Address()
+			if *got != a2 {
+				t.Fatalf("TestGetContractsAddressByPartyANextStop()  %s,%s", got, a2)
+			}
+		})
+	}
+}
+
+func TestGetContractsAddressByPartyBPreStop(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+	data := mockContractData(2)
+	data[0].PreStops = append(data[0].PreStops, "CSL")
+	if len(data) != 2 {
+		t.Fatalf("invalid mock data, %v", data)
+	}
+
+	for _, d := range data {
+		a, _ := d.Address()
+		abi, _ := d.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	a2 := data[0].PartyB.Address
+
+	type args struct {
+		ctx  *vmstore.VMContext
+		addr *types.Address
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*ContractParam
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				ctx:  ctx,
+				addr: &a2,
+			},
+			want:    []*ContractParam{data[0]},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetContractsAddressByPartyBPreStop(tt.args.ctx, tt.args.addr, "CSL")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestGetContractsIDByAddressAsPartyB() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			a2, _ := tt.want[0].Address()
+			if *got != a2 {
+				t.Fatalf("TestGetContractsIDByAddressAsPartyB() %s,%s", got, a2)
+			}
+		})
+	}
+}
+
 func TestSignContractParam_ToABI(t *testing.T) {
 	sc := &SignContractParam{
 		ContractAddress: mock.Address(),
