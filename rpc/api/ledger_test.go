@@ -504,16 +504,46 @@ func TestLedgerAPI_AccountsFrontiers(t *testing.T) {
 }
 
 func TestLedgerAPI_AccountsPending(t *testing.T) {
-	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	teardownTestCase, l, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
-	addrs := []types.Address{account1.Address(), account2.Address()}
-	r, err := ledgerApi.AccountsPending(addrs, 10)
+
+	blk := mock.StateBlockWithoutWork()
+
+	sAdd := mock.Address()
+	pendingKey := &types.PendingKey{
+		Address: sAdd,
+		Hash:    blk.GetHash(),
+	}
+	pendingInfo := &types.PendingInfo{
+		Source: blk.Address,
+		Type:   config.ChainToken(),
+		Amount: types.Balance{Int: big.NewInt(int64(100000000000))},
+	}
+	if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(3 * time.Second)
+	r, err := ledgerApi.AccountsPending([]types.Address{sAdd}, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(r) != 0 {
-		t.Fatal()
+	if len(r) != 1 {
+		t.Fatal(len(r))
 	}
+
+	ps, err := ledgerApi.Pendings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ps) != 1 {
+		t.Fatal(len(r))
+	}
+
 }
 
 func TestLedgerAPI_AccountsCount(t *testing.T) {
@@ -792,11 +822,6 @@ func TestLedgerAPI_Process(t *testing.T) {
 	}
 	if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
 		t.Fatal(err)
-	}
-
-	time.Sleep(2 * time.Second)
-	if _, err := ledgerApi.Pendings(); err != nil {
-		t.Fatal()
 	}
 
 	ac2PrkStr := hex.EncodeToString(ac2.PrivateKey()[:])
