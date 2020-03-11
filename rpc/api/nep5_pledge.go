@@ -31,13 +31,13 @@ import (
 
 type NEP5PledgeApi struct {
 	logger   *zap.SugaredLogger
-	l        *ledger.Ledger
+	l        ledger.Store
 	pledge   *contract.Nep5Pledge
 	withdraw *contract.WithdrawNep5Pledge
 	cc       *chainctx.ChainContext
 }
 
-func NewNEP5PledgeAPI(cfgFile string, l *ledger.Ledger) *NEP5PledgeApi {
+func NewNEP5PledgeAPI(cfgFile string, l ledger.Store) *NEP5PledgeApi {
 	api := &NEP5PledgeApi{
 		l:        l,
 		pledge:   &contract.Nep5Pledge{},

@@ -25,10 +25,10 @@ import (
 
 type ContractApi struct {
 	logger *zap.SugaredLogger
-	ledger *ledger.Ledger
+	ledger ledger.Store
 }
 
-func NewContractApi(ledger *ledger.Ledger) *ContractApi {
+func NewContractApi(ledger ledger.Store) *ContractApi {
 	return &ContractApi{logger: log.NewLogger("api_contract"), ledger: ledger}
 }
 

@@ -27,7 +27,7 @@ import (
 
 type PovApi struct {
 	cfg    *config.Config
-	l      *ledger.Ledger
+	l      ledger.Store
 	logger *zap.SugaredLogger
 	eb     event.EventBus
 	feb    *event.FeedEventBus
@@ -165,7 +165,7 @@ type PovRepStats struct {
 	LatestBlockHeight uint64                            `json:"latestBlockHeight"`
 }
 
-func NewPovApi(ctx context.Context, cfg *config.Config, l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *PovApi {
+func NewPovApi(ctx context.Context, cfg *config.Config, l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *PovApi {
 	api := &PovApi{
 		cfg:    cfg,
 		l:      l,

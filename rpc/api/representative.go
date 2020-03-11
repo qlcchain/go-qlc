@@ -23,7 +23,7 @@ import (
 type RepApi struct {
 	cfg    *config.Config
 	logger *zap.SugaredLogger
-	ledger *ledger.Ledger
+	ledger ledger.Store
 	reward *contract.RepReward
 }
 
@@ -54,7 +54,7 @@ type RepHistoryRewardInfo struct {
 	LastRewardTime int64         `json:"lastRewardTime"`
 }
 
-func NewRepApi(cfg *config.Config, ledger *ledger.Ledger) *RepApi {
+func NewRepApi(cfg *config.Config, ledger ledger.Store) *RepApi {
 	return &RepApi{
 		cfg:    cfg,
 		logger: log.NewLogger("api_representative"),

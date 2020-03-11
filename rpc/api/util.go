@@ -23,7 +23,7 @@ type UtilApi struct {
 	ctx    *vmstore.VMContext
 }
 
-func NewUtilApi(l *ledger.Ledger) *UtilApi {
+func NewUtilApi(l ledger.Store) *UtilApi {
 	return &UtilApi{ctx: vmstore.NewVMContext(l), logger: log.NewLogger("api_util")}
 }
 

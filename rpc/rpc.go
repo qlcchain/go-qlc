@@ -42,7 +42,7 @@ type RPC struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	ledger  *ledger.Ledger
+	ledger  ledger.Store
 	wallet  *wallet.WalletStore
 	eb      event.EventBus
 	cfgFile string

@@ -17,7 +17,7 @@ import (
 )
 
 type NetApi struct {
-	ledger *ledger.Ledger
+	ledger ledger.Store
 	eb     event.EventBus
 	logger *zap.SugaredLogger
 	cc     *chainctx.ChainContext
@@ -34,7 +34,7 @@ type OnlineRepInfo struct {
 	Vote    types.Balance
 }
 
-func NewNetApi(l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *NetApi {
+func NewNetApi(l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *NetApi {
 	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net"), cc: cc}
 }
 

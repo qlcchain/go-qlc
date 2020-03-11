@@ -27,7 +27,7 @@ import (
 
 type PublicKeyDistributionApi struct {
 	logger *zap.SugaredLogger
-	l      *ledger.Ledger
+	l      ledger.Store
 	cc     *chainctx.ChainContext
 	vr     *contract.VerifierRegister
 	vu     *contract.VerifierUnregister
@@ -38,7 +38,7 @@ type PublicKeyDistributionApi struct {
 	ctx    *vmstore.VMContext
 }
 
-func NewPublicKeyDistributionApi(cfgFile string, l *ledger.Ledger) *PublicKeyDistributionApi {
+func NewPublicKeyDistributionApi(cfgFile string, l ledger.Store) *PublicKeyDistributionApi {
 	api := &PublicKeyDistributionApi{
 		l:      l,
 		logger: log.NewLogger("api_verifier"),

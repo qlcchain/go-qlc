@@ -17,11 +17,11 @@ import (
 )
 
 type ChainApi struct {
-	ledger *ledger.Ledger
+	ledger ledger.Store
 	logger *zap.SugaredLogger
 }
 
-func NewChainApi(l *ledger.Ledger) *ChainApi {
+func NewChainApi(l ledger.Store) *ChainApi {
 	return &ChainApi{ledger: l, logger: log.NewLogger("api_chain")}
 }
 

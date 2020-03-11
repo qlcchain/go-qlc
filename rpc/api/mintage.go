@@ -28,13 +28,13 @@ import (
 
 type MintageAPI struct {
 	logger   *zap.SugaredLogger
-	l        *ledger.Ledger
+	l        ledger.Store
 	mintage  *contract.Mintage
 	withdraw *contract.WithdrawMintage
 	cc       *chainctx.ChainContext
 }
 
-func NewMintageApi(cfgFile string, l *ledger.Ledger) *MintageAPI {
+func NewMintageApi(cfgFile string, l ledger.Store) *MintageAPI {
 	api := &MintageAPI{
 		l:        l,
 		mintage:  &contract.Mintage{},

@@ -2,6 +2,13 @@ package api
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/mock/mocks"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +25,118 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 )
 
-func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerAPI) {
+func setupDefaultLedgerAPI(t *testing.T) (func(t *testing.T), ledger.Store, *LedgerAPI) {
+	t.Parallel()
+	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
+	l := ledger.NewLedger(cm.ConfigFile)
+	setPovStatus(l, cc, t)
+	setLedgerStatus(l, t)
+
+	ledgerApi := NewLedgerApi(context.Background(), l, cc.EventBus(), cc)
+	verifier := process.NewLedgerVerifier(l)
+
+	var blocks []*types.StateBlock
+
+	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+		t.Fatal(err)
+	}
+	for i := range blocks {
+		block := blocks[i]
+		if err := verifier.BlockProcess(block); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	return func(t *testing.T) {
+		err := l.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = cc.Stop()
+	}, l, ledgerApi
+}
+
+func setPovStatus(l *ledger.Ledger, cc *qlcchainctx.ChainContext, t *testing.T) {
+	block, td := mock.GeneratePovBlock(nil, 0)
+	if err := l.AddPovBlock(block, td); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddPovBestHash(block.GetHeight(), block.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.SetPovLatestHeight(block.GetHeight()); err != nil {
+		t.Fatal(err)
+	}
+	_ = cc.Init(func() error {
+		return nil
+	})
+	_ = cc.Start()
+	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+	cc.EventBus().Publish(topic.EventAddP2PStream, &topic.EventAddP2PStreamMsg{PeerID: "123", PeerInfo: "234"})
+}
+
+func setLedgerStatus(l *ledger.Ledger, t *testing.T) {
+	genesisInfos := config.GenesisInfos()
+
+	ctx := vmstore.NewVMContext(l)
+	for _, v := range genesisInfos {
+		mb := v.Mintage
+		gb := v.Genesis
+		err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		verifier := process.NewLedgerVerifier(l)
+		if b, err := l.HasStateBlock(mb.GetHash()); !b && err == nil {
+			if err := l.AddStateBlock(&mb); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		if b, err := l.HasStateBlock(gb.GetHash()); !b && err == nil {
+			if err := verifier.BlockProcess(&gb); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	_ = ctx.SaveStorage()
+}
+
+func setupMockLedgerAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *LedgerAPI) {
+	t.Parallel()
+
+	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
+
+	l := new(mocks.Store)
+	ledgerApi := NewLedgerApi(context.Background(), l, cc.EventBus(), cc)
+	return func(t *testing.T) {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Fatal(err)
+		}
+	}, l, ledgerApi
+}
+
+func setupSimpleLedgerAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerAPI) {
 	t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
@@ -46,10 +164,10 @@ func setupTestCaseLedger(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Led
 }
 
 func TestLedger_GetBlockCacheLock(t *testing.T) {
-	teardownTestCase, _, ledgerApi := setupTestCaseLedger(t)
+	teardownTestCase, _, ledgerApi := setupSimpleLedgerAPI(t)
 	defer teardownTestCase(t)
 
-	ledgerApi.ledger.EB.Publish(topic.EventPovSyncState, topic.SyncDone)
+	ledgerApi.ledger.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
 	chainToken := config.ChainToken()
 	gasToken := config.GasToken()
 	addr, _ := types.HexToAddress("qlc_361j3uiqdkjrzirttrpu9pn7eeussymty4rz4gifs9ijdx1p46xnpu3je7sy")
@@ -79,57 +197,88 @@ func TestLedger_GetBlockCacheLock(t *testing.T) {
 }
 
 func TestLedgerApi_Subscription(t *testing.T) {
-	teardownTestCase, _, ledgerApi := setupTestCaseLedger(t)
+	teardownTestCase, l, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
 
-	addr := mock.Address()
-	done := make(chan bool)
+	// init ac1
+	ac1 := initAccount(l, t)
+
+	// GenerateSendBlock
+	ac2 := mock.Account()
 	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				blk := mock.StateBlock()
-				blk.Address = addr
-				blk.Type = types.Send
-				ledgerApi.ledger.EB.Publish(topic.EventAddRelation, blk)
-				time.Sleep(2 * time.Second)
-			}
+		time.Sleep(1 * time.Second)
+		amount := types.Balance{Int: big.NewInt(int64(100000))}
+		ac1PrkStr := hex.EncodeToString(ac1.PrivateKey()[:])
+		sendBlk, err := ledgerApi.GenerateSendBlock(&APISendBlockPara{
+			From:      ac1.Address(),
+			TokenName: "QLC",
+			To:        ac2.Address(),
+			Amount:    amount,
+		}, &ac1PrkStr)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		pendingKey := &types.PendingKey{
+			Address: ac2.Address(),
+			Hash:    sendBlk.GetHash(),
+		}
+		pendingInfo := &types.PendingInfo{
+			Source: ac1.Address(),
+			Type:   config.ChainToken(),
+			Amount: amount,
+		}
+		if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := l.AddStateBlock(sendBlk); err != nil {
+			t.Fatal(err)
 		}
 	}()
-	ctx := rpc.SubscriptionContext()
-	r, err := ledgerApi.NewBlock(ctx)
+
+	r, err := ledgerApi.NewBlock(rpc.SubscriptionContextRandom())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(r)
 
-	ctx2 := rpc.SubscriptionContext()
-	r, err = ledgerApi.NewBlock(ctx2)
+	r, err = ledgerApi.NewBlock(rpc.SubscriptionContextRandom())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(r)
 
-	ctx3 := rpc.SubscriptionContext()
-	r, err = ledgerApi.BalanceChange(ctx3, addr)
+	r, err = ledgerApi.BalanceChange(rpc.SubscriptionContextRandom(), ac1.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(r)
 
-	ctx4 := rpc.SubscriptionContext()
-	r, err = ledgerApi.BalanceChange(ctx4, addr)
+	r, err = ledgerApi.BalanceChange(rpc.SubscriptionContextRandom(), ac1.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(r)
-	done <- true
+
+	r, err = ledgerApi.NewAccountBlock(rpc.SubscriptionContextRandom(), ac1.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+
+	r, err = ledgerApi.NewPending(rpc.SubscriptionContextRandom(), ac2.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+
+	time.Sleep(3 * time.Second)
+
 }
 
 func TestLedgerAPI_GenesisInfo(t *testing.T) {
-	teardownTestCase, _, ledgerApi := setupTestCaseLedger(t)
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
 	genesisAddress, _ := types.HexToAddress("qlc_1t1uynkmrs597z4ns6ymppwt65baksgdjy1dnw483ubzm97oayyo38ertg44")
 	gasAddress, _ := types.HexToAddress("qlc_3qe19joxq85rnff5wj5ybp6djqtheqqetfgqc3iogxagnjq4rrbmbp1ews7d")
@@ -164,5 +313,557 @@ func TestLedgerAPI_GenesisInfo(t *testing.T) {
 	}
 	if !ledgerApi.IsGenesisBlock(&bs[0]) {
 		t.Fatal("genesis block error")
+	}
+}
+
+func TestLedgerAPI_AccountBlocksCount(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	l.On("GetAccountMetaConfirmed", addr).Return(mock.AccountMeta(addr), nil)
+	r, err := ledgerApi.AccountBlocksCount(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r != 5 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_AccountHistoryTopn(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	time.Sleep(2 * time.Second)
+	r, err := ledgerApi.AccountHistoryTopn(account1.Address(), 100, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 4 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_AccountInfo(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	r, err := ledgerApi.AccountInfo(account1.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Address != account1.Address() {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_ConfirmedAccountInfo(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	r, err := ledgerApi.ConfirmedAccountInfo(account1.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Address != account1.Address() {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_AccountRepresentative(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	r, err := ledgerApi.AccountRepresentative(account1.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r != account1.Address() {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_AccountVotingWeight(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	r, err := ledgerApi.AccountVotingWeight(account1.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+}
+
+func TestLedgerAPI_AccountsBalance(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	addrs := []types.Address{account1.Address(), account2.Address()}
+	r, err := ledgerApi.AccountsBalance(addrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 2 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_AccountsFrontiers(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	addrs := []types.Address{account1.Address(), account2.Address()}
+	r, err := ledgerApi.AccountsFrontiers(addrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 2 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_AccountsPending(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	addrs := []types.Address{account1.Address(), account2.Address()}
+	r, err := ledgerApi.AccountsPending(addrs, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 0 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_AccountsCount(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	expect := uint64(10)
+	l.On("CountAccountMetas").Return(expect, nil)
+	r, err := ledgerApi.AccountsCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r != expect {
+		t.Fatal(err)
+	}
+}
+
+func TestLedgerAPI_Accounts(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	time.Sleep(2 * time.Second)
+	r, err := ledgerApi.Accounts(10, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+	if len(r) != 4 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_BlocksCount(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	l.On("BlocksCount").Return(uint64(10), nil)
+	l.On("CountSmartContractBlocks").Return(uint64(5), nil)
+	l.On("CountUncheckedBlocks").Return(uint64(1), nil)
+
+	c, err := ledgerApi.BlocksCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c["count"] != 15 || c["unchecked"] != 1 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_BlocksCount2(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	l.On("CountStateBlocks").Return(uint64(10), nil)
+	l.On("CountSmartContractBlocks").Return(uint64(5), nil)
+	l.On("CountUncheckedBlocks").Return(uint64(1), nil)
+
+	c, err := ledgerApi.BlocksCount2()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c["count"] != 15 || c["unchecked"] != 1 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_BlockAccount(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+	blk := mock.StateBlockWithoutWork()
+	l.On("GetStateBlockConfirmed", blk.GetHash()).Return(blk, nil)
+	r, err := ledgerApi.BlockAccount(blk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r != blk.Address {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_BlockConfirmedStatus(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+	blk := mock.StateBlockWithoutWork()
+	l.On("HasStateBlockConfirmed", blk.GetHash()).Return(true, nil)
+	r, err := ledgerApi.BlockConfirmedStatus(blk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_BlockHash(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+	blk := mock.StateBlockWithoutWork()
+	r := ledgerApi.BlockHash(*blk)
+	if r != blk.GetHash() {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_BlocksCountByType(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+	l.On("BlocksCountByType").Return(map[string]uint64{
+		types.Open.String():    10,
+		types.Receive.String(): 5,
+		types.Send.String():    15,
+		types.Change.String():  1,
+	}, nil)
+	r, err := ledgerApi.BlocksCountByType()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 8 || r[types.Open.String()] != 10 || r[types.Receive.String()] != 5 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_BlocksInfo(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	hashes := []types.Hash{config.GenesisBlockHash(), config.GenesisMintageHash()}
+	r, err := ledgerApi.BlocksInfo(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+	if len(r) != 2 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_ConfirmedBlocksInfo(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	hashes := []types.Hash{config.GenesisBlockHash(), config.GenesisMintageHash()}
+	r, err := ledgerApi.ConfirmedBlocksInfo(hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+	if len(r) != 2 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_Blocks(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	time.Sleep(2 * time.Second)
+	r, err := ledgerApi.Blocks(100, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 10 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_Chain(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	var blocks []*types.StateBlock
+	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+		t.Fatal(err)
+	}
+	r, err := ledgerApi.Chain(blocks[5].GetHash(), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 1 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_Delegators(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	time.Sleep(2 * time.Second)
+	r, err := ledgerApi.Delegators(account1.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 2 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_DelegatorsCount(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	time.Sleep(2 * time.Second)
+	r, err := ledgerApi.DelegatorsCount(account1.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r != 2 {
+		t.Fatal()
+	}
+}
+
+func initAccount(l ledger.Store, t *testing.T) *types.Account {
+	ac1 := mock.Account()
+	balance := types.Balance{Int: big.NewInt(int64(100000000000))}
+	blk := new(types.StateBlock)
+	blk.Type = types.Open
+	blk.Address = ac1.Address()
+	blk.Previous = types.ZeroHash
+	blk.Token = config.ChainToken()
+	blk.Balance = balance
+	blk.Timestamp = common.TimeNow().Unix()
+	blk.Link = mock.Hash()
+	blk.Representative = ac1.Address()
+
+	am := mock.AccountMeta(ac1.Address())
+	tm := &types.TokenMeta{
+		Type:           config.ChainToken(),
+		Header:         blk.GetHash(),
+		OpenBlock:      types.ZeroHash,
+		Representative: ac1.Address(),
+		Balance:        balance,
+		BelongTo:       ac1.Address(),
+	}
+	am.Tokens = []*types.TokenMeta{tm}
+
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+	return ac1
+}
+
+func TestLedgerAPI_Process(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	// init ac1
+	ac1 := initAccount(l, t)
+
+	// GenerateSendBlock
+	ac2 := mock.Account()
+	ac2Addr := ac2.Address()
+	balance2 := types.Balance{Int: big.NewInt(int64(100000))}
+
+	ac1PrkStr := hex.EncodeToString(ac1.PrivateKey()[:])
+
+	sendBlk1, err := ledgerApi.GenerateSendBlock(&APISendBlockPara{
+		From:      ac1.Address(),
+		TokenName: "QLC",
+		To:        ac2Addr,
+		Amount:    balance2,
+	}, &ac1PrkStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(sendBlk1)
+
+	if _, err := ledgerApi.Process(sendBlk1); err != nil {
+		t.Fatal(err)
+	}
+
+	// GenerateReceiveBlock  ac2 open block
+	pendingKey := &types.PendingKey{
+		Address: ac2.Address(),
+		Hash:    sendBlk1.GetHash(),
+	}
+	pendingInfo := &types.PendingInfo{
+		Source: ac1.Address(),
+		Type:   config.ChainToken(),
+		Amount: balance2,
+	}
+	if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(2 * time.Second)
+	if _, err := ledgerApi.Pendings(); err != nil {
+		t.Fatal()
+	}
+
+	ac2PrkStr := hex.EncodeToString(ac2.PrivateKey()[:])
+	receBlk1, err := ledgerApi.GenerateReceiveBlock(sendBlk1, &ac2PrkStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(receBlk1)
+	if _, err := ledgerApi.Process(receBlk1); err != nil {
+		t.Fatal(err)
+	}
+
+	receBlk2, err := ledgerApi.GenerateReceiveBlockByHash(sendBlk1.GetHash(), &ac2PrkStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(receBlk2)
+
+	if _, err := ledgerApi.Process(receBlk2); err == nil {
+		t.Fatal(err)
+	}
+
+	// GenerateChangeBlock
+	ac3 := mock.AccountMeta(mock.Address())
+	if err := l.AddAccountMeta(ac3, l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+	changeBlk, err := ledgerApi.GenerateChangeBlock(ac1.Address(), ac2Addr, &ac1PrkStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(changeBlk)
+	if _, err := ledgerApi.Process(changeBlk); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedgerAPI_Representatives(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+	time.Sleep(2 * time.Second)
+	r, err := ledgerApi.Representatives(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 2 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_Tokens(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	ts, err := ledgerApi.Tokens()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ts) != 2 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_TransactionsCount(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+	expert1 := uint64(10)
+	expert2 := uint64(5)
+	l.On("BlocksCount").Return(expert1, nil)
+	l.On("CountUncheckedBlocks").Return(expert2, nil)
+	r, err := ledgerApi.TransactionsCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r["count"] != expert1 || r["unchecked"] != expert2 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_TokenInfoById(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	ts, err := ledgerApi.TokenInfoById(config.ChainToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ts.TokenName != "QLC" {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_TokenInfoByName(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	ts, err := ledgerApi.TokenInfoByName("QLC")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ts.TokenId != config.ChainToken() {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_GetAccountOnlineBlock(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	blk := mock.StateBlockWithoutWork()
+	blk.Type = types.Online
+
+	l.On("BlocksByAccount", addr, -1, -1).Return([]types.Hash{blk.GetHash()}, nil)
+	l.On("GetStateBlockConfirmed", blk.GetHash()).Return(blk, nil)
+	r, err := ledgerApi.GetAccountOnlineBlock(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 1 {
+		t.Fatal()
+	}
+}
+
+func TestLedgerAPI_GenesisBlock(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupMockLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	if ledgerApi.GenesisAddress() != config.GenesisAddress() {
+		t.Fatal()
+	}
+	if ledgerApi.GasAddress() != config.GasAddress() {
+		t.Fatal()
+	}
+	if ledgerApi.ChainToken() != config.ChainToken() {
+		t.Fatal()
+	}
+	if ledgerApi.GasToken() != config.GasToken() {
+		t.Fatal()
+	}
+	if ledgerApi.GenesisMintageHash() != config.GenesisMintageHash() {
+		t.Fatal()
+	}
+	if ledgerApi.GenesisBlockHash() != config.GenesisBlockHash() {
+		t.Fatal()
+	}
+	if ledgerApi.GasBlockHash() != config.GasBlockHash() {
+		t.Fatal()
+	}
+	if !ledgerApi.IsGenesisToken(config.ChainToken()) {
+		t.Fatal()
+	}
+	if bs := ledgerApi.AllGenesisBlocks(); len(bs) != 4 {
+		t.Fatal()
 	}
 }

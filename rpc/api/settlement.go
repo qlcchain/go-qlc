@@ -30,7 +30,7 @@ import (
 
 type SettlementAPI struct {
 	logger            *zap.SugaredLogger
-	l                 *ledger.Ledger
+	l                 ledger.Store
 	createContract    *contract.CreateContract
 	signContract      *contract.SignContract
 	cdrContract       *contract.ProcessCDR
@@ -50,7 +50,7 @@ type SignContractParam struct {
 	Address         types.Address `json:"address"`
 }
 
-func NewSettlement(l *ledger.Ledger, cc *context.ChainContext) *SettlementAPI {
+func NewSettlement(l ledger.Store, cc *context.ChainContext) *SettlementAPI {
 	return &SettlementAPI{
 		logger:         log.NewLogger("rpc/settlement"),
 		l:              l,

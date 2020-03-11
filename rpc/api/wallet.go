@@ -18,11 +18,11 @@ import (
 
 type WalletApi struct {
 	wallet *wallet.WalletStore
-	l      *ledger.Ledger
+	l      ledger.Store
 	logger *zap.SugaredLogger
 }
 
-func NewWalletApi(l *ledger.Ledger, wallet *wallet.WalletStore) *WalletApi {
+func NewWalletApi(l ledger.Store, wallet *wallet.WalletStore) *WalletApi {
 	return &WalletApi{l: l, wallet: wallet, logger: log.NewLogger("api_wallet")}
 }
 

@@ -29,7 +29,7 @@ import (
 
 type RewardsApi struct {
 	logger           *zap.SugaredLogger
-	ledger           *ledger.Ledger
+	ledger           ledger.Store
 	rewards          *contract.AirdropRewords
 	confidantRewards *contract.ConfidantRewards
 	cc               *chainctx.ChainContext
@@ -42,7 +42,7 @@ type sendParam struct {
 	tm *types.TokenMeta
 }
 
-func NewRewardsApi(l *ledger.Ledger, cc *chainctx.ChainContext) *RewardsApi {
+func NewRewardsApi(l ledger.Store, cc *chainctx.ChainContext) *RewardsApi {
 	api := &RewardsApi{
 		ledger:           l,
 		logger:           log.NewLogger("api_rewards"),
