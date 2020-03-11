@@ -1,58 +1,339 @@
 package contract
 
 import (
-	"encoding/json"
+	"math/big"
 	"testing"
+	"time"
+
+	"github.com/qlcchain/go-qlc/common"
+	cfg "github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/mock"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-var (
-	jsonBlk = `
-		{
-			"type": "ContractSend",
-			"token": "45dd217cd9ff89f7b64ceda4886cc68dde9dfa47a8a422d165e2ce6f9a834fad",
-			"address": "qlc_1oq9r6w9bc7x4j6j79qxk15uxf7wtzorko6qegrmwrsctukf65dz3jhz3pfu",
-			"balance": "0",
-			"vote": "900000000",
-			"network": "0",
-			"storage": "0",
-			"oracle": "0",
-			"previous": "25204c0d5f28b1d9a54d0a9be87c8348014fe79b7d66ce7f0013e244234cf81c",
-			"link": "b7902600dfc79387b2601edc347b854d55d6b31142e324a4e54ff00a4c519c91",
-			"message": "0000000000000000000000000000000000000000000000000000000000000000",
-			"data": "I9Wy11bnwTh0qL0USRKe/ZAHvrS81+uJVJdjsT5jKtbk0g1/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF/uOzIwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEA3MmQwZTZlMmM2MDVjNTM1ZjE0NWNhN2MyM2JkNWE4ZGNjYzJlM2ViMjk1ZGM4ZTBiMDY5MmZmNmE1MjllZGNl",
-			"povHeight": 0,
-			"timestamp": 1561209257,
-			"extra": "0000000000000000000000000000000000000000000000000000000000000000",
-			"representative": "qlc_1t1uynkmrs597z4ns6ymppwt65baksgdjy1dnw483ubzm97oayyo38ertg44",
-			"work": "fe4555a7d5e8d9c6",
-			"signature": "047aee2d5c2c93fe1a0e2da1a814b3d8bb243967c10fdae4ecf27c64ac04d7035555f8f52de70b999528a258871e809bbace0b9e859d7bf2638e50fef48a8e01",
-			"tokenName": "QLC",
-			"amount": "6592300000000",
-			"hash": "fe81ccf92bc9734855fcdf5f71906649d07276558fa818f8fffd1595a0d0bd4e",
-			"povConfirmHeight": 2,
-			"povConfirmCount": 69184
-		}
-	`
-)
+func TestNep5Pledge_And_Withdraw(t *testing.T) {
+	testCase, l := setupLedgerForTestCase(t)
+	defer testCase(t)
 
-func TestNep5Pledge_GetTargetReceiver(t *testing.T) {
-	clear, l := getTestLedger()
-	if l == nil {
-		t.Fatal()
+	ctx := vmstore.NewVMContext(l)
+
+	addr1 := account1.Address()
+	addr2 := account2.Address()
+
+	am, err := l.GetAccountMeta(addr1)
+	if err != nil {
+		t.Fatal(err)
 	}
-	defer clear()
+	tm := am.Token(cfg.ChainToken())
 
-	blk := new(types.StateBlock)
-	err := json.Unmarshal([]byte(jsonBlk), blk)
+	param := &cabi.PledgeParam{
+		Beneficial:    addr2,
+		PledgeAddress: addr1,
+		PType:         uint8(cabi.Vote),
+		NEP5TxId:      mock.Hash().String(),
+	}
+	data, err := param.ToABI()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	nep5 := new(WithdrawNep5Pledge)
+	send := &types.StateBlock{
+		Type:           types.ContractSend,
+		Token:          tm.Type,
+		Address:        addr1,
+		Balance:        tm.Balance.Sub(types.Balance{Int: big.NewInt(1e8)}),
+		Vote:           am.CoinVote,
+		Network:        am.CoinNetwork,
+		Oracle:         am.CoinOracle,
+		Storage:        am.CoinStorage,
+		Previous:       tm.Header,
+		Link:           types.Hash(types.NEP5PledgeAddress),
+		Representative: tm.Representative,
+		Data:           data,
+		PoVHeight:      0,
+		Timestamp:      common.TimeNow().Unix(),
+	}
+
+	pledge := Nep5Pledge{}
+	if err = pledge.DoSend(ctx, send); err != nil {
+		t.Fatal(err)
+	}
+
+	if pending, info, err := pledge.DoPending(send); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(pending, info)
+	}
+
+	if receiver, err := pledge.GetTargetReceiver(ctx, send); err != nil {
+		t.Fatal(err)
+	} else if receiver != addr2 {
+		t.Fatalf("invalid target receiver, exp: %s, act: %s", addr2.String(), receiver.String())
+	}
+
+	if err = updateBlock(l, send); err != nil {
+		t.Fatal(err)
+	}
+
+	rev := &types.StateBlock{
+		Timestamp: time.Now().Unix(),
+	}
+
+	if r, err := pledge.DoReceive(ctx, rev, send); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(r) > 0 {
+			_ = updateBlock(l, r[0].Block)
+		}
+	}
+
+	if err = ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = pledge.GetRefundData()
+
+	// patch withdraw time
+	pledgeKey := cabi.GetPledgeKey(addr1, param.Beneficial, param.NEP5TxId)
+	var pledgeData []byte
+	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(pledgeData) > 0 {
+			info, err := cabi.ParsePledgeInfo(pledgeData)
+			if err != nil {
+				t.Fatal(err)
+			} else {
+				info.WithdrawTime = time.Now().AddDate(0, 0, -1).Unix()
+				//save data
+				if pledgeData, err = info.ToABI(); err != nil {
+					t.Fatal(err)
+				} else {
+					if err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+		} else {
+		}
+	}
+
+	if err = ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	withdrawNep5Pledge := WithdrawNep5Pledge{}
+
+	wp := &cabi.WithdrawPledgeParam{
+		Beneficial: param.Beneficial,
+		Amount:     big.NewInt(1e8),
+		PType:      param.PType,
+		NEP5TxId:   param.NEP5TxId,
+	}
+
+	if am, err := l.GetAccountMeta(wp.Beneficial); err != nil {
+		t.Fatal(err)
+	} else {
+		tm := am.Token(cfg.ChainToken())
+		if tm == nil {
+			t.Fatal()
+		}
+		if abi, err := wp.ToABI(); err != nil {
+			t.Fatal(err)
+		} else {
+			send2 := &types.StateBlock{
+				Type:           types.ContractSend,
+				Token:          tm.Type,
+				Address:        wp.Beneficial,
+				Balance:        am.CoinBalance,
+				Vote:           am.CoinVote,
+				Network:        am.CoinNetwork,
+				Oracle:         am.CoinOracle,
+				Storage:        am.CoinStorage,
+				Previous:       tm.Header,
+				Link:           types.Hash(types.NEP5PledgeAddress),
+				Representative: tm.Representative,
+				Data:           abi,
+				PoVHeight:      0,
+				Timestamp:      common.TimeNow().Unix(),
+			}
+			send2.Vote = send.Vote.Sub(types.Balance{Int: wp.Amount})
+
+			if err := withdrawNep5Pledge.DoSend(ctx, send2); err != nil {
+				t.Fatal(err)
+			}
+
+			if r, err := withdrawNep5Pledge.GetTargetReceiver(ctx, send2); err != nil {
+				t.Fatal(err)
+			} else if r != addr1 {
+				t.Fatalf("invalid receive addr, exp: %s, act: %s", r, addr1)
+			}
+
+			if _, _, err := withdrawNep5Pledge.DoPending(send2); err == nil {
+				t.Fatal()
+			}
+
+			rev := &types.StateBlock{
+				Timestamp: time.Now().Unix(),
+			}
+
+			if r, err := withdrawNep5Pledge.DoReceive(ctx, rev, send2); err != nil {
+				t.Fatal(err)
+			} else {
+				t.Log(r)
+			}
+
+			_ = withdrawNep5Pledge.GetRefundData()
+		}
+	}
+}
+
+func TestNep5Pledge_DoSend(t *testing.T) {
+	testCase, l := setupLedgerForTestCase(t)
+	defer testCase(t)
+
 	ctx := vmstore.NewVMContext(l)
-	target, _ := nep5.GetTargetReceiver(ctx, blk)
-	t.Log(target[:])
+
+	addr1 := account1.Address()
+	addr2 := account2.Address()
+
+	am, err := l.GetAccountMeta(addr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tm := am.Token(cfg.ChainToken())
+
+	param := &cabi.PledgeParam{
+		Beneficial:    addr2,
+		PledgeAddress: addr1,
+		PType:         uint8(cabi.Network),
+		NEP5TxId:      mock.Hash().String(),
+	}
+	data, err := param.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	temp := types.StateBlock{
+		Type:           types.ContractSend,
+		Token:          tm.Type,
+		Address:        addr1,
+		Balance:        tm.Balance.Sub(types.Balance{Int: big.NewInt(2000 * 1e8)}),
+		Vote:           am.CoinVote,
+		Network:        am.CoinNetwork,
+		Oracle:         am.CoinOracle,
+		Storage:        am.CoinStorage,
+		Previous:       tm.Header,
+		Link:           types.Hash(types.NEP5PledgeAddress),
+		Representative: tm.Representative,
+		Data:           data,
+		PoVHeight:      0,
+		Timestamp:      common.TimeNow().Unix(),
+	}
+
+	send := &temp
+
+	send2 := temp
+	send2.Address = mock.Address()
+
+	send3 := temp
+	send3.Address = addr2
+
+	send4 := temp
+	send4.Balance = tm.Balance.Sub(types.Balance{Int: big.NewInt(1e8)})
+
+	send5 := temp
+	send5.Data = []byte{}
+
+	send6 := temp
+	send6.Token = cfg.GasToken()
+
+	type fields struct {
+		BaseContract BaseContract
+	}
+	type args struct {
+		ctx   *vmstore.VMContext
+		block *types.StateBlock
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				BaseContract: BaseContract{},
+			},
+			args: args{
+				ctx:   ctx,
+				block: send,
+			},
+			wantErr: false,
+		}, {
+			name: "f1",
+			fields: fields{
+				BaseContract: BaseContract{},
+			},
+			args: args{
+				ctx:   ctx,
+				block: &send2,
+			},
+			wantErr: true,
+		}, {
+			name: "f3",
+			fields: fields{
+				BaseContract: BaseContract{},
+			},
+			args: args{
+				ctx:   ctx,
+				block: &send3,
+			},
+			wantErr: true,
+		}, {
+			name: "f4",
+			fields: fields{
+				BaseContract: BaseContract{},
+			},
+			args: args{
+				ctx:   ctx,
+				block: &send4,
+			},
+			wantErr: true,
+		}, {
+			name: "f5",
+			fields: fields{
+				BaseContract: BaseContract{},
+			},
+			args: args{
+				ctx:   ctx,
+				block: &send5,
+			},
+			wantErr: true,
+		}, {
+			name: "f6",
+			fields: fields{
+				BaseContract: BaseContract{},
+			},
+			args: args{
+				ctx:   ctx,
+				block: &send6,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ne := &Nep5Pledge{
+				BaseContract: tt.fields.BaseContract,
+			}
+			if err := ne.DoSend(tt.args.ctx, tt.args.block); (err != nil) != tt.wantErr {
+				t.Errorf("DoSend() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }

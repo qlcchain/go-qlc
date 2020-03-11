@@ -86,34 +86,14 @@ func TestGetBeneficialInfos(t *testing.T) {
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
 
-	var infos []*NEP5PledgeInfo
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	infos, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if len(infos) == 0 {
 		t.Fatal("invalid generate data...")
 	}
+
 	b := infos[0].Beneficial
 	info, balance := GetBeneficialInfos(ctx, b)
 	if info == nil {
@@ -131,34 +111,14 @@ func TestGetBeneficialPledgeInfos(t *testing.T) {
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
 
-	var infos []*NEP5PledgeInfo
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	infos, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if len(infos) == 0 {
 		t.Fatal("invalid generate data...")
 	}
+
 	b := infos[0].Beneficial
 	info2, balance := GetBeneficialPledgeInfos(ctx, b, Network)
 	if info2 == nil {
@@ -184,31 +144,11 @@ func TestGetPledgeBeneficialAmount(t *testing.T) {
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
 
-	var infos []*NEP5PledgeInfo
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	infos, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(infos) == 0 {
 		t.Fatal("invalid generate data...")
 	}
@@ -228,36 +168,15 @@ func TestGetPledgeBeneficialTotalAmount(t *testing.T) {
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
 
-	var infos []*NEP5PledgeInfo
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    a,
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	_, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	if amount, err := GetPledgeBeneficialTotalAmount(ctx, a); err != nil {
 		t.Fatal(err)
-	} else if amount.Cmp(big.NewInt(400)) != 0 {
-		t.Fatalf("invalid amount, exp: 400, act: %d", amount)
+	} else if amount.Cmp(big.NewInt(100)) != 0 {
+		t.Fatalf("invalid amount, exp: 100, act: %d", amount)
 	}
 }
 
@@ -267,27 +186,9 @@ func TestGetPledgeInfos(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	_, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -307,33 +208,47 @@ func TestGetPledgeKey(t *testing.T) {
 	}
 }
 
+func mockPledgeInfo(ctx *vmstore.VMContext, addr types.Address, size int) ([]*NEP5PledgeInfo, error) {
+	var infos []*NEP5PledgeInfo
+	for i := 0; i < size; i++ {
+		b := mock.Address()
+		if i == 0 {
+			b = addr
+		}
+		info := &NEP5PledgeInfo{
+			PType:         uint8(Network),
+			Amount:        big.NewInt(100),
+			WithdrawTime:  time.Now().Unix(),
+			Beneficial:    b,
+			PledgeAddress: mock.Address(),
+			NEP5TxId:      mock.Hash().String(),
+		}
+		if data, err := info.ToABI(); err != nil {
+			return nil, err
+		} else {
+			pledgeKey := GetPledgeKey(addr, info.Beneficial, info.NEP5TxId)
+			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
+				return nil, err
+			}
+			infos = append(infos, info)
+		}
+	}
+
+	if err := ctx.SaveStorage(); err != nil {
+		return nil, err
+	}
+	return infos, nil
+}
+
 func TestGetTotalPledgeAmount(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	_, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -352,8 +267,7 @@ func TestParsePledgeInfo(t *testing.T) {
 		PledgeAddress: mock.Address(),
 		NEP5TxId:      mock.Hash().String(),
 	}
-	if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-		info.PledgeAddress, info.NEP5TxId); err != nil {
+	if data, err := info.ToABI(); err != nil {
 		t.Fatal(err)
 	} else {
 		if info2, err := ParsePledgeInfo(data); err != nil {
@@ -371,7 +285,7 @@ func TestParsePledgeParam(t *testing.T) {
 		PType:         uint8(Network),
 		NEP5TxId:      mock.Hash().String(),
 	}
-	if data, err := NEP5PledgeABI.PackMethod(MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, param.PType, param.NEP5TxId); err != nil {
+	if data, err := param.ToABI(); err != nil {
 		t.Fatal(err)
 	} else {
 		if p2, err := ParsePledgeParam(data); err != nil {
@@ -388,27 +302,9 @@ func TestSearchAllPledgeInfos(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	_, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -425,33 +321,11 @@ func TestSearchBeneficialPledgeInfo(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
-	var infos []*NEP5PledgeInfo
 
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	infos, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
-
 	if len(infos) != 4 {
 		t.Fatal()
 	}
@@ -509,33 +383,11 @@ func TestSearchBeneficialPledgeInfoByTxId(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
-	var infos []*NEP5PledgeInfo
 
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	infos, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
-
 	if len(infos) != 4 {
 		t.Fatal()
 	}
@@ -594,33 +446,11 @@ func TestSearchBeneficialPledgeInfoIgnoreWithdrawTime(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
-	var infos []*NEP5PledgeInfo
 
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	infos, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
-
 	if len(infos) != 4 {
 		t.Fatal()
 	}
@@ -668,33 +498,11 @@ func TestSearchPledgeInfoWithNEP5TxId(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
-	var infos []*NEP5PledgeInfo
 
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	infos, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
-
 	if len(infos) != 4 {
 		t.Fatal()
 	}
@@ -740,30 +548,9 @@ func Test_searchBeneficialPledgeInfoByTxId(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	a := mock.Address()
-	var infos []*NEP5PledgeInfo
 
-	for i := 0; i < 4; i++ {
-		info := &NEP5PledgeInfo{
-			PType:         uint8(Network),
-			Amount:        big.NewInt(100),
-			WithdrawTime:  time.Now().Unix(),
-			Beneficial:    mock.Address(),
-			PledgeAddress: mock.Address(),
-			NEP5TxId:      mock.Hash().String(),
-		}
-		if data, err := NEP5PledgeABI.PackVariable(VariableNEP5PledgeInfo, info.PType, info.Amount, info.WithdrawTime, info.Beneficial,
-			info.PledgeAddress, info.NEP5TxId); err != nil {
-			t.Fatal(err)
-		} else {
-			pledgeKey := GetPledgeKey(a, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
-				t.Fatal(err)
-			}
-			infos = append(infos, info)
-		}
-	}
-
-	if err := ctx.SaveStorage(); err != nil {
+	infos, err := mockPledgeInfo(ctx, a, 4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -803,5 +590,24 @@ func Test_searchBeneficialPledgeInfoByTxId(t *testing.T) {
 				t.Errorf("searchBeneficialPledgeInfoByTxId() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestParseWithdrawPledgeParam(t *testing.T) {
+	param := &WithdrawPledgeParam{
+		Beneficial: mock.Address(),
+		Amount:     big.NewInt(100),
+		PType:      uint8(Network),
+		NEP5TxId:   mock.Hash().String(),
+	}
+
+	if abi, err := param.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		if p2, err := ParseWithdrawPledgeParam(abi); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(param, p2) {
+			t.Fatalf("invalid withdraw param, exp: %v, act: %v", param, p2)
+		}
 	}
 }
