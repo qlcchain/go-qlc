@@ -514,6 +514,24 @@ func (s *SettlementAPI) GetContractsAsPartyB(addr *types.Address, count int, off
 	})
 }
 
+// GetContractAddressByPartyANextStop query all settlement contracts as Party A info by address and NextStop
+// @param addr user qlcchain address
+// @param stopName PartyA nextStop
+// @return contract Address
+func (s *SettlementAPI) GetContractAddressByPartyANextStop(addr *types.Address, stopName string) (*types.Address, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetContractsAddressByPartyANextStop(ctx, addr, stopName)
+}
+
+// GetContractAddressByPartyBPreStop query all settlement contracts as Party B info by address and PreStop
+// @param addr user qlcchain address
+// @param stopName PartyB preStop
+// @return contract Address
+func (s *SettlementAPI) GetContractAddressByPartyBPreStop(addr *types.Address, stopName string) (*types.Address, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetContractsAddressByPartyBPreStop(ctx, addr, stopName)
+}
+
 // GetProcessCDRBlock save CDR data for the settlement
 // @param addr user qlc address
 // @param param CDR params to be processed
