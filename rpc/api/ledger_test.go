@@ -4,10 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/mock/mocks"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"github.com/pkg/errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -18,11 +15,15 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/mock/mocks"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func setupDefaultLedgerAPI(t *testing.T) (func(t *testing.T), ledger.Store, *LedgerAPI) {
@@ -316,18 +317,56 @@ func TestLedgerAPI_GenesisInfo(t *testing.T) {
 	}
 }
 
+func Test(t *testing.T) {
+
+}
+
 func TestLedgerAPI_AccountBlocksCount(t *testing.T) {
 	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
 	defer teardownTestCase(t)
 
-	addr := mock.Address()
-	l.On("GetAccountMetaConfirmed", addr).Return(mock.AccountMeta(addr), nil)
-	r, err := ledgerApi.AccountBlocksCount(addr)
-	if err != nil {
-		t.Fatal(err)
+	addr1 := mock.Address()
+	addr2 := mock.Address()
+	addr3 := mock.Address()
+	l.On("GetAccountMetaConfirmed", addr1).Return(mock.AccountMeta(addr1), nil)
+	l.On("GetAccountMetaConfirmed", addr2).Return(nil, ledger.ErrAccountNotFound)
+	l.On("GetAccountMetaConfirmed", addr3).Return(nil, errors.New("nil pointer"))
+	tests := []struct {
+		name       string
+		arg        types.Address
+		wantReturn int64
+		wantErr    bool
+	}{
+		{
+			name:       "f1",
+			arg:        addr1,
+			wantReturn: 5,
+			wantErr:    false,
+		},
+		{
+			name:       "f2",
+			arg:        addr2,
+			wantReturn: 0,
+			wantErr:    false,
+		},
+		{
+			name:       "f3",
+			arg:        addr3,
+			wantReturn: -1,
+			wantErr:    true,
+		},
 	}
-	if r != 5 {
-		t.Fatal()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, err := ledgerApi.AccountBlocksCount(tt.arg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AccountBlocksCount() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if r != tt.wantReturn {
+				t.Errorf("AccountBlocksCount() value = %v, want %v", r, tt.wantReturn)
+			}
+		})
 	}
 }
 
@@ -378,16 +417,64 @@ func TestLedgerAPI_AccountRepresentative(t *testing.T) {
 	if r != account1.Address() {
 		t.Fatal()
 	}
+	r, err = ledgerApi.AccountRepresentative(mock.Address())
+	if err == nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedgerAPI_AccountVotingWeight(t *testing.T) {
-	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	teardownTestCase, l, ledgerApi := setupMockLedgerAPI(t)
 	defer teardownTestCase(t)
-	r, err := ledgerApi.AccountVotingWeight(account1.Address())
-	if err != nil {
-		t.Fatal(err)
+
+	addr1 := mock.Address()
+	addr2 := mock.Address()
+	addr3 := mock.Address()
+	balance := types.Balance{Int: big.NewInt(int64(100000000000))}
+
+	l.On("GetRepresentation", addr1).Return(&types.Benefit{
+		Balance: balance,
+		Total:   balance,
+	}, nil)
+	l.On("GetRepresentation", addr2).Return(types.ZeroBenefit, ledger.ErrRepresentationNotFound)
+	l.On("GetRepresentation", addr3).Return(nil, errors.New("nil pointer"))
+	tests := []struct {
+		name       string
+		arg        types.Address
+		wantReturn types.Balance
+		wantErr    bool
+	}{
+		{
+			name:       "f1",
+			arg:        addr1,
+			wantReturn: balance,
+			wantErr:    false,
+		},
+		{
+			name:       "f2",
+			arg:        addr2,
+			wantReturn: types.ZeroBalance,
+			wantErr:    false,
+		},
+		{
+			name:       "f3",
+			arg:        addr3,
+			wantReturn: types.ZeroBalance,
+			wantErr:    true,
+		},
 	}
-	t.Log(r)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, err := ledgerApi.AccountVotingWeight(tt.arg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AccountVotingWeight() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !r.Equal(tt.wantReturn) {
+				t.Errorf("AccountVotingWeight() value = %v, want %v", r, tt.wantReturn)
+			}
+		})
+	}
 }
 
 func TestLedgerAPI_AccountsBalance(t *testing.T) {
@@ -447,7 +534,7 @@ func TestLedgerAPI_AccountsCount(t *testing.T) {
 func TestLedgerAPI_Accounts(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 	r, err := ledgerApi.Accounts(10, nil)
 	if err != nil {
 		t.Fatal(err)

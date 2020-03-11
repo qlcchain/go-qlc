@@ -6,13 +6,12 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/mock"
 )
 
 func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {

@@ -10,8 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
@@ -20,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
@@ -124,12 +123,6 @@ func NewLedgerApi(ctx context.Context, l ledger.Store, eb event.EventBus, cc *ch
 	return &api
 }
 
-func (b *APIBlock) fromStateBlock(block *types.StateBlock) *APIBlock {
-	b.StateBlock = block
-	b.Hash = block.GetHash()
-	return b
-}
-
 func (l *LedgerAPI) AccountBlocksCount(addr types.Address) (int64, error) {
 	am, err := l.ledger.GetAccountMetaConfirmed(addr)
 	if err != nil {
@@ -196,7 +189,6 @@ func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset 
 	}
 	hashes, err := l.ledger.BlocksByAccount(address, c, o)
 	if err != nil {
-		l.logger.Error(err)
 		return nil, err
 	}
 	bs := make([]*APIBlock, 0)
@@ -283,7 +275,10 @@ func (l *LedgerAPI) AccountRepresentative(addr types.Address) (types.Address, er
 func (l *LedgerAPI) AccountVotingWeight(addr types.Address) (types.Balance, error) {
 	b, err := l.ledger.GetRepresentation(addr)
 	if err != nil {
-		return types.ZeroBalance, nil
+		if err == ledger.ErrRepresentationNotFound {
+			return types.ZeroBalance, nil
+		}
+		return types.ZeroBalance, err
 	}
 	return b.Total, err
 }
