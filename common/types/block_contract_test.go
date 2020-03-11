@@ -33,6 +33,9 @@ func TestSmartContractBlock_Serialize(t *testing.T) {
 		t.Fatal()
 	}
 
+	t.Log(sb.String())
+	t.Log(sb.Size())
+
 	buff, err := sb.Serialize()
 	if err != nil {
 		t.Fatal(err)

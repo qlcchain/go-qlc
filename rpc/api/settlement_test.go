@@ -15,11 +15,12 @@ import (
 	"testing"
 	"time"
 
+	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
+
 	"github.com/google/uuid"
 
-	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
-	cfg "github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
@@ -36,17 +37,16 @@ var (
 )
 
 func setupSettlementAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *SettlementAPI) {
-	dir := filepath.Join(cfg.QlcTestDataDir(), "settlement_api", uuid.New().String())
+	t.Parallel()
+	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	cm := cfg.NewCfgManager(dir)
-	_, err := cm.Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	cc := context.NewChainContext(cm.ConfigFile)
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
 	l := ledger.NewLedger(cm.ConfigFile)
 	verifier := process.NewLedgerVerifier(l)
 	setPovStatus(l, cc, t)
+	setLedgerStatus(l, t)
 
 	api := NewSettlement(l, cc)
 
