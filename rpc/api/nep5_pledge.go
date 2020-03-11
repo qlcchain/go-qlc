@@ -65,7 +65,14 @@ func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
 		return nil, err
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, uint8(t), param.NEP5TxId)
+	p2 := &cabi.PledgeParam{
+		Beneficial:    param.Beneficial,
+		PledgeAddress: param.PledgeAddress,
+		PType:         uint8(t),
+		NEP5TxId:      param.NEP5TxId,
+	}
+
+	return p2.ToABI()
 }
 
 func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, error) {
@@ -179,7 +186,14 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byt
 		return nil, err
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial, param.Amount.Int, uint8(t), param.NEP5TxId)
+	p2 := &cabi.WithdrawPledgeParam{
+		Beneficial: param.Beneficial,
+		Amount:     param.Amount.Int,
+		PType:      uint8(t),
+		NEP5TxId:   param.NEP5TxId,
+	}
+
+	return p2.ToABI()
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*types.StateBlock, error) {

@@ -29,10 +29,6 @@ type Nep5Pledge struct {
 	BaseContract
 }
 
-func (p *Nep5Pledge) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
-}
-
 // check pledge chain coin
 // - address is normal user address
 // - small than min pledge amount
@@ -54,9 +50,8 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 		return errors.New("invalid block data")
 	}
 
-	param := new(cabi.PledgeParam)
-	if err := cabi.NEP5PledgeABI.UnpackMethod(param, cabi.MethodNEP5Pledge, block.Data); err != nil {
-		fmt.Println(err)
+	param, err := cabi.ParsePledgeParam(block.GetData())
+	if err != nil {
 		return errors.New("invalid beneficial address")
 	}
 
@@ -81,7 +76,19 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 }
 
 func (*Nep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	return nil, nil, errors.New("not implemented")
+	param, err := cabi.ParsePledgeParam(block.GetData())
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid beneficial address, %s", err)
+	}
+
+	return &types.PendingKey{
+			Address: param.Beneficial,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.GetLink()),
+			Amount: types.ZeroBalance,
+			Type:   block.Token,
+		}, nil
 }
 
 func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
@@ -116,36 +123,44 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		}
 	}
 
+	// save data
 	pledgeKey := cabi.GetPledgeKey(input.Address, param.Beneficial, param.NEP5TxId)
-
-	var pledgeData []byte
-	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
+	pledgeData, err := info.ToABI()
+	if err != nil {
 		return nil, err
-	} else {
-		// already exist,verify data
-		if len(pledgeData) > 0 {
-			oldPledge, err := cabi.ParsePledgeInfo(pledgeData)
-			if err != nil {
-				return nil, err
-			}
-			if oldPledge.PledgeAddress != info.PledgeAddress || oldPledge.WithdrawTime != info.WithdrawTime ||
-				oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType ||
-				oldPledge.NEP5TxId != info.NEP5TxId {
-				return nil, errors.New("invalid saved pledge info")
-			}
-		} else {
-			// save data
-			pledgeData, err = cabi.NEP5PledgeABI.PackVariable(cabi.VariableNEP5PledgeInfo, info.PType, info.Amount,
-				info.WithdrawTime, info.Beneficial, info.PledgeAddress, info.NEP5TxId)
-			if err != nil {
-				return nil, err
-			}
-			err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
+	err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData)
+	if err != nil {
+		return nil, err
+	}
+
+	//var pledgeData []byte
+	//if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil && err != vmstore.ErrStorageNotFound {
+	//	return nil, err
+	//} else {
+	//	// already exist,verify data
+	//	if len(pledgeData) > 0 {
+	//		oldPledge, err := cabi.ParsePledgeInfo(pledgeData)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		if oldPledge.PledgeAddress != info.PledgeAddress || oldPledge.WithdrawTime != info.WithdrawTime ||
+	//			oldPledge.Beneficial != info.Beneficial || oldPledge.PType != info.PType ||
+	//			oldPledge.NEP5TxId != info.NEP5TxId {
+	//			return nil, errors.New("invalid saved pledge info")
+	//		}
+	//	} else {
+	//		// save data
+	//		pledgeData, err = info.ToABI()
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//	}
+	//}
 
 	am, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
 	if am != nil {
@@ -233,11 +248,7 @@ type WithdrawNep5Pledge struct {
 	BaseContract
 }
 
-func (*WithdrawNep5Pledge) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
-}
-
-func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) (err error) {
+func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
 	if amount, err := ctx.Ledger.CalculateAmount(block); err != nil {
 		return err
 	} else {
@@ -246,14 +257,13 @@ func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBloc
 		}
 	}
 
-	param := new(cabi.WithdrawPledgeParam)
-	if err := cabi.NEP5PledgeABI.UnpackMethod(param, cabi.MethodWithdrawNEP5Pledge, block.Data); err != nil {
+	param, err := cabi.ParseWithdrawPledgeParam(block.GetData())
+	if err != nil {
 		return errors.New("invalid input data")
 	}
 
-	if block.Data, err = cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial,
-		param.Amount, param.PType, param.NEP5TxId); err != nil {
-		return
+	if block.Data, err = param.ToABI(); err != nil {
+		return err
 	}
 
 	return nil
@@ -264,8 +274,7 @@ func (m *WithdrawNep5Pledge) DoPending(block *types.StateBlock) (*types.PendingK
 }
 
 func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
-	param := new(cabi.WithdrawPledgeParam)
-	err := cabi.NEP5PledgeABI.UnpackMethod(param, cabi.MethodWithdrawNEP5Pledge, input.Data)
+	param, err := cabi.ParseWithdrawPledgeParam(input.GetData())
 	if err != nil {
 		return nil, err
 	}
@@ -292,8 +301,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	} else {
 		// already exist,verify data
 		if len(pledgeData) > 0 {
-			oldPledge := new(cabi.NEP5PledgeInfo)
-			err := cabi.NEP5PledgeABI.UnpackVariable(oldPledge, cabi.VariableNEP5PledgeInfo, pledgeData)
+			oldPledge, err := cabi.ParsePledgeInfo(pledgeData)
 			if err != nil {
 				return nil, err
 			}

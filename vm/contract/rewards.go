@@ -17,17 +17,12 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type AirdropRewords struct {
+type AirdropRewards struct {
 	BaseContract
 }
 
-func (ar *AirdropRewords) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
-}
-
-func (ar *AirdropRewords) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
-	param := new(cabi.RewardsParam)
-	err := cabi.RewardsABI.UnpackMethod(param, cabi.MethodNameAirdropRewards, block.Data)
+func (ar *AirdropRewards) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
+	param, err := cabi.ParseRewardsParam(cabi.MethodNameAirdropRewards, block.Data)
 	if err != nil {
 		return err
 	}
@@ -39,23 +34,22 @@ func (ar *AirdropRewords) DoSend(ctx *vmstore.VMContext, block *types.StateBlock
 	return nil
 }
 
-func (ar *AirdropRewords) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+func (ar *AirdropRewards) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	return doPending(block, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards)
 }
 
-func (ar *AirdropRewords) DoReceive(ctx *vmstore.VMContext,
-	block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (ar *AirdropRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return generate(ctx, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards,
 		block, input, func(param *cabi.RewardsParam) []byte {
 			return cabi.GetRewardsKey(param.Id[:], param.TxHeader[:], param.RxHeader[:])
 		})
 }
 
-func (*AirdropRewords) GetRefundData() []byte {
+func (*AirdropRewards) GetRefundData() []byte {
 	return []byte{1}
 }
 
-func (*AirdropRewords) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
+func (*AirdropRewards) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBlock) (types.Address, error) {
 	data := block.GetData()
 	tr := types.ZeroAddress
 
@@ -76,13 +70,8 @@ type ConfidantRewards struct {
 	BaseContract
 }
 
-func (*ConfidantRewards) GetFee(ctx *vmstore.VMContext, block *types.StateBlock) (types.Balance, error) {
-	return types.ZeroBalance, nil
-}
-
 func (*ConfidantRewards) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
-	param := new(cabi.RewardsParam)
-	err := cabi.RewardsABI.UnpackMethod(param, cabi.MethodNameConfidantRewards, block.Data)
+	param, err := cabi.ParseRewardsParam(cabi.MethodNameConfidantRewards, block.Data)
 	if err != nil {
 		return err
 	}
@@ -99,8 +88,7 @@ func (ar *ConfidantRewards) DoPending(block *types.StateBlock) (*types.PendingKe
 }
 
 func doPending(block *types.StateBlock, signed, unsigned string) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(cabi.RewardsParam)
-	err := cabi.RewardsABI.UnpackMethod(param, signed, block.Data)
+	param, err := cabi.ParseRewardsParam(signed, block.Data)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -150,8 +138,7 @@ func (*ConfidantRewards) GetTargetReceiver(ctx *vmstore.VMContext, block *types.
 
 func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock,
 	fn func(param *cabi.RewardsParam) []byte) ([]*ContractBlock, error) {
-	param := new(cabi.RewardsParam)
-	err := cabi.RewardsABI.UnpackMethod(param, signed, input.Data)
+	param, err := cabi.ParseRewardsParam(signed, input.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -221,8 +208,6 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 			Amount:   amount.Int,
 		}
 
-		//key := cabi.GetConfidantKey(rxAddress, param.Id, param.TxHeader, param.RxHeader)
-
 		key := fn(param)
 		if data, err := ctx.GetStorage(types.RewardsAddress[:], key); err != nil && err != vmstore.ErrStorageNotFound {
 			return nil, err
@@ -246,8 +231,7 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 					return nil, err
 				}
 			} else {
-				if data, err := cabi.RewardsABI.PackVariable(cabi.VariableNameRewards, info.Type, info.From,
-					info.To, info.TxHeader, info.RxHeader, info.Amount); err == nil {
+				if data, err := info.ToABI(); err == nil {
 					if err := ctx.SetStorage(types.RewardsAddress[:], key, data); err != nil {
 						return nil, err
 					}
