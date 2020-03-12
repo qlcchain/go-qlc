@@ -1046,7 +1046,7 @@ func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *
 	} else {
 		switch size := len(contracts); {
 		case size == 0:
-			return nil, fmt.Errorf("can not find settlement contract related with %s", addr.String())
+			return nil, fmt.Errorf("can not find settlement contract related with %s by %s", addr.String(), param.String())
 		case size > 1:
 			return nil, fmt.Errorf("find mutilple(%d) settlement contract", len(contracts))
 		default:

@@ -8,12 +8,14 @@
 package api
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/crypto/random"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 
@@ -25,15 +27,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
-)
-
-var (
-	// qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq
-	priv1, _ = hex.DecodeString("7098c089e66bd66476e3b88df8699bcd4dacdd5e1e5b41b3c598a8a36d851184d992a03b7326b7041f689ae727292d761b329a960f3e4335e0a7dcf2c43c4bcf")
-	// qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te
-	priv2, _ = hex.DecodeString("31ee4e16826569dc631b969e71bd4c46d5c0df0daeca6933f46586f36f49537cd929630709e1a1442411a3c2159e8dba5742c6835e54757444f8af35bf1c7393")
-	account1 = types.NewAccount(priv1)
-	account2 = types.NewAccount(priv2)
 )
 
 func setupSettlementAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *SettlementAPI) {
@@ -201,17 +194,21 @@ func offset(o int) *int {
 	return &o
 }
 
-func TestSettlementAPI_GetCreateContractBlock(t *testing.T) {
+//TODO: remove all sleep
+func TestSettlementAPI_Integration(t *testing.T) {
 	testcase, verifier, api := setupSettlementAPI(t)
 	defer testcase(t)
 
-	if blk, err := api.GetCreateContractBlock(&CreateContractParam{
+	pccwAddr := account1.Address()
+	cslAddr := account2.Address()
+
+	param := &CreateContractParam{
 		PartyA: cabi.Contractor{
-			Address: account1.Address(),
+			Address: pccwAddr,
 			Name:    "PCCWG",
 		},
 		PartyB: cabi.Contractor{
-			Address: account2.Address(),
+			Address: cslAddr,
 			Name:    "HTK-CSL",
 		},
 		Services: []cabi.ContractService{{
@@ -229,12 +226,28 @@ func TestSettlementAPI_GetCreateContractBlock(t *testing.T) {
 			UnitPrice:   4,
 			Currency:    "USD",
 		}},
-		StartDate: time.Now().AddDate(0, 0, 1).Unix(),
+		StartDate: time.Now().AddDate(0, 0, -1).Unix(),
 		EndDate:   time.Now().AddDate(1, 0, 1).Unix(),
+	}
+
+	if address, err := api.ToAddress(&cabi.CreateContractParam{
+		PartyA:    param.PartyA,
+		PartyB:    param.PartyB,
+		Previous:  mock.Hash(),
+		Services:  param.Services,
+		SignDate:  time.Now().Unix(),
+		StartDate: param.StartDate,
+		EndDate:   param.EndDate,
 	}); err != nil {
 		t.Fatal(err)
+	} else if address.IsZero() {
+		t.Fatal("ToAddress failed")
+	}
+
+	if blk, err := api.GetCreateContractBlock(param); err != nil {
+		t.Fatal(err)
 	} else {
-		t.Log(blk)
+		//t.Log(blk)
 		txHash := blk.GetHash()
 		blk.Signature = account1.Sign(txHash)
 		if err := verifier.BlockProcess(blk); err != nil {
@@ -243,7 +256,515 @@ func TestSettlementAPI_GetCreateContractBlock(t *testing.T) {
 		if rx, err := api.GetSettlementRewardsBlock(&txHash); err != nil {
 			t.Fatal(err)
 		} else {
-			t.Log(rx)
+			if err := verifier.BlockProcess(rx); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		for {
+			if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > 0 {
+				break
+			} else {
+				time.Sleep(500 * time.Millisecond)
+			}
+		}
+
+		if contracts, err := api.GetContractsAsPartyA(&pccwAddr, 10, offset(0)); err != nil {
+			t.Fatal(err)
+		} else if len(contracts) != 1 {
+			t.Fatalf("invalid GetContractsAsPartyA len, exp: 1, act: %d", len(contracts))
+		}
+
+		if contracts, err := api.GetContractsByAddress(&pccwAddr, 10, offset(0)); err != nil {
+			t.Fatal(err)
+		} else if len(contracts) != 1 {
+			t.Fatalf("invalid GetContractsByAddress len, exp: 1, act: %d", len(contracts))
+		}
+
+		if contracts, err := api.GetContractsAsPartyB(&cslAddr, 1, offset(0)); err != nil {
+			t.Fatal(err)
+		} else if len(contracts) != 1 {
+			t.Fatalf("invalid contracts len, exp: 1, act: %d", len(contracts))
+		} else {
+			c := contracts[0]
+			contractAddr := c.Address
+			if blk, err := api.GetSignContractBlock(&SignContractParam{
+				ContractAddress: contractAddr,
+				Address:         cslAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account2.Sign(blk.GetHash())
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// add next stop
+			if blk, err := api.GetAddNextStopBlock(&StopParam{
+				StopParam: cabi.StopParam{
+					ContractAddress: contractAddr,
+					StopName:        "HKTCSL",
+				},
+				Address: pccwAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account1.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if blk, err := api.GetAddNextStopBlock(&StopParam{
+				StopParam: cabi.StopParam{
+					ContractAddress: contractAddr,
+					StopName:        "HKTCSL-1",
+				},
+				Address: pccwAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account1.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// update next stop name
+			if blk, err := api.GetUpdateNextStopBlock(&UpdateStopParam{
+				UpdateStopParam: cabi.UpdateStopParam{
+					ContractAddress: contractAddr,
+					StopName:        "HKTCSL-1",
+					New:             "HKTCSL-2",
+				},
+				Address: pccwAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account1.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if blk, err := api.GetRemoveNextStopBlock(&StopParam{
+				StopParam: cabi.StopParam{
+					ContractAddress: contractAddr,
+					StopName:        "HKTCSL-2",
+				},
+				Address: pccwAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account1.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// add pre stop
+			if blk, err := api.GetAddPreStopBlock(&StopParam{
+				StopParam: cabi.StopParam{
+					ContractAddress: contractAddr,
+					StopName:        "PCCWG",
+				},
+				Address: cslAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account2.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if blk, err := api.GetAddPreStopBlock(&StopParam{
+				StopParam: cabi.StopParam{
+					ContractAddress: contractAddr,
+					StopName:        "PCCWG-1",
+				},
+				Address: cslAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account2.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// update pre stop
+			if blk, err := api.GetUpdatePreStopBlock(&UpdateStopParam{
+				UpdateStopParam: cabi.UpdateStopParam{
+					ContractAddress: contractAddr,
+					StopName:        "PCCWG-1",
+					New:             "PCCWG-2",
+				},
+				Address: cslAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account2.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// remove pre stop
+			if blk, err := api.GetRemovePreStopBlock(&StopParam{
+				StopParam: cabi.StopParam{
+					ContractAddress: contractAddr,
+					StopName:        "PCCWG-2",
+				},
+				Address: cslAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account2.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// waiting for data save to db
+			for {
+				if nextStopNames, err := api.GetNextStopNames(&pccwAddr); err != nil {
+					t.Fatal(err)
+				} else if len(nextStopNames) > 0 {
+					t.Logf("next names: %s %s", pccwAddr.String(), nextStopNames)
+					if names, err := api.GetPreStopNames(&cslAddr); err != nil {
+						t.Fatal(err)
+					} else if len(names) > 0 {
+						t.Logf("pre names: %s %s", cslAddr.String(), names)
+						break
+					} else {
+						time.Sleep(500 * time.Millisecond)
+					}
+				} else {
+					time.Sleep(500 * time.Millisecond)
+				}
+			}
+
+			if contracts, err := api.GetContractsByStatus(&pccwAddr, "Activated", 10, offset(0)); err != nil {
+				t.Fatal(err)
+			} else if len(contracts) != 1 {
+				t.Fatalf("invalid GetContractsByStatus len, exp: 1, act: %d", len(contracts))
+			}
+
+			if a, err := api.GetContractAddressByPartyANextStop(&pccwAddr, "HKTCSL"); err != nil {
+				t.Fatal(err)
+			} else if *a != contractAddr {
+				t.Fatalf("invalid contract address, exp: %s, act: %s", contractAddr.String(), a.String())
+			}
+
+			if a, err := api.GetContractAddressByPartyBPreStop(&cslAddr, "PCCWG"); err != nil {
+				t.Fatal(err)
+			} else if *a != contractAddr {
+				t.Fatalf("invalid contract address, exp: %s, act: %s", contractAddr.String(), a.String())
+			}
+
+			// pccw upload CDR
+			cdr1 := &cabi.CDRParam{
+				ContractAddress: types.ZeroAddress,
+				Index:           1111,
+				SmsDt:           time.Now().Unix(),
+				Sender:          "WeChat",
+				Destination:     "85257***343",
+				SendingStatus:   cabi.SendingStatusSent,
+				DlrStatus:       cabi.DLRStatusDelivered,
+				PreStop:         "",
+				NextStop:        "HKTCSL",
+			}
+
+			if blk, err := api.GetProcessCDRBlock(&pccwAddr, cdr1); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account1.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// CSL upload CDR
+			cdr2 := &cabi.CDRParam{
+				ContractAddress: types.ZeroAddress,
+				Index:           1111,
+				SmsDt:           time.Now().Unix(),
+				Sender:          "WeChat",
+				Destination:     "85257***343",
+				SendingStatus:   cabi.SendingStatusSent,
+				DlrStatus:       cabi.DLRStatusDelivered,
+				PreStop:         "PCCWG",
+				NextStop:        "",
+			}
+			if blk, err := api.GetProcessCDRBlock(&cslAddr, cdr2); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account2.Sign(txHash)
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			h, err := cdr1.ToHash()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if status, err := api.GetCDRStatus(&contractAddr, h); err != nil {
+				t.Fatal(err)
+			} else if status.Status != cabi.SettlementStatusSuccess {
+				t.Fatalf("invalid cdr state, exp: %s, act: %s", cabi.SettlementStatusSuccess.String(), status.Status.String())
+			}
+
+			if data, err := api.GetCDRStatusByCdrData(&contractAddr, 1111, "WeChat", "85257***343"); err != nil {
+				t.Fatal(err)
+			} else {
+				t.Log(data)
+			}
+
+			for {
+				if records, _ := api.GetAllCDRStatus(&contractAddr, 10, offset(0)); len(records) == 1 {
+					break
+				} else {
+					time.Sleep(500 * time.Millisecond)
+				}
+			}
+
+			if records, err := api.GetCDRStatusByDate(&contractAddr, 0, 0, 10, offset(0)); err != nil {
+				t.Fatal(err)
+			} else if len(records) != 1 {
+				t.Fatalf("invalid GetCDRStatusByDate len, exp: 1, act: %d", len(records))
+			}
+
+			if allContracts, err := api.GetAllContracts(10, offset(0)); err != nil {
+				t.Fatal(err)
+			} else if len(allContracts) != 1 {
+				t.Fatalf("invalid GetAllContracts len, exp: 1, act: %d", len(allContracts))
+			}
+
+			if report, err := api.GetSummaryReport(&contractAddr, 0, 0); err != nil {
+				t.Fatal(err)
+			} else {
+				t.Log(report)
+			}
+
+			if invoices, err := api.GenerateInvoices(&pccwAddr, 0, 0); err != nil {
+				t.Fatal(err)
+			} else {
+				t.Log(invoices)
+			}
+			if invoices, err := api.GenerateInvoicesByContract(&contractAddr, 0, 0); err != nil {
+				t.Fatal(err)
+			} else {
+				t.Log(invoices)
+			}
+
+			if invoice, err := api.GenerateMultiPartyInvoice(&contractAddr, 0, 0); err != nil {
+				t.Fatal(err)
+			} else {
+				t.Log(invoice)
+			}
+		}
+	}
+}
+
+func TestSortCDRs(t *testing.T) {
+	cdr1 := buildCDRStatus()
+	cdr2 := buildCDRStatus()
+	r := []*cabi.CDRStatus{cdr1, cdr2}
+	sort.Slice(r, func(i, j int) bool {
+		return sortCDRFun(r[i], r[j])
+	})
+	t.Log(r)
+}
+
+func buildCDRStatus() *cabi.CDRStatus {
+	cdrParam := cabi.CDRParam{
+		Index:         1,
+		SmsDt:         time.Now().Unix(),
+		Sender:        "PCCWG",
+		Destination:   "85257***343",
+		SendingStatus: cabi.SendingStatusSent,
+		DlrStatus:     cabi.DLRStatusDelivered,
+	}
+	cdr1 := cdrParam
+	i, _ := random.Intn(10000)
+	cdr1.Index = uint64(i)
+	cdr1.SmsDt = time.Now().Add(time.Minute * time.Duration(cdr1.Index)).Unix()
+
+	status := &cabi.CDRStatus{
+		Params: map[string][]cabi.CDRParam{
+			mock.Address().String(): {cdr1},
+		},
+		Status: cabi.SettlementStatusSuccess,
+	}
+
+	return status
+}
+
+func TestSettlementAPI_GetTerminateContractBlock(t *testing.T) {
+	testcase, verifier, api := setupSettlementAPI(t)
+	defer testcase(t)
+
+	pccwAddr := account1.Address()
+	cslAddr := account2.Address()
+
+	param := &CreateContractParam{
+		PartyA: cabi.Contractor{
+			Address: pccwAddr,
+			Name:    "PCCWG",
+		},
+		PartyB: cabi.Contractor{
+			Address: cslAddr,
+			Name:    "HTK-CSL",
+		},
+		Services: []cabi.ContractService{{
+			ServiceId:   mock.Hash().String(),
+			Mcc:         1,
+			Mnc:         2,
+			TotalAmount: 10,
+			UnitPrice:   2,
+			Currency:    "USD",
+		}, {
+			ServiceId:   mock.Hash().String(),
+			Mcc:         22,
+			Mnc:         1,
+			TotalAmount: 30,
+			UnitPrice:   4,
+			Currency:    "USD",
+		}},
+		StartDate: time.Now().AddDate(0, 0, -1).Unix(),
+		EndDate:   time.Now().AddDate(1, 0, 1).Unix(),
+	}
+
+	if blk, err := api.GetCreateContractBlock(param); err != nil {
+		t.Fatal(err)
+	} else {
+		//t.Log(blk)
+		txHash := blk.GetHash()
+		blk.Signature = account1.Sign(txHash)
+		if err := verifier.BlockProcess(blk); err != nil {
+			t.Fatal(err)
+		}
+
+		for {
+			if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > 0 {
+				break
+			} else {
+				time.Sleep(500 * time.Millisecond)
+			}
+		}
+
+		if contracts, err := api.GetContractsAsPartyB(&cslAddr, 1, offset(0)); err != nil {
+			t.Fatal(err)
+		} else if len(contracts) != 1 {
+			t.Fatalf("invalid contracts len, exp: 1, act: %d", len(contracts))
+		} else {
+			c := contracts[0]
+			contractAddr := c.Address
+			if blk, err := api.GetTerminateContractBlock(&TerminateParam{
+				TerminateParam: cabi.TerminateParam{
+					ContractAddress: contractAddr,
+					Request:         true,
+				},
+				Address: cslAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account2.Sign(blk.GetHash())
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+}
+
+func TestSettlementAPI_GetExpiredContracts(t *testing.T) {
+	testcase, verifier, api := setupSettlementAPI(t)
+	defer testcase(t)
+
+	pccwAddr := account1.Address()
+	cslAddr := account2.Address()
+
+	param := &CreateContractParam{
+		PartyA: cabi.Contractor{
+			Address: pccwAddr,
+			Name:    "PCCWG",
+		},
+		PartyB: cabi.Contractor{
+			Address: cslAddr,
+			Name:    "HTK-CSL",
+		},
+		Services: []cabi.ContractService{{
+			ServiceId:   mock.Hash().String(),
+			Mcc:         1,
+			Mnc:         2,
+			TotalAmount: 10,
+			UnitPrice:   2,
+			Currency:    "USD",
+		}, {
+			ServiceId:   mock.Hash().String(),
+			Mcc:         22,
+			Mnc:         1,
+			TotalAmount: 30,
+			UnitPrice:   4,
+			Currency:    "USD",
+		}},
+		StartDate: time.Now().AddDate(0, 0, -30).Unix(),
+		EndDate:   time.Now().AddDate(0, 0, -1).Unix(),
+	}
+
+	if blk, err := api.GetCreateContractBlock(param); err != nil {
+		t.Fatal(err)
+	} else {
+		txHash := blk.GetHash()
+		blk.Signature = account1.Sign(txHash)
+		if err := verifier.BlockProcess(blk); err != nil {
+			t.Fatal(err)
+		}
+
+		for {
+			if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > 0 {
+				break
+			} else {
+				time.Sleep(500 * time.Millisecond)
+			}
+		}
+
+		if contracts, err := api.GetContractsAsPartyB(&cslAddr, 1, offset(0)); err != nil {
+			t.Fatal(err)
+		} else if len(contracts) != 1 {
+			t.Fatalf("invalid contracts len, exp: 1, act: %d", len(contracts))
+		} else {
+			c := contracts[0]
+			contractAddr := c.Address
+			if blk, err := api.GetSignContractBlock(&SignContractParam{
+				ContractAddress: contractAddr,
+				Address:         cslAddr,
+			}); err != nil {
+				t.Fatal(err)
+			} else {
+				blk.Signature = account2.Sign(blk.GetHash())
+				if err := verifier.BlockProcess(blk); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			for {
+				if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > 0 && contracts[0].Status == cabi.ContractStatusActivated {
+					break
+				} else {
+					time.Sleep(500 * time.Millisecond)
+				}
+			}
+
+			if contracts, err := api.GetExpiredContracts(&pccwAddr, 10, offset(0)); err != nil {
+				t.Fatal(err)
+			} else if len(contracts) != 1 {
+				t.Fatalf("invalid GetExpiredContracts len, exp: 1, act: %d", len(contracts))
+			}
 		}
 	}
 }

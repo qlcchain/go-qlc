@@ -154,7 +154,6 @@ func TestLedgerApi_Subscription(t *testing.T) {
 	// GenerateSendBlock
 	ac2 := mock.Account()
 	go func() {
-		time.Sleep(1 * time.Second)
 		amount := types.Balance{Int: big.NewInt(int64(100000))}
 		ac1PrkStr := hex.EncodeToString(ac1.PrivateKey()[:])
 		sendBlk, err := ledgerApi.GenerateSendBlock(&APISendBlockPara{
@@ -166,7 +165,6 @@ func TestLedgerApi_Subscription(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
 		pendingKey := &types.PendingKey{
 			Address: ac2.Address(),
 			Hash:    sendBlk.GetHash(),
@@ -176,6 +174,7 @@ func TestLedgerApi_Subscription(t *testing.T) {
 			Type:   config.ChainToken(),
 			Amount: amount,
 		}
+		time.Sleep(1 * time.Second)
 		if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
 			t.Fatal(err)
 		}
