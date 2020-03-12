@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/config"
 	"math/big"
 	"testing"
 	"time"
@@ -94,10 +95,14 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addRepresentationWeight(t, l)
+	am := addRepresentationWeight(t, l)
 	addRepresentationWeight(t, l)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
+	if _, err := l.GetRepresentation(am.Address); err != nil {
+		t.Fatal(err)
+	}
+
 	err := l.GetRepresentations(func(address types.Address, benefit *types.Benefit) error {
 		t.Log(address, benefit)
 		return nil
@@ -159,6 +164,24 @@ func TestLedger_SetOnlineRepresentations(t *testing.T) {
 			t.Fatal("invalid online rep")
 		}
 	} else {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_UpdateRepresentation(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	acc := mock.AccountMeta(addr)
+	tm := mock.TokenMeta(addr)
+	tm.Type = config.ChainToken()
+	acc.Tokens = append(acc.Tokens, tm)
+	if err := l.AddAccountMeta(acc, l.cache.GetCache()); err != nil {
+		t.Fatal()
+	}
+	time.Sleep(2 * time.Second)
+	if err := l.updateRepresentation(); err != nil {
 		t.Fatal(err)
 	}
 }

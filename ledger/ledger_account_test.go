@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"github.com/qlcchain/go-qlc/config"
 	"math/big"
 	"testing"
 
@@ -57,6 +58,7 @@ func TestLedger_GetAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	// get account from confirmed
 	am := addAccountMeta(t, l)
 	a, err := l.GetAccountMeta(am.Address)
 	if err != nil {
@@ -66,17 +68,80 @@ func TestLedger_GetAccountMeta(t *testing.T) {
 	for _, token := range a.Tokens {
 		t.Log("token,", token)
 	}
+
+	// get account from unConfirmed
+	am2 := mock.AccountMeta(mock.Address())
+	if err := l.AddAccountMetaCache(am2); err != nil {
+		t.Fatal()
+	}
+	if _, err = l.GetAccountMeta(am2.Address); err != nil {
+		t.Fatal(err)
+	}
+
+	// get account from confirmed and unConfirmed
+	am3 := mock.AccountMeta(mock.Address())
+	tm3 := mock.TokenMeta(am3.Address)
+	tm3.Type = config.ChainToken()
+	am3.Tokens = append(am3.Tokens, tm3)
+	if err := l.AddAccountMetaCache(am3); err != nil {
+		t.Fatal()
+	}
+	tm3.BlockCount = tm3.BlockCount + 1
+	if err := l.AddAccountMeta(am3, l.cache.GetCache()); err != nil {
+		t.Fatal()
+	}
+	a, err = l.GetAccountMeta(am3.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_HasAccountMeta(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	am := addAccountMeta(t, l)
-	r, _ := l.HasAccountMetaConfirmed(am.Address)
-	if !r {
+	am2 := addAccountMeta(t, l)
+	if err := l.DeleteAccountMeta(am2.Address, l.cache.GetCache()); err != nil {
 		t.Fatal()
 	}
-	t.Log("has account,", r)
+
+	tests := []struct {
+		name       string
+		args       types.Address
+		wantReturn bool
+		wantErr    bool
+	}{
+		{
+			name:       "f1",
+			args:       am.Address,
+			wantReturn: true,
+			wantErr:    false,
+		},
+		{
+			name:       "f2",
+			args:       mock.Address(),
+			wantReturn: false,
+			wantErr:    false,
+		},
+		{
+			name:       "f3",
+			args:       am2.Address,
+			wantReturn: false,
+			wantErr:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, err := l.HasAccountMetaConfirmed(tt.args)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HasAccountMetaConfirmed() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if r != tt.wantReturn {
+				t.Errorf("HasAccountMetaConfirmed() value = %v, want %v", r, tt.wantReturn)
+			}
+		})
+	}
 }
 
 func TestLedger_DeleteAccountMeta(t *testing.T) {
@@ -288,4 +353,41 @@ func TestLedger_UpdateAccountMetaCache(t *testing.T) {
 	if len(a.Tokens)+1 != len(c.Tokens) {
 		t.Fatal(len(a.Tokens), len(c.Tokens))
 	}
+}
+
+func TestLedger_DeleteTokenMetaCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	am := addAccountMetaCache(t, l)
+	if _, err := l.GetTokenMeta(am.Address, am.Tokens[0].Type); err != nil {
+		t.Fatal(err)
+	}
+	err := l.DeleteTokenMetaCache(am.Address, am.Tokens[0].Type)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.GetTokenMeta(am.Address, am.Tokens[0].Type); err == nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedger_Weight(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	ac := addRepresentationWeight(t, l)
+	r := l.Weight(ac.Address)
+	t.Log(r)
+}
+
+func TestLedger_CalculateAmount(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	//open
+	blk := mock.StateBlockWithoutWork()
+	r, err := l.CalculateAmount(blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
 }

@@ -46,7 +46,7 @@ require (
 	github.com/perlin-network/life v0.0.0-20191203030451-05c0e0f7eaea
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/qlcchain/jsonrpc2 v0.0.0-20200310141204-0141c444e8a5
+	github.com/qlcchain/jsonrpc2 v0.0.7
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/shirou/gopsutil v2.19.12+incompatible
 	github.com/spf13/afero v1.2.2 // indirect

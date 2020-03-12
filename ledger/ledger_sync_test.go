@@ -15,8 +15,17 @@ func TestLedger_UncheckedSyncBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if r, err := l.HasUncheckedSyncBlock(block.Previous); err != nil || !r {
+		t.Fatal(err)
+	}
+
 	blk, err := l.GetUncheckedSyncBlock(block.Previous)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := l.CountUncheckedSyncBlocks()
+	if err != nil || r != 1 {
 		t.Fatal(err)
 	}
 
@@ -41,6 +50,10 @@ func TestLedger_UnconfirmedSyncBlock(t *testing.T) {
 	block := mock.StateBlockWithoutWork()
 	hash := block.GetHash()
 	if err := l.AddUnconfirmedSyncBlock(hash, block); err != nil {
+		t.Fatal(err)
+	}
+
+	if r, err := l.CountUnconfirmedSyncBlocks(); err != nil || r != 1 {
 		t.Fatal(err)
 	}
 
@@ -84,6 +97,14 @@ func TestLedger_CleanSyncCache(t *testing.T) {
 	hash2 := block2.GetHash()
 	if err := l.AddUnconfirmedSyncBlock(hash2, block); err != nil {
 		t.Fatal(err)
+	}
+
+	count := 0
+	l.WalkSyncCache(func(kind byte, key []byte) {
+		count = count + 1
+	})
+	if count != 2 {
+		t.Fatal()
 	}
 
 	l.CleanSyncCache()

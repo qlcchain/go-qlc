@@ -232,7 +232,6 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache 
 	if cache {
 		for i := len(blocks) - 1; i >= 0; i-- {
 			block := blocks[i]
-
 			if err := lv.l.DeleteBlockCache(block.GetHash(), batch); err != nil {
 				return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
 			}
@@ -241,20 +240,17 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache 
 
 			if b, _ := lv.l.HasBlockCache(block.GetPrevious()); b {
 				if err := lv.rollbackCacheAccount(block, batch); err != nil {
-					lv.logger.Errorf("roll back cache account error : %s", err)
-					return err
+					return fmt.Errorf("roll back cache account error : %s", err)
 				}
 			} else {
 				if err := lv.rollbackCacheAccountDel(block.GetAddress(), block.GetToken(), batch); err != nil {
-					lv.logger.Errorf("roll back cache account del error : %s", err)
-					return err
+					return fmt.Errorf("roll back cache account del error : %s", err)
 				}
 			}
 		}
 		return nil
 	}
 	for _, block := range blocks {
-
 		if err := lv.l.DeleteBlockCache(block.GetHash(), batch); err != nil {
 			return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
 		}
@@ -913,22 +909,19 @@ func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {
 		return
 	}
 	if blkLink != nil {
-		err := lv.l.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
-		if err != nil {
+		if err := lv.l.DeleteUncheckedBlock(hash, types.UncheckedKindLink); err != nil {
 			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, blkLink.GetHash())
 		}
 		lv.RollbackUnchecked(blkLink.GetHash())
 	}
 	if blkPrevious != nil {
-		err := lv.l.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious)
-		if err != nil {
+		if err := lv.l.DeleteUncheckedBlock(hash, types.UncheckedKindPrevious); err != nil {
 			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindPrevious", err, blkPrevious.GetHash())
 		}
 		lv.RollbackUnchecked(blkPrevious.GetHash())
 	}
 	if blkToken != nil {
-		err := lv.l.DeleteUncheckedBlock(tokenId, types.UncheckedKindTokenInfo)
-		if err != nil {
+		if err := lv.l.DeleteUncheckedBlock(tokenId, types.UncheckedKindTokenInfo); err != nil {
 			lv.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
 		}
 		lv.RollbackUnchecked(blkToken.GetHash())

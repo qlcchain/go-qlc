@@ -52,6 +52,10 @@ func TestLedger_AddPeerInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = l.AddPeerInfo(pi)
+	if err == nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetPeerInfo(t *testing.T) {
@@ -78,6 +82,10 @@ func TestLedger_GetPeerInfo(t *testing.T) {
 	}
 	if pi.Rtt != pi2.Rtt {
 		t.Fatal("Rtt mismatch")
+	}
+
+	if _, err := l.GetPeerInfo(random.RandomHexString(46)); err == nil {
+		t.Fatal()
 	}
 
 }

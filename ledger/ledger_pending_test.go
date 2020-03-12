@@ -52,6 +52,12 @@ func TestLedger_AddPending(t *testing.T) {
 	if !a.Equal(b) {
 		t.Fatal("balance not equal")
 	}
+	// add pending again
+	pk.Hash = mock.Hash()
+	err = l.AddPending(&pk, &pv, l.cache.GetCache())
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetPending(t *testing.T) {
@@ -68,6 +74,10 @@ func TestLedger_GetPending(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	if _, err := l.GetPending(&pendingkey); err != nil {
 		t.Fatal(err)
+	}
+	pendingkey2 := types.PendingKey{Address: mock.Address(), Hash: mock.Hash()}
+	if _, err := l.GetPending(&pendingkey2); err == nil {
+		t.Fatal()
 	}
 	count := 0
 	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {

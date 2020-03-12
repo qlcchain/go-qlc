@@ -54,7 +54,7 @@ func (l *Ledger) GetSmartContractBlock(key types.Hash) (*types.SmartContractBloc
 
 func (l *Ledger) GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixSmartContractBlock)
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	if err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		blk := new(types.SmartContractBlock)
 		if err := blk.Deserialize(val); err != nil {
 			return nil
@@ -63,9 +63,7 @@ func (l *Ledger) GetSmartContractBlocks(fn func(block *types.SmartContractBlock)
 			return err
 		}
 		return nil
-	})
-
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 	return nil
