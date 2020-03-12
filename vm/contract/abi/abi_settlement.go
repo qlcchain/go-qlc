@@ -1150,6 +1150,32 @@ func GetContractsIDByAddressAsPartyB(ctx *vmstore.VMContext, addr *types.Address
 	})
 }
 
+func GetContractsAddressByPartyANextStop(ctx *vmstore.VMContext, addr *types.Address, nextStop string) (*types.Address, error) {
+	return queryContractParamByAddressAndStopName(ctx, "GetContractsIDByPartyANextStop", func(cp *ContractParam) bool {
+		var b bool
+		for _, n := range cp.NextStops {
+			if n == nextStop {
+				b = true
+				break
+			}
+		}
+		return cp.PartyA.Address == *addr && b
+	})
+}
+
+func GetContractsAddressByPartyBPreStop(ctx *vmstore.VMContext, addr *types.Address, preStop string) (*types.Address, error) {
+	return queryContractParamByAddressAndStopName(ctx, "GetContractsIDByPartyBPreStop", func(cp *ContractParam) bool {
+		var b bool
+		for _, n := range cp.PreStops {
+			if n == preStop {
+				b = true
+				break
+			}
+		}
+		return cp.PartyB.Address == *addr && b
+	})
+}
+
 type SummaryRecord struct {
 	Total   uint64  `json:"total"`
 	Success uint64  `json:"success"`
@@ -1634,4 +1660,39 @@ func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp
 	}
 
 	return result, nil
+}
+
+func queryContractParamByAddressAndStopName(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) (*types.Address, error) {
+	logger := log.NewLogger(name)
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	var result *ContractParam
+
+	if err := ctx.Iterator(types.SettlementAddress[:], func(key []byte, value []byte) error {
+		if len(key) == keySize && len(value) > 0 {
+			cp := &ContractParam{}
+			if err := cp.FromABI(value); err != nil {
+				logger.Error(err)
+			} else {
+				if fn(cp) {
+					result = cp
+					return nil
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if result != nil {
+		addr, err := result.Address()
+		if err != nil {
+			return nil, err
+		}
+		return &addr, nil
+	}
+	return nil, fmt.Errorf("can not find any contract")
 }
