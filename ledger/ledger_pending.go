@@ -106,7 +106,7 @@ func (l *Ledger) GetPendingsByAddress(address types.Address, fn func(key *types.
 			return err
 		}
 		if err := fn(pendingKey, pendingInfo); err != nil {
-			fmt.Errorf("process pending: %s", err)
+			return fmt.Errorf("process pending: %s", err)
 		}
 		return nil
 	})
