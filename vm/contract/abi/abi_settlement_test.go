@@ -9,7 +9,6 @@ package abi
 
 import (
 	"encoding/json"
-	"math"
 	"math/big"
 	"reflect"
 	"testing"
@@ -6116,20 +6115,8 @@ func TestContractService_Balance(t *testing.T) {
 				UnitPrice:   0.04,
 				Currency:    "USD",
 			},
-			want:    types.Balance{Int: new(big.Int).Mul(new(big.Int).SetUint64(100), new(big.Int).SetUint64(0.04*1e8))},
+			want:    types.Balance{Int: big.NewInt(1e8)},
 			wantErr: false,
-		}, {
-			name: "overflow",
-			fields: fields{
-				ServiceId:   mock.Hash().String(),
-				Mcc:         22,
-				Mnc:         1,
-				TotalAmount: math.MaxUint64,
-				UnitPrice:   0.04,
-				Currency:    "USD",
-			},
-			want:    types.ZeroBalance,
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -6201,42 +6188,8 @@ func TestCreateContractParam_Balance(t *testing.T) {
 				StartDate: time.Now().AddDate(0, 0, 2).Unix(),
 				EndData:   time.Now().AddDate(1, 0, 2).Unix(),
 			},
-			want:    types.Balance{Int: new(big.Int).Mul(big.NewInt(100), big.NewInt(2*1e8))}.Add(types.Balance{Int: new(big.Int).Mul(big.NewInt(300), big.NewInt(4*1e8))}),
+			want:    types.Balance{Int: big.NewInt(2 * 1e8)},
 			wantErr: false,
-		},
-		{
-			name: "overflow",
-			fields: fields{
-				PartyA: Contractor{
-					Address: mock.Address(),
-					Name:    "PCCWG",
-				},
-				PartyB: Contractor{
-					Address: mock.Address(),
-					Name:    "HKTCSL",
-				},
-				Previous: mock.Hash(),
-				Services: []ContractService{{
-					ServiceId:   mock.Hash().String(),
-					Mcc:         1,
-					Mnc:         2,
-					TotalAmount: 100,
-					UnitPrice:   2,
-					Currency:    "USD",
-				}, {
-					ServiceId:   mock.Hash().String(),
-					Mcc:         22,
-					Mnc:         1,
-					TotalAmount: math.MaxUint64,
-					UnitPrice:   4,
-					Currency:    "USD",
-				}},
-				SignDate:  time.Now().Unix(),
-				StartDate: time.Now().AddDate(0, 0, 2).Unix(),
-				EndData:   time.Now().AddDate(1, 0, 2).Unix(),
-			},
-			want:    types.ZeroBalance,
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

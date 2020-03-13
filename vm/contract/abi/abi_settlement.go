@@ -250,12 +250,7 @@ func (z *ContractService) FromABI(data []byte) error {
 }
 
 func (z *ContractService) Balance() (types.Balance, error) {
-	f := z.UnitPrice * 1e8
-	if mul, b := util.SafeMul(z.TotalAmount, uint64(f)); b {
-		return types.ZeroBalance, fmt.Errorf("overflow when mul %d and %f", z.TotalAmount, z.UnitPrice)
-	} else {
-		return types.Balance{Int: new(big.Int).SetUint64(mul)}, nil
-	}
+	return types.Balance{Int: big.NewInt(1e8)}, nil
 }
 
 //go:generate msgp
