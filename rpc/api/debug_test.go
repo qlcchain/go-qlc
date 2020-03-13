@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/qlcchain/go-qlc/mock/mocks"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +12,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/mock/mocks"
 )
 
 func setupDefaultDebugAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *DebugApi) {
@@ -172,8 +172,7 @@ func TestDebugApi_UncheckBlocks(t *testing.T) {
 	}
 	r, err := debugApi.UncheckBlock(block.GetHash())
 	t.Log(r, err)
-	r, err = debugApi.UncheckAnalysis()
-	if err != nil {
+	if _, err = debugApi.UncheckAnalysis(); err != nil {
 		t.Fatal(err)
 	}
 }

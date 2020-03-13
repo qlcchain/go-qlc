@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -75,14 +76,14 @@ func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *
 	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		pendingKey := new(types.PendingKey)
 		if err := pendingKey.Deserialize(key[1:]); err != nil {
-			return fmt.Errorf("PendingKey Deserialize: %s", err)
+			return fmt.Errorf("pendingKey deserialize: %s", err)
 		}
 		pendingInfo := new(types.PendingInfo)
 		if err := pendingInfo.Deserialize(val); err != nil {
-			return fmt.Errorf("PendingKey Deserialize: %s", err)
+			return fmt.Errorf("pendingKey deserialize: %s", err)
 		}
 		if err := fn(pendingKey, pendingInfo); err != nil {
-			return fmt.Errorf("PendingKey Deserialize: %s", err)
+			return fmt.Errorf("pendingKey deserialize: %s", err)
 		}
 		return nil
 	})

@@ -100,8 +100,8 @@ func TestStateBlock_Serialize(t *testing.T) {
 	}
 	t.Log(b2)
 
-	bytes, _ := json.Marshal(&b2)
-	t.Log(string(bytes))
+	blkBytes, _ := json.Marshal(&b2)
+	t.Log(string(blkBytes))
 
 	if !b2.Balance.Equal(b.Balance) {
 		t.Fatal("balance error")
@@ -185,10 +185,10 @@ func TestStateBlock_GetData(t *testing.T) {
 	if r, err := NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600"); err != nil || r != b.GetSignature() {
 		t.Fatal()
 	}
-	if bytes.EqualFold([]byte("IjE1ODExMTEwMDAwMCI="), b.GetSender()[:]) {
+	if bytes.EqualFold([]byte("IjE1ODExMTEwMDAwMCI="), b.GetSender()) {
 		t.Fatal()
 	}
-	if bytes.EqualFold([]byte("IjE1ODExMTEwMDAwMCI="), b.GetReceiver()[:]) {
+	if bytes.EqualFold([]byte("IjE1ODExMTEwMDAwMCI="), b.GetReceiver()) {
 		t.Fatal()
 	}
 	if bytes.EqualFold([]byte("DCI4Tg=="), b.GetData()[:]) {
@@ -252,8 +252,8 @@ func TestStateBlockList_Serialize(t *testing.T) {
 	}
 	t.Log(b2)
 
-	bytes, _ := json.Marshal(&b2)
-	t.Log(string(bytes))
+	blkBytes, _ := json.Marshal(&b2)
+	t.Log(string(blkBytes))
 }
 
 func TestStateBlock_TableSchema(t *testing.T) {
@@ -277,5 +277,4 @@ func TestStateBlock_TableSchema(t *testing.T) {
 	if r := b.RemoveRelation(); len(r) != 1 {
 		t.Fatal()
 	}
-
 }

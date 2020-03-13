@@ -2,9 +2,9 @@ package process
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
 )
 

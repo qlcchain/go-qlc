@@ -15,14 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/crypto/random"
-
-	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
-
 	"github.com/google/uuid"
 
+	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"

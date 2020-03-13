@@ -2,11 +2,11 @@ package ledger
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage"
-	"github.com/qlcchain/go-qlc/crypto/random"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
 )
 

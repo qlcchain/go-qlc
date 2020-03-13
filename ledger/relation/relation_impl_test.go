@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Relation) {

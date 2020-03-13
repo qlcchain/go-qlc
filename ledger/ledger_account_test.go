@@ -1,11 +1,11 @@
 package ledger
 
 import (
-	"github.com/qlcchain/go-qlc/config"
 	"math/big"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
@@ -86,12 +86,11 @@ func TestLedger_GetAccountMeta(t *testing.T) {
 	if err := l.AddAccountMetaCache(am3); err != nil {
 		t.Fatal()
 	}
-	tm3.BlockCount = tm3.BlockCount + 1
+	tm3.BlockCount++
 	if err := l.AddAccountMeta(am3, l.cache.GetCache()); err != nil {
 		t.Fatal()
 	}
-	a, err = l.GetAccountMeta(am3.Address)
-	if err != nil {
+	if _, err = l.GetAccountMeta(am3.Address); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -101,7 +101,7 @@ func TestLedger_CleanSyncCache(t *testing.T) {
 
 	count := 0
 	l.WalkSyncCache(func(kind byte, key []byte) {
-		count = count + 1
+		count++
 	})
 	if count != 2 {
 		t.Fatal()
