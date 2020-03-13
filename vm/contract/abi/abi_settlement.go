@@ -1153,26 +1153,30 @@ func GetContractsIDByAddressAsPartyB(ctx *vmstore.VMContext, addr *types.Address
 func GetContractsAddressByPartyANextStop(ctx *vmstore.VMContext, addr *types.Address, nextStop string) (*types.Address, error) {
 	return queryContractParamByAddressAndStopName(ctx, "GetContractsIDByPartyANextStop", func(cp *ContractParam) bool {
 		var b bool
-		for _, n := range cp.NextStops {
-			if n == nextStop {
-				b = true
-				break
+		if cp.PartyA.Address == *addr {
+			for _, n := range cp.NextStops {
+				if n == nextStop {
+					b = true
+					break
+				}
 			}
 		}
-		return cp.PartyA.Address == *addr && b
+		return b
 	})
 }
 
 func GetContractsAddressByPartyBPreStop(ctx *vmstore.VMContext, addr *types.Address, preStop string) (*types.Address, error) {
 	return queryContractParamByAddressAndStopName(ctx, "GetContractsIDByPartyBPreStop", func(cp *ContractParam) bool {
 		var b bool
-		for _, n := range cp.PreStops {
-			if n == preStop {
-				b = true
-				break
+		if cp.PartyB.Address == *addr {
+			for _, n := range cp.PreStops {
+				if n == preStop {
+					b = true
+					break
+				}
 			}
 		}
-		return cp.PartyB.Address == *addr && b
+		return b
 	})
 }
 
