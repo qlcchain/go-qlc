@@ -119,7 +119,7 @@ func (l *Ledger) HasAccountMetaConfirmed(address types.Address) (bool, error) {
 		return true, nil
 	} else {
 		if err == ErrKeyDeleted {
-			return false, err
+			return false, nil
 		}
 	}
 
@@ -374,8 +374,11 @@ func (l *Ledger) DeleteTokenMetaConfirmed(address types.Address, tokenType types
 }
 
 // Token UnConfirmed
-func (l *Ledger) DeleteTokenMetaCache(address types.Address, tokenType types.Hash, batch storage.Batch) error {
-	am, err := l.GetAccountMeteCache(address)
+func (l *Ledger) DeleteTokenMetaCache(address types.Address, tokenType types.Hash, batch ...storage.Batch) error {
+	b, flag := l.getBatch(true, batch...)
+	defer l.releaseBatch(b, flag)
+
+	am, err := l.GetAccountMeteCache(address, batch...)
 	if err != nil {
 		return err
 	}
@@ -385,7 +388,7 @@ func (l *Ledger) DeleteTokenMetaCache(address types.Address, tokenType types.Has
 			am.Tokens = append(tokens[:index], tokens[index+1:]...)
 		}
 	}
-	return l.UpdateAccountMeteCache(am, batch)
+	return l.UpdateAccountMeteCache(am, batch...)
 }
 
 func (l *Ledger) Weight(account types.Address) types.Balance {

@@ -1462,6 +1462,38 @@ func (_m *Store) GetBlockLink(key types.Hash, c ...storage.Cache) (types.Hash, e
 	return r0, r1
 }
 
+// GetCacheStat provides a mock function with given fields:
+func (_m *Store) GetCacheStat() []*ledger.CacheStat {
+	ret := _m.Called()
+
+	var r0 []*ledger.CacheStat
+	if rf, ok := ret.Get(0).(func() []*ledger.CacheStat); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*ledger.CacheStat)
+		}
+	}
+
+	return r0
+}
+
+// GetCacheStatue provides a mock function with given fields:
+func (_m *Store) GetCacheStatue() map[string]string {
+	ret := _m.Called()
+
+	var r0 map[string]string
+	if rf, ok := ret.Get(0).(func() map[string]string); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	return r0
+}
+
 // GetFrontier provides a mock function with given fields: hash, cache
 func (_m *Store) GetFrontier(hash types.Hash, cache ...storage.Cache) (*types.Frontier, error) {
 	_va := make([]interface{}, len(cache))

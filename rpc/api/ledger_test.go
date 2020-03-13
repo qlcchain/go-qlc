@@ -84,9 +84,7 @@ func setupMockLedgerAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *Ledger
 	}, l, ledgerApi
 }
 
-func setupSimpleLedgerAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerAPI) {
-	t.Parallel()
-
+func TestLedger_GetBlockCacheLock(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
@@ -98,7 +96,7 @@ func setupSimpleLedgerAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Le
 
 	ledgerApi := NewLedgerApi(context.Background(), l, eb, cc)
 
-	return func(t *testing.T) {
+	defer func() {
 		//err := l.DBStore.Erase()
 		err := l.Close()
 		if err != nil {
@@ -108,12 +106,7 @@ func setupSimpleLedgerAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Le
 		if err != nil {
 			t.Fatal(err)
 		}
-	}, l, ledgerApi
-}
-
-func TestLedger_GetBlockCacheLock(t *testing.T) {
-	teardownTestCase, _, ledgerApi := setupSimpleLedgerAPI(t)
-	defer teardownTestCase(t)
+	}()
 
 	ledgerApi.ledger.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
 	chainToken := config.ChainToken()
@@ -155,13 +148,12 @@ func TestLedgerApi_Subscription(t *testing.T) {
 	ac2 := mock.Account()
 	go func() {
 		amount := types.Balance{Int: big.NewInt(int64(100000))}
-		ac1PrkStr := hex.EncodeToString(ac1.PrivateKey()[:])
 		sendBlk, err := ledgerApi.GenerateSendBlock(&APISendBlockPara{
 			From:      ac1.Address(),
 			TokenName: "QLC",
 			To:        ac2.Address(),
 			Amount:    amount,
-		}, &ac1PrkStr)
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

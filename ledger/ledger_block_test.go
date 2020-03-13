@@ -56,6 +56,31 @@ func TestLedger_AddBlock(t *testing.T) {
 	if bc, err := l.GetStateBlockConfirmed(b.GetHash()); err != nil || b.GetHash() != bc.GetHash() {
 		t.Fatal(err)
 	}
+	com := config.GenesisBlock()
+	_, err := l.GetBlockLink(com.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log()
+}
+
+func TestLedger_BlockLink(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	addStateBlock(t, l)
+	com := config.GenesisBlock()
+	r1, err := l.GetBlockLink(com.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(3 * time.Second)
+	r2, err := l.GetBlockLink(com.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r1 != r2 {
+		t.Fatal()
+	}
 }
 
 func TestLedger_GetStateBlockFromCache(t *testing.T) {
@@ -154,6 +179,7 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 	if err := l.AddStateBlock(blk2); err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(3 * time.Second)
 	err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		t.Log(block)
 		return nil
@@ -350,6 +376,15 @@ func TestLedger_BlockChild(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	h, err = l.GetBlockChild(b1.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h != b3.GetHash() {
+		t.Fatal()
+	}
+
+	time.Sleep(3 * time.Second)
 	h, err = l.GetBlockChild(b1.GetHash())
 	if err != nil {
 		t.Fatal(err)

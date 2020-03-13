@@ -26,7 +26,7 @@ import (
 )
 
 type DebugApi struct {
-	ledger  *ledger.Ledger
+	ledger  ledger.Store
 	logger  *zap.SugaredLogger
 	eb      event.EventBus
 	feb     *event.FeedEventBus

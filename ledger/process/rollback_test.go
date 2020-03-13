@@ -16,7 +16,6 @@ import (
 func TestRollback_Block(t *testing.T) {
 	teardownTestCase, l, lv := setupTestCase(t)
 	defer teardownTestCase(t)
-	var bc, _ = mock.BlockChain(false)
 	if err := lv.BlockProcess(bc[0]); err != nil {
 		t.Fatal(err)
 	}
@@ -100,31 +99,44 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 func TestRollback_BlockCache(t *testing.T) {
 	teardownTestCase, _, lv := setupTestCase(t)
 	defer teardownTestCase(t)
+	// account, only one token
 	addr := mock.Address()
 	ac := mock.AccountMeta(addr)
-	token := ac.Tokens[0].Type
-	block := mock.StateBlock()
-	block.Address = addr
-	block.Token = token
+	tm := mock.TokenMeta(addr)
+	tm.Type = config.ChainToken()
+	ac.Tokens = []*types.TokenMeta{tm}
 
-	if err := lv.l.AddBlockCache(block); err != nil {
+	// set block1
+	block1 := mock.StateBlockWithoutWork()
+	block1.Address = ac.Address
+	block1.Token = ac.Tokens[0].Type
+	if err := lv.l.AddBlockCache(block1); err != nil {
 		t.Fatal(err)
 	}
+	tm.BlockCount = 2
 	if err := lv.l.AddAccountMetaCache(ac); err != nil {
 		t.Fatal(err)
 	}
-	if err := lv.Rollback(block.GetHash()); err != nil {
+
+	// set block2
+	block2 := mock.StateBlockWithoutWork()
+	block2.Previous = block1.GetHash()
+	block2.Address = ac.Address
+	block2.Token = ac.Tokens[0].Type
+
+	if err := lv.l.AddBlockCache(block2); err != nil {
 		t.Fatal(err)
 	}
 
-	if b, _ := lv.l.HasBlockCache(block.GetHash()); b {
+	if err := lv.Rollback(block1.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+
+	if b, _ := lv.l.HasBlockCache(block1.GetHash()); b {
 		t.Fatal()
 	}
 	ac, err := lv.l.GetAccountMeteCache(addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tm := ac.Token(token); tm != nil {
+	if err == nil {
 		t.Fatal(err)
 	}
 }
@@ -237,4 +249,47 @@ func nodesCount(db storage.Store, rootHash types.Hash) int {
 		}
 	}
 	return counter
+}
+
+func TestRollback_ContractBlocks(t *testing.T) {
+	teardownTestCase, _, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	bs := mock.ContractBlocks()
+	if err := lv.BlockProcess(bs[0]); err != nil {
+		t.Fatal(err)
+	}
+	for i, b := range bs[1:] {
+		fmt.Println(i)
+		if r, err := lv.BlockCheck(b); r != Progress || err != nil {
+			t.Fatal(r, err)
+		}
+		if err := lv.BlockProcess(b); err != nil {
+			t.Fatal(Other, err)
+		}
+	}
+	if err := lv.Rollback(bs[1].GetHash()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRollback_rollbackCacheBlocks(t *testing.T) {
+	teardownTestCase, l, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	b1 := mock.StateBlockWithoutWork()
+	b1.Address = addr
+	b2 := mock.StateBlockWithoutWork()
+	b2.Address = addr
+
+	batch := l.DBStore().Batch(true)
+	defer func() {
+		if err := l.DBStore().PutBatch(batch); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	if err := lv.rollbackCacheBlocks([]*types.StateBlock{b1, b2}, false, batch); err != nil {
+		t.Fatal(err)
+	}
 }

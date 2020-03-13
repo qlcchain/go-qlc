@@ -2,7 +2,6 @@ package process
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -56,13 +55,13 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 	}
 
 	if checkWork && !block.IsValid() {
-		return BadWork, errors.New("bad work")
+		return BadWork, nil
 	}
 
 	if checkSign {
 		signature := block.GetSignature()
 		if !address.Verify(hash[:], signature[:]) {
-			return BadSignature, errors.New("bad signature")
+			return BadSignature, nil
 		}
 	}
 
@@ -111,13 +110,13 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	}
 
 	if checkWork && !block.IsValid() {
-		return BadWork, errors.New("bad work")
+		return BadWork, nil
 	}
 
 	if checkSign {
 		signature := block.GetSignature()
 		if !address.Verify(hash[:], signature[:]) {
-			return BadSignature, errors.New("bad signature")
+			return BadSignature, nil
 		}
 	}
 
@@ -140,51 +139,6 @@ func checkReceiveBlockRepeat(lv *LedgerVerifier, block *types.StateBlock) Proces
 		}
 	}
 	return r
-}
-
-type syncBlockBaseInfoCheck struct {
-}
-
-func (syncBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
-	hash := block.GetHash()
-	address := block.GetAddress()
-
-	lv.logger.Debug("check block ", hash)
-	blockExist, err := lv.l.HasStateBlockConfirmed(hash)
-	if err != nil {
-		return Other, err
-	}
-
-	if blockExist {
-		return Old, nil
-	}
-
-	if block.GetType() == types.ContractSend {
-		if block.GetLink() == types.Hash(types.RewardsAddress) {
-			return Progress, nil
-		}
-	}
-	if block.GetType() == types.ContractReward {
-		//linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
-		//if err != nil {
-		//	return GapSource, nil
-		//}
-		//if linkBlk.GetLink() == types.Hash(types.RewardsAddress) {
-		//	return Progress, nil
-		//}
-		return Progress, nil
-	}
-
-	if !block.IsValid() {
-		return BadWork, errors.New("bad work")
-	}
-
-	signature := block.GetSignature()
-	if !address.Verify(hash[:], signature[:]) {
-		return BadSignature, errors.New("bad signature")
-	}
-
-	return Progress, nil
 }
 
 // check block fork

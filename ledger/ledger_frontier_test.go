@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
@@ -32,6 +33,17 @@ func TestLedger_GetFrontier(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("frontier,", f)
+	time.Sleep(3 * time.Second)
+	f2, err := l.GetFrontier(f.HeaderBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.OpenBlock != f2.OpenBlock || f.HeaderBlock != f2.HeaderBlock {
+		t.Fatal()
+	}
+	if _, err := l.GetFrontier(mock.Hash()); err == nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetAllFrontiers(t *testing.T) {
@@ -40,7 +52,7 @@ func TestLedger_GetAllFrontiers(t *testing.T) {
 	addFrontier(t, l)
 	addFrontier(t, l)
 	addFrontier(t, l)
-
+	time.Sleep(3 * time.Second)
 	c, err := l.CountFrontiers()
 	if err != nil {
 		t.Fatal(err)

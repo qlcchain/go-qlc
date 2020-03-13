@@ -30,8 +30,3 @@ func (c *rCache) GetAccountPending(address types.Address, token types.Hash) (typ
 	}
 	return v.(types.Balance), nil
 }
-
-func (c *rCache) DeleteAccountPending(address types.Address, token types.Hash) {
-	th, _ := types.HashBytes(address[:], token[:])
-	c.accountPending.Remove(th)
-}

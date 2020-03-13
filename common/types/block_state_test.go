@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 )
 
 var testBlk = `{
-      "type": "state",
+      "type": "send",
       "token":"991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728949",
       "address":"qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby",
       "balance": "1456778",
@@ -99,8 +100,8 @@ func TestStateBlock_Serialize(t *testing.T) {
 	}
 	t.Log(b2)
 
-	bytes, _ := json.Marshal(&b2)
-	t.Log(string(bytes))
+	blkBytes, _ := json.Marshal(&b2)
+	t.Log(string(blkBytes))
 
 	if !b2.Balance.Equal(b.Balance) {
 		t.Fatal("balance error")
@@ -128,6 +129,152 @@ func TestStateBlock_Clone(t *testing.T) {
 		t.Fatal("invalid clone ", b.String(), b1.String())
 	}
 	if b.Flag != b1.Flag {
+		t.Fatal()
+	}
+	if b.GetHash() != b1.GetHash() {
+		t.Fatal("invalid clone ", b.GetHash(), b1.GetHash())
+	}
+}
+
+func TestStateBlock_GetData(t *testing.T) {
+	b := StateBlock{}
+	err := json.Unmarshal([]byte(testBlk), &b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if b.GetType().String() != Send.String() {
+		t.Fatal()
+	}
+	if addr, err := HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby"); err != nil || addr != b.GetAddress() {
+		t.Fatal()
+	}
+	if addr, err := HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby"); err != nil || addr != b.GetRepresentative() {
+		t.Fatal()
+	}
+	if !b.GetBalance().Equal(Balance{Int: big.NewInt(1456778)}) {
+		t.Fatal()
+	}
+	if !b.GetOracle().Equal(ZeroBalance) {
+		t.Fatal()
+	}
+	if !b.GetVote().Equal(ZeroBalance) {
+		t.Fatal()
+	}
+	if !b.GetNetwork().Equal(ZeroBalance) {
+		t.Fatal()
+	}
+	if !b.GetStorage().Equal(ZeroBalance) {
+		t.Fatal()
+	}
+	if h, err := NewHash("247230c7377a661e57d51b17b527198ed52392fb8b99367a234d28ccc378eb05"); err != nil || h != b.GetPrevious() {
+		t.Fatal()
+	}
+	if h, err := NewHash("7d35650e78d8d7037c90390357f8a59bf17eff82cbc03c94f0b6267335a8dcb3"); err != nil || h != b.GetLink() {
+		t.Fatal()
+	}
+	if r, err := NewHash("991cf190094c00f0b68e2e5f75f6bee95a2e0bd93ceaa4a6734db9f19b728949"); err != nil || r != b.GetToken() {
+		t.Fatal()
+	}
+	if r, err := NewHash("1235650e78d297037c90390357f8a59bf17eff82cbc03c94f0b6267335a8dcb3"); err != nil || r != b.GetExtra() {
+		t.Fatal()
+	}
+	if r, err := NewHash("1235650e78d8d7037c90390357f8a59bf17eff82cbc03c94f0b6267335a8dcb3"); err != nil || r != b.GetMessage() {
+		t.Fatal()
+	}
+	if r, err := NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600"); err != nil || r != b.GetSignature() {
+		t.Fatal()
+	}
+	if bytes.EqualFold([]byte("IjE1ODExMTEwMDAwMCI="), b.GetSender()) {
+		t.Fatal()
+	}
+	if bytes.EqualFold([]byte("IjE1ODExMTEwMDAwMCI="), b.GetReceiver()) {
+		t.Fatal()
+	}
+	if bytes.EqualFold([]byte("DCI4Tg=="), b.GetData()[:]) {
+		t.Fatal()
+	}
+	if !b.TotalBalance().Equal(b.GetBalance().Add(b.GetVote())) {
+		t.Fatal()
+	}
+}
+
+func TestStateBlock_IsValid(t *testing.T) {
+	b := StateBlock{}
+	err := json.Unmarshal([]byte(testBlk), &b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if b.IsOpen() {
+		t.Fatal()
+	}
+	if b.Root() != b.GetPrevious() {
+		t.Fatal()
+	}
+	if b.Parent() != b.GetPrevious() {
+		t.Fatal()
+	}
+	if b.Size() <= 0 {
+		t.Fatal()
+	}
+	if b.IsReceiveBlock() {
+		t.Fatal()
+	}
+	if !b.IsSendBlock() {
+		t.Fatal()
+	}
+	if b.IsContractBlock() {
+		t.Fatal()
+	}
+	if !b.IsFromSync() {
+		t.Fatal()
+	}
+}
+
+func TestStateBlockList_Serialize(t *testing.T) {
+	b := StateBlock{}
+	err := json.Unmarshal([]byte(testBlk), &b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(b.Balance)
+	bs := StateBlockList{&b}
+
+	buff, err := bs.Serialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(len(buff))
+	b2 := new(StateBlockList)
+	if err = b2.Deserialize(buff); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(b2)
+
+	blkBytes, _ := json.Marshal(&b2)
+	t.Log(string(blkBytes))
+}
+
+func TestStateBlock_TableSchema(t *testing.T) {
+	b := StateBlock{}
+	err := json.Unmarshal([]byte(testBlk), &b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fields, key := b.TableSchema()
+	t.Log(fields, key)
+	if len(fields) != 4 {
+		t.Fatal()
+	}
+	if b.TableName() != "BLOCKHASH" {
+		t.Fatal()
+	}
+	if r := b.SetRelation(); len(r) != 4 {
+		t.Fatal()
+	}
+	if r := b.RemoveRelation(); len(r) != 1 {
 		t.Fatal()
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -186,8 +187,8 @@ func TestLedger_GenerateSendBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	// init ac1
 	ac1 := mock.Account()
-
 	balance := types.Balance{Int: big.NewInt(int64(100000000000))}
 	blk := new(types.StateBlock)
 	blk.Type = types.Open
@@ -233,10 +234,11 @@ func TestLedger_GenerateSendBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// GenerateSendBlock
 	ac2 := mock.Account()
 	ac2Addr := ac2.Address()
 	balance2 := types.Balance{Int: big.NewInt(int64(100000))}
-	sendBlk, err := l.GenerateSendBlock(&types.StateBlock{
+	sendBlk1, err := l.GenerateSendBlock(&types.StateBlock{
 		Address: ac1.Address(),
 		Token:   config.ChainToken(),
 		Link:    ac2Addr.ToHash(),
@@ -244,15 +246,21 @@ func TestLedger_GenerateSendBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(sendBlk)
+	t.Log(sendBlk1)
 
-	if err := l.AddStateBlock(sendBlk); err != nil {
+	if err := l.AddStateBlock(sendBlk1); err != nil {
+		t.Fatal(err)
+	}
+
+	tm.Header = sendBlk1.GetHash()
+	tm.Balance = tm.Balance.Sub(balance2)
+	if err := l.UpdateAccountMeta(am, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
 
 	pendingKey := &types.PendingKey{
 		Address: ac2.Address(),
-		Hash:    sendBlk.GetHash(),
+		Hash:    sendBlk1.GetHash(),
 	}
 	pendingInfo := &types.PendingInfo{
 		Source: ac1.Address(),
@@ -263,12 +271,65 @@ func TestLedger_GenerateSendBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	receBlk, err := l.GenerateReceiveBlock(sendBlk, ac2.PrivateKey())
+	// GenerateReceiveBlock if ac2 has no tokenmeta
+	receBlk1, err := l.GenerateReceiveBlock(sendBlk1, ac2.PrivateKey())
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(receBlk)
+	t.Log(receBlk1)
 
+	// GenerateReceiveBlock if ac2 has tokenmeta
+	if err := l.AddStateBlock(receBlk1); err != nil {
+		t.Fatal(err)
+	}
+	am2 := mock.AccountMeta(ac2.Address())
+	tm2 := &types.TokenMeta{
+		Type:           config.ChainToken(),
+		Header:         receBlk1.GetHash(),
+		OpenBlock:      receBlk1.GetHash(),
+		Representative: ac1.Address(),
+		Balance:        balance2,
+		BelongTo:       ac2.Address(),
+	}
+	am2.Tokens = append(am2.Tokens, tm2)
+	if err := l.AddAccountMeta(am2, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	sendBlk2, err := l.GenerateSendBlock(&types.StateBlock{
+		Address: ac1.Address(),
+		Token:   config.ChainToken(),
+		Link:    ac2Addr.ToHash(),
+	}, balance2, ac1.PrivateKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(sendBlk2)
+
+	if err := l.AddStateBlock(sendBlk2); err != nil {
+		t.Fatal(err)
+	}
+
+	pendingKey2 := &types.PendingKey{
+		Address: ac2.Address(),
+		Hash:    sendBlk2.GetHash(),
+	}
+	pendingInfo2 := &types.PendingInfo{
+		Source: ac1.Address(),
+		Type:   config.ChainToken(),
+		Amount: balance2,
+	}
+	if err := l.AddPending(pendingKey2, pendingInfo2, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	receBlk2, err := l.GenerateReceiveBlock(sendBlk2, ac2.PrivateKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(receBlk2)
+
+	// GenerateChangeBlock
 	ac3 := mock.AccountMeta(mock.Address())
 	if err := l.AddAccountMeta(ac3, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
@@ -280,9 +341,33 @@ func TestLedger_GenerateSendBlock(t *testing.T) {
 	}
 	t.Log(changeBlk)
 
+	// GenerateOnlineBlock
 	onlineBlk, err := l.GenerateOnlineBlock(ac1.Address(), ac1.PrivateKey(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(onlineBlk)
+
+	// CalculateAmount
+	b1, err := l.CalculateAmount(sendBlk1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !b1.Equal(balance2) {
+		t.Fatal()
+	}
+	b2, err := l.CalculateAmount(receBlk2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !b2.Equal(balance2) {
+		t.Fatal()
+	}
+	b3, err := l.CalculateAmount(changeBlk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !b3.Equal(types.ZeroBalance) {
+		t.Fatal()
+	}
 }

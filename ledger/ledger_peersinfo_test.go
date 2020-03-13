@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
@@ -52,6 +53,10 @@ func TestLedger_AddPeerInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = l.AddPeerInfo(pi)
+	if err == nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetPeerInfo(t *testing.T) {
@@ -80,6 +85,31 @@ func TestLedger_GetPeerInfo(t *testing.T) {
 		t.Fatal("Rtt mismatch")
 	}
 
+	// key not found
+	if _, err := l.GetPeerInfo(random.RandomHexString(46)); err != ErrPovHeaderNotFound {
+		t.Fatal()
+	}
+
+	// Deserialize error
+	key := random.RandomHexString(46)
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo, []byte(key))
+	if err != nil {
+		t.Fatal()
+	}
+	d1 := make([]byte, 10)
+	_ = random.Bytes(d1)
+	if err := l.store.Put(k, d1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.GetPeerInfo(key); err == nil {
+		t.Fatal(err)
+	}
+
+	if err := l.GetPeersInfo(func(info *types.PeerInfo) error {
+		return nil
+	}); err == nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetPeersInfo(t *testing.T) {

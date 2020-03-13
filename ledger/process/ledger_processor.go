@@ -29,9 +29,9 @@ type LedgerVerifier struct {
 	l               *ledger.Ledger
 	blockCheck      map[types.BlockType]blockCheck
 	cacheBlockCheck map[types.BlockType]blockCheck
-	syncBlockCheck  map[types.BlockType]blockCheck
-	representLock   *hashmap.HashMap
-	logger          *zap.SugaredLogger
+	//syncBlockCheck  map[types.BlockType]blockCheck
+	representLock *hashmap.HashMap
+	logger        *zap.SugaredLogger
 }
 
 func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
