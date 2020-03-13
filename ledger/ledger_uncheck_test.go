@@ -2,6 +2,8 @@ package ledger
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -36,6 +38,45 @@ func TestLedger_GetUncheckedBlock(t *testing.T) {
 	} else {
 		t.Logf("unchecked,%s", b)
 		t.Log(s)
+	}
+
+	// Deserialize error
+
+	key := mock.Hash()
+	k, err := storage.GetKeyOfParts(l.uncheckedKindToPrefix(types.UncheckedKindPrevious), key)
+	if err != nil {
+		t.Fatal()
+	}
+	d1 := make([]byte, 10)
+	_ = random.Bytes(d1)
+	if err := l.store.Put(k, d1); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := l.GetUncheckedBlock(key, types.UncheckedKindPrevious); err == nil {
+		t.Fatal(err)
+	}
+
+	if err := l.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		return nil
+	}); err == nil {
+		t.Fatal(err)
+	}
+
+	blk := mock.StateBlockWithoutWork()
+	key2 := mock.Hash()
+	k2, err := storage.GetKeyOfParts(storage.KeyPrefixGapPublish, key2, blk.GetHash())
+	if err != nil {
+		t.Fatal()
+	}
+	d2 := make([]byte, 10)
+	_ = random.Bytes(d2)
+	if err := l.store.Put(k2, d2); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.GetGapPublishBlock(key2, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		return nil
+	}); err == nil {
+		t.Fatal(err)
 	}
 }
 

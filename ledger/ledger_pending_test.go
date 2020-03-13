@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"github.com/qlcchain/go-qlc/common/storage"
 	"math"
 	"math/big"
 	"testing"
@@ -90,6 +91,30 @@ func TestLedger_GetPending(t *testing.T) {
 	}
 	if count != 2 {
 		t.Fatal("pending count error", count)
+	}
+
+	// Deserialize error
+	key := &types.PendingKey{
+		Address: mock.Address(),
+		Hash:    mock.Hash(),
+	}
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPending, key)
+	if err != nil {
+		t.Fatal()
+	}
+	d1 := make([]byte, 10)
+	_ = random.Bytes(d1)
+	if err := l.store.Put(k, d1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.GetPending(key); err == nil {
+		t.Fatal(err)
+	}
+
+	if err := l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		return nil
+	}); err == nil {
+		t.Fatal(err)
 	}
 }
 

@@ -98,10 +98,31 @@ func TestNewCache(t *testing.T) {
 	}
 	time.Sleep(1 * time.Second)
 
-	fmt.Println(l.BlocksCount())
-	fmt.Println(l.BlocksCountByType())
+	if r, err := l.BlocksCount(); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+	if r, err := l.BlocksCountByType(); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+	if r, err := l.Blocks(-1, -1); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(len(r))
+	}
+	if r, err := l.BlocksByAccount(blk.Address, -1, -1); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(len(r))
+	}
 	blk8 := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk8, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.EmptyRelation(); err != nil {
 		t.Fatal(err)
 	}
 }
