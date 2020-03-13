@@ -36,12 +36,11 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 			PublicModules:    modules,
 		},
 		P2P: &P2PConfigV2{
-			BootNodes: []string{
-				"/ip4/47.103.40.20/tcp/19734/ipfs/QmdFSukPUMF3t1JxjvTo14SEEb5JV9JBT6PukGRo6A2g4f",
-				"/ip4/47.112.112.138/tcp/19734/ipfs/QmW9ocg4fRjckCMQvRNYGyKxQd6GiutAY4HBRxMrGrZRfc",
-			},
-			Listen:       "/ip4/0.0.0.0/tcp/19734",
-			SyncInterval: 120,
+			BootNodes:          bootNodes,
+			IsBootNode:         false,
+			BootNodeHttpServer: bootNodeHttpServer,
+			Listen:             "/ip4/0.0.0.0/tcp/19734",
+			SyncInterval:       120,
 			Discovery: &DiscoveryConfigV2{
 				DiscoveryInterval: 60,
 				Limit:             2000,

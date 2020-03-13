@@ -76,9 +76,9 @@ func InitNode(bootNode *Node, t *testing.T) (*Node, error) {
 	setDefaultConfig(cfg, port)
 
 	if bootNode != nil {
-		cfg.P2P.BootNodes = []string{fmt.Sprintf("%s/ipfs/%s", bootNode.config.P2P.Listen, bootNode.config.P2P.ID.PeerID)}
+		cfg.P2P.BootNodes = []string{fmt.Sprintf("%s/p2p/%s", bootNode.config.P2P.Listen, bootNode.config.P2P.ID.PeerID)}
 		if len(bootNode.config.P2P.BootNodes) == 0 {
-			bootNode.config.P2P.BootNodes = []string{fmt.Sprintf("%s/ipfs/%s", cfg.P2P.Listen, cfg.P2P.ID.PeerID)}
+			bootNode.config.P2P.BootNodes = []string{fmt.Sprintf("%s/p2p/%s", cfg.P2P.Listen, cfg.P2P.ID.PeerID)}
 			if _, err = save(bootNode.config); err != nil {
 				return nil, err
 			}

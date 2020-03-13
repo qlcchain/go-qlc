@@ -8,6 +8,8 @@
 package chain
 
 import (
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,13 +22,25 @@ import (
 func TestNewP2PService(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	cm := config.NewCfgManager(dir)
-	_, err := cm.Load()
+	cfg, err := cm.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
 		_ = os.RemoveAll(dir)
 	}()
+	http.HandleFunc("/ps/bootNode", func(w http.ResponseWriter, r *http.Request) {
+		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
+		_, _ = fmt.Fprintf(w, bootNode)
+	})
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:19362", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	params := []string{"p2p.bootNode=127.0.0.1:19362/ps"}
+	_, _ = cm.UpdateParams(params)
+	_ = cm.CommitAndSave()
 	p, err := NewP2PService(cm.ConfigFile)
 	if err != nil {
 		t.Fatal(err)
