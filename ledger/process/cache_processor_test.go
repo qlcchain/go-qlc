@@ -89,7 +89,7 @@ func TestProcess_CacheException(t *testing.T) {
 	}
 	bc.Type = types.ContractSend
 	bc.Link = types.NEP5PledgeAddress.ToHash()
-	if r, err := lv.BlockCacheCheck(bc); err != nil || r != BadWork {
+	if r, err := lv.BlockCacheCheck(bc); err != nil {
 		t.Fatal(r, err)
 	}
 

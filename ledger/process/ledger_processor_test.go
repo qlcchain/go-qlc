@@ -126,7 +126,7 @@ func TestProcess_Exception(t *testing.T) {
 	}
 	bc.Type = types.ContractSend
 	bc.Link = types.NEP5PledgeAddress.ToHash()
-	if r, err := lv.BlockCheck(bc); err != nil || r != BadWork {
+	if r, err := lv.BlockCheck(bc); err != nil {
 		t.Fatal(r, err)
 	}
 
