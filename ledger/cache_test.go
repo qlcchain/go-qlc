@@ -279,37 +279,38 @@ InfLoop:
 	}
 }
 
-func TestCache_Get2(t *testing.T) {
-	teardownTestCase, l := setupTestCase2(t)
-	defer teardownTestCase(t)
-
-	c := time.NewTicker(10 * time.Second)
-	defer c.Stop()
-	count := 0
-InfLoop:
-	for {
-		select {
-		case <-c.C:
-			break InfLoop
-		default:
-			cache := l.Cache().GetCache()
-			block := mock.StateBlockWithoutWork()
-			k, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
-			if err := cache.Put(k, block); err != nil {
-				t.Fatal(err)
-			}
-			count++
-			if count == 1000 {
-				time.Sleep(20 * time.Millisecond)
-				count = 0
-			}
-			if _, _, err := l.Get(k); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-	for _, cs := range l.cacheStats {
-		span := strconv.FormatInt((cs.End-cs.Start)/1000000, 10) + "ms"
-		fmt.Printf("index: %d, key: %d, span: %s  \n", cs.Index, cs.Key, span)
-	}
-}
+//
+//func TestCache_Get2(t *testing.T) {
+//	teardownTestCase, l := setupTestCase2(t)
+//	defer teardownTestCase(t)
+//
+//	c := time.NewTicker(10 * time.Second)
+//	defer c.Stop()
+//	count := 0
+//InfLoop:
+//	for {
+//		select {
+//		case <-c.C:
+//			break InfLoop
+//		default:
+//			cache := l.Cache().GetCache()
+//			block := mock.StateBlockWithoutWork()
+//			k, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
+//			if err := cache.Put(k, block); err != nil {
+//				t.Fatal(err)
+//			}
+//			count++
+//			if count == 1000 {
+//				time.Sleep(20 * time.Millisecond)
+//				count = 0
+//			}
+//			if _, _, err := l.Get(k); err != nil {
+//				t.Fatal(err)
+//			}
+//		}
+//	}
+//	for _, cs := range l.cacheStats {
+//		span := strconv.FormatInt((cs.End-cs.Start)/1000000, 10) + "ms"
+//		fmt.Printf("index: %d, key: %d, span: %s  \n", cs.Index, cs.Key, span)
+//	}
+//}
