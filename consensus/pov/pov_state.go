@@ -263,7 +263,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 		return err
 	}
 	if !ok {
-		err := fmt.Errorf("chain contract %s method %s not exist", ca, hex.EncodeToString(methodSig[0:4]))
+		err := fmt.Errorf("chain contract %s method not exist", ca)
 		bc.logger.Errorf("failed to get chain contract err %s", err)
 		return err
 	}

@@ -142,6 +142,16 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 
 	chain.CalcPastMedianTime(blk3.GetHeader())
 
+	locHashes := chain.GetBlockLocator(types.ZeroHash)
+	if len(locHashes) == 0 {
+		t.Fatalf("failed to GetBlockLocator")
+	}
+	blk2Hash := retBlk2.GetHash()
+	locBestBlk := chain.LocateBestBlock([]*types.Hash{&blk2Hash})
+	if locBestBlk == nil {
+		t.Fatalf("failed to LocateBestBlock")
+	}
+
 	_ = chain.Stop()
 }
 
@@ -275,6 +285,10 @@ func TestPovChain_TrieState(t *testing.T) {
 	prevStateHash := latestBlk.GetStateHash()
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 5)
+	blk1Txs := blk1.GetAllTxs()
+	contractBlks := mock.ContractBlocks()
+	blk1Txs[1].Block.Type = types.Online
+	blk1Txs[2].Block = contractBlks[0]
 	setupPovTxBlock2Ledger(md, blk1)
 
 	accTxsBlk1 := blk1.GetAccountTxs()
