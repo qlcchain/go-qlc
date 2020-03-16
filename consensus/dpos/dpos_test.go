@@ -5,9 +5,11 @@ import (
 	"io/ioutil"
 	"math/big"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,7 +56,9 @@ func InitBootNode(t *testing.T) (*Node, error) {
 	}
 	port := generateRangeNum(10000, 10999)
 	setDefaultConfig(cfg, port)
-
+	cfg.P2P.IsBootNode = true
+	cfg.P2P.BootNodeHttpServer = fmt.Sprintf("127.0.0.1:%s", strconv.Itoa(port+3))
+	cfg.P2P.BootNodes = []string{cfg.P2P.BootNodeHttpServer + "/" + strconv.Itoa(port+3)}
 	cfgPath, err := save(cfg)
 	return &Node{
 		cfgPath: cfgPath,
@@ -76,11 +80,14 @@ func InitNode(bootNode *Node, t *testing.T) (*Node, error) {
 	setDefaultConfig(cfg, port)
 
 	if bootNode != nil {
-		cfg.P2P.BootNodes = []string{fmt.Sprintf("%s/p2p/%s", bootNode.config.P2P.Listen, bootNode.config.P2P.ID.PeerID)}
-		if len(bootNode.config.P2P.BootNodes) == 0 {
-			bootNode.config.P2P.BootNodes = []string{fmt.Sprintf("%s/p2p/%s", cfg.P2P.Listen, cfg.P2P.ID.PeerID)}
-			if _, err = save(bootNode.config); err != nil {
-				return nil, err
+		ss := strings.Split(bootNode.config.P2P.BootNodeHttpServer, ":")
+		if len(ss) >= 2 {
+			cfg.P2P.BootNodes = []string{bootNode.config.P2P.BootNodeHttpServer + "/" + ss[1]}
+			if len(bootNode.config.P2P.BootNodes) == 0 {
+				bootNode.config.P2P.BootNodes = []string{bootNode.config.P2P.BootNodeHttpServer + "/" + ss[1]}
+				if _, err = save(bootNode.config); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
@@ -98,10 +105,10 @@ func InitNode(bootNode *Node, t *testing.T) (*Node, error) {
 }
 
 func setDefaultConfig(cfg *config.Config, port int) {
-	cfg.P2P.Listen = fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", strconv.Itoa(port))
+	cfg.P2P.Listen = fmt.Sprintf("/ip4/127.0.0.1/tcp/%s", strconv.Itoa(port))
 	cfg.P2P.BootNodes = []string{}
-	cfg.RPC.HTTPEndpoint = fmt.Sprintf("tcp4://0.0.0.0:%s", strconv.Itoa(port+1))
-	cfg.RPC.WSEndpoint = fmt.Sprintf("tcp4://0.0.0.0:%s", strconv.Itoa(port+2))
+	cfg.RPC.HTTPEndpoint = fmt.Sprintf("tcp4://127.0.0.1:%s", strconv.Itoa(port+1))
+	cfg.RPC.WSEndpoint = fmt.Sprintf("tcp4://127.0.0.1:%s", strconv.Itoa(port+2))
 	cfg.RPC.IPCEnabled = false
 	cfg.P2P.SyncInterval = 12000
 	cfg.P2P.Discovery.MDNSEnabled = false
@@ -167,6 +174,20 @@ func (n *Node) startServices() {
 	log.Setup(n.config)
 	n.startLedgerService()
 	n.startPoVService()
+	if n.config.P2P.IsBootNode {
+		ss := strings.Split(n.config.P2P.BootNodeHttpServer, ":")
+		if len(ss) >= 2 {
+			http.HandleFunc("/"+ss[1]+"/bootNode", func(w http.ResponseWriter, r *http.Request) {
+				bootNode := n.config.P2P.Listen + "/p2p/" + n.config.P2P.ID.PeerID
+				_, _ = fmt.Fprintf(w, bootNode)
+			})
+			go func() {
+				if err := http.ListenAndServe(n.config.P2P.BootNodeHttpServer, nil); err != nil {
+					n.t.Fatal(err)
+				}
+			}()
+		}
+	}
 	n.startP2PService()
 	n.startConsensusService()
 }
