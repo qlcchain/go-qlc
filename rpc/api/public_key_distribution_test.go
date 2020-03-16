@@ -1,6 +1,7 @@
 package api
 
 import (
+	"math/big"
 	"testing"
 	"time"
 
@@ -1131,4 +1132,103 @@ func TestPublicKeyDistributionApi_GetVerifierHeartBlock(t *testing.T) {
 	if blk == nil {
 		t.Fatal()
 	}
+}
+
+func TestPublicKeyDistributionApi_Reward(t *testing.T) {
+	tearDone, md := setupTestCasePov(t)
+	defer tearDone(t)
+
+	md.eb.Publish(topic.EventPovSyncState, topic.SyncDone)
+	time.Sleep(10 * time.Millisecond)
+
+	pkd := NewPublicKeyDistributionApi(md.cc.ConfigFile(), md.l)
+
+	account := mock.Account()
+
+	// mock account meta
+	am := mock.AccountMeta(account.Address())
+	am.Tokens = append(am.Tokens, mock.TokenMeta2(account.Address(), config.GasToken()))
+	md.l.AddAccountMeta(am, md.l.Cache().GetCache())
+
+	// mock trie state in global db
+	gsdb := statedb.NewPovGlobalStateDB(md.l.DBStore(), types.ZeroHash)
+	csdb, _ := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+
+	ps := types.NewPovVerifierState()
+	ps.TotalReward = types.NewBigNumFromInt(100000000)
+	dpki.PovSetVerifierState(csdb, account.Address().Bytes(), ps)
+
+	gsdb.CommitToTrie()
+	txn := md.l.DBStore().Batch(true)
+	gsdb.CommitToDB(txn)
+	err := md.l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	psMockBlk1, psMockTd1 := mock.GeneratePovBlock(nil, 0)
+	psMockBlk1.Header.BasHdr.Height = 1439
+	psMockBlk1.Header.CbTx.StateHash = gsdb.GetCurHash()
+
+	mock.UpdatePovHash(psMockBlk1)
+
+	err = md.l.AddPovBlock(psMockBlk1, psMockTd1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = md.l.AddPovBestHash(psMockBlk1.GetHeight(), psMockBlk1.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = md.l.SetPovLatestHeight(psMockBlk1.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	psMockBlk2, psMockTd2 := mock.GeneratePovBlock(psMockBlk1, 0)
+	psMockBlk2.Header.BasHdr.Height = 4320
+	psMockBlk2.Header.CbTx.StateHash = gsdb.GetCurHash()
+
+	mock.UpdatePovHash(psMockBlk2)
+
+	err = md.l.AddPovBlock(psMockBlk2, psMockTd2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = md.l.AddPovBestHash(psMockBlk2.GetHeight(), psMockBlk2.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = md.l.SetPovLatestHeight(psMockBlk2.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	param := new(PKDRewardParam)
+	param.Account = account.Address()
+	param.Beneficial = param.Account
+	param.EndHeight = 1439
+	param.RewardAmount = big.NewInt(100000000)
+
+	data, err := pkd.PackRewardData(param)
+	if err != nil {
+		t.Fatal(err)
+	}
+	param, err = pkd.UnpackRewardData(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sendBlk, err := pkd.GetRewardSendBlock(param)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = pkd.GetRewardRecvBlock(sendBlk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _ = pkd.GetRewardHistory(account.Address())
+	_, _ = pkd.GetAvailRewardInfo(account.Address())
 }

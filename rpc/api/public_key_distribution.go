@@ -1000,12 +1000,12 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 
 	am, err := p.l.GetAccountMeta(param.Account)
 	if am == nil {
-		return nil, fmt.Errorf("rep account not exist, %s", err)
+		return nil, fmt.Errorf("account not exist, %s", err)
 	}
 
 	tm := am.Token(config.GasToken())
 	if tm == nil {
-		return nil, fmt.Errorf("rep account does not have gas token, %s", err)
+		return nil, fmt.Errorf("account does not have gas token")
 	}
 
 	data, err := p.PackRewardData(param)

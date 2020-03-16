@@ -56,11 +56,15 @@ func AccountMeta(addr types.Address) *types.AccountMeta {
 }
 
 func TokenMeta(addr types.Address) *types.TokenMeta {
+	return TokenMeta2(addr, types.ZeroHash)
+}
+
+func TokenMeta2(addr types.Address, token types.Hash) *types.TokenMeta {
 	s1, _ := random.Intn(math.MaxInt32)
 	i := new(big.Int).SetInt64(int64(s1))
 	t := types.TokenMeta{
 		//TokenAccount: Address(),
-		Type:           Hash(),
+		Type:           token,
 		BelongTo:       addr,
 		Balance:        types.Balance{Int: i},
 		BlockCount:     1,
