@@ -6,6 +6,16 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
+type SyncStore interface {
+	GetUncheckedSyncBlock(hash types.Hash) (*types.StateBlock, error)
+	HasUncheckedSyncBlock(hash types.Hash) (bool, error)
+	CountUncheckedSyncBlocks() (uint64, error)
+
+	HasUnconfirmedSyncBlock(hash types.Hash) (bool, error)
+	CountUnconfirmedSyncBlocks() (uint64, error)
+	WalkSyncCache(visit common.SyncCacheWalkFunc)
+}
+
 func (l *Ledger) getUncheckedSyncBlockKey(hash types.Hash) []byte {
 	var key [1 + types.HashSize]byte
 	key[0] = byte(storage.KeyPrefixUncheckedSync)

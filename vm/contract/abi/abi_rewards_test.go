@@ -30,9 +30,14 @@ func TestGetRewardsDetail(t *testing.T) {
 	data := mockRewards(4, Rewards)
 
 	for _, md := range data {
+		if err := l.AddStateBlock(md.Block1); err != nil {
+			t.Fatal(err)
+		}
+		if err := l.AddStateBlock(md.Block2); err != nil {
+			t.Fatal(err)
+		}
 		key := GetRewardsKey(md.Param.Id[:], md.Param.TxHeader[:], md.Param.RxHeader[:])
-		if data, err := RewardsABI.PackVariable(VariableNameRewards, md.Info.Type, md.Info.From, md.Info.To,
-			md.Info.TxHeader, md.Info.RxHeader, md.Info.Amount); err == nil {
+		if data, err := md.Info.ToABI(); err == nil {
 			if err := vmContext.SetStorage(types.RewardsAddress[:], key, data); err != nil {
 				t.Error(err)
 			} else {
@@ -83,9 +88,14 @@ func TestGetConfidantDetail(t *testing.T) {
 	data := mockRewards(4, Confidant)
 
 	for _, md := range data {
+		if err := l.AddStateBlock(md.Block1); err != nil {
+			t.Fatal(err)
+		}
+		if err := l.AddStateBlock(md.Block2); err != nil {
+			t.Fatal(err)
+		}
 		key := GetConfidantKey(md.Param.Beneficial, md.Param.Id[:], md.Param.TxHeader[:], md.Param.RxHeader[:])
-		if data, err := RewardsABI.PackVariable(VariableNameRewards, md.Info.Type, md.Info.From, md.Info.To,
-			md.Info.TxHeader, md.Info.RxHeader, md.Info.Amount); err == nil {
+		if data, err := md.Info.ToABI(); err == nil {
 			if err := vmContext.SetStorage(types.RewardsAddress[:], key, data); err != nil {
 				t.Error(err)
 			} else {
@@ -125,8 +135,10 @@ func TestGetConfidantDetail(t *testing.T) {
 }
 
 type mockData struct {
-	Param *RewardsParam `json:"Param"`
-	Info  *RewardsInfo  `json:"info"`
+	Param  *RewardsParam     `json:"Param"`
+	Info   *RewardsInfo      `json:"info"`
+	Block1 *types.StateBlock `json:"b1"`
+	Block2 *types.StateBlock `json:"b2"`
 }
 
 func mockRewards(count int, t uint8) []*mockData {
@@ -139,11 +151,13 @@ func mockRewards(count int, t uint8) []*mockData {
 		_ = random.Bytes(sign)
 		signature, _ := types.BytesToSignature(sign)
 		i, _ := random.Intn(100)
+		b1 := mock.StateBlockWithoutWork()
+		b2 := mock.StateBlockWithoutWork()
 		param := &RewardsParam{
 			Id:         txIds[i%2],
 			Beneficial: mock.Address(),
-			TxHeader:   mock.Hash(),
-			RxHeader:   mock.Hash(),
+			TxHeader:   b1.GetHash(),
+			RxHeader:   b2.GetHash(),
 			Amount:     big.NewInt(int64(i + 1)),
 			Sign:       signature,
 		}
@@ -158,8 +172,10 @@ func mockRewards(count int, t uint8) []*mockData {
 		}
 
 		result = append(result, &mockData{
-			Param: param,
-			Info:  info,
+			Param:  param,
+			Info:   info,
+			Block1: b1,
+			Block2: b2,
 		})
 	}
 	return result
@@ -217,21 +233,185 @@ func TestGetConfidantKey(t *testing.T) {
 func TestParseRewardsInfo(t *testing.T) {
 	tx, _ := hex.DecodeString("0d8e899aee3fd8acf707841e04463cf3d8f151cbe8870495febc5f47cfadfe1a")
 	rx, _ := hex.DecodeString("52112688922647245083902739812993217025393153372347545601073710280271530289093")
-	h1, _ := types.BytesToAddress(tx)
+	h1, _ := types.BytesToHash(tx)
 	h2, _ := types.BytesToHash(rx)
 	a1, _ := types.HexToAddress("qlc_1kk5xst583y8hpn9c48ruizs5cxprdeptw6s5wm6ezz6i1h5srpz3mnjgxao")
 	a2, _ := types.HexToAddress("qlc_3pj83yuemoegkn6ejskd8bustgunmfqpbhu3pnpa6jsdjf9isybzffwq7s4p")
-	bytes, e := RewardsABI.PackVariable(VariableNameRewards, uint8(1), a1, a2, h1, h2, big.NewInt(83020000000))
+
+	r := &RewardsInfo{
+		Type:     uint8(1),
+		From:     a1,
+		To:       a2,
+		TxHeader: h1,
+		RxHeader: h2,
+		Amount:   big.NewInt(83020000000),
+	}
+
+	data, e := r.ToABI()
 	if e != nil {
 		t.Fatal(e)
 	} else {
-		fmt.Println(bytes)
+		fmt.Println(data)
 	}
 
-	info, e := ParseRewardsInfo(bytes)
+	info, e := ParseRewardsInfo(data)
 	if e != nil {
 		t.Fatal(e)
 	} else {
 		t.Log(util.ToIndentString(info))
+	}
+}
+
+func TestRewardsParam_Verify(t *testing.T) {
+	a := mock.Account()
+	param := &RewardsParam{
+		Id:         mock.Hash(),
+		Beneficial: mock.Address(),
+		TxHeader:   mock.Hash(),
+		RxHeader:   mock.Hash(),
+		Amount:     big.NewInt(100),
+		Sign:       types.Signature{},
+	}
+
+	if data, err := param.ToUnsignedABI(MethodNameUnsignedConfidantRewards); err == nil {
+		param.Sign = a.Sign(types.HashData(data))
+	} else {
+		t.Fatal(err)
+	}
+
+	param2 := &RewardsParam{
+		Id:         mock.Hash(),
+		Beneficial: mock.Address(),
+		TxHeader:   mock.Hash(),
+		RxHeader:   mock.Hash(),
+		Amount:     big.NewInt(200),
+		Sign:       types.Signature{},
+	}
+	if data, err := param2.ToUnsignedABI(MethodNameUnsignedAirdropRewards); err == nil {
+		param2.Sign = a.Sign(types.HashData(data))
+	} else {
+		t.Fatal(err)
+	}
+
+	type fields struct {
+		Id         types.Hash
+		Beneficial types.Address
+		TxHeader   types.Hash
+		RxHeader   types.Hash
+		Amount     *big.Int
+		Sign       types.Signature
+	}
+	type args struct {
+		address    types.Address
+		methodName string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "MethodNameUnsignedConfidantRewards",
+			fields: fields{
+				Id:         param.Id,
+				Beneficial: param.Beneficial,
+				TxHeader:   param.TxHeader,
+				RxHeader:   param.RxHeader,
+				Amount:     param.Amount,
+				Sign:       param.Sign,
+			},
+			args: args{
+				address:    a.Address(),
+				methodName: MethodNameUnsignedConfidantRewards,
+			},
+			want:    true,
+			wantErr: false,
+		}, {
+			name: "MethodNameUnsignedAirdropRewards",
+			fields: fields{
+				Id:         param2.Id,
+				Beneficial: param2.Beneficial,
+				TxHeader:   param2.TxHeader,
+				RxHeader:   param2.RxHeader,
+				Amount:     param2.Amount,
+				Sign:       param2.Sign,
+			},
+			args: args{
+				address:    a.Address(),
+				methodName: MethodNameUnsignedAirdropRewards,
+			},
+			want:    true,
+			wantErr: false,
+		}, {
+			name: "f1",
+			fields: fields{
+				Id:         types.Hash{},
+				Beneficial: param2.Beneficial,
+				TxHeader:   param2.TxHeader,
+				RxHeader:   param2.RxHeader,
+				Amount:     param2.Amount,
+				Sign:       param2.Sign,
+			},
+			args: args{
+				address:    a.Address(),
+				methodName: MethodNameUnsignedAirdropRewards,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				Id:         param2.Id,
+				Beneficial: types.ZeroAddress,
+				TxHeader:   param2.TxHeader,
+				RxHeader:   param2.RxHeader,
+				Amount:     param2.Amount,
+				Sign:       param2.Sign,
+			},
+			args: args{
+				address:    a.Address(),
+				methodName: MethodNameUnsignedAirdropRewards,
+			},
+			want:    false,
+			wantErr: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				Id:         param2.Id,
+				Beneficial: param2.Beneficial,
+				TxHeader:   param2.TxHeader,
+				RxHeader:   param2.RxHeader,
+				Amount:     param2.Amount,
+				Sign:       types.ZeroSignature,
+			},
+			args: args{
+				address:    a.Address(),
+				methodName: MethodNameUnsignedAirdropRewards,
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ap := &RewardsParam{
+				Id:         tt.fields.Id,
+				Beneficial: tt.fields.Beneficial,
+				TxHeader:   tt.fields.TxHeader,
+				RxHeader:   tt.fields.RxHeader,
+				Amount:     tt.fields.Amount,
+				Sign:       tt.fields.Sign,
+			}
+			got, err := ap.Verify(tt.args.address, tt.args.methodName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Verify() got = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

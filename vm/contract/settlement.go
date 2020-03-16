@@ -763,7 +763,10 @@ func (t *TerminateContract) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 			if cp, err := cabi.ParseContractParam(storage); err != nil {
 				return nil, nil, err
 			} else {
-				if err := cp.DoTerminate(block.Address); err != nil {
+				if err := cp.DoTerminate(&cabi.Terminator{
+					Address: block.Address,
+					Request: param.Request,
+				}); err != nil {
 					return nil, nil, err
 				}
 

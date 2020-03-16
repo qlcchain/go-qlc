@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"reflect"
 	"sort"
 	"strings"
 
@@ -187,6 +186,7 @@ func (z *SignContractParam) FromABI(data []byte) error {
 //go:generate msgp
 type TerminateParam struct {
 	ContractAddress types.Address `msg:"a,extension" json:"contractAddress"`
+	Request         bool          `msg:"r" json:"request"`
 }
 
 func (z *TerminateParam) ToABI() ([]byte, error) {
@@ -250,12 +250,7 @@ func (z *ContractService) FromABI(data []byte) error {
 }
 
 func (z *ContractService) Balance() (types.Balance, error) {
-	f := z.UnitPrice * 1e8
-	if mul, b := util.SafeMul(z.TotalAmount, uint64(f)); b {
-		return types.ZeroBalance, fmt.Errorf("overflow when mul %d and %f", z.TotalAmount, z.UnitPrice)
-	} else {
-		return types.Balance{Int: new(big.Int).SetUint64(mul)}, nil
-	}
+	return types.Balance{Int: big.NewInt(1e8)}, nil
 }
 
 //go:generate msgp
@@ -408,13 +403,23 @@ Rejected
 type ContractStatus int
 
 //go:generate msgp
+type Terminator struct {
+	Address types.Address `msg:"a,extension" json:"address"` // terminator qlc address
+	Request bool          `msg:"r" json:"request"`           // request operate, true or false
+}
+
+func (z *Terminator) String() string {
+	return util.ToString(z)
+}
+
+//go:generate msgp
 type ContractParam struct {
 	CreateContractParam
 	PreStops    []string       `msg:"pre" json:"preStops,omitempty"`
 	NextStops   []string       `msg:"nex" json:"nextStops,omitempty"`
 	ConfirmDate int64          `msg:"t2" json:"confirmDate"`
 	Status      ContractStatus `msg:"s" json:"status"`
-	Terminator  *types.Address `msg:"t,extension" json:"terminator,omitempty"`
+	Terminator  *Terminator    `msg:"t" json:"terminator,omitempty"`
 }
 
 func (z *ContractParam) IsPreStop(n string) bool {
@@ -500,32 +505,66 @@ func (z *ContractParam) DoActive(operator types.Address) error {
 	}
 }
 
-func (z *ContractParam) DoTerminate(operator types.Address) error {
-	if b := z.IsContractor(operator); !b {
+func (z *ContractParam) DoTerminate(operator *Terminator) error {
+	if operator == nil || operator.Address.IsZero() {
+		return errors.New("invalid terminal operator")
+	}
+
+	if b := z.IsContractor(operator.Address); !b {
 		return fmt.Errorf("permission denied, only contractor can terminate it, exp: %s or %s, act: %s",
-			z.PartyA.Address.String(), z.PartyB.Address.String(), operator.String())
+			z.PartyA.Address.String(), z.PartyB.Address.String(), operator.Address.String())
 	}
 
 	if z.Terminator != nil {
-		if reflect.DeepEqual(z.Terminator, &operator) {
+		if operator.Address == z.Terminator.Address && operator.Request == z.Terminator.Request {
 			return fmt.Errorf("%s already terminated contract", operator.String())
 		}
-	} else {
-		z.Terminator = &operator
-	}
 
-	if z.Status == ContractStatusActiveStage1 {
-		if z.PartyA.Address == operator {
-			z.Status = ContractStatusDestroyed
+		// confirmed, only allow deal with ContractStatusDestroyStage1
+		// - terminator cancel by himself, request is false
+		// - confirm by the other one, request is true
+		// - reject by the other one, request is false
+		if z.Status == ContractStatusDestroyStage1 {
+			// cancel himself
+			if operator.Address == z.Terminator.Address {
+				if !operator.Request {
+					z.Status = ContractStatusActivated
+					z.Terminator = nil
+				}
+			} else {
+				// confirm by the other one
+				if operator.Request {
+					z.Status = ContractStatusDestroyed
+				} else {
+					// reject, back to activated
+					z.Status = ContractStatusActivated
+					z.Terminator = nil
+				}
+			}
 		} else {
-			z.Status = ContractStatusRejected
+			return fmt.Errorf("invalid contract status, %s", z.Status.String())
 		}
-	} else if z.Status == ContractStatusActivated {
-		z.Status = ContractStatusDestroyStage1
-	} else if z.Status == ContractStatusDestroyStage1 {
-		z.Status = ContractStatusDestroyed
 	} else {
-		return fmt.Errorf("invalid contract status, %s", z.Status.String())
+		if !operator.Request {
+			return fmt.Errorf("invalid request(%s) on %s", operator.String(), z.Status.String())
+		}
+		if z.Status == ContractStatusActiveStage1 {
+			// request only allow true
+			// first operate, request should always true, allow
+			// - partyA close contract by himself
+			// - partyB reject partyA's contract
+			// - partyA or partyB start to close a signed contract
+			if z.PartyA.Address == operator.Address {
+				z.Status = ContractStatusDestroyed
+			} else {
+				z.Status = ContractStatusRejected
+			}
+		} else if z.Status == ContractStatusActivated {
+			z.Terminator = operator
+			z.Status = ContractStatusDestroyStage1
+		} else {
+			return fmt.Errorf("invalid contract status, %s", z.Status.String())
+		}
 	}
 
 	return nil
@@ -1002,7 +1041,7 @@ func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *
 	} else {
 		switch size := len(contracts); {
 		case size == 0:
-			return nil, fmt.Errorf("can not find settlement contract related with %s", addr.String())
+			return nil, fmt.Errorf("can not find settlement contract related with %s by %s", addr.String(), param.String())
 		case size > 1:
 			return nil, fmt.Errorf("find mutilple(%d) settlement contract", len(contracts))
 		default:
@@ -1103,6 +1142,36 @@ func GetContractsIDByAddressAsPartyA(ctx *vmstore.VMContext, addr *types.Address
 func GetContractsIDByAddressAsPartyB(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
 	return queryContractParamByAddress(ctx, "GetContractsIDByAddressAsPartyB", func(cp *ContractParam) bool {
 		return cp.PartyB.Address == *addr
+	})
+}
+
+func GetContractsAddressByPartyANextStop(ctx *vmstore.VMContext, addr *types.Address, nextStop string) (*types.Address, error) {
+	return queryContractParamByAddressAndStopName(ctx, "GetContractsIDByPartyANextStop", func(cp *ContractParam) bool {
+		var b bool
+		if cp.PartyA.Address == *addr {
+			for _, n := range cp.NextStops {
+				if n == nextStop {
+					b = true
+					break
+				}
+			}
+		}
+		return b
+	})
+}
+
+func GetContractsAddressByPartyBPreStop(ctx *vmstore.VMContext, addr *types.Address, preStop string) (*types.Address, error) {
+	return queryContractParamByAddressAndStopName(ctx, "GetContractsIDByPartyBPreStop", func(cp *ContractParam) bool {
+		var b bool
+		if cp.PartyB.Address == *addr {
+			for _, n := range cp.PreStops {
+				if n == preStop {
+					b = true
+					break
+				}
+			}
+		}
+		return b
 	})
 }
 
@@ -1590,4 +1659,39 @@ func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp
 	}
 
 	return result, nil
+}
+
+func queryContractParamByAddressAndStopName(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) (*types.Address, error) {
+	logger := log.NewLogger(name)
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	var result *ContractParam
+
+	if err := ctx.Iterator(types.SettlementAddress[:], func(key []byte, value []byte) error {
+		if len(key) == keySize && len(value) > 0 {
+			cp := &ContractParam{}
+			if err := cp.FromABI(value); err != nil {
+				logger.Error(err)
+			} else {
+				if fn(cp) {
+					result = cp
+					return nil
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if result != nil {
+		addr, err := result.Address()
+		if err != nil {
+			return nil, err
+		}
+		return &addr, nil
+	}
+	return nil, fmt.Errorf("can not find any contract")
 }

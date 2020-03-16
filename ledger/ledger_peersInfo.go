@@ -8,6 +8,12 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
+type PeerInfoStore interface {
+	GetPeerInfo(peerID string) (*types.PeerInfo, error)
+	GetPeersInfo(fn func(info *types.PeerInfo) error) error
+	CountPeersInfo() (uint64, error)
+}
+
 func (l *Ledger) AddPeerInfo(info *types.PeerInfo) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo, []byte(info.PeerID))
 	if err != nil {

@@ -142,7 +142,70 @@ func (r *Relation) process() {
 	for {
 		select {
 		case <-r.ctx.Done():
-			//TODO write all chan data
+			// add chan
+			//if len(r.addChan) > 0 {
+			//	for b := range r.addChan {
+			//		addObjs = append(addObjs, b)
+			//		if len(r.addChan) == 0 {
+			//			break
+			//		}
+			//	}
+			//	objs := make([]types.Schema, 0)
+			//	for _, obj := range addObjs {
+			//		objs = append(objs, obj)
+			//		if len(objs) == batchMaxCount {
+			//			if err := r.BatchUpdate(func(txn *sqlx.Tx) error {
+			//				if err := r.batchAdd(txn, addObjs); err != nil {
+			//					r.logger.Errorf("batch add error: %s", err)
+			//				}
+			//				return nil
+			//			}); err != nil {
+			//				r.logger.Errorf("batch update add error: %s", err)
+			//			}
+			//			objs = objs[:0]
+			//		}
+			//	}
+			//	if err := r.BatchUpdate(func(txn *sqlx.Tx) error {
+			//		if err := r.batchAdd(txn, addObjs); err != nil {
+			//			r.logger.Errorf("batch add error: %s", err)
+			//		}
+			//		return nil
+			//	}); err != nil {
+			//		r.logger.Errorf("batch update add error: %s", err)
+			//	}
+			//}
+			//// delete chan
+			//if len(r.deleteChan) > 0 {
+			//	for b := range r.deleteChan {
+			//		deleteObjs = append(deleteObjs, b)
+			//		if len(r.deleteChan) == 0 {
+			//			break
+			//		}
+			//	}
+			//	objs := make([]types.Schema, 0)
+			//	for _, obj := range addObjs {
+			//		objs = append(objs, obj)
+			//		if len(objs) == batchMaxCount {
+			//			if err := r.BatchUpdate(func(txn *sqlx.Tx) error {
+			//				if err := r.batchDelete(txn, addObjs); err != nil {
+			//					r.logger.Errorf("batch delete error: %s", err)
+			//				}
+			//				return nil
+			//			}); err != nil {
+			//				r.logger.Errorf("batch update delete error: %s", err)
+			//			}
+			//			objs = objs[:0]
+			//		}
+			//	}
+			//	if err := r.BatchUpdate(func(txn *sqlx.Tx) error {
+			//		if err := r.batchDelete(txn, addObjs); err != nil {
+			//			r.logger.Errorf("batch delete error: %s", err)
+			//		}
+			//		return nil
+			//	}); err != nil {
+			//		r.logger.Errorf("batch update delete error: %s", err)
+			//	}
+			//}
 			r.closedChan <- true
 			return
 		case obj := <-r.addChan:
@@ -183,13 +246,12 @@ func (r *Relation) process() {
 				}
 			}
 
-			err := r.BatchUpdate(func(txn *sqlx.Tx) error {
+			if err := r.BatchUpdate(func(txn *sqlx.Tx) error {
 				if err := r.batchDelete(txn, deleteObjs); err != nil {
 					r.logger.Errorf("batch delete error: %s", err)
 				}
 				return nil
-			})
-			if err != nil {
+			}); err != nil {
 				r.logger.Errorf("batch delete objs error: %s", err)
 			}
 			deleteObjs = deleteObjs[:0]
@@ -214,8 +276,7 @@ func (r *Relation) EmptyStore() error {
 	for _, s := range r.tables {
 		sql := fmt.Sprintf("delete from %s ", s.TableName())
 		if _, err := r.db.Store().Exec(sql); err != nil {
-			r.logger.Errorf("exec delete error, sql: %s, err: %s", sql, err.Error())
-			return err
+			return fmt.Errorf("exec delete error, sql: %s, err: %s", sql, err.Error())
 		}
 	}
 	return nil

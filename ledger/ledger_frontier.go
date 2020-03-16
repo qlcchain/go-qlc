@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/qlcchain/go-qlc/common/storage"
@@ -38,13 +39,8 @@ func (l *Ledger) GetFrontier(hash types.Hash, c ...storage.Cache) (*types.Fronti
 	}
 	open := new(types.Hash)
 	if err := open.Deserialize(v); err != nil {
-		l.logger.Error(err)
-		return nil, err
+		return nil, fmt.Errorf("frontier deserialize: %s", err)
 	}
-	//if _, err := open.UnmarshalMsg(v); err != nil {
-	//	l.logger.Error(err)
-	//	return nil, err
-	//}
 	frontier.OpenBlock = *open
 	return &frontier, nil
 }
@@ -58,8 +54,7 @@ func (l *Ledger) GetFrontiers() ([]*types.Frontier, error) {
 		copy(frontier.HeaderBlock[:], key[1:])
 		open := new(types.Hash)
 		if err := open.Deserialize(val); err != nil {
-			l.logger.Error(err)
-			return err
+			return fmt.Errorf("frontier deserialize: %s", err)
 		}
 		frontier.OpenBlock = *open
 		frontiers = append(frontiers, &frontier)

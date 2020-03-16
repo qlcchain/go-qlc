@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020. QLC Chain Team
+ * Copyright (c) 2020 QLC Chain Team
  *
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
@@ -32,6 +32,8 @@ var (
 )
 
 func setupLedgerForTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
+	t.Parallel()
+
 	dir := filepath.Join(cfg.QlcTestDataDir(), "settlement", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := cfg.NewCfgManager(dir)

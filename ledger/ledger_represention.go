@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -53,17 +54,14 @@ func (l *Ledger) GetRepresentations(fn func(types.Address, *types.Benefit) error
 	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		address, err := types.BytesToAddress(key[1:])
 		if err != nil {
-			l.logger.Error(err)
-			return err
+			return fmt.Errorf("benefit BytesToAddress: %s ", err)
 		}
 		benefit := new(types.Benefit)
 		if err := benefit.Deserialize(val); err != nil {
-			l.logger.Error(err)
-			return err
+			return fmt.Errorf("benefit Deserialize: %s ", err)
 		}
 		if err := fn(address, benefit); err != nil {
-			l.logger.Error(err)
-			return err
+			return fmt.Errorf("benefit fn: %s ", err)
 		}
 		return nil
 	})
@@ -81,8 +79,7 @@ func (l *Ledger) CountRepresentations() (uint64, error) {
 func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, c *Cache) error {
 	value, err := l.GetRepresentation(address, c)
 	if err != nil && err != ErrRepresentationNotFound {
-		l.logger.Errorf("getRepresentation error: %s ,address: %s", err, address)
-		return err
+		return fmt.Errorf("GetRepresentation err: %s ,address: %s", err, address)
 	}
 
 	value.Balance = value.Balance.Add(diff.Balance)
@@ -98,8 +95,7 @@ func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, c
 func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, c *Cache) error {
 	value, err := l.GetRepresentation(address, c)
 	if err != nil {
-		l.logger.Errorf("GetRepresentation error: %s ,address: %s", err, address)
-		return err
+		return fmt.Errorf("GetRepresentation error: %s ,address: %s", err, address)
 	}
 	value.Balance = value.Balance.Sub(diff.Balance)
 	value.Vote = value.Vote.Sub(diff.Vote)

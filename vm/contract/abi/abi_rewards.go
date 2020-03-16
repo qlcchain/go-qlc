@@ -57,9 +57,17 @@ type RewardsParam struct {
 	Sign       types.Signature `json:"signature"`
 }
 
+func (ap *RewardsParam) ToUnsignedABI(name string) ([]byte, error) {
+	return RewardsABI.PackMethod(name, ap.Id, ap.Beneficial, ap.TxHeader, ap.RxHeader, ap.Amount)
+}
+
+func (ap *RewardsParam) ToSignedABI(name string) ([]byte, error) {
+	return RewardsABI.PackMethod(name, ap.Id, ap.Beneficial, ap.TxHeader, ap.RxHeader, ap.Amount, ap.Sign)
+}
+
 func (ap *RewardsParam) Verify(address types.Address, methodName string) (bool, error) {
 	if !ap.Id.IsZero() && !ap.TxHeader.IsZero() && !ap.Beneficial.IsZero() && ap.Amount.Sign() > 0 {
-		if data, err := RewardsABI.PackMethod(methodName, ap.Id, ap.Beneficial, ap.TxHeader, ap.RxHeader, ap.Amount); err == nil {
+		if data, err := ap.ToUnsignedABI(methodName); err == nil {
 			h := types.HashData(data)
 
 			if address.Verify(h[:], ap.Sign[:]) {
@@ -75,6 +83,15 @@ func (ap *RewardsParam) Verify(address types.Address, methodName string) (bool, 
 	}
 }
 
+func ParseRewardsParam(name string, data []byte) (*RewardsParam, error) {
+	param := new(RewardsParam)
+	err := RewardsABI.UnpackMethod(param, name, data)
+	if err != nil {
+		return nil, err
+	}
+	return param, nil
+}
+
 type RewardsInfo struct {
 	Type     uint8         `json:"type"`
 	From     types.Address `json:"from"`
@@ -82,6 +99,10 @@ type RewardsInfo struct {
 	TxHeader types.Hash    `json:"txHeader"`
 	RxHeader types.Hash    `json:"rxHeader"`
 	Amount   *big.Int      `json:"amount"`
+}
+
+func (info *RewardsInfo) ToABI() ([]byte, error) {
+	return RewardsABI.PackVariable(VariableNameRewards, info.Type, info.From, info.To, info.TxHeader, info.RxHeader, info.Amount)
 }
 
 func ParseRewardsInfo(data []byte) (*RewardsInfo, error) {
@@ -126,8 +147,7 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 	var result []*RewardsInfo
 	if err := ctx.Iterator(types.RewardsAddress[:], func(key []byte, value []byte) error {
 		if bytes.HasPrefix(key[types.AddressSize+1:], id) && len(value) > 0 {
-			info := new(RewardsInfo)
-			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil {
+			if info, err := ParseRewardsInfo(value); err == nil {
 				if isValidContract(ctx, info) {
 					if info.Type == uint8(Rewards) {
 						result = append(result, info)
@@ -189,8 +209,7 @@ func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) 
 	if err := ctx.Iterator(types.RewardsAddress[:], func(key []byte, value []byte) error {
 		k := key[types.AddressSize+1:]
 		if bytes.HasPrefix(k, confidant[:]) && len(value) > 0 {
-			info := new(RewardsInfo)
-			if err := RewardsABI.UnpackVariable(info, VariableNameRewards, value); err == nil {
+			if info, err := ParseRewardsInfo(value); err == nil {
 				if isValidContract(ctx, info) {
 					if info.Type == uint8(Confidant) {
 						s := hex.EncodeToString(k[types.AddressSize : types.AddressSize+types.HashSize])

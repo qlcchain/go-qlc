@@ -15,14 +15,16 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
-func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVerifier) {
-	t.Parallel()
+var bc []*types.StateBlock
 
+func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVerifier) {
+	//t.Parallel()
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	//dir := filepath.Join(config.DefaultDataDir()) // if want to test rollback contract and remove time sleep
 
@@ -30,6 +32,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
+	bc, _ = mock.BlockChain(false)
 
 	return func(t *testing.T) {
 		//err := l.db.Erase()
@@ -49,7 +52,6 @@ func TestProcess_BlockProcess(t *testing.T) {
 	teardownTestCase, _, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	var bc, _ = mock.BlockChain(false)
 	if err := lv.BlockProcess(bc[0]); err != nil {
 		t.Fatal(err)
 	}
@@ -79,5 +81,59 @@ func TestProcess_ContractBlockProcess(t *testing.T) {
 		if err := lv.BlockProcess(b); err != nil {
 			t.Fatal(Other, err)
 		}
+	}
+}
+
+func TestProcess_Exception(t *testing.T) {
+	teardownTestCase, _, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	bc[0].Signature, _ = types.NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600")
+	if r, err := lv.BlockCheck(bc[0]); err != nil || r != BadSignature {
+		t.Fatal(r, err)
+	}
+	if r, err := lv.BlockCheck(bc[1]); err != nil || r != GapPrevious {
+		t.Fatal(r, err)
+	}
+
+	if err := lv.BlockProcess(bc[0]); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := lv.BlockCheck(bc[0]); err != nil || r != Old {
+		t.Fatal(r, err)
+	}
+	if r, err := lv.BlockCheck(bc[2]); err != nil || r != GapSource {
+		t.Fatal(r, err)
+	}
+
+	// unReceivable
+	if err := lv.BlockProcess(bc[1]); err != nil {
+		t.Fatal(err)
+	}
+	if err := lv.l.DeletePending(&types.PendingKey{
+		Address: bc[2].Address,
+		Hash:    bc[1].GetHash(),
+	}, lv.l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := lv.BlockCheck(bc[2]); err != nil || r != UnReceivable {
+		t.Fatal(r, err)
+	}
+
+	// contract block
+	bc := mock.StateBlockWithoutWork()
+	bc.Type = types.ContractReward
+	if r, err := lv.BlockCheck(bc); err != nil || r != GapSource {
+		t.Fatal(r, err)
+	}
+	bc.Type = types.ContractSend
+	bc.Link = types.NEP5PledgeAddress.ToHash()
+	if r, err := lv.BlockCheck(bc); err != nil {
+		t.Fatal(r, err)
+	}
+
+	bs := mock.ContractBlocks()
+	if r, err := lv.BlockCheck(bs[1]); err != nil || r != GapPrevious {
+		t.Fatal(r, err)
 	}
 }

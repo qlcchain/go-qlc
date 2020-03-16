@@ -125,7 +125,6 @@ func (l *Ledger) setStateBlock(block *types.StateBlock, c storage.Cache) error {
 	if err != nil {
 		return err
 	}
-	//TODO-cache
 	//if b, err := l.HasBlockCache(block.GetHash()); b && err == nil {
 	//	if err := l.DeleteBlockCache(block.GetHash()); err != nil {
 	//		return fmt.Errorf("delete block cache error: %s", err)
@@ -230,7 +229,7 @@ func (l *Ledger) HasStateBlockConfirmed(hash types.Hash) (bool, error) {
 		return true, nil
 	} else {
 		if err == ErrKeyDeleted {
-			return false, err
+			return false, nil
 		}
 	}
 

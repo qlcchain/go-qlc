@@ -6,14 +6,16 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/mock/mocks"
 )
 
-func setupTestCaseDebug(t *testing.T) (func(t *testing.T), *ledger.Ledger, *DebugApi) {
+func setupDefaultDebugAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *DebugApi) {
 	t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "debug", uuid.New().String())
@@ -38,8 +40,27 @@ func setupTestCaseDebug(t *testing.T) (func(t *testing.T), *ledger.Ledger, *Debu
 	}, l, debugApi
 }
 
+func setupMockDebugAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *DebugApi) {
+	t.Parallel()
+
+	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
+
+	l := new(mocks.Store)
+	debugApi := NewDebugApi(cm.ConfigFile, cc.EventBus())
+	debugApi.ledger = l
+	return func(t *testing.T) {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Fatal(err)
+		}
+	}, l, debugApi
+}
+
 func TestDebugApi_UncheckBlock(t *testing.T) {
-	teardownTestCase, l, debugApi := setupTestCaseDebug(t)
+	teardownTestCase, l, debugApi := setupDefaultDebugAPI(t)
 	defer teardownTestCase(t)
 
 	blk1 := mock.StateBlockWithoutWork()
@@ -66,7 +87,7 @@ func TestDebugApi_UncheckBlock(t *testing.T) {
 }
 
 func TestDebugApi_UncheckAnalysis(t *testing.T) {
-	teardownTestCase, l, debugApi := setupTestCaseDebug(t)
+	teardownTestCase, l, debugApi := setupDefaultDebugAPI(t)
 	defer teardownTestCase(t)
 
 	blk1 := mock.StateBlockWithoutWork()
@@ -101,5 +122,57 @@ func TestDebugApi_UncheckAnalysis(t *testing.T) {
 		if ui.GapType == "gap pov" && ui.Hash != blk3.GetHash() {
 			t.Fatal()
 		}
+	}
+}
+
+func TestDebugApi_BlockCacheCount(t *testing.T) {
+	teardownTestCase, l, debugApi := setupMockDebugAPI(t)
+	defer teardownTestCase(t)
+
+	expect := uint64(10)
+	l.On("CountBlocksCache").Return(expect, nil)
+	r, err := debugApi.BlockCacheCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r["blockCache"] != expect {
+		t.Fatal(r)
+	}
+}
+
+func TestDebugApi_UncheckBlocks(t *testing.T) {
+	teardownTestCase, l, debugApi := setupDefaultDebugAPI(t)
+	defer teardownTestCase(t)
+
+	block := mock.StateBlockWithoutWork()
+	hash := block.GetLink()
+	kind := types.UncheckedKindLink
+	if err := l.AddUncheckedBlock(hash, block, kind, types.UnSynchronized); err != nil {
+		t.Fatal(err)
+	}
+
+	blk1 := mock.StateBlockWithoutWork()
+	blk2 := mock.StateBlockWithoutWork()
+
+	err := l.AddGapPovBlock(10, blk1, types.Synchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddGapPovBlock(100, blk2, types.UnSynchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if r, err := debugApi.UncheckBlocksCount(); err != nil || r["Total"] != 3 {
+		t.Fatal(err)
+	}
+	if r, err := debugApi.UncheckBlocks(); err != nil || len(r) != 3 {
+		t.Fatal(err)
+	}
+	r, err := debugApi.UncheckBlock(block.GetHash())
+	t.Log(r, err)
+	if _, err = debugApi.UncheckAnalysis(); err != nil {
+		t.Fatal(err)
 	}
 }

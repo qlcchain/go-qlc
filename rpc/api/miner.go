@@ -20,7 +20,7 @@ import (
 type MinerApi struct {
 	cfg    *config.Config
 	logger *zap.SugaredLogger
-	ledger *ledger.Ledger
+	ledger ledger.Store
 	reward *contract.MinerReward
 }
 
@@ -51,7 +51,7 @@ type MinerHistoryRewardInfo struct {
 	LastRewardTime int64         `json:"lastRewardTime"`
 }
 
-func NewMinerApi(cfg *config.Config, ledger *ledger.Ledger) *MinerApi {
+func NewMinerApi(cfg *config.Config, ledger ledger.Store) *MinerApi {
 	return &MinerApi{
 		cfg:    cfg,
 		logger: log.NewLogger("api_miner"),

@@ -217,7 +217,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 	},
 	types.RewardsAddress: {
 		map[string]Contract{
-			cabi.MethodNameAirdropRewards: &AirdropRewords{
+			cabi.MethodNameAirdropRewards: &AirdropRewards{
 				BaseContract: BaseContract{
 					Describe: Describe{
 						specVer:     SpecVer1,

@@ -1,15 +1,31 @@
-syntax="proto3";
+syntax = "proto3";
 
 package pb;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.gostring_all) = true;
+option (gogoproto.equal_all) = true;
+option (gogoproto.verbose_equal_all) = true;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) =  true;
+option (gogoproto.populate_all) = true;
+option (gogoproto.testgen_all) = true;
+option (gogoproto.benchgen_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
 
 message FrontierReq {
     bytes Address = 1;
     uint32 Age = 2;
     uint32 Count = 3;
 }
+
 message FrontierRsp {
     repeated bytes Frontiers = 1;
 }
+
 message BulkPullReq {
     bytes StartHash = 1;
     bytes EndHash = 2;
@@ -17,25 +33,31 @@ message BulkPullReq {
     uint32 Count = 4;
     bytes  Hashes = 5;
 }
+
 message BulkPullRsp {
     uint32 PullType = 1;
     bytes blocks = 2;
 }
+
 message BulkPushBlock {
     bytes blocks = 1;
 }
+
 message PublishBlock {
     bytes block = 1;
 }
+
 message ConfirmReq {
      repeated bytes block = 1;
 }
+
 message ConfirmAck {
     bytes   Account = 1;
     bytes   Signature = 2;
     uint32  Sequence = 3;
     repeated bytes  Hash = 4;
 }
+
 message PovStatus {
     uint64 CurrentHeight = 1;
     bytes  CurrentHash = 2;
@@ -43,9 +65,11 @@ message PovStatus {
     bytes  CurrentTD = 4;
     int64  Timestamp = 5;
 }
+
 message PovPublishBlock {
     bytes  block = 1;
 }
+
 message PovPullBlockReq {
     bytes  StartHash = 1;
     uint64 StartHeight = 2;
@@ -54,11 +78,13 @@ message PovPullBlockReq {
     uint32 Reason = 5;
     bytes  Locators = 6;
 }
+
 message PovPullBlockRsp {
      uint32 count = 1;
      bytes  block = 2;
      uint32 Reason = 3;
  }
+
  message MessageAck {
      bytes messageHash = 1;
  }

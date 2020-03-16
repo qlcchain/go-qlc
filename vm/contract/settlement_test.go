@@ -1,5 +1,3 @@
-// +build !testnet
-
 /*
  * Copyright (c) 2019 QLC Chain Team
  *
@@ -168,7 +166,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				param := cabi.TerminateParam{ContractAddress: address}
+				param := cabi.TerminateParam{ContractAddress: address, Request: true}
 				if abi, err := param.ToABI(); err == nil {
 					sb := &types.StateBlock{
 						Type:           types.ContractSend,

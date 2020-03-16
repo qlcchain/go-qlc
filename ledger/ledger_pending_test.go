@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
@@ -52,6 +53,12 @@ func TestLedger_AddPending(t *testing.T) {
 	if !a.Equal(b) {
 		t.Fatal("balance not equal")
 	}
+	// add pending again
+	pk.Hash = mock.Hash()
+	err = l.AddPending(&pk, &pv, l.cache.GetCache())
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GetPending(t *testing.T) {
@@ -69,6 +76,10 @@ func TestLedger_GetPending(t *testing.T) {
 	if _, err := l.GetPending(&pendingkey); err != nil {
 		t.Fatal(err)
 	}
+	pendingkey2 := types.PendingKey{Address: mock.Address(), Hash: mock.Hash()}
+	if _, err := l.GetPending(&pendingkey2); err == nil {
+		t.Fatal()
+	}
 	count := 0
 	err = l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
 		t.Log(pendingKey, pendingInfo)
@@ -80,6 +91,30 @@ func TestLedger_GetPending(t *testing.T) {
 	}
 	if count != 2 {
 		t.Fatal("pending count error", count)
+	}
+
+	// Deserialize error
+	key := &types.PendingKey{
+		Address: mock.Address(),
+		Hash:    mock.Hash(),
+	}
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPending, key)
+	if err != nil {
+		t.Fatal()
+	}
+	d1 := make([]byte, 10)
+	_ = random.Bytes(d1)
+	if err := l.store.Put(k, d1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.GetPending(key); err == nil {
+		t.Fatal(err)
+	}
+
+	if err := l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
+		return nil
+	}); err == nil {
+		t.Fatal(err)
 	}
 }
 

@@ -7,18 +7,16 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/storage"
-
-	"github.com/qlcchain/go-qlc/config"
-
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	qctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus/dpos"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -28,7 +26,7 @@ import (
 )
 
 type DebugApi struct {
-	ledger  *ledger.Ledger
+	ledger  ledger.Store
 	logger  *zap.SugaredLogger
 	eb      event.EventBus
 	feb     *event.FeedEventBus

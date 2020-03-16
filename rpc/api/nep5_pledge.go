@@ -15,13 +15,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -31,13 +30,13 @@ import (
 
 type NEP5PledgeApi struct {
 	logger   *zap.SugaredLogger
-	l        *ledger.Ledger
+	l        ledger.Store
 	pledge   *contract.Nep5Pledge
 	withdraw *contract.WithdrawNep5Pledge
 	cc       *chainctx.ChainContext
 }
 
-func NewNEP5PledgeAPI(cfgFile string, l *ledger.Ledger) *NEP5PledgeApi {
+func NewNEP5PledgeAPI(cfgFile string, l ledger.Store) *NEP5PledgeApi {
 	api := &NEP5PledgeApi{
 		l:        l,
 		pledge:   &contract.Nep5Pledge{},
@@ -66,7 +65,14 @@ func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
 		return nil, err
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodNEP5Pledge, param.Beneficial, param.PledgeAddress, uint8(t), param.NEP5TxId)
+	p2 := &cabi.PledgeParam{
+		Beneficial:    param.Beneficial,
+		PledgeAddress: param.PledgeAddress,
+		PType:         uint8(t),
+		NEP5TxId:      param.NEP5TxId,
+	}
+
+	return p2.ToABI()
 }
 
 func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, error) {
@@ -180,7 +186,14 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byt
 		return nil, err
 	}
 
-	return cabi.NEP5PledgeABI.PackMethod(cabi.MethodWithdrawNEP5Pledge, param.Beneficial, param.Amount.Int, uint8(t), param.NEP5TxId)
+	p2 := &cabi.WithdrawPledgeParam{
+		Beneficial: param.Beneficial,
+		Amount:     param.Amount.Int,
+		PType:      uint8(t),
+		NEP5TxId:   param.NEP5TxId,
+	}
+
+	return p2.ToABI()
 }
 
 func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*types.StateBlock, error) {

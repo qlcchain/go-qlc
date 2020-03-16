@@ -3,8 +3,6 @@ package api
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -12,12 +10,13 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 )
 
 type NetApi struct {
-	ledger *ledger.Ledger
+	ledger ledger.Store
 	eb     event.EventBus
 	logger *zap.SugaredLogger
 	cc     *chainctx.ChainContext
@@ -34,7 +33,7 @@ type OnlineRepInfo struct {
 	Vote    types.Balance
 }
 
-func NewNetApi(l *ledger.Ledger, eb event.EventBus, cc *chainctx.ChainContext) *NetApi {
+func NewNetApi(l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *NetApi {
 	return &NetApi{ledger: l, eb: eb, logger: log.NewLogger("api_net"), cc: cc}
 }
 

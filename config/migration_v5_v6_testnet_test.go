@@ -1,4 +1,4 @@
-// +build !testnet
+// +build testnet
 
 package config
 
@@ -40,7 +40,7 @@ func TestMigrationV5ToV6_Migration(t *testing.T) {
 
 	loadGenesisAccount(cfg6)
 
-	h1, _ := types.NewHash("7201b4c283b7a32e88ec4c5867198da574de1718eb18c7f95ee8ef733c0b5609")
+	h1, _ := types.NewHash("5594c690c3618a170a77d2696688f908efec4da2b94363fcb96749516307031d")
 	genesisBlock := GenesisBlock()
 	h2 := genesisBlock.GetHash()
 	if h2 != h1 {
@@ -48,7 +48,7 @@ func TestMigrationV5ToV6_Migration(t *testing.T) {
 		t.Fatal("invalid genesis block", h2.String(), h1.String())
 	}
 
-	h1, _ = types.NewHash("b9e2ea2e4310c38ed82ff492cb83229b4361d89f9c47ebbd6653ddec8a07ebe1")
+	h1, _ = types.NewHash("424b367da2e0ff991d3086f599ce26547b80ae948b209f1cb7d63e19231ab213")
 	gasBlock := GasBlock()
 	h2 = gasBlock.GetHash()
 	if h2 != h1 {

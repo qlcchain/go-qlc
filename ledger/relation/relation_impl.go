@@ -14,20 +14,9 @@ func (r *Relation) count(s types.Schema) (uint64, error) {
 	var i uint64
 	err := r.db.Store().Get(&i, sql)
 	if err != nil {
-		r.logger.Errorf("count error, sql: %s, err: %s", sql, err.Error())
-		return 0, err
+		return 0, fmt.Errorf("count error, sql: %s, err: %s", sql, err.Error())
 	}
 	return i, nil
-}
-
-func (r *Relation) items(s types.Schema, limit int, offset int, dest interface{}) error {
-	sql := fmt.Sprintf("select * from %s limit %d offset %d", s.TableName(), limit, offset)
-	err := r.db.Store().Select(dest, sql)
-	if err != nil {
-		r.logger.Errorf("read error, sql: %s, err: %s", sql, err.Error())
-		return err
-	}
-	return nil
 }
 
 func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
@@ -36,8 +25,7 @@ func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 	sql := fmt.Sprintf("select * from %s order by timestamp desc, type desc limit %d offset %d", block.TableName(), limit, offset)
 	err := r.db.Store().Select(&h, sql)
 	if err != nil {
-		r.logger.Errorf("read error, sql: %s, err: %s", sql, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("read error, sql: %s, err: %s", sql, err.Error())
 	}
 	return blockHash(h)
 }
@@ -48,8 +36,7 @@ func (r *Relation) BlocksByAccount(address types.Address, limit int, offset int)
 	sql := fmt.Sprintf("select * from %s where address = '%s' order by timestamp desc, type desc limit %d offset %d", block.TableName(), address.String(), limit, offset)
 	err := r.db.Store().Select(&h, sql)
 	if err != nil {
-		r.logger.Errorf("read error, sql: %s, err: %s", sql, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("read error, sql: %s, err: %s", sql, err.Error())
 	}
 	return blockHash(h)
 }
@@ -65,8 +52,7 @@ func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
 	r.logger.Debug(sql)
 	err := r.db.Store().Select(&t, sql)
 	if err != nil {
-		r.logger.Errorf("group error, sql: %s, err: %s", sql, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("group error, sql: %s, err: %s", sql, err.Error())
 	}
 	return blockType(t), nil
 }
@@ -87,12 +73,10 @@ func blockType(bs []blocksType) map[string]uint64 {
 func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
 	tx := r.db.Store().MustBegin()
 	if err := fn(tx); err != nil {
-		r.logger.Error(err)
-		return err
+		return fmt.Errorf("tx fn: %s", err)
 	}
 	if err := tx.Commit(); err != nil {
-		r.logger.Error(err)
-		return err
+		return fmt.Errorf("tx commit: %s", err)
 	}
 	return nil
 }

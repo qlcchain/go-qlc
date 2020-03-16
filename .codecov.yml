@@ -11,6 +11,5 @@ ignore:
 #comment: false
 
 coverage:
-  range: 30..70
+  range: 50..70
   
-

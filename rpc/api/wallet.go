@@ -4,25 +4,24 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
 type WalletApi struct {
 	wallet *wallet.WalletStore
-	l      *ledger.Ledger
+	l      ledger.Store
 	logger *zap.SugaredLogger
 }
 
-func NewWalletApi(l *ledger.Ledger, wallet *wallet.WalletStore) *WalletApi {
+func NewWalletApi(l ledger.Store, wallet *wallet.WalletStore) *WalletApi {
 	return &WalletApi{l: l, wallet: wallet, logger: log.NewLogger("api_wallet")}
 }
 

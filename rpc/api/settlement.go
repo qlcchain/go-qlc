@@ -13,14 +13,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -28,9 +27,13 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+var (
+	errInvalidParam = errors.New("invalid input param")
+)
+
 type SettlementAPI struct {
 	logger            *zap.SugaredLogger
-	l                 *ledger.Ledger
+	l                 ledger.Store
 	createContract    *contract.CreateContract
 	signContract      *contract.SignContract
 	cdrContract       *contract.ProcessCDR
@@ -50,7 +53,7 @@ type SignContractParam struct {
 	Address         types.Address `json:"address"`
 }
 
-func NewSettlement(l *ledger.Ledger, cc *context.ChainContext) *SettlementAPI {
+func NewSettlement(l ledger.Store, cc *context.ChainContext) *SettlementAPI {
 	return &SettlementAPI{
 		logger:         log.NewLogger("rpc/settlement"),
 		l:              l,
@@ -132,7 +135,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 	}
 
 	if param == nil {
-		return nil, errors.New("invalid input param")
+		return nil, errInvalidParam
 	}
 
 	now := time.Now().Unix()
@@ -164,7 +167,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 		if isVerified, err := createParam.Verify(); err != nil {
 			return nil, err
 		} else if !isVerified {
-			return nil, errors.New("invalid input param")
+			return nil, errInvalidParam
 		}
 
 		balance, err := createParam.Balance()
@@ -176,6 +179,10 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 		}
 
 		if singedData, err := createParam.ToABI(); err == nil {
+			povHeader, err := s.l.GetLatestPovHeader()
+			if err != nil {
+				return nil, fmt.Errorf("get pov header error: %s", err)
+			}
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,
@@ -189,16 +196,15 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 				Link:           types.Hash(types.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
+				PoVHeight:      povHeader.GetHeight(),
 				Timestamp:      common.TimeNow().Unix(),
 			}
 
+			if _, _, err := s.createContract.ProcessSend(ctx, sb); err != nil {
+				return nil, err
+			}
 			h := ctx.Cache.Trie().Hash()
 			if h != nil {
-				povHeader, err := s.l.GetLatestPovHeader()
-				if err != nil {
-					return nil, fmt.Errorf("get pov header error: %s", err)
-				}
-				sb.PoVHeight = povHeader.GetHeight()
 				sb.Extra = *h
 			}
 			return sb, nil
@@ -218,7 +224,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 	}
 
 	if param == nil {
-		return nil, errors.New("invalid input param")
+		return nil, errInvalidParam
 	}
 
 	signParam := &cabi.SignContractParam{
@@ -229,7 +235,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 	if isVerified, err := signParam.Verify(); err != nil {
 		return nil, err
 	} else if !isVerified {
-		return nil, errors.New("invalid input param")
+		return nil, errInvalidParam
 	}
 	ctx := vmstore.NewVMContext(s.l)
 
@@ -237,6 +243,10 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 		return nil, err
 	} else {
 		if singedData, err := signParam.ToABI(); err == nil {
+			povHeader, err := s.l.GetLatestPovHeader()
+			if err != nil {
+				return nil, fmt.Errorf("get pov header error: %s", err)
+			}
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,
@@ -250,24 +260,19 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 				Link:           types.Hash(types.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
+				PoVHeight:      povHeader.GetHeight(),
 				Timestamp:      common.TimeNow().Unix(),
+			}
+			if _, _, err := s.signContract.ProcessSend(ctx, sb); err != nil {
+				return nil, err
 			}
 
 			h := ctx.Cache.Trie().Hash()
 			if h != nil {
-				povHeader, err := s.l.GetLatestPovHeader()
-				if err != nil {
-					return nil, fmt.Errorf("get pov header error: %s", err)
-				}
-				sb.PoVHeight = povHeader.GetHeight()
 				sb.Extra = *h
 			}
 
-			if _, _, err := s.signContract.ProcessSend(ctx, sb); err != nil {
-				return nil, err
-			} else {
-				return sb, nil
-			}
+			return sb, nil
 		} else {
 			return nil, err
 		}
@@ -303,6 +308,10 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 		return nil, err
 	} else {
 		if singedData, err := abi(); err == nil {
+			povHeader, err := s.l.GetLatestPovHeader()
+			if err != nil {
+				return nil, fmt.Errorf("get pov header error: %s", err)
+			}
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,
@@ -316,24 +325,20 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 				Link:           types.Hash(types.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
+				PoVHeight:      povHeader.GetHeight(),
 				Timestamp:      common.TimeNow().Unix(),
-			}
-
-			h := ctx.Cache.Trie().Hash()
-			if h != nil {
-				povHeader, err := s.l.GetLatestPovHeader()
-				if err != nil {
-					return nil, fmt.Errorf("get pov header error: %s", err)
-				}
-				sb.PoVHeight = povHeader.GetHeight()
-				sb.Extra = *h
 			}
 
 			if _, _, err := c.ProcessSend(ctx, sb); err != nil {
 				return nil, err
-			} else {
-				return sb, nil
 			}
+
+			h := ctx.Cache.Trie().Hash()
+			if h != nil {
+				sb.Extra = *h
+			}
+
+			return sb, nil
 		} else {
 			return nil, err
 		}
@@ -343,7 +348,7 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 func (s *SettlementAPI) GetAddPreStopBlock(param *StopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || len(param.StopName) == 0 {
-			return errors.New("invalid input param")
+			return errInvalidParam
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
@@ -358,7 +363,7 @@ func (s *SettlementAPI) GetAddPreStopBlock(param *StopParam) (*types.StateBlock,
 func (s *SettlementAPI) GetRemovePreStopBlock(param *StopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || len(param.StopName) == 0 {
-			return errors.New("invalid input param")
+			return errInvalidParam
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
@@ -373,7 +378,7 @@ func (s *SettlementAPI) GetRemovePreStopBlock(param *StopParam) (*types.StateBlo
 func (s *SettlementAPI) GetUpdatePreStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || param.Address.IsZero() || len(param.StopName) == 0 || len(param.New) == 0 || param.StopName == param.New {
-			return errors.New("invalid input param")
+			return errInvalidParam
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
@@ -389,7 +394,7 @@ func (s *SettlementAPI) GetUpdatePreStopBlock(param *UpdateStopParam) (*types.St
 func (s *SettlementAPI) GetAddNextStopBlock(param *StopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 {
-			return errors.New("invalid input param")
+			return errInvalidParam
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
@@ -404,7 +409,7 @@ func (s *SettlementAPI) GetAddNextStopBlock(param *StopParam) (*types.StateBlock
 func (s *SettlementAPI) GetRemoveNextStopBlock(param *StopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 {
-			return errors.New("invalid input param")
+			return errInvalidParam
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
@@ -419,7 +424,7 @@ func (s *SettlementAPI) GetRemoveNextStopBlock(param *StopParam) (*types.StateBl
 func (s *SettlementAPI) GetUpdateNextStopBlock(param *UpdateStopParam) (*types.StateBlock, error) {
 	return s.handleStopAction(param.Address, func() error {
 		if param == nil || param.ContractAddress.IsZero() || len(param.StopName) == 0 || len(param.New) == 0 || param.StopName == param.New {
-			return errors.New("invalid input param")
+			return errInvalidParam
 		}
 		return nil
 	}, func() (bytes []byte, err error) {
@@ -515,6 +520,24 @@ func (s *SettlementAPI) GetContractsAsPartyB(addr *types.Address, count int, off
 	})
 }
 
+// GetContractAddressByPartyANextStop query all settlement contracts as Party A info by address and NextStop
+// @param addr user qlcchain address
+// @param stopName PartyA nextStop
+// @return contract Address
+func (s *SettlementAPI) GetContractAddressByPartyANextStop(addr *types.Address, stopName string) (*types.Address, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetContractsAddressByPartyANextStop(ctx, addr, stopName)
+}
+
+// GetContractAddressByPartyBPreStop query all settlement contracts as Party B info by address and PreStop
+// @param addr user qlcchain address
+// @param stopName PartyB preStop
+// @return contract Address
+func (s *SettlementAPI) GetContractAddressByPartyBPreStop(addr *types.Address, stopName string) (*types.Address, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetContractsAddressByPartyBPreStop(ctx, addr, stopName)
+}
+
 // GetProcessCDRBlock save CDR data for the settlement
 // @param addr user qlc address
 // @param param CDR params to be processed
@@ -548,6 +571,10 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 			}
 
 			if singedData, err := param.ToABI(); err == nil {
+				povHeader, err := s.l.GetLatestPovHeader()
+				if err != nil {
+					return nil, fmt.Errorf("get pov header error: %s", err)
+				}
 				sb := &types.StateBlock{
 					Type:           types.ContractSend,
 					Token:          tm.Type,
@@ -561,16 +588,16 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 					Link:           types.Hash(types.SettlementAddress),
 					Representative: tm.Representative,
 					Data:           singedData,
+					PoVHeight:      povHeader.GetHeight(),
 					Timestamp:      common.TimeNow().Unix(),
+				}
+
+				if _, _, err := s.cdrContract.ProcessSend(ctx, sb); err != nil {
+					return nil, err
 				}
 
 				h := ctx.Cache.Trie().Hash()
 				if h != nil {
-					povHeader, err := s.l.GetLatestPovHeader()
-					if err != nil {
-						return nil, fmt.Errorf("get pov header error: %s", err)
-					}
-					sb.PoVHeight = povHeader.GetHeight()
 					sb.Extra = *h
 				}
 				return sb, nil
@@ -583,7 +610,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 
 type TerminateParam struct {
 	cabi.TerminateParam
-	Address types.Address // PartyB address
+	Address types.Address
 }
 
 // GetTerminateContractBlock
@@ -596,7 +623,7 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 	}
 
 	if param == nil {
-		return nil, errors.New("invalid input param")
+		return nil, errInvalidParam
 	}
 
 	if err := param.Verify(); err != nil {
@@ -608,6 +635,11 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 		return nil, err
 	} else {
 		if singedData, err := param.ToABI(); err == nil {
+			povHeader, err := s.l.GetLatestPovHeader()
+			if err != nil {
+				return nil, fmt.Errorf("get pov header error: %s", err)
+			}
+
 			sb := &types.StateBlock{
 				Type:           types.ContractSend,
 				Token:          tm.Type,
@@ -621,24 +653,20 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 				Link:           types.Hash(types.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
+				PoVHeight:      povHeader.GetHeight(),
 				Timestamp:      common.TimeNow().Unix(),
-			}
-
-			h := ctx.Cache.Trie().Hash()
-			if h != nil {
-				povHeader, err := s.l.GetLatestPovHeader()
-				if err != nil {
-					return nil, fmt.Errorf("get pov header error: %s", err)
-				}
-				sb.PoVHeight = povHeader.GetHeight()
-				sb.Extra = *h
 			}
 
 			if _, _, err := s.terminateContract.ProcessSend(ctx, sb); err != nil {
 				return nil, err
-			} else {
-				return sb, nil
 			}
+
+			h := ctx.Cache.Trie().Hash()
+			if h != nil {
+				sb.Extra = *h
+			}
+
+			return sb, nil
 		} else {
 			return nil, err
 		}
@@ -748,6 +776,18 @@ func (s *SettlementAPI) GenerateMultiPartyInvoice(addr *types.Address, start, en
 	return cabi.GenerateMultiPartyInvoice(ctx, addr, start, end)
 }
 
+// GetPreStopNames get all previous stop names by user address
+func (s *SettlementAPI) GetPreStopNames(addr *types.Address) ([]string, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetPreStopNames(ctx, addr)
+}
+
+// GetNextStopNames get all next stop names by user address
+func (s *SettlementAPI) GetNextStopNames(addr *types.Address) ([]string, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetNextStopNames(ctx, addr)
+}
+
 var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {
 	dt1, sender1, _, err := cdr1.ExtractID()
 	if err != nil {
@@ -766,41 +806,6 @@ var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {
 	}
 
 	return sender1 < sender2
-}
-
-func (s *SettlementAPI) getContractRewardsBlock(send *types.Hash, c contract.Contract, name string) (*types.StateBlock, error) {
-	if send == nil {
-		return nil, ErrParameterNil
-	}
-	if !s.cc.IsPoVDone() {
-		return nil, context.ErrPoVNotFinish
-	}
-
-	blk, err := s.l.GetStateBlock(*send)
-	if err != nil {
-		return nil, err
-	}
-
-	rev := &types.StateBlock{
-		Timestamp: common.TimeNow().Unix(),
-	}
-	povHeader, err := s.l.GetLatestPovHeader()
-	if err != nil {
-		return nil, fmt.Errorf("get pov header error: %s", err)
-	}
-	rev.PoVHeight = povHeader.GetHeight()
-
-	ctx := vmstore.NewVMContext(s.l)
-
-	if r, err := c.DoReceive(ctx, rev, blk); err == nil {
-		if len(r) > 0 {
-			return r[0].Block, nil
-		} else {
-			return nil, fmt.Errorf("%s: fail to generate contract reward block", name)
-		}
-	} else {
-		return nil, err
-	}
 }
 
 func (s *SettlementAPI) queryContractsByAddress(count int, offset *int, fn func() ([]*cabi.ContractParam, error)) ([]*SettlementContract, error) {
