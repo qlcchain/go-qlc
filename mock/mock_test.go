@@ -345,8 +345,10 @@ func TestMockChain(t *testing.T) {
 	priv1, _ := hex.DecodeString("7098c089e66bd66476e3b88df8699bcd4dacdd5e1e5b41b3c598a8a36d851184d992a03b7326b7041f689ae727292d761b329a960f3e4335e0a7dcf2c43c4bcf")
 	// qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te
 	priv2, _ := hex.DecodeString("31ee4e16826569dc631b969e71bd4c46d5c0df0daeca6933f46586f36f49537cd929630709e1a1442411a3c2159e8dba5742c6835e54757444f8af35bf1c7393")
+	priv3, _ := hex.DecodeString("8be0696a2d51dec8e2859dcb8ce2fd7ce7412eb9d6fa8a2089be8e8f1eeb4f0e458779381a8d21312b071729344a0cb49dc1da385993e19d58b5578da44c0df0")
 	ac1 := types.NewAccount(priv1)
 	ac2 := types.NewAccount(priv2)
+	ac3 := types.NewAccount(priv3)
 
 	tuples := []*types.Tuple{{
 		First:  config.GasToken(),
@@ -366,6 +368,9 @@ func TestMockChain(t *testing.T) {
 
 		b2 := createBlock(types.Open, *ac2, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(1e14))}, b1.GetHash(), ac1.Address()) //a2 open
 		blocks = append(blocks, b2)
+
+		b3 := createBlock(types.Open, *ac3, types.ZeroHash, token, types.Balance{Int: big.NewInt(int64(1e14))}, b2.GetHash(), ac1.Address()) //a2 open
+		blocks = append(blocks, b3)
 	}
 
 	fmt.Println(util.ToIndentString(blocks))

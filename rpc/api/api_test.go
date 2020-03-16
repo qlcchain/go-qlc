@@ -1,10 +1,11 @@
 package api
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/mock"
 	"os"
 	"path/filepath"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 
 	"github.com/google/uuid"
 

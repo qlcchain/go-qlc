@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"math/big"
 	"reflect"
+	"sort"
+	"strconv"
 	"testing"
 	"time"
 
@@ -6491,6 +6493,8 @@ func TestContractor_FromABI(t *testing.T) {
 	} else {
 		if !reflect.DeepEqual(&c, c2) {
 			t.Fatalf("invalid contractor, %v, %v", &c, c2)
+		} else {
+			t.Log(c.String())
 		}
 	}
 }
@@ -8191,13 +8195,13 @@ func TestSummaryRecord_DoCalculate(t *testing.T) {
 }
 
 func TestNewSummaryResult(t *testing.T) {
-	r := NewSummaryResult()
+	r := newSummaryResult()
 
 	for i := 0; i < 20; i++ {
-		r.UpdateState("WeChat", true, i%3 == 0, i%2 == 0)
-		r.UpdateState("WeChat", false, i%2 == 0, i%3 == 0)
-		r.UpdateState("Slack", true, i%2 == 0, i%3 == 0)
-		r.UpdateState("Slack", false, i%3 == 0, i%2 == 0)
+		r.UpdateState("WeChat", "partyA", i%3 == 0, i%2 == 0)
+		r.UpdateState("WeChat", "partyB", i%2 == 0, i%3 == 0)
+		r.UpdateState("Slack", "partyA", i%2 == 0, i%3 == 0)
+		r.UpdateState("Slack", "partyB", i%3 == 0, i%2 == 0)
 	}
 
 	r.DoCalculate()
@@ -8703,105 +8707,121 @@ func TestGenerateMultiPartyInvoice(t *testing.T) {
 	ca2, _ := contracts[1].Address()
 
 	// upload CDR
-	template := cdrParam
-	template.SmsDt = time.Now().Unix()
-	template.Sender = "WeChat"
+	for i := 0; i < 10; i++ {
+		template := cdrParam
+		if i%2 == 1 {
+			template.Sender = "WeChat"
+		} else {
+			template.Sender = "Slack"
+		}
+		template.Index++
+		template.Destination = template.Destination[:len(template.Destination)] + strconv.Itoa(i)
 
-	p1 := template
-	p1.NextStop = "A2P_PCCWG"
+		p1 := template
+		p1.NextStop = "A2P_PCCWG"
 
-	cdr1 := &CDRStatus{
-		Params: map[string][]CDRParam{
-			a1.String(): {p1},
-		},
-		Status: SettlementStatusSuccess,
-	}
-
-	if h, err := cdr1.ToHash(); err != nil {
-		t.Fatal(err)
-	} else {
-		if h.IsZero() {
-			t.Fatal("invalid hash")
+		cdr1 := &CDRStatus{
+			Params: map[string][]CDRParam{
+				a1.String(): {p1},
+			},
+			Status: SettlementStatusSuccess,
 		}
 
-		t.Log("p1", h.String())
-		if err := SaveCDRStatus(ctx, &ca1, &h, cdr1); err != nil {
+		if h, err := cdr1.ToHash(); err != nil {
 			t.Fatal(err)
+		} else {
+			if h.IsZero() {
+				t.Fatal("invalid hash")
+			}
+
+			t.Log("p1", h.String())
+			//if err := SaveCDRStatus(ctx, &ca1, &h, cdr1); err != nil {
+			//	t.Fatal(err)
+			//}
 		}
-	}
 
-	p2 := template
-	p2.PreStop = "MONTNETS"
+		p2 := template
+		p2.PreStop = "MONTNETS"
 
-	cdr2 := &CDRStatus{
-		Params: map[string][]CDRParam{
-			a2.String(): {p2},
-		},
-		Status: SettlementStatusSuccess,
-	}
-
-	if h, err := cdr2.ToHash(); err != nil {
-		t.Fatal(err)
-	} else {
-		if h.IsZero() {
-			t.Fatal("invalid hash")
+		cdr2 := &CDRStatus{
+			Params: map[string][]CDRParam{
+				a1.String(): {p1},
+				a2.String(): {p2},
+			},
+			Status: SettlementStatusSuccess,
 		}
-		t.Log("p2", h.String())
-		if err := SaveCDRStatus(ctx, &ca1, &h, cdr2); err != nil {
+
+		if h, err := cdr2.ToHash(); err != nil {
 			t.Fatal(err)
-		}
-	}
-
-	// upload CDR to PCCWG-CSL
-	p3 := template
-	p3.NextStop = "CSL Hong Kong @ 3397"
-
-	cdr3 := &CDRStatus{
-		Params: map[string][]CDRParam{
-			a2.String(): {p3},
-		},
-		Status: SettlementStatusSuccess,
-	}
-
-	if h, err := cdr3.ToHash(); err != nil {
-		t.Fatal(err)
-	} else {
-		if h.IsZero() {
-			t.Fatal("invalid hash")
+		} else {
+			if h.IsZero() {
+				t.Fatal("invalid hash")
+			}
+			t.Log("p2", h.String())
+			if err := SaveCDRStatus(ctx, &ca1, &h, cdr2); err != nil {
+				t.Fatal(err)
+			}
 		}
 
-		t.Log("p3", h.String())
-		if err := SaveCDRStatus(ctx, &ca2, &h, cdr3); err != nil {
+		// upload CDR to PCCWG-CSL
+		p3 := template
+		p3.NextStop = "CSL Hong Kong @ 3397"
+
+		cdr3 := &CDRStatus{
+			Params: map[string][]CDRParam{
+				a2.String(): {p3},
+			},
+			Status: SettlementStatusSuccess,
+		}
+
+		if h, err := cdr3.ToHash(); err != nil {
 			t.Fatal(err)
-		}
-	}
+		} else {
+			if h.IsZero() {
+				t.Fatal("invalid hash")
+			}
 
-	p4 := template
-	p4.PreStop = "A2P_PCCWG"
-
-	cdr4 := &CDRStatus{
-		Params: map[string][]CDRParam{
-			a2.String(): {p4},
-		},
-		Status: SettlementStatusSuccess,
-	}
-
-	if h, err := cdr4.ToHash(); err != nil {
-		t.Fatal(err)
-	} else {
-		if h.IsZero() {
-			t.Fatal("invalid hash")
+			t.Log("p3", h.String())
+			//if err := SaveCDRStatus(ctx, &ca2, &h, cdr3); err != nil {
+			//	t.Fatal(err)
+			//}
 		}
 
-		t.Log("p4", h.String())
-		if err := SaveCDRStatus(ctx, &ca1, &h, cdr4); err != nil {
+		p4 := template
+		p4.PreStop = "A2P_PCCWG"
+
+		cdr4 := &CDRStatus{
+			Params: map[string][]CDRParam{
+				a2.String(): {p3},
+				a3.String(): {p4},
+			},
+			Status: SettlementStatusSuccess,
+		}
+
+		if h, err := cdr4.ToHash(); err != nil {
 			t.Fatal(err)
+		} else {
+			if h.IsZero() {
+				t.Fatal("invalid hash")
+			}
+
+			t.Log("p4", h.String())
+			if err := SaveCDRStatus(ctx, &ca2, &h, cdr4); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 
 	// save to db
 	if err := ctx.SaveStorage(); err != nil {
 		t.Fatal(err)
+	}
+
+	// generate summary report
+	if report, err := GetMultiPartySummaryReport(ctx, &ca1, &ca2, 0, 0); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(report.String())
 	}
 
 	// generate invoice
@@ -8813,6 +8833,7 @@ func TestGenerateMultiPartyInvoice(t *testing.T) {
 		}
 		t.Log(util.ToIndentString(invoice))
 	}
+
 }
 
 func TestContractParam_IsAvailable(t *testing.T) {
@@ -9013,6 +9034,210 @@ func TestContractParam_IsExpired(t *testing.T) {
 			}
 			if got := z.IsExpired(); got != tt.want {
 				t.Errorf("IsExpired() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_sortInvoiceFun(t *testing.T) {
+	var invoices []*InvoiceRecord
+	for i := 0; i < 4; i++ {
+		invoice := &InvoiceRecord{
+			StartDate: 0,
+			EndDate:   0,
+		}
+		invoices = append(invoices, invoice)
+	}
+
+	sort.Slice(invoices, func(i, j int) bool {
+		return sortInvoiceFun(invoices[i], invoices[j])
+	})
+}
+
+func TestGetContractsByStatus(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	data := mockContractData(2)
+
+	if len(data) != 2 {
+		t.Fatalf("invalid mock data, %v", data)
+	}
+
+	ctx := vmstore.NewVMContext(l)
+	for _, d := range data {
+		d.Status = ContractStatusActivated
+		a, _ := d.Address()
+		abi, _ := d.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		} else {
+			//t.Log(hex.EncodeToString(abi))
+		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	addr := data[0].PartyA.Address
+
+	if contracts, err := GetContractsByStatus(ctx, &addr, ContractStatusActivated); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(contracts) != 2 {
+			t.Fatalf("invalid GetContractsByStatus len, exp: 2, got: %d", len(contracts))
+		}
+	}
+}
+
+func TestGetExpiredContracts(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	data := mockContractData(2)
+
+	if len(data) != 2 {
+		t.Fatalf("invalid mock data, %v", data)
+	}
+
+	ctx := vmstore.NewVMContext(l)
+	for _, d := range data {
+		d.Status = ContractStatusActivated
+		d.EndDate = time.Now().AddDate(0, 0, -1).Unix()
+		a, _ := d.Address()
+		abi, _ := d.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+			t.Fatal(err)
+		} else {
+			//t.Log(hex.EncodeToString(abi))
+		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+	addr := data[0].PartyA.Address
+
+	if contracts, err := GetExpiredContracts(ctx, &addr); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(contracts) != 2 {
+			t.Fatalf("invalid GetContractsByStatus len, exp: 2, got: %d", len(contracts))
+		}
+	}
+}
+
+func TestMultiPartySummaryResult_UpdateState(t *testing.T) {
+	r := newMultiPartySummaryResult()
+
+	for i := 0; i < 20; i++ {
+		r.UpdateState("WeChat", "partyA", i%3 == 0, i%2 == 0)
+		r.UpdateState("WeChat", "partyB", i%2 == 0, i%3 == 0)
+		r.UpdateState("WeChat", "partyC", i%2 == 0, i%3 == 0)
+		r.UpdateState("Slack", "partyA", i%2 == 0, i%3 == 0)
+		r.UpdateState("Slack", "partyB", i%3 == 0, i%2 == 0)
+		r.UpdateState("Slack", "partyC", i%3 == 0, i%2 == 0)
+	}
+
+	r.DoCalculate()
+	t.Log(r.String())
+}
+
+func Test_verifyMultiPartyAddress(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	a1 := mock.Address()
+	a2 := mock.Address()
+	a3 := mock.Address()
+
+	//prepare two contracts
+	var contracts []*ContractParam
+
+	// Montnets-PCCWG
+	param1 := buildContractParam()
+	param1.PartyA.Address = a1
+	param1.PartyB.Address = a2
+	param1.NextStops = []string{"A2P_PCCWG"}
+	param1.PreStops = []string{"MONTNETS"}
+	contracts = append(contracts, param1)
+
+	// PCCWG-CSL
+	param2 := buildContractParam()
+	param2.PartyA.Address = a2
+	param2.PartyB.Address = a3
+	param2.NextStops = []string{"CSL Hong Kong @ 3397"}
+	param2.PreStops = []string{"A2P_PCCWG"}
+
+	contracts = append(contracts, param2)
+	for _, c := range contracts {
+		contractAddr, _ := c.Address()
+		abi, _ := c.ToABI()
+		if err := ctx.SetStorage(types.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// save to db
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	ca1, _ := contracts[0].Address()
+	ca2, _ := contracts[1].Address()
+
+	type args struct {
+		ctx        *vmstore.VMContext
+		firstAddr  *types.Address
+		secondAddr *types.Address
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *ContractParam
+		want1   *ContractParam
+		want2   bool
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			args: args{
+				ctx:        ctx,
+				firstAddr:  &ca1,
+				secondAddr: &ca2,
+			},
+			want:    nil,
+			want1:   nil,
+			want2:   true,
+			wantErr: false,
+		}, {
+			name: "f1",
+			args: args{
+				ctx:        ctx,
+				firstAddr:  &ca1,
+				secondAddr: &a2,
+			},
+			want:    nil,
+			want1:   nil,
+			want2:   false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, got2, err := verifyMultiPartyAddress(tt.args.ctx, tt.args.firstAddr, tt.args.secondAddr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("verifyMultiPartyAddress() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			//if !reflect.DeepEqual(got, tt.want) {
+			//	t.Errorf("verifyMultiPartyAddress() got = %v, want %v", got, tt.want)
+			//}
+			//if !reflect.DeepEqual(got1, tt.want1) {
+			//	t.Errorf("verifyMultiPartyAddress() got1 = %v, want %v", got1, tt.want1)
+			//}
+			if got2 != tt.want2 {
+				t.Errorf("verifyMultiPartyAddress() got2 = %v, want %v", got2, tt.want2)
 			}
 		})
 	}

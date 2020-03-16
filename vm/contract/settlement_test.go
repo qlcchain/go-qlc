@@ -1563,6 +1563,7 @@ func Test_internalContract_DoPending(t *testing.T) {
 	_, _, _ = i.DoPending(nil)
 	_ = i.DoReceiveOnPov(nil, nil, 0, nil, nil)
 	_ = i.DoSendOnPov(nil, nil, 0, nil)
+	_, _ = i.GetTargetReceiver(nil, nil)
 }
 
 func Test_timeString(t *testing.T) {

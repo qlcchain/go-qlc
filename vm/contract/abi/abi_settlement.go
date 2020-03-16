@@ -8,6 +8,7 @@
 package abi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -146,6 +147,7 @@ type Verifier interface {
 }
 
 //go:generate msgp
+//msgp:ignore SummaryRecord MatchingRecord CompareRecord SummaryResult InvoiceRecord MultiPartySummaryResult
 type SignContractParam struct {
 	ContractAddress types.Address `msg:"a,extension" json:"contractAddress"`
 	ConfirmDate     int64         `msg:"cd" json:"confirmDate"`
@@ -159,15 +161,9 @@ func (z *SignContractParam) Verify() (bool, error) {
 		return false, errors.New("invalid contract confirm date")
 	}
 	return true, nil
-	//if h, err := types.HashBytes(z.ContractAddress[:], util.BE_Int2Bytes(z.ConfirmDate)); err != nil {
-	//	return false, err
-	//} else {
-	//	return addr.Verify(h[:], z.SignatureB[:]), nil
-	//}
 }
 
 func (z *SignContractParam) ToABI() ([]byte, error) {
-	//return SettlementABI.PackMethod(MethodNameSignContract, z.ContractAddress, z.ConfirmDate, z.SignatureB)
 	id := SettlementABI.Methods[MethodNameSignContract].Id()
 	if data, err := z.MarshalMsg(nil); err != nil {
 		return nil, err
@@ -178,12 +174,10 @@ func (z *SignContractParam) ToABI() ([]byte, error) {
 }
 
 func (z *SignContractParam) FromABI(data []byte) error {
-	//return SettlementABI.UnpackMethod(z, MethodNameSignContract, data)
 	_, err := z.UnmarshalMsg(data[4:])
 	return err
 }
 
-//go:generate msgp
 type TerminateParam struct {
 	ContractAddress types.Address `msg:"a,extension" json:"contractAddress"`
 	Request         bool          `msg:"r" json:"request"`
@@ -215,7 +209,6 @@ func (z *TerminateParam) String() string {
 	return util.ToIndentString(z)
 }
 
-//go:generate msgp
 type Contractor struct {
 	Address types.Address `msg:"a,extension" json:"address"`
 	Name    string        `msg:"n" json:"name"`
@@ -230,7 +223,10 @@ func (z *Contractor) FromABI(data []byte) error {
 	return err
 }
 
-//go:generate msgp
+func (z *Contractor) String() string {
+	return util.ToString(z)
+}
+
 type ContractService struct {
 	ServiceId   string  `msg:"id" json:"serviceId" validate:"nonzero"`
 	Mcc         uint64  `msg:"mcc" json:"mcc"`
@@ -253,11 +249,10 @@ func (z *ContractService) Balance() (types.Balance, error) {
 	return types.Balance{Int: big.NewInt(1e8)}, nil
 }
 
-//go:generate msgp
 type CreateContractParam struct {
 	PartyA    Contractor        `msg:"pa" json:"partyA"`
 	PartyB    Contractor        `msg:"pb" json:"partyB"`
-	Previous  types.Hash        `msg:"pre,extension" json:"previous"`
+	Previous  types.Hash        `msg:"pre,extension" json:"-"`
 	Services  []ContractService `msg:"s" json:"services"`
 	SignDate  int64             `msg:"t1" json:"signDate"`
 	StartDate int64             `msg:"t3" json:"startDate"`
@@ -402,7 +397,6 @@ Rejected
 */
 type ContractStatus int
 
-//go:generate msgp
 type Terminator struct {
 	Address types.Address `msg:"a,extension" json:"address"` // terminator qlc address
 	Request bool          `msg:"r" json:"request"`           // request operate, true or false
@@ -412,7 +406,6 @@ func (z *Terminator) String() string {
 	return util.ToString(z)
 }
 
-//go:generate msgp
 type ContractParam struct {
 	CreateContractParam
 	PreStops    []string       `msg:"pre" json:"preStops,omitempty"`
@@ -596,9 +589,7 @@ Empty
 */
 type DLRStatus int
 
-// TODO:
 // we should make sure that can use CDR data to match to a specific settlement contract
-//go:generate msgp
 type CDRParam struct {
 	ContractAddress types.Address `msg:"a" json:"contractAddress"`
 	Index           uint64        `msg:"i" json:"index" validate:"min=1"`
@@ -700,7 +691,6 @@ type SettlementCDR struct {
 	From types.Address `msg:"f,extension" json:"from"`
 }
 
-//go:generate msgp
 type CDRStatus struct {
 	Params map[string][]CDRParam `msg:"p" json:"params"`
 	Status SettlementStatus      `msg:"s" json:"status"`
@@ -839,7 +829,6 @@ func ParseCDRStatus(v []byte) (*CDRStatus, error) {
 	}
 }
 
-//go:generate msgp
 type StopParam struct {
 	ContractAddress types.Address `msg:"ca" json:"contractAddress"`
 	StopName        string        `msg:"n" json:"stopName" validate:"nonzero"`
@@ -868,7 +857,6 @@ func (z *StopParam) Verify() error {
 	return validator.Validate(z)
 }
 
-//go:generate msgp
 type UpdateStopParam struct {
 	ContractAddress types.Address `msg:"ca" json:"contractAddress"`
 	StopName        string        `msg:"n" json:"stopName" validate:"nonzero"`
@@ -919,7 +907,6 @@ func GetCDRStatus(ctx *vmstore.VMContext, addr *types.Address, hash types.Hash) 
 	}
 }
 
-//go:generate msgp
 type ContractAddressList struct {
 	AddressList []*types.Address `msg:"a" json:"addressList"`
 }
@@ -1146,7 +1133,7 @@ func GetContractsIDByAddressAsPartyB(ctx *vmstore.VMContext, addr *types.Address
 }
 
 func GetContractsAddressByPartyANextStop(ctx *vmstore.VMContext, addr *types.Address, nextStop string) (*types.Address, error) {
-	return queryContractParamByAddressAndStopName(ctx, "GetContractsIDByPartyANextStop", func(cp *ContractParam) bool {
+	return queryContractByAddressAndStopName(ctx, "GetContractsAddressByPartyANextStop", func(cp *ContractParam) bool {
 		var b bool
 		if cp.PartyA.Address == *addr {
 			for _, n := range cp.NextStops {
@@ -1161,7 +1148,7 @@ func GetContractsAddressByPartyANextStop(ctx *vmstore.VMContext, addr *types.Add
 }
 
 func GetContractsAddressByPartyBPreStop(ctx *vmstore.VMContext, addr *types.Address, preStop string) (*types.Address, error) {
-	return queryContractParamByAddressAndStopName(ctx, "GetContractsIDByPartyBPreStop", func(cp *ContractParam) bool {
+	return queryContractByAddressAndStopName(ctx, "GetContractsAddressByPartyBPreStop", func(cp *ContractParam) bool {
 		var b bool
 		if cp.PartyB.Address == *addr {
 			for _, n := range cp.PreStops {
@@ -1202,69 +1189,66 @@ type MatchingRecord struct {
 }
 
 type CompareRecord struct {
-	PartyA MatchingRecord `json:"partyA"`
-	PartyB MatchingRecord `json:"partyB"`
+	records map[string]*MatchingRecord
 }
 
-func (z *CompareRecord) UpdateCounter(isPartyA, isMatching, state bool) {
-	if isPartyA {
-		if isMatching {
-			if state {
-				z.PartyA.Matching.Success++
-			} else {
-				z.PartyA.Matching.Fail++
-			}
+func newCompareRecord() *CompareRecord {
+	return &CompareRecord{records: make(map[string]*MatchingRecord)}
+}
+
+func (z *CompareRecord) MarshalJSON() ([]byte, error) {
+	return json.Marshal(z.records)
+}
+
+func (z *CompareRecord) UpdateCounter(party string, isMatching, state bool) {
+	if _, ok := z.records[party]; !ok {
+		z.records[party] = &MatchingRecord{}
+	}
+
+	v := z.records[party]
+	if isMatching {
+		if state {
+			v.Matching.Success++
 		} else {
-			if state {
-				z.PartyA.Orphan.Success++
-			} else {
-				z.PartyA.Orphan.Fail++
-			}
+			v.Matching.Fail++
 		}
 	} else {
-		if isMatching {
-			if state {
-				z.PartyB.Matching.Success++
-			} else {
-				z.PartyB.Matching.Fail++
-			}
+		if state {
+			v.Orphan.Success++
 		} else {
-			if state {
-				z.PartyB.Orphan.Success++
-			} else {
-				z.PartyB.Orphan.Fail++
-			}
+			v.Orphan.Fail++
 		}
 	}
 }
 
 func (z *CompareRecord) DoCalculate() {
-	z.PartyA.Matching.DoCalculate()
-	z.PartyA.Orphan.DoCalculate()
-	z.PartyB.Matching.DoCalculate()
-	z.PartyB.Orphan.DoCalculate()
+	for _, v := range z.records {
+		v.Matching.DoCalculate()
+		v.Orphan.DoCalculate()
+	}
 }
 
 type SummaryResult struct {
 	Contract *ContractParam            `json:"contract"`
 	Records  map[string]*CompareRecord `json:"records"`
-	Total    CompareRecord             `json:"total"`
+	Total    *CompareRecord            `json:"total"`
 }
 
-func NewSummaryResult() *SummaryResult {
+func newSummaryResult() *SummaryResult {
 	return &SummaryResult{
 		Records: make(map[string]*CompareRecord),
+		Total:   newCompareRecord(),
 	}
 }
 
-func (z *SummaryResult) UpdateState(name string, isPartyA, isMatching, state bool) {
-	if name != "" {
-		if _, ok := z.Records[name]; !ok {
-			z.Records[name] = &CompareRecord{}
+func (z *SummaryResult) UpdateState(sender, party string, isMatching, state bool) {
+	if sender != "" {
+		if _, ok := z.Records[sender]; !ok {
+			z.Records[sender] = newCompareRecord()
 		}
-		z.Records[name].UpdateCounter(isPartyA, isMatching, state)
+		z.Records[sender].UpdateCounter(party, isMatching, state)
 	}
-	z.Total.UpdateCounter(isPartyA, isMatching, state)
+	z.Total.UpdateCounter(party, isMatching, state)
 }
 
 func (z *SummaryResult) DoCalculate() {
@@ -1290,7 +1274,7 @@ func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end in
 	if err != nil {
 		return nil, err
 	}
-	result := NewSummaryResult()
+	result := newSummaryResult()
 	result.Contract = c
 
 	partyA := c.PartyA.Address
@@ -1299,12 +1283,12 @@ func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end in
 	for _, status := range records {
 		//party A
 		if s1, b1, err := status.State(&partyA); err == nil {
-			result.UpdateState(s1, true, status.Status == SettlementStatusSuccess, b1)
+			result.UpdateState(s1, "partyA", status.Status == SettlementStatusSuccess, b1)
 		}
 
 		//party B
 		if s2, b2, err := status.State(&partyB); err == nil {
-			result.UpdateState(s2, false, status.Status == SettlementStatusSuccess, b2)
+			result.UpdateState(s2, "partyB", status.Status == SettlementStatusSuccess, b2)
 		}
 	}
 
@@ -1356,6 +1340,16 @@ type InvoiceRecord struct {
 	UnitPrice                float64       `json:"unitPrice"`
 	SumOfBillableSMSCustomer uint64        `json:"sumOfBillableSMSCustomer"`
 	SumOfTOTPrice            float64       `json:"sumOfTOTPrice"`
+}
+
+func sortInvoiceFun(r1, r2 *InvoiceRecord) bool {
+	if r1.StartDate < r2.EndDate {
+		return true
+	}
+	if r1.StartDate > r2.EndDate {
+		return false
+	}
+	return r1.EndDate < r2.EndDate
 }
 
 // GenerateInvoicesByContract
@@ -1420,15 +1414,7 @@ func GenerateInvoicesByContract(ctx *vmstore.VMContext, addr *types.Address, sta
 
 	if len(result) > 0 {
 		sort.Slice(result, func(i, j int) bool {
-			r1 := result[i]
-			r2 := result[j]
-			if r1.StartDate < r2.EndDate {
-				return true
-			}
-			if r1.StartDate > r2.EndDate {
-				return false
-			}
-			return r1.EndDate < r2.EndDate
+			return sortInvoiceFun(result[i], result[j])
 		})
 	}
 
@@ -1501,19 +1487,102 @@ func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end in
 		}
 	}
 
-	if len(result) > 0 {
+	if len(result) > 1 {
 		sort.Slice(result, func(i, j int) bool {
-			r1 := result[i]
-			r2 := result[j]
-			if r1.StartDate < r2.EndDate {
-				return true
-			}
-			if r1.StartDate > r2.EndDate {
-				return false
-			}
-			return r1.EndDate < r2.EndDate
+			return sortInvoiceFun(result[i], result[j])
 		})
 	}
+
+	return result, nil
+}
+
+type MultiPartySummaryResult struct {
+	Contracts []*ContractParam          `json:"contracts"`
+	Records   map[string]*CompareRecord `json:"records"`
+	Total     *CompareRecord            `json:"total"`
+}
+
+func newMultiPartySummaryResult() *MultiPartySummaryResult {
+	return &MultiPartySummaryResult{
+		Records: make(map[string]*CompareRecord),
+		Total:   newCompareRecord(),
+	}
+}
+
+func (z *MultiPartySummaryResult) DoCalculate() {
+	for k := range z.Records {
+		z.Records[k].DoCalculate()
+	}
+	z.Total.DoCalculate()
+}
+
+func (z *MultiPartySummaryResult) UpdateState(sender, party string, isMatching, state bool) {
+	if sender != "" {
+		if _, ok := z.Records[sender]; !ok {
+			z.Records[sender] = newCompareRecord()
+		}
+		z.Records[sender].UpdateCounter(party, isMatching, state)
+	}
+	z.Total.UpdateCounter(party, isMatching, state)
+}
+
+func (z *MultiPartySummaryResult) String() string {
+	return util.ToIndentString(z)
+}
+
+// GetMultiPartySummaryReport
+func GetMultiPartySummaryReport(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address, start, end int64) (*MultiPartySummaryResult, error) {
+	logger := log.NewLogger("GetMultiPartySummaryReport")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	records, err := GetCDRStatusByDate(ctx, firstAddr, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	c1, c2, _, err := verifyMultiPartyAddress(ctx, firstAddr, secondAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	result := newMultiPartySummaryResult()
+	result.Contracts = []*ContractParam{c1, c2}
+
+	partyA := c1.PartyA.Address
+	partyB := c1.PartyB.Address
+	partyC := c2.PartyB.Address
+
+	for _, record := range records {
+		// party A
+		if s1, b1, err := record.State(&partyA); err == nil {
+			result.UpdateState(s1, "partyA", record.Status == SettlementStatusSuccess, b1)
+		}
+
+		// party B
+		if s2, b2, err := record.State(&partyB); err == nil {
+			result.UpdateState(s2, "partyB", record.Status == SettlementStatusSuccess, b2)
+		}
+
+		hash, err := record.ToHash()
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		stat2, err := GetCDRStatus(ctx, secondAddr, hash)
+		if err != nil {
+			logger.Errorf("%s[%s], err %s", secondAddr.String(), hash.String(), err)
+			continue
+		}
+
+		if s3, b3, err := stat2.State(&partyC); err == nil {
+			result.UpdateState(s3, "partyC", stat2.Status == SettlementStatusSuccess, b3)
+		}
+	}
+
+	result.DoCalculate()
 
 	return result, nil
 }
@@ -1526,17 +1595,7 @@ func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, firstAddr, secondAddr *ty
 		_ = logger.Sync()
 	}()
 
-	c1, err := GetSettlementContract(ctx, firstAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	c2, err := GetSettlementContract(ctx, secondAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	ca2, err := c2.Address()
+	c1, _, _, err := verifyMultiPartyAddress(ctx, firstAddr, secondAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -1558,9 +1617,9 @@ func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, firstAddr, secondAddr *ty
 			continue
 		}
 
-		stat2, err := GetCDRStatus(ctx, &ca2, hash)
+		stat2, err := GetCDRStatus(ctx, secondAddr, hash)
 		if err != nil {
-			logger.Error(err)
+			logger.Errorf("%s[%s], err %s", secondAddr.String(), hash.String(), err)
 			continue
 		}
 
@@ -1602,19 +1661,40 @@ func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, firstAddr, secondAddr *ty
 
 	if len(result) > 0 {
 		sort.Slice(result, func(i, j int) bool {
-			r1 := result[i]
-			r2 := result[j]
-			if r1.StartDate < r2.EndDate {
-				return true
-			}
-			if r1.StartDate > r2.EndDate {
-				return false
-			}
-			return r1.EndDate < r2.EndDate
+			return sortInvoiceFun(result[i], result[j])
 		})
 	}
 
 	return result, nil
+}
+
+func verifyMultiPartyAddress(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address) (*ContractParam, *ContractParam, bool, error) {
+	c1, err := GetSettlementContract(ctx, firstAddr)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	c2, err := GetSettlementContract(ctx, secondAddr)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	if c1.PartyB.Address != c2.PartyA.Address {
+		return c1, c2, false, fmt.Errorf("%s's PartyB should be %s's PartyA,exp: %s, but go %s", firstAddr.String(),
+			secondAddr.String(), c1.PartyB.String(), c2.PartyA.String())
+	}
+	return c1, c2, true, nil
+}
+
+func sortContractParam(r1, r2 *ContractParam) bool {
+	if r1.StartDate < r2.StartDate {
+		return true
+	}
+	if r1.StartDate > r2.StartDate {
+		return false
+	}
+
+	return r1.EndDate < r2.EndDate
 }
 
 func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) ([]*ContractParam, error) {
@@ -1643,23 +1723,14 @@ func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp
 
 	if len(result) > 0 {
 		sort.Slice(result, func(i, j int) bool {
-			r1 := result[i]
-			r2 := result[j]
-			if r1.StartDate < r2.StartDate {
-				return true
-			}
-			if r1.StartDate > r2.StartDate {
-				return false
-			}
-
-			return r1.EndDate < r2.EndDate
+			return sortContractParam(result[i], result[j])
 		})
 	}
 
 	return result, nil
 }
 
-func queryContractParamByAddressAndStopName(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) (*types.Address, error) {
+func queryContractByAddressAndStopName(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) (*types.Address, error) {
 	logger := log.NewLogger(name)
 	defer func() {
 		_ = logger.Sync()
