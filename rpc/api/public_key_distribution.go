@@ -56,6 +56,7 @@ type VerifierRegParam struct {
 	Account types.Address `json:"account"`
 	VType   string        `json:"type"`
 	VInfo   string        `json:"id"`
+	VKey    string        `json:"key"`
 }
 
 type VerifierUnRegParam struct {
@@ -78,8 +79,13 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
+	vk := types.NewHexBytesFromHex(param.VKey)
+	if vk == nil {
+		return nil, ErrInvalidParam
+	}
+
 	vt := common.OracleStringToType(param.VType)
-	if err := abi.VerifierRegInfoCheck(p.ctx, param.Account, vt, param.VInfo); err != nil {
+	if err := abi.VerifierRegInfoCheck(p.ctx, param.Account, vt, param.VInfo, vk); err != nil {
 		return nil, err
 	}
 
@@ -97,7 +103,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		return nil, fmt.Errorf("%s have not enough oracle pledge %s, expect %s", param.Account, am.CoinOracle, common.MinVerifierPledgeAmount)
 	}
 
-	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, vt, param.VInfo)
+	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, vt, param.VInfo, vk)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +131,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.vr.SetStorage(vmContext, param.Account, vt, param.VInfo)
+	err = p.vr.SetStorage(vmContext, param.Account, vt, param.VInfo, vk)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +202,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.vu.SetStorage(vmContext, param.Account, vt, vs.VInfo)
+	err = p.vu.SetStorage(vmContext, param.Account, vt, vs.VInfo, vs.VKey)
 	if err != nil {
 		return nil, err
 	}
@@ -222,6 +228,7 @@ func (p *PublicKeyDistributionApi) GetAllVerifiers() ([]*VerifierRegParam, error
 			Account: v.Account,
 			VType:   common.OracleTypeToString(v.VType),
 			VInfo:   v.VInfo,
+			VKey:    types.NewHexBytesFromData(v.VKey).String(),
 		}
 		vrs = append(vrs, vr)
 	}
@@ -247,6 +254,7 @@ func (p *PublicKeyDistributionApi) GetVerifiersByType(vType string) ([]*Verifier
 			Account: v.Account,
 			VType:   common.OracleTypeToString(v.VType),
 			VInfo:   v.VInfo,
+			VKey:    types.NewHexBytesFromData(v.VKey).String(),
 		}
 		vrs = append(vrs, vr)
 	}
@@ -296,6 +304,7 @@ func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*Verifier
 			Account: v.Account,
 			VType:   common.OracleTypeToString(v.VType),
 			VInfo:   v.VInfo,
+			VKey:    types.NewHexBytesFromData(v.VKey).String(),
 		}
 
 		vrs = append(vrs, vr)
@@ -316,15 +325,10 @@ func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*Verifier
 	}
 }
 
-func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account string) ([]*VerifierRegParam, error) {
+func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account types.Address) ([]*VerifierRegParam, error) {
 	vrs := make([]*VerifierRegParam, 0)
 
-	addr, err := types.HexToAddress(account)
-	if err != nil {
-		return nil, fmt.Errorf("account format err(%s)", err)
-	}
-
-	rawVr, err := abi.GetVerifiersByAccount(p.ctx, addr)
+	rawVr, err := abi.GetVerifiersByAccount(p.ctx, account)
 	if err != nil {
 		return nil, err
 	}
@@ -334,6 +338,7 @@ func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account string) ([]*Ver
 			Account: v.Account,
 			VType:   common.OracleTypeToString(v.VType),
 			VInfo:   v.VInfo,
+			VKey:    types.NewHexBytesFromData(v.VKey).String(),
 		}
 		vrs = append(vrs, vr)
 	}
@@ -396,6 +401,7 @@ type PublishParam struct {
 	PType     string          `json:"type"`
 	PID       string          `json:"id"`
 	PubKey    string          `json:"pubKey"`
+	KeyType   string          `json:"keyType"`
 	Fee       types.Balance   `json:"fee"`
 	Verifiers []types.Address `json:"verifiers"`
 	Codes     []types.Hash    `json:"codes"`
@@ -407,6 +413,7 @@ type UnPublishParam struct {
 	PType   string        `json:"type"`
 	PID     string        `json:"id"`
 	PubKey  string        `json:"pubKey"`
+	KeyType string        `json:"keyType"`
 	Hash    string        `json:"hash"`
 }
 
@@ -438,7 +445,8 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 
 	pk := types.NewHexBytesFromHex(param.PubKey)
 	pt := common.OracleStringToType(param.PType)
-	if err := abi.PublishInfoCheck(p.ctx, param.Account, pt, id, pk, param.Fee); err != nil {
+	kt := common.PublicKeyTypeFromString(param.KeyType)
+	if err := abi.PublishInfoCheck(p.ctx, param.Account, pt, id, kt, pk, param.Fee); err != nil {
 		return nil, err
 	}
 
@@ -491,7 +499,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 		vcs[vs.VInfo] = vc
 	}
 
-	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, pk[:], verifiers, codesHash, param.Fee.Int)
+	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, kt, pk[:], verifiers, codesHash, param.Fee.Int)
 	if err != nil {
 		return nil, err
 	}
@@ -515,7 +523,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.pu.SetStorage(vmContext, param.Account, pt, id, pk, verifiers, codesHash, param.Fee, tm.Header)
+	err = p.pu.SetStorage(vmContext, param.Account, pt, id, kt, pk, verifiers, codesHash, param.Fee, tm.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -547,6 +555,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 		return nil, fmt.Errorf("id err(%s)", param.PID)
 	}
 
+	kt := common.PublicKeyTypeFromString(param.KeyType)
 	pk := types.NewHexBytesFromHex(param.PubKey)
 	hash, err := types.NewHash(param.Hash)
 	if err != nil {
@@ -554,7 +563,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 	}
 
 	pt := common.OracleStringToType(param.PType)
-	if err := abi.UnPublishInfoCheck(p.ctx, param.Account, pt, id, pk, hash); err != nil {
+	if err := abi.UnPublishInfoCheck(p.ctx, param.Account, pt, id, kt, pk, hash); err != nil {
 		return nil, err
 	}
 
@@ -568,7 +577,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 		return nil, fmt.Errorf("%s do not have gas token", param.Account)
 	}
 
-	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, pt, id, pk, hash)
+	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, pt, id, kt, pk, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +601,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.up.SetStorage(vmContext, pt, id, pk, hash)
+	err = p.up.SetStorage(vmContext, pt, id, kt, pk, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -649,10 +658,11 @@ func (p *PublicKeyDistributionApi) sortPublishInfo(pubs []*PublishInfoState) {
 }
 
 func (p *PublicKeyDistributionApi) fillPublishInfoState(csdb *statedb.PovContractStateDB, pubInfo *abi.PublishInfo) *PublishInfoState {
+	kh := common.PublicKeyWithTypeHash(pubInfo.KeyType, pubInfo.PubKey)
 	pubInfoKey := &abi.PublishInfoKey{
 		PType:  pubInfo.PType,
 		PID:    pubInfo.PID,
-		PubKey: pubInfo.PubKey,
+		PubKey: kh,
 		Hash:   pubInfo.Hash,
 	}
 	psRawKey := pubInfoKey.ToRawKey()
@@ -662,6 +672,7 @@ func (p *PublicKeyDistributionApi) fillPublishInfoState(csdb *statedb.PovContrac
 		Account:   pubInfo.Account,
 		PType:     common.OracleTypeToString(pubInfo.PType),
 		PID:       pubInfo.PID.String(),
+		KeyType:   common.PublicKeyTypeToString(pubInfo.KeyType),
 		PubKey:    types.NewHexBytesFromData(pubInfo.PubKey).String(),
 		Fee:       types.Balance{Int: pubInfo.Fee},
 		Verifiers: pubInfo.Verifiers,
@@ -763,6 +774,7 @@ type OracleParam struct {
 	Account types.Address `json:"account"`
 	OType   string        `json:"type"`
 	OID     string        `json:"id"`
+	KeyType string        `json:"keyType"`
 	PubKey  string        `json:"pk"`
 	Code    string        `json:"code"`
 	Hash    string        `json:"hash"`
@@ -787,14 +799,15 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		return nil, err
 	}
 
+	kt := common.PublicKeyTypeFromString(param.KeyType)
 	pk := types.NewHexBytesFromHex(param.PubKey)
 	ot := common.OracleStringToType(param.OType)
 
-	if abi.CheckOracleInfoExist(p.ctx, param.Account, ot, id, pk, hash) {
+	if abi.CheckOracleInfoExist(p.ctx, param.Account, ot, id, kt, pk, hash) {
 		return nil, fmt.Errorf("(%s) oracle info for hash(%s) exist", param.Account, hash)
 	}
 
-	err = abi.OracleInfoCheck(p.ctx, param.Account, ot, id, pk, param.Code, hash)
+	err = abi.OracleInfoCheck(p.ctx, param.Account, ot, id, kt, pk, param.Code, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -813,7 +826,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		return nil, fmt.Errorf("%s have not enough qgas %s, expect %s", param.Account, tm.Balance, common.OracleCost)
 	}
 
-	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, param.Code, hash)
+	data, err := abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, param.Code, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -837,7 +850,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.or.SetStorage(vmContext, param.Account, ot, id, pk, param.Code, hash)
+	err = p.or.SetStorage(vmContext, param.Account, ot, id, kt, pk, param.Code, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -848,6 +861,18 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 	}
 
 	return send, nil
+}
+
+func (p *PublicKeyDistributionApi) oracleParamConvert(i *abi.OracleInfo) *OracleParam {
+	return &OracleParam{
+		Account: i.Account,
+		OType:   common.OracleTypeToString(i.OType),
+		OID:     i.OID.String(),
+		KeyType: common.PublicKeyTypeToString(i.KeyType),
+		PubKey:  types.NewHexBytesFromData(i.PubKey).String(),
+		Code:    i.Code,
+		Hash:    i.Hash.String(),
+	}
 }
 
 func (p *PublicKeyDistributionApi) GetOracleInfosByType(oType string) ([]*OracleParam, error) {
@@ -863,14 +888,7 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByType(oType string) ([]*Oracle
 
 	if infos != nil {
 		for _, i := range infos {
-			or := &OracleParam{
-				Account: i.Account,
-				OType:   common.OracleTypeToString(i.OType),
-				OID:     i.OID.String(),
-				PubKey:  types.NewHexBytesFromData(i.PubKey).String(),
-				Code:    i.Code,
-				Hash:    i.Hash.String(),
-			}
+			or := p.oracleParamConvert(i)
 			oi = append(oi, or)
 		}
 	}
@@ -890,14 +908,7 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByTypeAndID(oType string, id st
 	infos := abi.GetOracleInfoByTypeAndID(p.ctx, ot, idHash)
 	if infos != nil {
 		for _, i := range infos {
-			or := &OracleParam{
-				Account: i.Account,
-				OType:   common.OracleTypeToString(i.OType),
-				OID:     i.OID.String(),
-				PubKey:  types.NewHexBytesFromData(i.PubKey).String(),
-				Code:    i.Code,
-				Hash:    i.Hash.String(),
-			}
+			or := p.oracleParamConvert(i)
 			oi = append(oi, or)
 		}
 	}
@@ -918,14 +929,7 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByAccountAndType(account types.
 
 	if infos != nil {
 		for _, i := range infos {
-			or := &OracleParam{
-				Account: i.Account,
-				OType:   common.OracleTypeToString(i.OType),
-				OID:     i.OID.String(),
-				PubKey:  types.NewHexBytesFromData(i.PubKey).String(),
-				Code:    i.Code,
-				Hash:    i.Hash.String(),
-			}
+			or := p.oracleParamConvert(i)
 			oi = append(oi, or)
 		}
 	}
@@ -943,14 +947,7 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByHash(hash string) ([]*OracleP
 	infos := abi.GetOracleInfoByHash(p.ctx, h)
 	if infos != nil {
 		for _, i := range infos {
-			or := &OracleParam{
-				Account: i.Account,
-				OType:   common.OracleTypeToString(i.OType),
-				OID:     i.OID.String(),
-				PubKey:  types.NewHexBytesFromData(i.PubKey).String(),
-				Code:    i.Code,
-				Hash:    i.Hash.String(),
-			}
+			or := p.oracleParamConvert(i)
 			oi = append(oi, or)
 		}
 	}

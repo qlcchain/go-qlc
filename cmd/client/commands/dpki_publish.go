@@ -33,6 +33,12 @@ func addPublishCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "publish id (email address/weChat id)",
 		Value: "",
 	}
+	kt := util.Flag{
+		Name:  "kt",
+		Must:  true,
+		Usage: "publish public key type(ed25519/rsa4096)",
+		Value: "",
+	}
 	pk := util.Flag{
 		Name:  "pk",
 		Must:  true,
@@ -55,7 +61,7 @@ func addPublishCmdByShell(parentCmd *ishell.Cmd) {
 		Name: "publish",
 		Help: "publish id and key",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id, pk, fee, verifiers}
+			args := []util.Flag{account, typ, id, kt, pk, fee, verifiers}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -68,11 +74,12 @@ func addPublishCmdByShell(parentCmd *ishell.Cmd) {
 			accountP := util.StringVar(c.Args, account)
 			typeP := util.StringVar(c.Args, typ)
 			idP := util.StringVar(c.Args, id)
+			ktP := util.StringVar(c.Args, kt)
 			pkP := util.StringVar(c.Args, pk)
 			feeP := util.StringVar(c.Args, fee)
 			verifiersP := util.StringVar(c.Args, verifiers)
 
-			err := publish(accountP, typeP, idP, pkP, feeP, verifiersP)
+			err := publish(accountP, typeP, idP, ktP, pkP, feeP, verifiersP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -81,7 +88,7 @@ func addPublishCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func publish(accountP, typeP, idP, pkP, feeP, verifiersP string) error {
+func publish(accountP, typeP, idP, ktP, pkP, feeP, verifiersP string) error {
 	if accountP == "" {
 		return fmt.Errorf("account can not be null")
 	}
@@ -92,6 +99,10 @@ func publish(accountP, typeP, idP, pkP, feeP, verifiersP string) error {
 
 	if idP == "" {
 		return fmt.Errorf("publish id can not be null")
+	}
+
+	if ktP == "" {
+		return fmt.Errorf("publish public key type can not be null")
 	}
 
 	if pkP == "" {
@@ -132,6 +143,7 @@ func publish(accountP, typeP, idP, pkP, feeP, verifiersP string) error {
 		Account:   acc.Address(),
 		PType:     typeP,
 		PID:       idP,
+		KeyType:   ktP,
 		PubKey:    pkP,
 		Fee:       types.StringToBalance(feeP),
 		Verifiers: verifiers,
