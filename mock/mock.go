@@ -46,6 +46,7 @@ func AccountMeta(addr types.Address) *types.AccountMeta {
 	am.CoinStorage = types.ZeroBalance
 	am.CoinOracle = types.ZeroBalance
 	am.CoinBalance = types.ZeroBalance
+	am.CoinVote = types.ZeroBalance
 	am.Tokens = []*types.TokenMeta{}
 	for i := 0; i < 5; i++ {
 		t := TokenMeta(addr)
