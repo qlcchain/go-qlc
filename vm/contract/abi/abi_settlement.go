@@ -1520,76 +1520,74 @@ func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end in
 
 // GenerateMultiPartyInvoice
 // addr settlement contract address
-func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
+func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
 	logger := log.NewLogger("GenerateMultiPartyInvoice")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
-	c, err := GetSettlementContract(ctx, addr)
+	c1, err := GetSettlementContract(ctx, firstAddr)
 	if err != nil {
 		return nil, err
 	}
-	var result []*InvoiceRecord
 
-	//if !IsContractAvailable(ctx, addr) {
-	//	return nil, fmt.Errorf("contract %s is invalid", addr.String())
-	//}
+	c2, err := GetSettlementContract(ctx, secondAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	ca2, err := c2.Address()
+	if err != nil {
+		return nil, err
+	}
 
 	cache := make(map[string]int)
-	if cdrs, err := GetCDRStatusByDate(ctx, addr, start, end); err == nil {
-		for _, cdr := range cdrs {
-			if cdr.Status == SettlementStatusSuccess {
-				// make sure that all contract status
-				if hash, err := cdr.ToHash(); err != nil {
-					logger.Error(err)
+	cdrs, err := GetCDRStatusByDate(ctx, firstAddr, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cdr := range cdrs {
+		if cdr.Status != SettlementStatusSuccess {
+			continue
+		}
+
+		hash, err := cdr.ToHash()
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		stat2, err := GetCDRStatus(ctx, &ca2, hash)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		if stat2.Status == SettlementStatusSuccess {
+			if _, sender, _, err := cdr.ExtractID(); err == nil {
+				if _, ok := cache[sender]; ok {
+					cache[sender]++
 				} else {
-					if addressList, err := GetCDRMapping(ctx, &hash); err != nil {
-						logger.Error(err)
-					} else {
-						counter := 0
-						size := len(addressList)
-						for _, a := range addressList {
-							logger.Infof("%s==>%s, %t", addr.String(), a.String())
-							if status, err := GetCDRStatus(ctx, a, hash); err != nil {
-								logger.Error(err)
-							} else {
-								if status.Status == SettlementStatusSuccess {
-									counter++
-								}
-							}
-						}
-						if size > 1 && counter == size {
-							if _, sender, _, err := cdr.ExtractID(); err == nil {
-								if _, ok := cache[sender]; ok {
-									cache[sender]++
-								} else {
-									cache[sender] = 1
-								}
-							}
-						} else {
-							logger.Infof("size: %d, counter: %d, flag: %t, %t", size, counter, size > 1, counter+1 == size)
-						}
-					}
+					cache[sender] = 1
 				}
 			}
 		}
-	} else {
-		logger.Error(err)
 	}
 
-	// TODO: how to match service???
-	service := c.Services[0]
+	var result []*InvoiceRecord
+	// FIXME: how to match service???
+	service := c1.Services[0]
 	for k, v := range cache {
 		if v > 0 {
 			invoice := &InvoiceRecord{
-				Address:                  *addr,
-				StartDate:                c.StartDate,
-				EndDate:                  c.EndDate,
+				Address:                  *firstAddr,
+				StartDate:                c1.StartDate,
+				EndDate:                  c1.EndDate,
 				Customer:                 k,
 				CustomerSr:               "",
 				Country:                  "",
-				Operator:                 c.PartyB.Name,
+				Operator:                 c1.PartyB.Name,
 				ServiceId:                service.ServiceId,
 				MCC:                      service.Mcc,
 				MNC:                      service.Mnc,

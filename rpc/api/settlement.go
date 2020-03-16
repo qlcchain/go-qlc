@@ -768,12 +768,13 @@ func (s *SettlementAPI) GenerateInvoicesByContract(addr *types.Address, start, e
 
 // GenerateMultiPartyInvoice generate multi-party invoice by settlement contract address
 // @param addr settlement contract address
+// @param second the other settlement contract address
 // @param start report start date (UTC unix time)
 // @param end report end data (UTC unix time)
 // @return settlement invoice
-func (s *SettlementAPI) GenerateMultiPartyInvoice(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
+func (s *SettlementAPI) GenerateMultiPartyInvoice(addr, second *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
 	ctx := vmstore.NewVMContext(s.l)
-	return cabi.GenerateMultiPartyInvoice(ctx, addr, start, end)
+	return cabi.GenerateMultiPartyInvoice(ctx, addr, second, start, end)
 }
 
 // GetPreStopNames get all previous stop names by user address

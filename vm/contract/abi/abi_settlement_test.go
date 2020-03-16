@@ -8805,7 +8805,7 @@ func TestGenerateMultiPartyInvoice(t *testing.T) {
 	}
 
 	// generate invoice
-	if invoice, err := GenerateMultiPartyInvoice(ctx, &ca1, 0, 0); err != nil {
+	if invoice, err := GenerateMultiPartyInvoice(ctx, &ca1, &ca2, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(invoice) == 0 {
