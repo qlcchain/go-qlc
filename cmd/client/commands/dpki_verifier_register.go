@@ -29,14 +29,20 @@ func addVerifierRegisterCmdByShell(parentCmd *ishell.Cmd) {
 	vInfo := util.Flag{
 		Name:  "info",
 		Must:  true,
-		Usage: "verifiers address(email address/weChat ID)",
+		Usage: "verifier's address(email address/weChat ID)",
+		Value: "",
+	}
+	vKey := util.Flag{
+		Name:  "key",
+		Must:  true,
+		Usage: "verifier's public key",
 		Value: "",
 	}
 	c := &ishell.Cmd{
 		Name: "register",
 		Help: "register verifier",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, vType, vInfo}
+			args := []util.Flag{account, vType, vInfo, vKey}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -49,8 +55,9 @@ func addVerifierRegisterCmdByShell(parentCmd *ishell.Cmd) {
 			accountP := util.StringVar(c.Args, account)
 			vTypeP := util.StringVar(c.Args, vType)
 			vInfoP := util.StringVar(c.Args, vInfo)
+			vKeyP := util.StringVar(c.Args, vKey)
 
-			err := verifierRegister(accountP, vTypeP, vInfoP)
+			err := verifierRegister(accountP, vTypeP, vInfoP, vKeyP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -59,7 +66,7 @@ func addVerifierRegisterCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func verifierRegister(accountP, vTypeP, vInfoP string) error {
+func verifierRegister(accountP, vTypeP, vInfoP, vKeyP string) error {
 	if accountP == "" {
 		return fmt.Errorf("account can not be null")
 	}
@@ -70,6 +77,10 @@ func verifierRegister(accountP, vTypeP, vInfoP string) error {
 
 	if vInfoP == "" {
 		return fmt.Errorf("verifier info can not be null")
+	}
+
+	if vKeyP == "" {
+		return fmt.Errorf("verifier key can not be null")
 	}
 
 	accBytes, err := hex.DecodeString(accountP)
@@ -92,6 +103,7 @@ func verifierRegister(accountP, vTypeP, vInfoP string) error {
 		Account: acc.Address(),
 		VType:   vTypeP,
 		VInfo:   vInfoP,
+		VKey:    vKeyP,
 	}
 
 	var block types.StateBlock

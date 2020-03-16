@@ -172,3 +172,21 @@ func TestBool2Bytes(t *testing.T) {
 	b1 := Bool2Bytes(true)
 	t.Log(b1)
 }
+
+func TestBE_Uint16ToBytes(t *testing.T) {
+	i := uint16(100)
+	data := BE_Uint16ToBytes(i)
+	j := BE_BytesToUint16(data)
+	if i != j {
+		t.Fatalf("invalid i, exp: %d, act: %d", i, j)
+	}
+}
+
+func TestLE_Uint16ToBytes(t *testing.T) {
+	i := uint16(100)
+	data := LE_Uint16ToBytes(i)
+	j := LE_BytesToUint16(data)
+	if i != j {
+		t.Fatalf("invalid i, exp: %d, act: %d", i, j)
+	}
+}

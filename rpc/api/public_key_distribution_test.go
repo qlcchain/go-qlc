@@ -92,18 +92,19 @@ func addTestVerifierState(t *testing.T, l ledger.Store, povHeight uint64, accoun
 	}
 }
 
-func addTestPublishInfo(t *testing.T, ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte,
+func addTestPublishInfo(t *testing.T, ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte,
 	vs []types.Address, cs []types.Hash, fee types.Balance, hash types.Hash) {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, account, vs, cs, fee.Int, true)
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, account, vs, cs, fee.Int, true, kt, pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, abi.PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
@@ -116,17 +117,18 @@ func addTestPublishInfo(t *testing.T, ctx *vmstore.VMContext, account types.Addr
 	}
 }
 
-func addTestOracleInfo(t *testing.T, ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, pk []byte, code string, hash types.Hash) {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDOracleInfo, code)
+func addTestOracleInfo(t *testing.T, ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, kt uint16, pk []byte, code string, hash types.Hash) {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDOracleInfo, code, kt, pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, abi.PKDStorageTypeOracle)
 	key = append(key, util.BE_Uint32ToBytes(ot)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
@@ -529,6 +531,7 @@ func TestPublicKeyDistributionApi_GetPublishBlock(t *testing.T) {
 	param.Fee = common.PublishCost
 	param.Verifiers = []types.Address{mock.Address()}
 	param.PType = "invalid"
+	param.KeyType = "ed25519"
 	param.PubKey = mock.Hash().String()
 
 	_, err := pkd.GetPublishBlock(nil)
@@ -613,7 +616,9 @@ func TestPublicKeyDistributionApi_GetUnPublishBlock(t *testing.T) {
 	param.Account = mock.Address()
 	param.PType = "email"
 	param.PID = "123@test.com"
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
+	param.KeyType = "ed25519"
 	param.PubKey = pk.String()
 
 	_, err := pkd.GetUnPublishBlock(nil)
@@ -646,7 +651,7 @@ func TestPublicKeyDistributionApi_GetUnPublishBlock(t *testing.T) {
 	cs := []types.Hash{mock.Hash()}
 	fee := common.PublishCost
 	hash, _ := types.NewHash(param.Hash)
-	addTestPublishInfo(t, ctx, param.Account, pt, id, pk[:], vs, cs, fee, hash)
+	addTestPublishInfo(t, ctx, param.Account, pt, id, kt, pk[:], vs, cs, fee, hash)
 	_, err = pkd.GetUnPublishBlock(nil)
 	if err == nil {
 		t.Fatal()
@@ -669,7 +674,7 @@ func TestPublicKeyDistributionApi_GetUnPublishBlock(t *testing.T) {
 	addTestVerifierState(t, l, 100, []types.Address{mock.Address()}, 100)
 	_, err = pkd.GetUnPublishBlock(param)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 }
 
@@ -697,8 +702,9 @@ func TestPublicKeyDistributionApi_GetPubKeyByTypeAndID(t *testing.T) {
 	fee := common.PublishCost
 	hash := mock.Hash()
 	account := mock.Address()
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
-	addTestPublishInfo(t, ctx, account, pt, id, pk[:], vs, cs, fee, hash)
+	addTestPublishInfo(t, ctx, account, pt, id, kt, pk[:], vs, cs, fee, hash)
 	ps, _ = pkd.GetPubKeyByTypeAndID(pType, pID)
 	if len(ps) != 1 {
 		t.Fatal()
@@ -729,12 +735,13 @@ func TestPublicKeyDistributionApi_GetRecommendPubKey(t *testing.T) {
 	fee := common.PublishCost
 	hash := mock.Hash()
 	account := mock.Address()
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
-	addTestPublishInfo(t, ctx, account, pt, id, pk[:], vs, cs, fee, hash)
+	addTestPublishInfo(t, ctx, account, pt, id, kt, pk[:], vs, cs, fee, hash)
 
 	account2 := mock.Address()
 	hash2 := mock.Hash()
-	addTestPublishInfo(t, ctx, account2, pt, id, pk[:], vs, cs, fee, hash2)
+	addTestPublishInfo(t, ctx, account2, pt, id, kt, pk[:], vs, cs, fee, hash2)
 
 	ps, _ = pkd.GetRecommendPubKey(pType, pID)
 	if ps == nil {
@@ -765,13 +772,14 @@ func TestPublicKeyDistributionApi_GetPublishInfosByType(t *testing.T) {
 	fee := common.PublishCost
 	hash := mock.Hash()
 	account := mock.Address()
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
-	addTestPublishInfo(t, ctx, account, pt, id, pk[:], vs, cs, fee, hash)
+	addTestPublishInfo(t, ctx, account, pt, id, kt, pk[:], vs, cs, fee, hash)
 
 	pt2 := common.OracleTypeWeChat
 	id2 := mock.Hash()
 	hash2 := mock.Hash()
-	addTestPublishInfo(t, ctx, account, pt2, id2, pk[:], vs, cs, fee, hash2)
+	addTestPublishInfo(t, ctx, account, pt2, id2, kt, pk[:], vs, cs, fee, hash2)
 
 	ps, _ = pkd.GetPublishInfosByType(pType)
 	if len(ps) != 1 || ps[0].PType != "email" {
@@ -796,13 +804,14 @@ func TestPublicKeyDistributionApi_GetPublishInfosByAccountAndType(t *testing.T) 
 	cs := []types.Hash{mock.Hash()}
 	fee := common.PublishCost
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
-	addTestPublishInfo(t, ctx, account, pt, id, pk[:], vs, cs, fee, hash)
+	addTestPublishInfo(t, ctx, account, pt, id, kt, pk[:], vs, cs, fee, hash)
 
 	pt2 := common.OracleTypeWeChat
 	id2 := mock.Hash()
 	hash2 := mock.Hash()
-	addTestPublishInfo(t, ctx, account, pt2, id2, pk[:], vs, cs, fee, hash2)
+	addTestPublishInfo(t, ctx, account, pt2, id2, kt, pk[:], vs, cs, fee, hash2)
 
 	ps, _ := pkd.GetPublishInfosByAccountAndType(account, "")
 	if len(ps) != 2 {
@@ -863,7 +872,9 @@ func TestPublicKeyDistributionApi_GetOracleBlock(t *testing.T) {
 		t.Fatal()
 	}
 
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
+	param.KeyType = "ed25519"
 	param.PubKey = pk.String()
 	param.OType = "email"
 	param.OID = "123@test.com"
@@ -876,7 +887,7 @@ func TestPublicKeyDistributionApi_GetOracleBlock(t *testing.T) {
 	codeHash, _ := types.Sha256HashData(codeComb)
 	cs := []types.Hash{codeHash}
 	fee := common.PublishCost
-	addTestPublishInfo(t, ctx, mock.Address(), pt, id, pk[:], vs, cs, fee, hash)
+	addTestPublishInfo(t, ctx, mock.Address(), pt, id, kt, pk[:], vs, cs, fee, hash)
 	_, err = pkd.GetOracleBlock(param)
 	if err == nil {
 		t.Fatal()
@@ -925,8 +936,9 @@ func TestPublicKeyDistributionApi_GetOracleInfosByType(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
-	addTestOracleInfo(t, ctx, account, ot, id, pk[:], code, hash)
+	addTestOracleInfo(t, ctx, account, ot, id, kt, pk[:], code, hash)
 
 	os, _ := pkd.GetOracleInfosByType("weChat")
 	if len(os) != 0 {
@@ -960,8 +972,9 @@ func TestPublicKeyDistributionApi_GetOracleInfosByTypeAndID(t *testing.T) {
 	id, _ := types.Sha256HashData([]byte(oid))
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
-	addTestOracleInfo(t, ctx, account, ot, id, pk[:], code, hash)
+	addTestOracleInfo(t, ctx, account, ot, id, kt, pk[:], code, hash)
 
 	os, _ := pkd.GetOracleInfosByTypeAndID("email", oid)
 	if len(os) != 1 {
@@ -990,8 +1003,9 @@ func TestPublicKeyDistributionApi_GetOracleInfosByAccountAndType(t *testing.T) {
 	id, _ := types.Sha256HashData([]byte(oid))
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
-	addTestOracleInfo(t, ctx, account, ot, id, pk[:], code, hash)
+	addTestOracleInfo(t, ctx, account, ot, id, kt, pk[:], code, hash)
 
 	os, _ := pkd.GetOracleInfosByAccountAndType(account, "email")
 	if len(os) != 1 {
@@ -1024,6 +1038,7 @@ func TestPublicKeyDistributionApi_GetOracleInfosByHash(t *testing.T) {
 	oid := "123@test.com"
 	id, _ := types.Sha256HashData([]byte(oid))
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
+	kt := common.PublicKeyTypeED25519
 	pk := mock.Hash()
 
 	publishPrev := mock.StateBlockWithoutWork()
@@ -1032,12 +1047,12 @@ func TestPublicKeyDistributionApi_GetOracleInfosByHash(t *testing.T) {
 	publish := mock.StateBlockWithoutWork()
 	vs := []types.Address{mock.Address()}
 	cs := []types.Hash{mock.Hash()}
-	publish.Data, _ = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, ot, id, pk[:], vs, cs, common.PublishCost.Int)
+	publish.Data, _ = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, ot, id, kt, pk[:], vs, cs, common.PublishCost.Int)
 	publish.Previous = publishPrev.GetHash()
 	l.AddStateBlock(publish)
 
 	hash := publish.Previous
-	addTestOracleInfo(t, ctx, account, ot, id, pk[:], code, hash)
+	addTestOracleInfo(t, ctx, account, ot, id, kt, pk[:], code, hash)
 
 	os, _ := pkd.GetOracleInfosByHash(hash.String())
 	if len(os) != 1 {
