@@ -121,19 +121,19 @@ func TestLedger_GetRepresentations(t *testing.T) {
 		t.Fatal("representation count error", count)
 	}
 
-	// Deserialize error
+	// deserialize error
 	addr := mock.Address()
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixRepresentation, addr)
 	if err != nil {
 		t.Fatal()
 	}
-	d1 := make([]byte, 10)
+	d1 := make([]byte, 8)
 	_ = random.Bytes(d1)
 	if err := l.store.Put(k, d1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := l.GetRepresentation(addr); err == nil {
-		t.Fatal(err)
+	if r, err := l.GetRepresentation(addr); err == nil {
+		t.Fatal(err, r)
 	}
 
 	if err := l.GetRepresentations(func(addresses types.Address, benefit *types.Benefit) error {

@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 
 	"github.com/google/uuid"
@@ -173,29 +172,24 @@ func DefaultStore() Store {
 func (l *Ledger) init() error {
 	vd, err := l.getVerifiedData()
 	if err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("get verified data: %s ", err)
 	}
 	l.VerifiedData = vd
 
 	if err := l.upgrade(); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("upgrade: %s ", err)
 	}
 
 	if err := l.initRelation(); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("init relation: %s ", err)
 	}
 
 	if err := l.removeBlockConfirmed(); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("remove block confirmed: %s ", err)
 	}
 
 	if err := l.updateRepresentation(); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("update representation: %s ", err)
 	}
 
 	return nil
@@ -352,10 +346,6 @@ func (l *Ledger) Close() error {
 
 func (l *Ledger) DBStore() storage.Store {
 	return l.store
-}
-
-func (l *Ledger) Cache() *MemoryCache {
-	return l.cache
 }
 
 func (l *Ledger) EventBus() event.EventBus {
@@ -611,9 +601,9 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 	return &sb, nil
 }
 
-func (l *Ledger) Flush() error {
-	return nil
-}
+//func (l *Ledger) Flush() error {
+//	return nil
+//}
 
 func (l *Ledger) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
 	if len(c) > 0 {
@@ -690,34 +680,92 @@ type kv struct {
 }
 
 func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
-	kvs := make([]*kv, 0)
-	cs := l.cache.prefixIterator(prefix)
-	if len(cs) > 0 {
-		kvs = append(kvs, cs...)
+	//l.logger.Warn("================ledger Iterator start ==================: ", prefix)
+	keys, err := l.cache.prefixIterator(prefix, fn)
+	if err != nil {
+		return fmt.Errorf("cache iterator : %s", err)
 	}
-	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
-		if !contain(kvs, k) {
-			temp := &kv{
-				key:   k,
-				value: v,
+	for kk, kv := range keys {
+		if kv[0] == 101 {
+			l.logger.Warn("===========cache ledger key is 101: ", kk, kv, prefix)
+			for i, kv := range keys {
+				l.logger.Warn("==========cache 101: ", i, kv)
 			}
-			kvs = append(kvs, temp)
+		}
+	}
+	count := 0
+	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
+		count++
+		if !contain(keys, k) {
+			if err := fn(k, v); err != nil {
+				return fmt.Errorf("ledger iterator: %s", err)
+			}
 		}
 		return nil
 	}); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("ledger store iterator: %s", err)
 	}
-
-	for _, kv := range kvs {
-		if err := fn(kv.key, kv.value); err != nil {
-			l.logger.Error(err)
-			return err
-		}
-	}
+	//l.logger.Warn("===========ledger store  len: ", count, prefix)
 
 	return nil
 }
+
+//func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
+//	l.logger.Warn("================ledger Iterator start ==================: ", prefix)
+//	kvs := make([]kv, 0)
+//	cs := l.cache.prefixIterator(prefix)
+//	if len(cs) > 0 {
+//		kvs = append(kvs, cs...)
+//	}
+//	l.logger.Warn("===========ledger cache  len: ", len(kvs), prefix)
+//	l.logger.Warn("===========ledger store : ", prefix)
+//	for kk, kv := range kvs {
+//		if kv.key[0] == 101 {
+//			l.logger.Warn("===========cache ledger key is 101: ", kk, kv.key, prefix)
+//			for i, kv := range kvs {
+//				l.logger.Warn("==========cache 101: ", i, kv.key)
+//			}
+//		}
+//	}
+//	count := 0
+//	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
+//		if !contain(kvs, k) {
+//			count++
+//			temp := kv{
+//				key:   k,
+//				value: v,
+//			}
+//			kvs = append(kvs, temp)
+//			l.logger.Warn("===========ledger store Iterator: ", temp.key, prefix)
+//		}
+//		return nil
+//	}); err != nil {
+//		return fmt.Errorf("ledger store iterator: %s", err)
+//	}
+//	l.logger.Warn("===========ledger store  len: ", count, prefix)
+//	l.logger.Warn("===========ledger  total len: ", len(kvs), prefix)
+//	for kk, kv := range kvs {
+//		if kv.key[0] == 101 {
+//			l.logger.Warn("===========store ledger key is 101: ", kk, kv.key, prefix)
+//			for i, kv := range kvs {
+//				l.logger.Warn("==========store 101: ", i, kv.key)
+//			}
+//		}
+//	}
+//	count2 := 0
+//	for kk, kv := range kvs {
+//		count2++
+//		if kv.key[0] == 101 {
+//			l.logger.Warn("===========ledger key is 101: ", kk, kv.key, prefix)
+//		}
+//		if err := fn(kv.key, kv.value); err != nil {
+//			return fmt.Errorf("ledger iterator: %s", err)
+//		}
+//	}
+//	l.logger.Warn("===========ledger interator  len: ", count2, prefix)
+//
+//	return nil
+//}
 
 func NewTestLedger() (func(), *Ledger) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
@@ -758,21 +806,4 @@ func (l *Ledger) updateCacheStat(c *CacheStat) {
 	if len(l.cacheStats) > 200 {
 		l.cacheStats = l.cacheStats[:100]
 	}
-}
-
-func (l *Ledger) GetCacheStat() []*CacheStat {
-	return l.cacheStats
-}
-
-func (l *Ledger) GetCacheStatue() map[string]string {
-	r := make(map[string]string)
-	for i, c := range l.cache.caches {
-		r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
-	}
-	r["read"] = strconv.Itoa(l.cache.readIndex)
-	r["write"] = strconv.Itoa(l.cache.writeIndex)
-	r["lastflush"] = l.cache.lastFlush.Format("2006-01-02 15:04:05")
-	r["flushStatue"] = strconv.FormatBool(l.cache.flushStatue)
-	r["flushChan"] = strconv.Itoa(len(l.cache.flushChan))
-	return r
 }

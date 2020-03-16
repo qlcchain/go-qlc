@@ -27,10 +27,10 @@ type Store interface {
 	DposStore
 	PovStore
 	Relation
+	CacheStore
 
 	Close() error
 	DBStore() storage.Store
-	Cache() *MemoryCache
 	EventBus() event.EventBus
 	Get(k []byte, c ...storage.Cache) (interface{}, []byte, error)
 	Iterator([]byte, []byte, func([]byte, []byte) error) error
@@ -39,6 +39,4 @@ type Store interface {
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error)
 	Action(at storage.ActionType, t int) (interface{}, error)
-	GetCacheStat() []*CacheStat
-	GetCacheStatue() map[string]string
 }

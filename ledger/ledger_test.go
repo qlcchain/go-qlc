@@ -2,14 +2,13 @@ package ledger
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
@@ -44,7 +43,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 //var bc, _ = mock.BlockChain()
 
 func TestLedger_Instance1(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	cm := config.NewCfgManager(dir)
 	cm.Load()
 	l1 := NewLedger(cm.ConfigFile)
@@ -63,8 +62,8 @@ func TestLedger_Instance1(t *testing.T) {
 }
 
 func TestLedger_Instance2(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
-	dir2 := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	cm := config.NewCfgManager(dir)
 	cm.Load()
 	cm2 := config.NewCfgManager(dir2)
@@ -96,7 +95,7 @@ func TestGetTxn(t *testing.T) {
 	}
 }
 
-func TestLedgerSession_BatchUpdate(t *testing.T) {
+func TestLedger_BatchUpdate(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
@@ -119,54 +118,9 @@ func TestLedgerSession_BatchUpdate(t *testing.T) {
 	}
 }
 
-func TestLedger_Cache(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(5 * time.Second)
-	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock)
-	count := 0
-	if err := l.Iterator(prefix, nil, func(k []byte, v []byte) error {
-		count = count + 1
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	t.Log(count)
-	t.Log(l.GetCacheStatue())
-
-	if err := l.Put([]byte{100, 2, 3}, []byte{1, 2, 3, 5}); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.Put([]byte{100, 2, 4}, []byte{1, 2, 3, 6}); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.Put([]byte{100, 2, 5}, []byte{1, 2, 3, 7}); err != nil {
-		t.Fatal(err)
-	}
-	count = 0
-	if err := l.Iterator([]byte{100}, nil, func(k []byte, v []byte) error {
-		count = count + 1
-		t.Log(k, v)
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	t.Log(count)
-	if count != 3 {
-		t.Fatal()
-	}
-	t.Log(l.GetCacheStatue())
-}
-
-func TestReleaseLedger(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "ledger1")
-	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger2")
+func TestLedger_Release(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	dir2 := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 
 	cm := config.NewCfgManager(dir)
 	cm.Load()
@@ -181,6 +135,25 @@ func TestReleaseLedger(t *testing.T) {
 		_ = os.RemoveAll(dir)
 		_ = os.RemoveAll(dir2)
 	}()
+}
+
+func TestLedger_Close(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+
+	cm := config.NewCfgManager(dir)
+	cm.Load()
+	l1 := NewLedger(cm.ConfigFile)
+	blk := mock.StateBlockWithoutWork()
+	if err := l1.Close(); err != nil {
+		t.Fatal(err)
+	}
+	l2 := NewLedger(cm.ConfigFile)
+	if _, err := l2.GetStateBlockConfirmed(blk.GetHash()); err == nil {
+		t.Fatal(err)
+	}
+	if err := l2.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_GenerateSendBlock(t *testing.T) {
@@ -370,4 +343,132 @@ func TestLedger_GenerateSendBlock(t *testing.T) {
 	if !b3.Equal(types.ZeroBalance) {
 		t.Fatal()
 	}
+}
+
+func TestLedger_TestStore(t *testing.T) {
+	teardownTestCase, l := NewTestLedger()
+	defer teardownTestCase()
+	if l == nil {
+		t.Fatal()
+	}
+	r := DefaultStore()
+	if r != nil {
+		t.Fatal()
+	}
+}
+
+func TestLedger_Action(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	r, err := l.Action(storage.Size, 0)
+	if err != nil {
+		t.Fatal()
+	}
+	t.Log(r)
+}
+
+func TestLedger_Cache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	// get from a specific
+	c := l.cache.GetCache()
+	key := []byte{1, 2, 3}
+	if err := c.Put(key, []byte{4, 5, 6}); err != nil {
+		t.Fatal(err)
+	}
+	if i, r, err := l.Get(key, c); err != nil || i == nil || r != nil {
+		t.Fatal(err, i, r)
+	}
+	if err := c.Delete(key); err != nil {
+		t.Fatal(err)
+	}
+	if i, r, err := l.Get(key, c); err != storage.KeyNotFound || i != nil || r != nil {
+		t.Fatal(err, i, r)
+	}
+	if i, r, err := l.Get(key); err != storage.KeyNotFound || i != nil || r != nil {
+		t.Fatal(err, i, r)
+	}
+	// get from ledger cache
+	key2 := []byte{1, 2, 4}
+	if err := l.store.Put(key2, []byte{4, 5, 6}); err != nil {
+		t.Fatal(err)
+	}
+	if i, r, err := l.Get(key2); err != nil || i != nil || r == nil {
+		t.Fatal(err, i, r)
+	}
+
+	// ledger put
+	key3 := []byte{1, 2, 5}
+	if err := l.Put(key3, []byte{4, 5, 6}); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Delete(key3); err != nil {
+		t.Fatal(err)
+	}
+	if i, r, err := l.Get(key3); err != storage.KeyNotFound || i != nil || r != nil {
+		t.Fatal(err, i, r)
+	}
+
+	// ledger get from store
+	key4 := []byte{1, 2, 6}
+	b := l.store.Batch(true)
+	if err := b.Put(key4, []byte{4, 5, 6}); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := l.getFromStore(key4, b); err != nil || r == nil {
+		t.Fatal(err)
+	}
+	l.store.PutBatch(b)
+
+}
+
+func TestLedger_Iterator(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Second)
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock)
+	count := 0
+	if err := l.Iterator(prefix, nil, func(k []byte, v []byte) error {
+		count = count + 1
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(count)
+	t.Log(l.GetCacheStatue())
+
+	if err := l.Put([]byte{100, 2, 3}, []byte{1, 2, 3, 5}); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Put([]byte{100, 2, 4}, []byte{1, 2, 3, 6}); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Put([]byte{100, 2, 5}, []byte{1, 2, 3, 7}); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Put([]byte{1, 100, 2, 5}, []byte{1, 2, 3, 7}); err != nil {
+		t.Fatal(err)
+	}
+	count = 0
+	if err := l.Iterator([]byte{100}, nil, func(k []byte, v []byte) error {
+		count = count + 1
+		t.Log(k, v)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(count)
+	if count != 3 {
+		t.Fatal()
+	}
+	t.Log(l.GetCacheStatue())
+	t.Log(l.GetCacheStat())
 }

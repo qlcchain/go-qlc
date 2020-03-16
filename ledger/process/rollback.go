@@ -219,8 +219,7 @@ func (lv *LedgerVerifier) rollbackCache(hash types.Hash, batch storage.Batch) er
 
 	// delete blocks
 	if err := lv.rollbackCacheBlocks(rollBlocks, true, batch); err != nil {
-		lv.logger.Error(err)
-		return err
+		return fmt.Errorf("rollback cache blocks: %s", err)
 	}
 	return nil
 }
@@ -462,9 +461,8 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Hash]*types.State
 			lv.l.EB.Publish(topic.EventRollback, hashCur)
 			lv.logger.Warnf("rollback delete block done: %s (previous: %s, type: %s,  address: %s) ", hashCur.String(), blockCur.GetPrevious().String(), blockCur.GetType(), blockCur.GetAddress().String())
 
-			if err := lv.checkBlockUnConfirmed(blockCur, batch); err != nil {
-				lv.logger.Errorf("roll back block cache error : %s", err)
-				return err
+			if err := lv.checkBlockCache(blockCur, batch); err != nil {
+				return fmt.Errorf("roll back block cache error : %s", err)
 			}
 
 			if hashCur == oldestBlock.GetHash() {
@@ -481,7 +479,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Hash]*types.State
 	return nil
 }
 
-func (lv *LedgerVerifier) checkBlockUnConfirmed(block *types.StateBlock, batch storage.Batch) error {
+func (lv *LedgerVerifier) checkBlockCache(block *types.StateBlock, batch storage.Batch) error {
 	rollbacks := make([]*types.StateBlock, 0)
 	err := lv.l.GetBlockCaches(func(b *types.StateBlock) error {
 		if block.GetAddress() == b.GetAddress() && block.GetToken() == b.GetToken() {
@@ -494,13 +492,12 @@ func (lv *LedgerVerifier) checkBlockUnConfirmed(block *types.StateBlock, batch s
 	}
 	if len(rollbacks) > 0 {
 		if err = lv.rollbackCacheBlocks(rollbacks, false, batch); err != nil {
-			return err
+			return fmt.Errorf("roll back cache blocks: %s", err)
 		}
 	} else {
 		// maybe no unconfirmed block ,but unconfirmed account exist
 		if err := lv.rollbackCacheAccountDel(block.GetAddress(), block.GetToken(), batch); err != nil {
-			lv.logger.Errorf("roll back account cache error : %s", err)
-			return err
+			return fmt.Errorf("del account cache: %s", err)
 		}
 	}
 	if block.IsSendBlock() {
@@ -508,8 +505,7 @@ func (lv *LedgerVerifier) checkBlockUnConfirmed(block *types.StateBlock, batch s
 			if block.GetHash() == b.GetLink() {
 				err = lv.rollbackCache(b.GetHash(), batch)
 				if err != nil {
-					lv.logger.Error(err)
-					return err
+					return fmt.Errorf("send block rollback link: %s", err)
 				}
 			}
 			return nil

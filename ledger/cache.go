@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -232,8 +233,9 @@ func (lc *MemoryCache) Has(key []byte) (bool, error) {
 	return true, nil
 }
 
-func (lc *MemoryCache) prefixIterator(prefix []byte) []*kv {
-	kvs := make([]*kv, 0)
+func (lc *MemoryCache) prefixIterator(prefix []byte, fn func(k []byte, v []byte) error) ([][]byte, error) {
+	//lc.logger.Warn("========memory iterator: ", prefix)
+	keys := make([][]byte, 0)
 	index := lc.writeIndex
 	readIndex := lc.readIndex
 	for index != readIndex {
@@ -241,13 +243,11 @@ func (lc *MemoryCache) prefixIterator(prefix []byte) []*kv {
 		for k, v := range items {
 			key := originalKey(k.(string))
 			if bytes.HasPrefix(key, prefix) {
-				if !contain(kvs, key) && !isDeleteKey(v) {
-					value := v.([]byte)
-					temp := &kv{
-						key:   key,
-						value: value,
+				if !contain(keys, key) && !isDeleteKey(v) {
+					keys = append(keys, key)
+					if err := fn(key, v.([]byte)); err != nil {
+						return nil, fmt.Errorf("ledger iterator: %s", err)
 					}
-					kvs = append(kvs, temp)
 				}
 			}
 		}
@@ -256,17 +256,57 @@ func (lc *MemoryCache) prefixIterator(prefix []byte) []*kv {
 			index = lc.cacheCount - 1
 		}
 	}
-	return kvs
+	return keys, nil
 }
 
-func contain(kvs []*kv, key []byte) bool {
+//
+//func (lc *MemoryCache) prefixIterator(prefix []byte) []kv {
+//	lc.logger.Warn("========memory iterator: ", prefix)
+//	kvs := make([]kv, 0)
+//	index := lc.writeIndex
+//	readIndex := lc.readIndex
+//	for index != readIndex {
+//		items := lc.caches[index].cache.GetALL(false)
+//		for k, v := range items {
+//			key := originalKey(k.(string))
+//			if bytes.HasPrefix(key, prefix) {
+//				if !contain(kvs, key) && !isDeleteKey(v) {
+//					vc := make([]byte, len(v.([]byte)))
+//					value := vc
+//					temp := kv{
+//						key:   key,
+//						value: value,
+//					}
+//					kvs = append(kvs, temp)
+//					lc.logger.Warn("========memory cache: ", temp.key, prefix)
+//				}
+//			}
+//		}
+//		index = (index - 1) % lc.cacheCount
+//		if index < 0 {
+//			index = lc.cacheCount - 1
+//		}
+//	}
+//	return kvs
+//}
+
+func contain(kvs [][]byte, key []byte) bool {
 	for _, kv := range kvs {
-		if bytes.EqualFold(kv.key, key) {
+		if bytes.EqualFold(kv, key) {
 			return true
 		}
 	}
 	return false
 }
+
+//func contain(kvs []kv, key []byte) bool {
+//	for _, kv := range kvs {
+//		if bytes.EqualFold(kv.key, key) {
+//			return true
+//		}
+//	}
+//	return false
+//}
 
 func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
 	c := lc.getTempCache()
@@ -525,3 +565,30 @@ var deleteKeyTag = new(deleteKey)
 
 var ErrKeyDeleted = errors.New("key is deleted")
 var ErrKeyNotInCache = errors.New("key not in cache")
+
+type CacheStore interface {
+	Cache() *MemoryCache
+	GetCacheStat() []*CacheStat
+	GetCacheStatue() map[string]string
+}
+
+func (l *Ledger) Cache() *MemoryCache {
+	return l.cache
+}
+
+func (l *Ledger) GetCacheStat() []*CacheStat {
+	return l.cacheStats
+}
+
+func (l *Ledger) GetCacheStatue() map[string]string {
+	r := make(map[string]string)
+	for i, c := range l.cache.caches {
+		r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
+	}
+	r["read"] = strconv.Itoa(l.cache.readIndex)
+	r["write"] = strconv.Itoa(l.cache.writeIndex)
+	r["lastflush"] = l.cache.lastFlush.Format("2006-01-02 15:04:05")
+	r["flushStatue"] = strconv.FormatBool(l.cache.flushStatue)
+	r["flushChan"] = strconv.Itoa(len(l.cache.flushChan))
+	return r
+}

@@ -96,47 +96,126 @@ func checkInfo(t *testing.T, l *ledger.Ledger) {
 	}
 }
 
-func TestRollback_BlockCache(t *testing.T) {
+//func TestRollback_BlockCache(t *testing.T) {
+//	teardownTestCase, _, lv := setupTestCase(t)
+//	defer teardownTestCase(t)
+//	// account, only one token
+//	addr := mock.Address()
+//	ac := mock.AccountMeta(addr)
+//	tm := mock.TokenMeta(addr)
+//	tm.Type = config.ChainToken()
+//	ac.Tokens = []*types.TokenMeta{tm}
+//
+//	// set block1
+//	block1 := mock.StateBlockWithoutWork()
+//	block1.Address = ac.Address
+//	block1.Token = ac.Tokens[0].Type
+//	if err := lv.l.AddBlockCache(block1); err != nil {
+//		t.Fatal(err)
+//	}
+//	tm.BlockCount = 2
+//	if err := lv.l.AddAccountMetaCache(ac); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	// set block2
+//	block2 := mock.StateBlockWithoutWork()
+//	block2.Previous = block1.GetHash()
+//	block2.Address = ac.Address
+//	block2.Token = ac.Tokens[0].Type
+//
+//	if err := lv.l.AddBlockCache(block2); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	if err := lv.Rollback(block1.GetHash()); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	if b, _ := lv.l.HasBlockCache(block1.GetHash()); b {
+//		t.Fatal()
+//	}
+//	ac, err := lv.l.GetAccountMeteCache(addr)
+//	if err == nil {
+//		t.Fatal(err)
+//	}
+//}
+
+func TestRollback_BlockCache2(t *testing.T) {
 	teardownTestCase, _, lv := setupTestCase(t)
 	defer teardownTestCase(t)
-	// account, only one token
-	addr := mock.Address()
-	ac := mock.AccountMeta(addr)
-	tm := mock.TokenMeta(addr)
-	tm.Type = config.ChainToken()
-	ac.Tokens = []*types.TokenMeta{tm}
 
-	// set block1
-	block1 := mock.StateBlockWithoutWork()
-	block1.Address = ac.Address
-	block1.Token = ac.Tokens[0].Type
-	if err := lv.l.AddBlockCache(block1); err != nil {
+	if err := lv.BlockProcess(bc[0]); err != nil {
+		t.Fatal(Other, err)
+	}
+	if err := lv.BlockCacheProcess(bc[1]); err != nil {
+		t.Fatal(Other, err)
+	}
+	if err := lv.BlockProcess(bc[1]); err != nil {
+		t.Fatal(Other, err)
+	}
+	for _, b := range bc[2:5] {
+		if r, err := lv.BlockCacheCheck(b); r != Progress || err != nil {
+			t.Fatal(r, err)
+		}
+		if err := lv.BlockCacheProcess(b); err != nil {
+			t.Fatal(Other, err)
+		}
+	}
+
+	// rollbackCache - rollbackCacheBlocks(cache para is true)
+	if err := lv.Rollback(bc[3].GetHash()); err != nil {
 		t.Fatal(err)
 	}
-	tm.BlockCount = 2
-	if err := lv.l.AddAccountMetaCache(ac); err != nil {
+}
+
+func TestRollback_checkBlockCache(t *testing.T) {
+	teardownTestCase, l, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	if err := lv.BlockProcess(bc[0]); err != nil {
+		t.Fatal(Other, err)
+	}
+	if err := lv.BlockCacheProcess(bc[1]); err != nil {
+		t.Fatal(Other, err)
+	}
+	if err := lv.BlockProcess(bc[1]); err != nil {
+		t.Fatal(Other, err)
+	}
+	for _, b := range bc[2:5] {
+		if r, err := lv.BlockCacheCheck(b); r != Progress || err != nil {
+			t.Fatal(r, err)
+		}
+		if err := lv.BlockCacheProcess(b); err != nil {
+			t.Fatal(Other, err)
+		}
+	}
+
+	batch := l.DBStore().Batch(true)
+	defer func() {
+		if err := l.DBStore().PutBatch(batch); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	//  checkBlockCache - rollbackCacheBlocks(cache para is false)
+	if err := lv.checkBlockCache(bc[3], batch); err != nil {
 		t.Fatal(err)
 	}
 
-	// set block2
-	block2 := mock.StateBlockWithoutWork()
-	block2.Previous = block1.GetHash()
-	block2.Address = ac.Address
-	block2.Token = ac.Tokens[0].Type
-
-	if err := lv.l.AddBlockCache(block2); err != nil {
+	if err := lv.checkBlockCache(mock.StateBlockWithoutWork(), batch); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := lv.Rollback(block1.GetHash()); err != nil {
+	sendBlk := mock.StateBlockWithoutWork()
+	sendBlk.Type = types.Send
+	receBlk := mock.StateBlockWithoutWork()
+	receBlk.Type = types.Receive
+	receBlk.Link = sendBlk.GetHash()
+	if err := lv.l.AddBlockCache(receBlk); err != nil {
 		t.Fatal(err)
 	}
-
-	if b, _ := lv.l.HasBlockCache(block1.GetHash()); b {
-		t.Fatal()
-	}
-	ac, err := lv.l.GetAccountMeteCache(addr)
-	if err == nil {
+	if err := lv.checkBlockCache(sendBlk, batch); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -157,6 +236,8 @@ func TestRollback_UncheckedBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	lv.RollbackUnchecked(h1)
+
+	// UncheckedKindTokenInfo
 
 }
 
@@ -273,23 +354,32 @@ func TestRollback_ContractBlocks(t *testing.T) {
 	}
 }
 
-func TestRollback_rollbackCacheBlocks(t *testing.T) {
-	teardownTestCase, l, lv := setupTestCase(t)
+func TestRollback_blockOrderCompare(t *testing.T) {
+	teardownTestCase, _, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	addr := mock.Address()
-	b1 := mock.StateBlockWithoutWork()
-	b1.Address = addr
-	b2 := mock.StateBlockWithoutWork()
-	b2.Address = addr
-
-	batch := l.DBStore().Batch(true)
-	defer func() {
-		if err := l.DBStore().PutBatch(batch); err != nil {
-			t.Fatal(err)
-		}
-	}()
-	if err := lv.rollbackCacheBlocks([]*types.StateBlock{b1, b2}, false, batch); err != nil {
+	if err := lv.BlockProcess(bc[0]); err != nil {
 		t.Fatal(err)
 	}
+	for _, b := range bc[1:] {
+		if p, err := lv.Process(b); err != nil || p != Progress {
+			t.Fatal(p, err)
+		}
+	}
+
+	if b, err := lv.blockOrderCompare(bc[2], bc[4]); err != nil || !b {
+		t.Fatal(b, err)
+	}
+	if b, err := lv.blockOrderCompare(bc[4], bc[2]); err != nil || b {
+		t.Fatal(b, err)
+	}
+	if b, err := lv.blockOrderCompare(bc[1], bc[2]); err == nil {
+		t.Fatal(b, err)
+	}
 }
+
+//func TestRollback_checkBlockCache(t *testing.T) {
+//	teardownTestCase, _, lv := setupTestCase(t)
+//	defer teardownTestCase(t)
+//
+//}

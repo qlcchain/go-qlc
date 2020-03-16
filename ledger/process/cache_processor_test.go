@@ -2,6 +2,7 @@ package process
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/config"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -63,6 +64,12 @@ func TestProcess_CacheException(t *testing.T) {
 	teardownTestCase, _, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	genesisBlk := config.GenesisBlock()
+	if r, err := lv.BlockCacheCheck(&genesisBlk); err != nil || r != Progress {
+		t.Fatal(r, err)
+	}
+
+	// open
 	bc[0].Signature, _ = types.NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600")
 	if r, err := lv.BlockCacheCheck(bc[0]); err != nil || r != BadSignature {
 		t.Fatal(r, err)
@@ -77,7 +84,19 @@ func TestProcess_CacheException(t *testing.T) {
 	if r, err := lv.BlockCacheCheck(bc[0]); err != nil || r != Old {
 		t.Fatal(r, err)
 	}
+
+	// open gapSource
 	if r, err := lv.BlockCacheCheck(bc[2]); err != nil || r != GapSource {
+		t.Fatal(r, err)
+	}
+
+	// send
+	if r, err := lv.BlockCacheCheck(bc[4]); err != nil || r != GapPrevious {
+		t.Fatal(r, err)
+	}
+
+	// receive
+	if r, err := lv.BlockCacheCheck(bc[5]); err != nil || r != GapPrevious {
 		t.Fatal(r, err)
 	}
 

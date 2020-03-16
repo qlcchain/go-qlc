@@ -124,6 +124,25 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 	return nil
 }
 
+func (v *VMContext) IteratorAll(prefix []byte, fn func(key []byte, value []byte) error) error {
+	pre := make([]byte, 0)
+	pre = append(pre, byte(storage.KeyPrefixTrieVMStorage))
+	pre = append(pre, prefix...)
+	err := v.Ledger.Iterator(pre, nil, func(key []byte, val []byte) error {
+		err := fn(key, val)
+		if err != nil {
+			v.logger.Error(err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
 	pre := make([]byte, 0)
 	pre = append(pre, byte(storage.KeyPrefixTrieVMStorage))
@@ -204,7 +223,9 @@ func (v *VMContext) set(key []byte, value []byte, batch ...storage.Batch) (err e
 			}
 		}()
 	}
-	return b.Put(key, value)
+	bytes := make([]byte, len(value))
+	copy(bytes, value)
+	return b.Put(key, bytes)
 }
 
 func (v *VMContext) remove(key []byte, batch ...storage.Batch) (err error) {

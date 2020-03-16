@@ -93,7 +93,7 @@ func TestLedger_GetPending(t *testing.T) {
 		t.Fatal("pending count error", count)
 	}
 
-	// Deserialize error
+	// deserialize error
 	key := &types.PendingKey{
 		Address: mock.Address(),
 		Hash:    mock.Hash(),
@@ -102,13 +102,13 @@ func TestLedger_GetPending(t *testing.T) {
 	if err != nil {
 		t.Fatal()
 	}
-	d1 := make([]byte, 10)
+	d1 := make([]byte, 8)
 	_ = random.Bytes(d1)
 	if err := l.store.Put(k, d1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := l.GetPending(key); err == nil {
-		t.Fatal(err)
+	if r, err := l.GetPending(key); err == nil {
+		t.Fatal(err, r)
 	}
 
 	if err := l.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
