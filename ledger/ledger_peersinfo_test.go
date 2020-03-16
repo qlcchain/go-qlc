@@ -96,7 +96,7 @@ func TestLedger_GetPeerInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal()
 	}
-	d1 := make([]byte, 8)
+	d1 := make([]byte, 0)
 	_ = random.Bytes(d1)
 	if err := l.store.Put(k, d1); err != nil {
 		t.Fatal(err)

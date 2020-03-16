@@ -2,15 +2,13 @@ package ledger
 
 import (
 	"fmt"
-	"math/big"
-	"testing"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
+	"math/big"
+	"testing"
 )
 
 func addRepresentationWeight(t *testing.T, l *Ledger) *types.AccountMeta {
@@ -100,7 +98,9 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	am := addRepresentationWeight(t, l)
 	addRepresentationWeight(t, l)
 
-	time.Sleep(3 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := l.GetRepresentation(am.Address); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestLedger_GetRepresentations(t *testing.T) {
 	if err != nil {
 		t.Fatal()
 	}
-	d1 := make([]byte, 8)
+	d1 := make([]byte, 0)
 	_ = random.Bytes(d1)
 	if err := l.store.Put(k, d1); err != nil {
 		t.Fatal(err)
@@ -203,7 +203,9 @@ func TestLedger_UpdateRepresentation(t *testing.T) {
 	if err := l.AddAccountMeta(acc, l.cache.GetCache()); err != nil {
 		t.Fatal()
 	}
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	if err := l.updateRepresentation(); err != nil {
 		t.Fatal(err)
 	}

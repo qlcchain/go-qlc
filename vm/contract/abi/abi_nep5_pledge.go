@@ -377,22 +377,6 @@ func SearchPledgeInfoWithNEP5TxId(ctx *vmstore.VMContext, param *WithdrawPledgeP
 	return result
 }
 
-//// FIXME: can't sleep to waiting...
-//func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
-//	result := searchBeneficialPledgeInfoByTxId(ctx, param)
-//	if result != nil {
-//		return result
-//	}
-//	for i := 0; i < 3; i++ {
-//		time.Sleep(1 * time.Second)
-//		result := searchBeneficialPledgeInfoByTxId(ctx, param)
-//		if result != nil {
-//			return result
-//		}
-//	}
-//	return nil
-//}
-
 func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
 	logger := log.NewLogger("GetBeneficialPledgeInfos")
 	defer func() {
@@ -403,10 +387,6 @@ func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 	err := ctx.IteratorAll(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
-				if key[0] == 101 {
-					logger.Warn("=========tx key is 101")
-				}
-				//logger.Warn("============tx key ", key)
 				if pledgeInfo.PType == param.PType && pledgeInfo.Amount.String() == param.Amount.String() &&
 					now >= pledgeInfo.WithdrawTime && pledgeInfo.NEP5TxId == param.NEP5TxId {
 					result.Key = append(result.Key, key...)

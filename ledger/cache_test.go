@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -158,15 +159,22 @@ func TestCache_Iterator(t *testing.T) {
 		}
 	}()
 
-	mc := l.Cache()
-	mc.Put([]byte{1, 2, 3, 4}, []byte{1, 4})
-	mc.Put([]byte{1, 2, 3, 5}, []byte{1})
-	mc.Put([]byte{1, 2, 3, 6}, []byte{4})
-	kvs := mc.prefixIterator([]byte{1, 2, 3})
-	for _, kv := range kvs {
-		t.Log(kv.key, kv.value)
+	prefix := []byte{10, 20, 30, 40}
+	for i := 0; i < 100; i++ {
+		d1 := make([]byte, 12)
+		_ = random.Bytes(d1)
+		if err := l.cache.Put(append(prefix, d1...), d1); err != nil {
+			t.Fatal(err)
+		}
 	}
 
+	count := 0
+	if keys, err := l.cache.prefixIterator(prefix, func(k []byte, v []byte) error {
+		count++
+		return nil
+	}); err != nil || len(keys) != 100 || count != 100 {
+		t.Fatal(err, len(keys), count)
+	}
 }
 
 func TestCache_Put(t *testing.T) {

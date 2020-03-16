@@ -3,12 +3,10 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
+	"testing"
 )
 
 func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
@@ -73,7 +71,9 @@ func TestLedger_BlockLink(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(3 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	r2, err := l.GetBlockLink(com.GetHash())
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +92,9 @@ func TestLedger_GetStateBlockFromCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(v)
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	v, err = l.GetStateBlockConfirmed(b.GetHash())
 	if err != nil {
 		t.Fatal(err)
@@ -179,7 +181,9 @@ func TestLedger_GetAllBlocks(t *testing.T) {
 	if err := l.AddStateBlock(blk2); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(3 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 		t.Log(block)
 		return nil
@@ -236,7 +240,9 @@ func TestLedger_GetRandomBlock(t *testing.T) {
 	if err := l.AddStateBlock(blk); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	b, err := l.GetRandomStateBlock()
 
 	if err != nil {
@@ -384,7 +390,9 @@ func TestLedger_BlockChild(t *testing.T) {
 		t.Fatal()
 	}
 
-	time.Sleep(3 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	h, err = l.GetBlockChild(b1.GetHash())
 	if err != nil {
 		t.Fatal(err)

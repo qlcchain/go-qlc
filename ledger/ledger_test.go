@@ -3,6 +3,7 @@ package ledger
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/qlcchain/go-qlc/crypto/random"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -420,55 +421,46 @@ func TestLedger_Cache(t *testing.T) {
 	if r, err := l.getFromStore(key4, b); err != nil || r == nil {
 		t.Fatal(err)
 	}
-	l.store.PutBatch(b)
+	if err := l.store.PutBatch(b); err != nil {
+		t.Fatal(err)
+	}
 
+	time.Sleep(2 * time.Second)
+	t.Log(l.GetCacheStatue())
+	t.Log(l.GetCacheStat())
 }
 
 func TestLedger_Iterator(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
-		t.Fatal(err)
+	prefix := []byte{10, 20, 30, 40}
+	for i := 0; i < 100; i++ {
+		cache := l.Cache().GetCache()
+		d1 := make([]byte, 10)
+		_ = random.Bytes(d1)
+		if err := cache.Put(append(prefix, d1...), d1); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := l.AddStateBlock(mock.StateBlockWithoutWork()); err != nil {
-		t.Fatal(err)
+	time.Sleep(1 * time.Second)
+	for i := 0; i < 100; i++ {
+		cache := l.Cache().GetCache()
+		d1 := make([]byte, 12)
+		_ = random.Bytes(d1)
+		if err := cache.Put(append(prefix, d1...), d1); err != nil {
+			t.Fatal(err)
+		}
 	}
-	time.Sleep(5 * time.Second)
-	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock)
 	count := 0
-	if err := l.Iterator(prefix, nil, func(k []byte, v []byte) error {
-		count = count + 1
+	err := l.Iterator(prefix, nil, func(k []byte, v []byte) error {
+		count++
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(count)
-	t.Log(l.GetCacheStatue())
-
-	if err := l.Put([]byte{100, 2, 3}, []byte{1, 2, 3, 5}); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.Put([]byte{100, 2, 4}, []byte{1, 2, 3, 6}); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.Put([]byte{100, 2, 5}, []byte{1, 2, 3, 7}); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.Put([]byte{1, 100, 2, 5}, []byte{1, 2, 3, 7}); err != nil {
-		t.Fatal(err)
-	}
-	count = 0
-	if err := l.Iterator([]byte{100}, nil, func(k []byte, v []byte) error {
-		count = count + 1
-		t.Log(k, v)
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	t.Log(count)
-	if count != 3 {
+	if count != 200 {
 		t.Fatal()
 	}
-	t.Log(l.GetCacheStatue())
-	t.Log(l.GetCacheStat())
 }

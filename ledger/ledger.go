@@ -28,6 +28,20 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 )
 
+type LedgerStore interface {
+	Close() error
+	DBStore() storage.Store
+	EventBus() event.EventBus
+	Get(k []byte, c ...storage.Cache) (interface{}, []byte, error)
+	Iterator([]byte, []byte, func([]byte, []byte) error) error
+	GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error)
+	Action(at storage.ActionType, t int) (interface{}, error)
+	Flush() error
+}
+
 type Ledger struct {
 	io.Closer
 	dir            string
@@ -674,24 +688,10 @@ func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error)
 	return nil, ErrKeyNotInCache
 }
 
-type kv struct {
-	key   []byte
-	value []byte
-}
-
 func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
-	//l.logger.Warn("================ledger Iterator start ==================: ", prefix)
 	keys, err := l.cache.prefixIterator(prefix, fn)
 	if err != nil {
 		return fmt.Errorf("cache iterator : %s", err)
-	}
-	for kk, kv := range keys {
-		if kv[0] == 101 {
-			l.logger.Warn("===========cache ledger key is 101: ", kk, kv, prefix)
-			for i, kv := range keys {
-				l.logger.Warn("==========cache 101: ", i, kv)
-			}
-		}
 	}
 	count := 0
 	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
@@ -705,67 +705,9 @@ func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte)
 	}); err != nil {
 		return fmt.Errorf("ledger store iterator: %s", err)
 	}
-	//l.logger.Warn("===========ledger store  len: ", count, prefix)
 
 	return nil
 }
-
-//func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
-//	l.logger.Warn("================ledger Iterator start ==================: ", prefix)
-//	kvs := make([]kv, 0)
-//	cs := l.cache.prefixIterator(prefix)
-//	if len(cs) > 0 {
-//		kvs = append(kvs, cs...)
-//	}
-//	l.logger.Warn("===========ledger cache  len: ", len(kvs), prefix)
-//	l.logger.Warn("===========ledger store : ", prefix)
-//	for kk, kv := range kvs {
-//		if kv.key[0] == 101 {
-//			l.logger.Warn("===========cache ledger key is 101: ", kk, kv.key, prefix)
-//			for i, kv := range kvs {
-//				l.logger.Warn("==========cache 101: ", i, kv.key)
-//			}
-//		}
-//	}
-//	count := 0
-//	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
-//		if !contain(kvs, k) {
-//			count++
-//			temp := kv{
-//				key:   k,
-//				value: v,
-//			}
-//			kvs = append(kvs, temp)
-//			l.logger.Warn("===========ledger store Iterator: ", temp.key, prefix)
-//		}
-//		return nil
-//	}); err != nil {
-//		return fmt.Errorf("ledger store iterator: %s", err)
-//	}
-//	l.logger.Warn("===========ledger store  len: ", count, prefix)
-//	l.logger.Warn("===========ledger  total len: ", len(kvs), prefix)
-//	for kk, kv := range kvs {
-//		if kv.key[0] == 101 {
-//			l.logger.Warn("===========store ledger key is 101: ", kk, kv.key, prefix)
-//			for i, kv := range kvs {
-//				l.logger.Warn("==========store 101: ", i, kv.key)
-//			}
-//		}
-//	}
-//	count2 := 0
-//	for kk, kv := range kvs {
-//		count2++
-//		if kv.key[0] == 101 {
-//			l.logger.Warn("===========ledger key is 101: ", kk, kv.key, prefix)
-//		}
-//		if err := fn(kv.key, kv.value); err != nil {
-//			return fmt.Errorf("ledger iterator: %s", err)
-//		}
-//	}
-//	l.logger.Warn("===========ledger interator  len: ", count2, prefix)
-//
-//	return nil
-//}
 
 func NewTestLedger() (func(), *Ledger) {
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
@@ -806,4 +748,10 @@ func (l *Ledger) updateCacheStat(c *CacheStat) {
 	if len(l.cacheStats) > 200 {
 		l.cacheStats = l.cacheStats[:100]
 	}
+}
+
+func (l *Ledger) Flush() error {
+	lock.Lock()
+	defer lock.Unlock()
+	return l.cache.rebuild()
 }

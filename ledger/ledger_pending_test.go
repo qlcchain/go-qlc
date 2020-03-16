@@ -1,16 +1,14 @@
 package ledger
 
 import (
-	"math"
-	"math/big"
-	"testing"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
+	"math"
+	"math/big"
+	"testing"
 )
 
 func addPending(t *testing.T, l *Ledger) (pendingkey types.PendingKey, pendinginfo types.PendingInfo) {
@@ -72,7 +70,9 @@ func TestLedger_GetPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("pending,", p)
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := l.GetPending(&pendingkey); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestLedger_GetPending(t *testing.T) {
 	if err != nil {
 		t.Fatal()
 	}
-	d1 := make([]byte, 8)
+	d1 := make([]byte, 0)
 	_ = random.Bytes(d1)
 	if err := l.store.Put(k, d1); err != nil {
 		t.Fatal(err)
@@ -160,7 +160,9 @@ func TestLedger_SearchPending(t *testing.T) {
 	}
 	//t.Log("build cache done")
 
-	time.Sleep(3 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	counter := 0
 	err := l.GetPendingsByAddress(address, func(key *types.PendingKey, value *types.PendingInfo) error {
 		t.Log(counter, util.ToString(key), util.ToString(value))
@@ -191,7 +193,9 @@ func TestLedger_PendingAmount(t *testing.T) {
 	defer teardownTestCase(t)
 
 	pendingkey, pendinginfo := addPending(t, l)
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := l.rcache.GetAccountPending(pendingkey.Address, pendinginfo.Type); err == nil {
 		t.Fatal("pending should not found")
 	}

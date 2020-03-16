@@ -2,15 +2,13 @@ package process
 
 import (
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/trie"
+	"testing"
 )
 
 func TestRollback_Block(t *testing.T) {
@@ -34,7 +32,9 @@ func TestRollback_Block(t *testing.T) {
 	if err := lv.Rollback(rb.GetHash()); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	checkInfo(t, l)
 }
 
@@ -256,14 +256,18 @@ func TestRollback_ContractData(t *testing.T) {
 			t.Fatal(p, err)
 		}
 	}
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 
 	nodeCount := nodesCount(lv.l.DBStore(), bs[2].GetExtra())
 	if nodeCount == 0 {
 		t.Fatal("failed to add nodes", nodeCount)
 	}
 
-	time.Sleep(1 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	c, err := l.CountStateBlocks()
 	if err != nil {
 		t.Fatal(err)
@@ -283,7 +287,9 @@ func TestRollback_ContractData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	nodeCount = nodesCount(lv.l.DBStore(), bs[2].GetExtra())
 	t.Log(nodeCount)
 	if nodeCount > 0 {
@@ -294,7 +300,9 @@ func TestRollback_ContractData(t *testing.T) {
 	if p, err := lv.Process(bs[2]); err != nil || p != Progress {
 		t.Fatal(p, err)
 	}
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	nodeCount = nodesCount(lv.l.DBStore(), bs[2].GetExtra())
 	t.Log(nodeCount)
 	if nodeCount == 0 {
@@ -306,7 +314,9 @@ func TestRollback_ContractData(t *testing.T) {
 	}
 	fmt.Println("process again")
 
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	if p, err := lv.Process(bs[2]); err != nil || p != Progress {
 		t.Fatal(p, err)
 	}

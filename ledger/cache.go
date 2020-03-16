@@ -66,33 +66,32 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 // get write cache index
 func (lc *MemoryCache) GetCache() *Cache {
 	//lc.logger.Info("GetCache")
+	lc.lock.Lock()
+	defer lc.lock.Unlock()
 	if lc.needsFlush() {
-		lc.lock.Lock()
-		if lc.needsFlush() {
-			//lc.logger.Debug("current write cache need flush: ", lc.writeIndex)
-			newWriteIndex := (lc.writeIndex + 1) % lc.cacheCount // next write cache index
-			st := time.Now()
-			for {
-				if newWriteIndex != lc.readIndex { // next write cache index must flush done
-					break
-				} else {
-					time.Sleep(500 * time.Millisecond)
-				}
-				if time.Now().Sub(st) > 2*time.Second {
-					lc.logger.Error("cache flush timeout ", newWriteIndex)
-				}
+		//lc.logger.Debug("current write cache need flush: ", lc.writeIndex)
+		newWriteIndex := (lc.writeIndex + 1) % lc.cacheCount // next write cache index
+		st := time.Now()
+		for {
+			if newWriteIndex != lc.readIndex { // next write cache index must flush done
+				break
+			} else {
+				time.Sleep(500 * time.Millisecond)
 			}
-			lc.lastFlush = time.Now()
-
-			if len(lc.flushChan) > 1 { // if disk write too slowly
-				<-lc.flushChan
+			if time.Now().Sub(st) > 2*time.Second {
+				lc.logger.Error("cache flush timeout ", newWriteIndex)
 			}
-			lc.flushChan <- true
-			lc.writeIndex = newWriteIndex
-			//lc.logger.Debug("new write cache index: ", lc.writeIndex)
 		}
-		lc.lock.Unlock()
+		lc.lastFlush = time.Now()
+
+		if len(lc.flushChan) > 1 { // if disk write too slowly
+			<-lc.flushChan
+		}
+		lc.flushChan <- true
+		lc.writeIndex = newWriteIndex
+		//lc.logger.Debug("new write cache index: ", lc.writeIndex)
 	}
+
 	//lc.logger.Debug("return write cache index: ", lc.writeIndex)
 	cache := lc.caches[lc.writeIndex]
 	return cache
@@ -153,6 +152,9 @@ func (lc *MemoryCache) closed() {
 }
 
 func (lc *MemoryCache) close() error {
+	lc.lock.Lock()
+	defer lc.lock.Unlock()
+
 	index := lc.readIndex
 	index = (index + 1) % lc.cacheCount // next read cache index to dump
 	finish := false
@@ -168,6 +170,15 @@ func (lc *MemoryCache) close() error {
 		lc.readIndex = index
 		index = (index + 1) % lc.cacheCount // next read cache index to dump
 	}
+	return nil
+}
+
+func (lc *MemoryCache) rebuild() error {
+	if err := lc.close(); err != nil {
+		return err
+	}
+	lc.writeIndex = 1
+	lc.readIndex = 0
 	return nil
 }
 
@@ -234,7 +245,6 @@ func (lc *MemoryCache) Has(key []byte) (bool, error) {
 }
 
 func (lc *MemoryCache) prefixIterator(prefix []byte, fn func(k []byte, v []byte) error) ([][]byte, error) {
-	//lc.logger.Warn("========memory iterator: ", prefix)
 	keys := make([][]byte, 0)
 	index := lc.writeIndex
 	readIndex := lc.readIndex
@@ -259,37 +269,6 @@ func (lc *MemoryCache) prefixIterator(prefix []byte, fn func(k []byte, v []byte)
 	return keys, nil
 }
 
-//
-//func (lc *MemoryCache) prefixIterator(prefix []byte) []kv {
-//	lc.logger.Warn("========memory iterator: ", prefix)
-//	kvs := make([]kv, 0)
-//	index := lc.writeIndex
-//	readIndex := lc.readIndex
-//	for index != readIndex {
-//		items := lc.caches[index].cache.GetALL(false)
-//		for k, v := range items {
-//			key := originalKey(k.(string))
-//			if bytes.HasPrefix(key, prefix) {
-//				if !contain(kvs, key) && !isDeleteKey(v) {
-//					vc := make([]byte, len(v.([]byte)))
-//					value := vc
-//					temp := kv{
-//						key:   key,
-//						value: value,
-//					}
-//					kvs = append(kvs, temp)
-//					lc.logger.Warn("========memory cache: ", temp.key, prefix)
-//				}
-//			}
-//		}
-//		index = (index - 1) % lc.cacheCount
-//		if index < 0 {
-//			index = lc.cacheCount - 1
-//		}
-//	}
-//	return kvs
-//}
-
 func contain(kvs [][]byte, key []byte) bool {
 	for _, kv := range kvs {
 		if bytes.EqualFold(kv, key) {
@@ -298,15 +277,6 @@ func contain(kvs [][]byte, key []byte) bool {
 	}
 	return false
 }
-
-//func contain(kvs []kv, key []byte) bool {
-//	for _, kv := range kvs {
-//		if bytes.EqualFold(kv.key, key) {
-//			return true
-//		}
-//	}
-//	return false
-//}
 
 func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
 	c := lc.getTempCache()

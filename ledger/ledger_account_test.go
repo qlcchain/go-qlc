@@ -213,12 +213,15 @@ func TestLedger_GetAccountMetas(t *testing.T) {
 
 	addAccountMeta(t, l)
 	addAccountMeta(t, l)
-
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	count := 0
 	err := l.GetAccountMetas(func(am *types.AccountMeta) error {
-		t.Log(am)
+		count++
 		return nil
 	})
-	if err != nil {
+	if err != nil || count != 2 {
 		t.Fatal(err)
 	}
 }
@@ -229,8 +232,12 @@ func TestLedger_CountAccountMetas(t *testing.T) {
 
 	addAccountMeta(t, l)
 	addAccountMeta(t, l)
+	addAccountMeta(t, l)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	num, err := l.CountAccountMetas()
-	if err != nil {
+	if err != nil || num != 3 {
 		t.Fatal(err)
 	}
 	t.Log("account,", num)
@@ -241,8 +248,7 @@ func TestLedger_HasTokenMeta_False(t *testing.T) {
 	defer teardownTestCase(t)
 
 	token := addTokenMeta(t, l)
-	token2 := mock.TokenMeta(token.BelongTo)
-	has, _ := l.HasTokenMeta(token.BelongTo, token2.Type)
+	has, _ := l.HasTokenMeta(token.BelongTo, mock.Hash())
 	if has {
 		t.Fatal()
 	}
