@@ -12,6 +12,7 @@ import (
 
 	qctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -65,14 +66,34 @@ func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {
 			case <-md.ctx.Done():
 				return
 			case msg := <-md.febRpcMsgCh:
-				t.Log("febRpcMsgCh", msg)
 				if msg.Name == "Miner.GetMiningInfo" {
 					latestBlock, _ := md.l.GetLatestPovBlock()
 
 					outArgs := msg.Out.(map[interface{}]interface{})
 					outArgs["err"] = nil
 					outArgs["latestBlock"] = latestBlock
+					outArgs["syncState"] = int(topic.SyncDone)
+					outArgs["pooledTx"] = uint32(0)
+
 					msg.ResponseChan <- msg.Out
+					t.Log("febRpcMsgCh", "in", msg.In, "out", msg.Out)
+				} else if msg.Name == "Miner.GetWork" {
+					mineBlk := types.NewPovMineBlock()
+
+					outArgs := msg.Out.(map[interface{}]interface{})
+					outArgs["err"] = nil
+					outArgs["mineBlock"] = mineBlk
+
+					msg.ResponseChan <- msg.Out
+					t.Log("febRpcMsgCh", "in", msg.In, "out", msg.Out)
+				} else if msg.Name == "Miner.SubmitWork" {
+					outArgs := msg.Out.(map[interface{}]interface{})
+					outArgs["err"] = nil
+
+					msg.ResponseChan <- msg.Out
+					t.Log("febRpcMsgCh", "in", msg.In, "out", msg.Out)
+				} else {
+					t.Log("febRpcMsgCh", "in", msg.In)
 				}
 			}
 		}
@@ -92,15 +113,20 @@ func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {
 	}, md
 }
 
-func generatePovBlocksToLedger(t *testing.T, md *mockDataTestPovApi) []*types.PovBlock {
+func mockPovApiGeneratePovBlocksToLedger(t *testing.T, md *mockDataTestPovApi, blkNum int) []*types.PovBlock {
 	var prevBlk *types.PovBlock
 	var allBlks []*types.PovBlock
-	for i := 0; i < 3; i++ {
+	for i := 0; i < blkNum; i++ {
 		blk1, td1 := mock.GeneratePovBlock(prevBlk, 0)
 		err := md.l.AddPovBlock(blk1, td1)
 		if err != nil {
 			t.Fatal(err)
 		}
+		for txIdx, txPov := range blk1.GetAllTxs() {
+			txl := &types.PovTxLookup{BlockHash: blk1.GetHash(), BlockHeight: blk1.GetHeight(), TxIndex: uint64(txIdx)}
+			_ = md.l.AddPovTxLookup(txPov.Hash, txl)
+		}
+
 		err = md.l.AddPovBestHash(blk1.GetHeight(), blk1.GetHash())
 		if err != nil {
 			t.Fatal(err)
@@ -129,7 +155,7 @@ func TestPovAPI_GetHeaders(t *testing.T) {
 	md.eb.Publish(topic.EventPovSyncState, topic.SyncDone)
 	time.Sleep(10 * time.Millisecond)
 
-	allBlks := generatePovBlocksToLedger(t, md)
+	allBlks := mockPovApiGeneratePovBlocksToLedger(t, md, 3)
 
 	hdr, err := md.api.GetLatestHeader()
 	if err != nil {
@@ -202,9 +228,24 @@ func TestPovAPI_GetHeaders(t *testing.T) {
 	if bd == nil {
 		t.Fatalf("failed to get body by hash")
 	}
+
+	_, err = md.api.GetBlockTDByHeight(bd.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = md.api.GetBlockTDByHash(bd.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	allTxs := bd.GetAllTxs()
+	_, err = md.api.GetTransaction(allTxs[0].Hash)
+	_, err = md.api.GetTransactionByBlockHashAndIndex(bd.GetHash(), 0)
+	_, err = md.api.GetTransactionByBlockHeightAndIndex(bd.GetHeight(), 0)
 }
 
-func TestPovAPI_Miner(t *testing.T) {
+func TestPovAPI_Mining(t *testing.T) {
 	tearDone, md := setupTestCasePov(t)
 	defer tearDone(t)
 
@@ -217,25 +258,41 @@ func TestPovAPI_Miner(t *testing.T) {
 	md.eb.Publish(topic.EventPovSyncState, topic.SyncDone)
 	time.Sleep(10 * time.Millisecond)
 
-	generatePovBlocksToLedger(t, md)
+	mockPovApiGeneratePovBlocksToLedger(t, md, 120)
+
+	rspStatus, err := md.api.GetPovStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rspStatus == nil {
+		t.Fatalf("failed to GetPovStatus")
+	}
+
+	hashInfo, err := md.api.GetHashInfo(0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hashInfo == nil {
+		t.Fatalf("failed to GetHashInfo")
+	}
+
+	rspMinerInfo, err := md.api.GetMiningInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rspMinerInfo == nil {
+		t.Fatalf("failed to GetMiningInfo")
+	}
 
 	mds0 := types.NewPovMinerDayStat()
 	mds0.DayIndex = 1
 	mds0.MinerStats = make(map[string]*types.PovMinerStatItem)
 	mds0.MinerStats["miner1"] = &types.PovMinerStatItem{BlockNum: 10}
 	mds0.MinerNum = uint32(len(mds0.MinerStats))
-	err := md.l.AddPovMinerStat(mds0)
+	err = md.l.AddPovMinerStat(mds0)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	//rspMinerInfo, err := md.api.GetMiningInfo()
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//if rspMinerInfo == nil {
-	//	t.Fatalf("failed to GetMiningInfo")
-	//}
 
 	rspMinerDs, err := md.api.GetMinerDayStat(1)
 	if err != nil {
@@ -245,6 +302,14 @@ func TestPovAPI_Miner(t *testing.T) {
 		t.Fatalf("failed to GetMinerDayStat")
 	}
 
+	rspMinerDs2, err := md.api.GetMinerDayStatByHeight(2879)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rspMinerDs2 == nil {
+		t.Fatalf("failed to GetMinerDayStatByHeight")
+	}
+
 	rspMinerStats, err := md.api.GetMinerStats(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -252,13 +317,150 @@ func TestPovAPI_Miner(t *testing.T) {
 	if rspMinerStats == nil {
 		t.Fatalf("failed to GetMinerStats")
 	}
+
+	minerAcc := mock.Account()
+	rspGetWork, err := md.api.GetWork(minerAcc.Address(), "SHA256D")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rspGetWork == nil {
+		t.Fatalf("failed to rspGetWork")
+	}
+
+	reqSubmitWork := new(PovApiSubmitWork)
+	reqSubmitWork.WorkHash = rspGetWork.WorkHash
+	err = md.api.SubmitWork(reqSubmitWork)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPovAPI_ManyBlocks(t *testing.T) {
+	tearDone, md := setupTestCasePov(t)
+	defer tearDone(t)
+
+	_ = md.cc.Start()
+	defer func() {
+		_ = md.cc.Stop()
+	}()
+	time.Sleep(10 * time.Millisecond)
+
+	md.eb.Publish(topic.EventPovSyncState, topic.SyncDone)
+	time.Sleep(10 * time.Millisecond)
+
+	minerAcc := mock.Account()
+
+	allBlks := mockPovApiGeneratePovBlocksToLedger(t, md, 4320)
+
+	// mock trie state in global db
+	lastMockBlk, lastMockTd := mock.GeneratePovBlock(allBlks[len(allBlks)-1], 0)
+	gsdb := statedb.NewPovGlobalStateDB(md.l.DBStore(), allBlks[0].GetStateHash())
+	as := types.NewPovAccountState()
+	as.Balance = types.NewBalance(1234)
+	gsdb.SetAccountState(minerAcc.Address(), as)
+	rs := types.NewPovRepState()
+	rs.Balance = types.NewBalance(4321)
+	gsdb.SetRepState(minerAcc.Address(), rs)
+	gsdb.CommitToTrie()
+	txn := md.l.DBStore().Batch(true)
+	gsdb.CommitToDB(txn)
+	err := md.l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastMockBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(lastMockBlk)
+
+	err = md.l.AddPovBlock(lastMockBlk, lastMockTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for txIdx, txPov := range lastMockBlk.GetAllTxs() {
+		txl := &types.PovTxLookup{BlockHash: lastMockBlk.GetHash(), BlockHeight: lastMockBlk.GetHeight(), TxIndex: uint64(txIdx)}
+		_ = md.l.AddPovTxLookup(txPov.Hash, txl)
+	}
+
+	err = md.l.AddPovBestHash(lastMockBlk.GetHeight(), lastMockBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = md.l.SetPovLatestHeight(lastMockBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// mock account meta
+	am := mock.AccountMeta(minerAcc.Address())
+	md.l.AddAccountMeta(am, md.l.Cache().GetCache())
+
+	mds0 := types.NewPovMinerDayStat()
+	mds0.DayIndex = 0
+	mds0.MinerStats = make(map[string]*types.PovMinerStatItem)
+	mds0.MinerStats[minerAcc.Address().String()] = &types.PovMinerStatItem{BlockNum: 100, RepBlockNum: 480}
+	mds0.MinerNum = uint32(len(mds0.MinerStats))
+	err = md.l.AddPovMinerStat(mds0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = md.api.GetLedgerStats()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = md.api.GetHashInfo(0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = md.api.GetLastNHourInfo(0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = md.api.GetLastNHourInfo(0, 7200)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = md.api.CheckAllAccountStates()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	latestHdr, err := md.l.GetLatestPovHeader()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = md.api.GetRepStats([]types.Address{minerAcc.Address()})
+	_ = md.api.GetRepStatesByHeightAndAccount(latestHdr, minerAcc.Address())
+
+	_, err = md.api.GetAllRepStatesByBlockHash(latestHdr.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = md.api.GetAllRepStatesByBlockHeight(latestHdr.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = md.api.GetAllOnlineRepStates(latestHdr)
+
+	_, err = md.api.GetLatestAccountState(minerAcc.Address())
+	_, err = md.api.GetAccountStateByBlockHash(minerAcc.Address(), latestHdr.GetHash())
+	_, err = md.api.GetAccountStateByBlockHeight(minerAcc.Address(), latestHdr.GetHeight())
+
+	_, err = md.api.DumpBlockState(latestHdr.GetHash())
+	_, err = md.api.DumpContractState(latestHdr.GetStateHash(), types.PubKeyDistributionAddress)
+
+	_, err = md.api.GetDiffDayStat(0)
+	_, err = md.api.GetDiffDayStatByHeight(latestHdr.GetHeight())
 }
 
 func TestPovAPI_PubSub_NewBlock(t *testing.T) {
 	tearDone, md := setupTestCasePov(t)
 	defer tearDone(t)
 
-	allBlks := generatePovBlocksToLedger(t, md)
+	allBlks := mockPovApiGeneratePovBlocksToLedger(t, md, 3)
 
 	rpcCtx := rpc.SubscriptionContext()
 
@@ -266,6 +468,7 @@ func TestPovAPI_PubSub_NewBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(10 * time.Millisecond)
 
 	blk1 := allBlks[0]
 	md.api.pubsub.setBlocks(blk1)
