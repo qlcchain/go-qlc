@@ -39,6 +39,7 @@ func NewBadgerStore(dir string) (Store, error) {
 	opts.MaxTableSize = common.BadgerMaxTableSize
 	opts.Logger = nil
 	opts.ValueLogLoadingMode = badgerOpts.FileIO
+	opts.Truncate = true
 	_ = util.CreateDirIfNotExist(dir)
 	db, err := badger.Open(opts)
 	if err != nil {
