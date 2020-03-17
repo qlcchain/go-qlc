@@ -83,3 +83,41 @@ func TestRelation_flush(t *testing.T) {
 		t.Fatal(len(r.addChan), len(r.deleteChan))
 	}
 }
+
+func TestRelation_Close(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "relation", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+
+	store, err := NewRelation(cm.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(cache) != 1 {
+		t.Fatal(len(cache))
+	}
+	store.Add(mock.StateBlockWithoutWork())
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if len(cache) != 0 {
+		t.Fatal(len(cache))
+	}
+
+	store2, err := NewRelation(cm.ConfigFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(cache) != 1 {
+		t.Fatal(len(cache))
+	}
+	if err := store2.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if len(cache) != 0 {
+		t.Fatal(len(cache))
+	}
+}

@@ -371,8 +371,8 @@ func TestLedger_DeleteTokenMetaCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := l.GetTokenMeta(am.Address, am.Tokens[0].Type); err == nil {
-		t.Fatal(err)
+	if r, err := l.GetTokenMeta(am.Address, am.Tokens[0].Type); err == nil {
+		t.Fatal(err, r)
 	}
 }
 

@@ -140,7 +140,7 @@ func (r *Relation) process() {
 	for {
 		select {
 		case <-r.ctx.Done():
-			//r.flush()
+			r.flush()
 			r.closedChan <- true
 			return
 		case obj := <-r.addChan:

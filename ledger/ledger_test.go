@@ -19,7 +19,7 @@ import (
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
-	t.Parallel()
+	//t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
@@ -145,15 +145,28 @@ func TestLedger_Close(t *testing.T) {
 	cm.Load()
 	l1 := NewLedger(cm.ConfigFile)
 	blk := mock.StateBlockWithoutWork()
+	if len(lcache) != 1 {
+		t.Fatal(len(lcache))
+	}
 	if err := l1.Close(); err != nil {
 		t.Fatal(err)
 	}
+	if len(lcache) != 0 {
+		t.Fatal(len(lcache))
+	}
+
 	l2 := NewLedger(cm.ConfigFile)
 	if _, err := l2.GetStateBlockConfirmed(blk.GetHash()); err == nil {
 		t.Fatal(err)
 	}
+	if len(lcache) != 1 {
+		t.Fatal(len(lcache))
+	}
 	if err := l2.Close(); err != nil {
 		t.Fatal(err)
+	}
+	if len(lcache) != 0 {
+		t.Fatal(len(lcache))
 	}
 }
 
