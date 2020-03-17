@@ -118,6 +118,7 @@ func NewLedgerApi(l *ledger.Ledger, r *relation.Relation, eb event.EventBus, ctx
 	}
 	api.syncState.Store(common.SyncNotStart)
 	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
+	go api.checkProcessLockTimeout()
 	return &api
 }
 
