@@ -18,44 +18,35 @@ func TestFork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		for _, n := range nodes {
-			n.StopNodeAndRemoveDir()
-		}
-	}()
-
-	for _, n := range nodes {
-		n.RunNode()
-		n.InitLedger()
-	}
+	defer StopNodes(nodes)
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-	n1.InitStatus()
-	n2.InitStatus()
 
 	// open fork
 	acc1 := mock.Account()
 	acc2 := mock.Account()
 
 	s1, r1 := n1.TokenTransactionAndConfirmed(mock.TestAccount, acc1, types.NewBalance(10000), "QLC")
-	n2.WaitBlockConfirmed(s1.GetHash())
-	n2.WaitBlockConfirmed(r1.GetHash())
+	n2.ProcessBlockAndWaitConfirmed(s1)
+	n2.ProcessBlockAndWaitConfirmed(r1)
 
 	s2 := n1.GenerateSendBlock(mock.TestAccount, acc2.Address(), types.NewBalance(10), "QLC")
 	n1.ProcessBlockAndWaitConfirmed(s2)
+	n2.ProcessBlockAndWaitConfirmed(s2)
 
 	s3 := n1.GenerateSendBlock(acc1, acc2.Address(), types.NewBalance(20), "QLC")
 	n1.ProcessBlockAndWaitConfirmed(s3)
-	n2.WaitBlockConfirmed(s3.GetHash())
+	n2.ProcessBlockAndWaitConfirmed(s3)
 
 	r2 := n1.GenerateReceiveBlock(s2, acc2)
 	r3 := n2.GenerateReceiveBlock(s3, acc2)
 	n1.ProcessBlock(r2)
+	n2.ProcessBlock(r2)
+	n1.ProcessBlock(r3)
 	n2.ProcessBlock(r3)
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(time.Second)
 	has1, _ := n1.ledger.HasStateBlockConfirmed(r2.GetHash())
 	has2, _ := n1.ledger.HasStateBlockConfirmed(r3.GetHash())
 	if has1 == has2 {
@@ -73,10 +64,9 @@ func TestFork(t *testing.T) {
 	// fork block on node 1, sleep to make different timestamp
 	time.Sleep(time.Second)
 	s5 := n2.GenerateSendBlock(mock.TestAccount, acc3.Address(), types.NewBalance(10), "QLC")
+	n1.ProcessBlock(s5)
 
-	n2.ProcessBlock(s5)
-	time.Sleep(3 * time.Second)
-
+	time.Sleep(time.Second)
 	if has, _ := n1.ledger.HasStateBlockConfirmed(s5.GetHash()); has {
 		t.Fatal("block not found")
 	}
@@ -87,27 +77,14 @@ func TestBatchVoteDo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		for _, n := range nodes {
-			n.StopNodeAndRemoveDir()
-		}
-	}()
-
-	for _, n := range nodes {
-		n.RunNode()
-		n.InitLedger()
-	}
+	defer StopNodes(nodes)
 
 	n1 := nodes[0]
-	n2 := nodes[1]
-	n1.InitStatus()
-	n2.InitStatus()
 
 	hashes := make([]types.Hash, 0)
-	for i := 0; i < 2000; i++ {
+	for i := 0; i < 5000; i++ {
 		hash := mock.Hash()
-		n2.dps.confirmedBlockInc(hash)
+		n1.dps.confirmedBlockInc(hash)
 		hashes = append(hashes, hash)
 	}
 
@@ -115,11 +92,8 @@ func TestBatchVoteDo(t *testing.T) {
 		n1.dps.batchVote <- h
 	}
 
-	time.Sleep(3 * time.Second)
-	repOnline := make(map[uint64]*RepOnlinePeriod, 0)
-	n2.cons.RPC(common.RpcDPoSOnlineInfo, nil, repOnline)
-	if repOnline[0].Stat[mock.TestAccount.Address()].VoteCount != 2000 {
-		t.Fatal()
+	for len(n1.dps.batchVote) > 0 {
+		time.Sleep(time.Second)
 	}
 }
 
@@ -128,22 +102,9 @@ func TestOnline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		for _, n := range nodes {
-			n.StopNodeAndRemoveDir()
-		}
-	}()
-
-	for _, n := range nodes {
-		n.RunNode()
-		n.InitLedger()
-	}
+	defer StopNodes(nodes)
 
 	n1 := nodes[0]
-	n2 := nodes[1]
-	n1.InitStatus()
-	n2.InitStatus()
 
 	var prevPov *types.PovBlock
 	for i := 0; i < 160; i++ {
@@ -179,22 +140,10 @@ func TestSynchronize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		for _, n := range nodes {
-			n.StopNodeAndRemoveDir()
-		}
-	}()
-
-	for _, n := range nodes {
-		n.RunNode()
-		n.InitLedger()
-	}
+	defer StopNodes(nodes)
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-	n1.InitStatus()
-	n2.InitStatus()
 
 	toAcc := mock.Account()
 	var blocks types.StateBlockList
@@ -212,8 +161,9 @@ func TestSynchronize(t *testing.T) {
 	n2.cons.RPC(common.RpcDPoSProcessFrontier, bl, nil)
 	n2.ctx.EventBus().Publish(topic.EventSyncBlock, blocks)
 	n2.cons.RPC(common.RpcDPoSOnSyncStateChange, topic.SyncDone, nil)
+	n2.VoteBlock(mock.TestAccount, frontier)
 
-	finishTimer := time.NewTimer(30 * time.Second)
+	finishTimer := time.NewTimer(3 * time.Second)
 
 	for {
 		select {
@@ -240,7 +190,7 @@ SyncOneBlockTest:
 	n2.ctx.EventBus().Publish(topic.EventSyncBlock, bs)
 	n2.cons.RPC(common.RpcDPoSOnSyncStateChange, topic.SyncDone, nil)
 
-	finishTimer.Reset(30 * time.Second)
+	finishTimer.Reset(3 * time.Second)
 
 	for {
 		select {
@@ -257,27 +207,13 @@ SyncOneBlockTest:
 }
 
 func TestRollback(t *testing.T) {
-	t.Skip()
 	nodes, err := InitNodes(2, t)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		for _, n := range nodes {
-			n.StopNodeAndRemoveDir()
-		}
-	}()
-
-	for _, n := range nodes {
-		n.RunNode()
-		n.InitLedger()
-	}
+	defer StopNodes(nodes)
 
 	n1 := nodes[0]
-	n2 := nodes[1]
-	n1.dps.povSyncState = topic.SyncDone
-	n2.dps.povSyncState = topic.SyncDone
 
 	toAcc := mock.Account()
 	s := n1.GenerateSendBlock(mock.TestAccount, toAcc.Address(), types.NewBalance(10), "QLC")
@@ -307,27 +243,14 @@ func TestRollback(t *testing.T) {
 }
 
 func TestGap(t *testing.T) {
-	t.Skip()
 	nodes, err := InitNodes(2, t)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		for _, n := range nodes {
-			n.StopNodeAndRemoveDir()
-		}
-	}()
-
-	for _, n := range nodes {
-		n.RunNode()
-		n.InitLedger()
-	}
+	defer StopNodes(nodes)
 
 	n1 := nodes[0]
 	n2 := nodes[1]
-	n1.InitStatus()
-	n2.InitStatus()
 
 	toAcc := mock.Account()
 	// gap source/gap link
@@ -343,7 +266,7 @@ func TestGap(t *testing.T) {
 	n1.ProcessBlockLocal(cs1)
 	cr1 := n1.GenerateContractReceiveBlock(toAcc, types.MintageAddress, abi.MethodNameMintage, cs1)
 	n1.ProcessBlockLocal(cr1)
-	time.Sleep(time.Second)
+	time.Sleep(3 * time.Second)
 	cs2 := n1.GenerateContractSendBlock(mock.TestAccount, mock.TestAccount, types.MintageAddress, abi.MethodNameMintageWithdraw, cr1.Token)
 	n1.ProcessBlockLocal(cs2)
 	cr2 := n1.GenerateContractReceiveBlock(mock.TestAccount, types.MintageAddress, abi.MethodNameMintageWithdraw, cs2)

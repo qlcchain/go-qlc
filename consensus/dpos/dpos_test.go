@@ -1,13 +1,10 @@
 package dpos
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math/big"
-	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -19,12 +16,10 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/consensus/pov"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/miner"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -33,57 +28,25 @@ import (
 )
 
 type Node struct {
-	cfgPath   string
-	config    *config.Config
-	account   *types.Account
-	t         *testing.T
-	isBoot    bool
-	ctx       *context.ChainContext
-	ledger    *ledger.Ledger
-	povEngine *pov.PoVEngine
-	miner     *miner.Miner
-	cons      *consensus.Consensus
-	p2p       *p2p.QlcService
-	dps       *DPoS
-}
-
-func InitBootNode(t *testing.T) (*Node, error) {
-	cfg, err := config.DefaultConfig(filepath.Join(config.DefaultDataDir(), uuid.New().String()))
-	if err != nil {
-		return nil, err
-	}
-	port := generateRangeNum(10000, 10999)
-	setDefaultConfig(cfg, port)
-
-	cfgPath, err := save(cfg)
-	return &Node{
-		cfgPath: cfgPath,
-		config:  cfg,
-		t:       t,
-		isBoot:  true,
-	}, nil
+	cfgPath string
+	config  *config.Config
+	account *types.Account
+	t       *testing.T
+	ctx     *context.ChainContext
+	ledger  *ledger.Ledger
+	cons    *consensus.Consensus
+	dps     *DPoS
 }
 
 // Init node
 // dir is path of binary file of node, if set empty, will be default path
 // bootNode can be nil
-func InitNode(bootNode *Node, t *testing.T) (*Node, error) {
+func InitNode(t *testing.T) (*Node, error) {
 	cfg, err := config.DefaultConfig(filepath.Join(config.DefaultDataDir(), uuid.New().String()))
 	if err != nil {
 		return nil, err
 	}
-	port := generateRangeNum(10999, 39999)
-	setDefaultConfig(cfg, port)
-
-	if bootNode != nil {
-		cfg.P2P.BootNodes = []string{fmt.Sprintf("%s/ipfs/%s", bootNode.config.P2P.Listen, bootNode.config.P2P.ID.PeerID)}
-		if len(bootNode.config.P2P.BootNodes) == 0 {
-			bootNode.config.P2P.BootNodes = []string{fmt.Sprintf("%s/ipfs/%s", cfg.P2P.Listen, cfg.P2P.ID.PeerID)}
-			if _, err = save(bootNode.config); err != nil {
-				return nil, err
-			}
-		}
-	}
+	setDefaultConfig(cfg)
 
 	cfgPath, err := save(cfg)
 	if err != nil {
@@ -97,14 +60,7 @@ func InitNode(bootNode *Node, t *testing.T) (*Node, error) {
 	}, nil
 }
 
-func setDefaultConfig(cfg *config.Config, port int) {
-	cfg.P2P.Listen = fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", strconv.Itoa(port))
-	cfg.P2P.BootNodes = []string{}
-	cfg.RPC.HTTPEndpoint = fmt.Sprintf("tcp4://0.0.0.0:%s", strconv.Itoa(port+1))
-	cfg.RPC.WSEndpoint = fmt.Sprintf("tcp4://0.0.0.0:%s", strconv.Itoa(port+2))
-	cfg.RPC.IPCEnabled = false
-	cfg.P2P.SyncInterval = 12000
-	cfg.P2P.Discovery.MDNSEnabled = false
+func setDefaultConfig(cfg *config.Config) {
 	cfg.PoV.PovEnabled = true
 	cfg.LogLevel = "error"
 }
@@ -112,27 +68,29 @@ func setDefaultConfig(cfg *config.Config, port int) {
 func InitNodes(count int, t *testing.T) ([]*Node, error) {
 	nodes := make([]*Node, 0)
 
-	bootNode, err := InitBootNode(t)
-	if err != nil {
-		return nil, err
-	}
-
-	nodes = append(nodes, bootNode)
-	for i := 0; i < count-1; i++ {
-		node, err := InitNode(bootNode, t)
+	for i := 0; i < count; i++ {
+		node, err := InitNode(t)
 		if err != nil {
 			return nil, err
 		}
 		nodes = append(nodes, node)
+
+		node.RunNode(i)
+		node.InitLedger()
+		node.InitStatus()
 	}
 
 	return nodes, nil
 }
 
-func generateRangeNum(min, max int) int {
-	rand.Seed(time.Now().UnixNano())
-	randNum := rand.Intn(max-min) + min
-	return randNum
+func StopNodes(nodes []*Node) {
+	for i, n := range nodes {
+		n.t.Logf("node %d stopping ...  ", i)
+
+		n.StopNodeAndRemoveDir()
+
+		n.t.Logf("node %d stopped", i)
+	}
 }
 
 func save(cfg *config.Config) (string, error) {
@@ -166,15 +124,11 @@ func (n *Node) CommitConfig() error {
 func (n *Node) startServices() {
 	log.Setup(n.config)
 	n.startLedgerService()
-	n.startPoVService()
-	n.startP2PService()
 	n.startConsensusService()
 }
 
 func (n *Node) stopServices() {
-	n.stopP2PService()
 	n.stopConsensusService()
-	n.stopPoVService()
 	log.Teardown()
 }
 
@@ -231,25 +185,9 @@ func (n *Node) startLedgerService() {
 	_ = ctx.SaveStorage()
 }
 
-func (n *Node) startP2PService() {
-	ps, err := p2p.NewQlcService(n.ctx.ConfigFile())
-	if err != nil {
-		n.t.Fatal(err)
-	}
-	n.p2p = ps
-
-	err = ps.Start()
-	if err != nil {
-		n.t.Fatal(err)
-	}
-}
-
-func (n *Node) stopP2PService() {
-	n.p2p.Stop()
-}
-
 func (n *Node) startConsensusService() {
 	DPoS := NewDPoS(n.ctx.ConfigFile())
+	DPoS.localRepAccount.Store(mock.TestAccount.Address(), mock.TestAccount)
 	cons := consensus.NewConsensus(DPoS, n.ctx.ConfigFile())
 	n.cons = cons
 	n.dps = DPoS
@@ -261,64 +199,23 @@ func (n *Node) stopConsensusService() {
 	n.cons.Stop()
 }
 
-func (n *Node) startPoVService() {
-	pov.CheckPeerStatusTime = time.Second
-	pov.ForceSyncTimeInSec = time.Second
-
-	povEngine, _ := pov.NewPovEngine(n.ctx.ConfigFile(), false)
-	err := povEngine.Init()
-	if err != nil {
-		n.t.Fatal(err)
-	}
-	n.povEngine = povEngine
-
-	er := povEngine.Start()
-	if er != nil {
-		n.t.Fatal(er)
-	}
-
-	m := miner.NewMiner(n.ctx.ConfigFile(), povEngine)
-	n.miner = m
-	m.Init()
-	m.Start()
-}
-
-func (n *Node) stopPoVService() {
-	er := n.povEngine.Stop()
-	if er != nil {
-		n.t.Fatal(er)
-	}
-
-	n.miner.Stop()
-}
-
 // Run a node without account
-func (n *Node) RunNode() {
-	n.t.Log("node starting ... ", n.config.RPC.HTTPEndpoint)
+func (n *Node) RunNode(i int) {
+	n.t.Logf("node %d starting ...", i)
 
 	n.ctx = context.NewChainContext(n.cfgPath)
 	n.ctx.Init(func() error {
 		return nil
 	})
 
-	// save accounts to context
-	var accounts []*types.Account
-	accounts = append(accounts, mock.TestAccount)
-
-	if n.isBoot {
-		n.ctx.SetAccounts(accounts)
-	}
-
 	n.ledger = ledger.NewLedger(n.ctx.ConfigFile())
 	n.startServices()
 
-	n.t.Log("node started ", n.config.RPC.HTTPEndpoint)
+	n.t.Logf("node %d started", i)
 }
 
 // Stop a node
 func (n *Node) StopNodeAndRemoveDir() {
-	n.t.Log("node stopping ...  ", n.config.RPC.HTTPEndpoint)
-
 	n.stopServices()
 
 	dir, err := filepath.Abs(filepath.Dir(n.cfgPath))
@@ -326,15 +223,13 @@ func (n *Node) StopNodeAndRemoveDir() {
 		n.t.Fatal(err)
 	}
 
-	if err := os.RemoveAll(dir); err != nil {
-		n.t.Fatal(err)
-	}
-
-	n.t.Log("node stopped ", n.config.RPC.HTTPEndpoint)
+	os.RemoveAll(dir)
 }
 
 func (n *Node) InitStatus() {
-	ticker := time.NewTicker(300 * time.Second)
+	ticker := time.NewTimer(100 * time.Millisecond)
+	n.ctx.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+
 	for {
 		if n.ctx.PoVState() == topic.SyncDone {
 			return
@@ -483,6 +378,7 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 			recv := &types.StateBlock{}
 			mintage := &contract.Mintage{}
 			vmContext := vmstore.NewVMContext(n.ledger)
+			contract.SetMinMintageTime(0, 0, 0, 0, 0, 1)
 
 			blocks, err := mintage.DoReceive(vmContext, recv, send)
 			if err != nil {
@@ -539,9 +435,7 @@ func (n *Node) ProcessBlock(block *types.StateBlock) {
 		n.t.Fatal(err)
 	}
 
-	n.t.Log("process result, ", flag)
-	switch flag {
-	case process.Progress:
+	if flag == process.Progress {
 		hash := block.GetHash()
 
 		err := verifier.BlockCacheProcess(block)
@@ -550,36 +444,8 @@ func (n *Node) ProcessBlock(block *types.StateBlock) {
 		}
 
 		eb.Publish(topic.EventAddBlockCache, block)
-		n.t.Log("broadcast block")
-
-		//TODO: refine
 		eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: block})
 		eb.Publish(topic.EventGenerateBlock, block)
-		return
-	case process.BadWork:
-		n.t.Fatalf("bad work")
-	case process.BadSignature:
-		n.t.Fatalf("bad signature")
-	case process.Old:
-		n.t.Fatalf("old block")
-	case process.Fork:
-		n.t.Fatalf("fork")
-	case process.GapSource:
-		n.t.Fatalf("gap source block")
-	case process.GapPrevious:
-		n.t.Fatalf("gap previous block")
-	case process.BalanceMismatch:
-		n.t.Fatalf("balance mismatch")
-	case process.UnReceivable:
-		n.t.Fatalf("unReceivable")
-	case process.GapSmartContract:
-		n.t.Fatalf("gap SmartContract")
-	case process.InvalidData:
-		n.t.Fatalf("invalid data")
-	case process.ReceiveRepeated:
-		n.t.Fatalf("generate receive block repeatedly ")
-	default:
-		n.t.Fatalf("error processing block")
 	}
 }
 
@@ -629,7 +495,7 @@ func (n *Node) TokenTransactionAndConfirmed(from, to *types.Account, amount type
 // Wait for block consensus confirmed
 // if can not confirmed in one minute, return timeout error
 func (n *Node) WaitBlockConfirmed(hash types.Hash) {
-	t := time.NewTimer(time.Second * 180)
+	t := time.NewTimer(time.Second * 3)
 	defer t.Stop()
 	for {
 		select {
@@ -639,7 +505,7 @@ func (n *Node) WaitBlockConfirmed(hash types.Hash) {
 			if has, _ := n.ledger.HasStateBlockConfirmed(hash); has {
 				return
 			} else {
-				time.Sleep(1 * time.Second)
+				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}
@@ -665,4 +531,18 @@ func (n *Node) InitLedger() {
 	n.ProcessBlockLocal(&mock.TestSendGasBlock)
 	n.ProcessBlockLocal(&mock.TestReceiveGasBlock)
 	n.ProcessBlockLocal(&mock.TestChangeRepresentative)
+
+	pb, td := mock.GeneratePovBlock(nil, 0)
+	n.ledger.AddPovBlock(pb, td)
+	n.ledger.SetPovLatestHeight(pb.Header.BasHdr.Height)
+	n.ledger.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
+}
+
+func (n *Node) VoteBlock(acc *types.Account, blk *types.StateBlock) {
+	index := n.dps.getProcessorIndex(blk.Address)
+	vi := &voteInfo{
+		hash:    blk.GetHash(),
+		account: acc.Address(),
+	}
+	n.dps.processors[index].acks <- vi
 }

@@ -1,6 +1,7 @@
 package dpos
 
 import (
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"math"
 	"math/big"
 	"testing"
@@ -61,7 +62,7 @@ func generateForkBlock() (block1, block2 *types.StateBlock) {
 	return sb1, sb2
 }
 
-func TestProcessResult(t *testing.T) {
+func TestProcessor_processResultProgress(t *testing.T) {
 	dps := getTestDpos()
 	blk1, blk2 := generateForkBlock()
 
@@ -93,4 +94,118 @@ func TestProcessResult(t *testing.T) {
 			t.Fatal("vote for block2")
 		}
 	}
+}
+
+func TestProcessor_localRepVoteFrontier(t *testing.T) {
+	dps := getTestDpos()
+	dps.Init()
+	processor := dps.processors[0]
+
+	account := mock.Account()
+	dps.localRepAccount.Store(account.Address(), account)
+
+	benefit := types.ZeroBenefit
+	err := dps.ledger.AddRepresentation(account.Address(), benefit, dps.ledger.Cache().GetCache())
+	if err != nil {
+		t.Fatal()
+	}
+
+	blk := mock.StateBlockWithoutWork()
+	processor.localRepVoteFrontier(blk)
+	if len(processor.acks) > 0 {
+		t.Fatal()
+	}
+
+	benefit.Vote = dps.minVoteWeight
+	benefit.Total = dps.minVoteWeight
+	err = dps.ledger.AddRepresentation(account.Address(), benefit, dps.ledger.Cache().GetCache())
+	if err != nil {
+		t.Fatal()
+	}
+
+	processor.localRepVoteFrontier(blk)
+	if len(processor.acks) != 1 {
+		t.Fatal()
+	}
+
+	blk.Type = types.Online
+	processor.localRepVoteFrontier(blk)
+	if len(processor.acks) != 1 {
+		t.Fatal()
+	}
+}
+
+func TestProcessor_processResult(t *testing.T) {
+	dps := getTestDpos()
+	processor := dps.processors[0]
+	blk := mock.StateBlockWithoutWork()
+	blk.Previous = mock.Hash()
+	blk.Link = mock.Hash()
+	bs := &consensus.BlockSource{
+		Block:     blk,
+		BlockFrom: 0,
+		Type:      0,
+		Para:      nil,
+	}
+
+	results := []process.ProcessResult{
+		process.BadSignature,
+		process.BadWork,
+		process.BalanceMismatch,
+		process.Old,
+		process.UnReceivable,
+		process.GapSmartContract,
+		process.InvalidData,
+		process.Other,
+		process.Fork,
+		process.GapPrevious,
+		process.GapSource,
+		process.GapTokenInfo,
+		process.GapPovHeight,
+		process.GapPublish,
+	}
+
+	for _, pr := range results {
+		processor.processResult(pr, bs)
+	}
+}
+
+func TestProcessor_confirmBlock(t *testing.T) {
+	dps := getTestDpos()
+	processor := dps.processors[0]
+
+	blk1 := mock.StateBlockWithoutWork()
+	blk2 := blk1.Clone()
+	blk2.Timestamp += 1
+
+	vk := getVoteKey(blk1)
+	el := newElection(dps, blk1)
+	dps.acTrx.roots.Store(vk, el)
+
+	processor.confirmBlock(blk2)
+	if has, _ := dps.ledger.HasStateBlockConfirmed(blk2.GetHash()); !has {
+		t.Fatal()
+	}
+}
+
+func TestProcessor_dequeueGapPublish(t *testing.T) {
+	dps := getTestDpos()
+
+	blk := mock.StateBlockWithoutWork()
+	dps.ledger.AddStateBlock(blk)
+
+	blk1 := mock.StateBlockWithoutWork()
+	blk1.Previous = blk.GetHash()
+	dps.ledger.AddStateBlock(blk1)
+
+	blk2 := mock.StateBlockWithoutWork()
+	dps.ledger.AddGapPublishBlock(blk1.Previous, blk2, types.UnSynchronized)
+
+	index := dps.getProcessorIndex(blk2.Address)
+	processor := dps.processors[index]
+	processor.dequeueGapPublish(blk1.GetHash())
+	dps.ledger.GetGapPublishBlock(blk1.Previous, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+		t.Fatal()
+		return nil
+	})
 }
