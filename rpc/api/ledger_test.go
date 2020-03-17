@@ -508,8 +508,8 @@ func TestLedgerAPI_Accounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(r)
-	if len(r) != 4 {
-		t.Fatal()
+	if len(r) != 5 {
+		t.Fatalf("invalid len %d", len(r))
 	}
 }
 
@@ -639,8 +639,8 @@ func TestLedgerAPI_Blocks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(r) != 10 {
-		t.Fatal()
+	if len(r) != 12 {
+		t.Fatalf("invalid len %d", len(r))
 	}
 }
 
@@ -651,7 +651,7 @@ func TestLedgerAPI_Chain(t *testing.T) {
 	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
-	r, err := ledgerApi.Chain(blocks[5].GetHash(), -1)
+	r, err := ledgerApi.Chain(blocks[6].GetHash(), -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,8 +668,8 @@ func TestLedgerAPI_Delegators(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(r) != 2 {
-		t.Fatal()
+	if len(r) != 3 {
+		t.Fatalf("invalid len %d", len(r))
 	}
 }
 
@@ -681,8 +681,8 @@ func TestLedgerAPI_DelegatorsCount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r != 2 {
-		t.Fatal()
+	if r != 3 {
+		t.Fatalf("invalid len %d", r)
 	}
 }
 
