@@ -223,9 +223,7 @@ func (v *VMContext) set(key []byte, value []byte, batch ...storage.Batch) (err e
 			}
 		}()
 	}
-	bytes := make([]byte, len(value))
-	copy(bytes, value)
-	return b.Put(key, bytes)
+	return b.Put(key, value)
 }
 
 func (v *VMContext) remove(key []byte, batch ...storage.Batch) (err error) {

@@ -693,9 +693,7 @@ func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte)
 	if err != nil {
 		return fmt.Errorf("cache iterator : %s", err)
 	}
-	count := 0
 	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
-		count++
 		if !contain(keys, k) {
 			if err := fn(k, v); err != nil {
 				return fmt.Errorf("ledger iterator: %s", err)
