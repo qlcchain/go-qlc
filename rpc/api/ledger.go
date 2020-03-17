@@ -8,13 +8,13 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/common/hashmap"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -37,11 +37,12 @@ const (
 	idle
 )
 
-const defaultLockSize = 1000
+const lockTimeout = 60 * time.Second
 
 type lockValue struct {
 	lockStatus atomic.Value
 	mutex      *sync.Mutex
+	time       int64
 }
 
 type LedgerApi struct {
@@ -51,8 +52,9 @@ type LedgerApi struct {
 	relation          *relation.Relation
 	logger            *zap.SugaredLogger
 	blockSubscription *BlockSubscription
-	processLock       *hashmap.HashMap
+	processLock       *sync.Map
 	syncState         atomic.Value
+	ctx               context.Context
 }
 
 type APIBlock struct {
@@ -111,7 +113,8 @@ func NewLedgerApi(l *ledger.Ledger, r *relation.Relation, eb event.EventBus, ctx
 		relation:          r,
 		logger:            log.NewLogger("api_ledger"),
 		blockSubscription: NewBlockSubscription(ctx, eb),
-		processLock:       hashmap.New(defaultLockSize),
+		processLock:       new(sync.Map),
+		ctx:               ctx,
 	}
 	api.syncState.Store(common.SyncNotStart)
 	_, _ = eb.SubscribeSync(common.EventPovSyncState, api.OnPovSyncState)
@@ -796,35 +799,56 @@ func (l *LedgerApi) Pendings() ([]*APIPending, error) {
 	return aps, nil
 }
 
-func (l *LedgerApi) getLockKey(addr types.Address, token types.Hash) []byte {
+func (l *LedgerApi) getLockKey(addr types.Address, token types.Hash) types.Hash {
 	key := make([]byte, 0)
 	key = append(key, addr.Bytes()...)
 	key = append(key, token.Bytes()...)
-	return key
+	hash, _ := types.HashBytes(key)
+	return hash
+}
+
+func (l *LedgerApi) processLockLen() int {
+	var count int
+	l.processLock.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+
+	return count
 }
 
 func (l *LedgerApi) getProcessLock(addr types.Address, token types.Hash) *lockValue {
 	key := l.getLockKey(addr, token)
-	v, b := l.processLock.Get(key)
-	if b {
-		v.(*lockValue).lockStatus.Store(using)
+	if v, ok := l.processLock.Load(key); ok {
 		return v.(*lockValue)
 	} else {
-		lv := &lockValue{}
-		lv.lockStatus.Store(using)
-		lv.mutex = &sync.Mutex{}
-		l.processLock.Set(key, lv)
-		if l.processLock.Len() >= defaultLockSize {
-			quitCh := make(chan struct{})
-			for key := range l.processLock.Iter(quitCh) {
-				s := (key.Value).(*lockValue).lockStatus.Load()
-				if s.(lockStatus) == idle {
-					l.processLock.Del(key.Key)
-				}
-			}
-			close(quitCh)
+		lv := &lockValue{
+			mutex: &sync.Mutex{},
+			time:  time.Now().Add(lockTimeout).Unix(),
 		}
+		lv.lockStatus.Store(using)
+		l.processLock.Store(key, lv)
 		return lv
+	}
+}
+
+func (l *LedgerApi) checkProcessLockTimeout() {
+	ticker := time.NewTicker(lockTimeout)
+	for {
+		select {
+		case <-l.ctx.Done():
+			return
+		case <-ticker.C:
+			l.processLock.Range(func(key, value interface{}) bool {
+				s := value.(*lockValue).lockStatus.Load()
+				t := value.(*lockValue).time
+				now := time.Now().Unix()
+				if s.(lockStatus) == idle && t < now {
+					l.processLock.Delete(key)
+				}
+				return true
+			})
+		}
 	}
 }
 
@@ -842,6 +866,8 @@ func (l *LedgerApi) Process(block *types.StateBlock) (types.Hash, error) {
 	}
 	lv := l.getProcessLock(block.Address, block.Token)
 	lv.mutex.Lock()
+	lv.lockStatus.Store(using)
+	lv.time = time.Now().Add(lockTimeout).Unix()
 	defer func() {
 		lv.mutex.Unlock()
 		lv.lockStatus.Store(idle)
