@@ -508,7 +508,6 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		dps.logger.Infof("block:[%s] Gap previous:[%s]", hash, blk.Previous)
 		p.enqueueUnchecked(result, bs)
 	case process.GapSource:
-		// dfile.WriteString(fmt.Sprintf("add gap link: [%d] [%s] [%s]", p.index, hash, blk.Link))
 		dps.logger.Infof("block:[%s] Gap source:[%s]", hash, blk.Link)
 		p.enqueueUnchecked(result, bs)
 	case process.GapTokenInfo:

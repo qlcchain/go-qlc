@@ -2,7 +2,6 @@ package dpos
 
 import (
 	"context"
-
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -219,7 +218,6 @@ func NewDPoS(cfgFile string) *DPoS {
 }
 
 func (dps *DPoS) Init() {
-	// dfile, _ = os.OpenFile("./dfile", os.O_RDWR|os.O_CREATE, 0666)
 	supply := config.GenesisBlock().Balance
 	dps.minVoteWeight, _ = supply.Div(common.DposVoteDivisor)
 	dps.voteThreshold, _ = supply.Div(2)
@@ -752,26 +750,6 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 						dps.processors[index].tokenCreateNotify(hash)
 					}
 				}
-			}
-		}
-	}
-}
-
-func (dps *DPoS) deleteBlockCache(block *types.StateBlock) {
-	hash := block.GetHash()
-	if exist, _ := dps.ledger.HasBlockCache(hash); exist {
-		err := dps.ledger.DeleteBlockCache(hash)
-		if err != nil {
-			dps.logger.Error(err)
-		} else {
-			dps.logger.Debugf("delete block cache [%s] error", hash.String())
-		}
-		if exit, _ := dps.ledger.HasAccountMetaCache(block.Address); exit {
-			err := dps.ledger.DeleteAccountMetaCache(block.Address)
-			if err != nil {
-				dps.logger.Error(err)
-			} else {
-				dps.logger.Debugf("delete block account meta cache [%s] error", hash.String())
 			}
 		}
 	}

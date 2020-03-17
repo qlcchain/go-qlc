@@ -108,7 +108,7 @@ func setupPovProcessorTestCase(t *testing.T) (func(t *testing.T), *povProcessorM
 	md.eb = event.GetEventBus(lDir)
 
 	return func(t *testing.T) {
-		err := md.ledger.DBStore().Close()
+		err := md.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

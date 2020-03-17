@@ -1,9 +1,12 @@
 package mock
 
 import (
+	"bytes"
+	"encoding/binary"
 	"math"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"
@@ -123,4 +126,74 @@ func PovHeader() *types.PovHeader {
 			//StateHash:  Hash(),
 		},
 	}
+}
+
+func getBtcCoinbase(msgBlockHash types.Hash) *types.PovBtcTx {
+	var magic [4]byte           // 4 byte
+	var auxBlockHash types.Hash // 32 byte
+	var merkleSize int32        // 4 byte
+	var merkleNonce int32       // 4 byte
+
+	magic = [4]byte{0xfa, 0xbe, 'm', 'm'}
+	auxBlockHash = msgBlockHash
+	merkleSize = 1
+	merkleNonce = 0
+
+	scriptSig := make([]byte, 0, 4+8+44) // 44 byte
+	scriptSigBuf := bytes.NewBuffer(scriptSig)
+	binary.Write(scriptSigBuf, binary.LittleEndian, uint32(0))
+	binary.Write(scriptSigBuf, binary.LittleEndian, uint64(0))
+	binary.Write(scriptSigBuf, binary.LittleEndian, magic)
+	binary.Write(scriptSigBuf, binary.LittleEndian, auxBlockHash)
+	binary.Write(scriptSigBuf, binary.LittleEndian, merkleSize)
+	binary.Write(scriptSigBuf, binary.LittleEndian, merkleNonce)
+
+	coinBaseTxin := types.PovBtcTxIn{
+		PreviousOutPoint: types.PovBtcOutPoint{
+			Hash:  types.ZeroHash,
+			Index: types.PovMaxPrevOutIndex,
+		},
+		SignatureScript: scriptSigBuf.Bytes(),
+		Sequence:        types.PovMaxTxInSequenceNum,
+	}
+
+	coinBaseTxout := types.PovBtcTxOut{
+		Value:    1,
+		PkScript: []byte{0x51}, //OP_TRUE
+	}
+
+	btcTxin := make([]*types.PovBtcTxIn, 0)
+	btcTxin = append(btcTxin, &coinBaseTxin)
+	btcTxout := make([]*types.PovBtcTxOut, 0)
+	btcTxout = append(btcTxout, &coinBaseTxout)
+
+	coinbase := types.NewPovBtcTx(btcTxin, btcTxout)
+
+	return coinbase
+}
+
+func GenerateAuxPow(msgBlockHash types.Hash) *types.PovAuxHeader {
+	auxMerkleBranch := make([]*types.Hash, 0)
+	auxMerkleIndex := 0
+	parCoinbaseTx := getBtcCoinbase(msgBlockHash)
+	parCoinBaseMerkle := make([]*types.Hash, 0)
+	parMerkleIndex := 0
+	parBlockHeader := types.PovBtcHeader{
+		Version:    0x7fffffff,
+		Previous:   types.ZeroHash,
+		MerkleRoot: parCoinbaseTx.ComputeHash(),
+		Timestamp:  uint32(time.Now().Unix()),
+		Bits:       0, // do not care about parent block diff
+		Nonce:      0, // to be solved
+	}
+	auxPow := &types.PovAuxHeader{
+		AuxMerkleBranch:   auxMerkleBranch,
+		AuxMerkleIndex:    auxMerkleIndex,
+		ParCoinBaseTx:     *parCoinbaseTx,
+		ParCoinBaseMerkle: parCoinBaseMerkle,
+		ParMerkleIndex:    parMerkleIndex,
+		ParBlockHeader:    parBlockHeader,
+	}
+
+	return auxPow
 }

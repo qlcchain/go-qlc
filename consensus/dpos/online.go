@@ -215,16 +215,18 @@ func (dps *DPoS) isOnline(addr types.Address) bool {
 }
 
 func (dps *DPoS) sendOnline(povHeight uint64) {
-	for _, acc := range dps.accounts {
+	dps.localRepAccount.Range(func(key, value interface{}) bool {
+		acc := value.(*types.Account)
+
 		weight := dps.ledger.Weight(acc.Address())
 		if weight.Compare(dps.minVoteWeight) == types.BalanceCompSmaller {
-			continue
+			return true
 		}
 
 		blk, err := dps.ledger.GenerateOnlineBlock(acc.Address(), acc.PrivateKey(), povHeight)
 		if err != nil {
 			dps.logger.Error("generate online block err", err)
-			return
+			return true
 		}
 
 		dps.logger.Debugf("send online block[%s]", blk.GetHash())
@@ -236,7 +238,8 @@ func (dps *DPoS) sendOnline(povHeight uint64) {
 			Type:      consensus.MsgGenerateBlock,
 		}
 		dps.ProcessMsg(bs)
-	}
+		return true
+	})
 }
 
 func (dps *DPoS) sendOnlineWithAccount(acc *types.Account, povHeight uint64) {

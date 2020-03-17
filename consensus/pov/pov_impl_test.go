@@ -44,7 +44,7 @@ func setupPovImplTestCase(t *testing.T) (func(t *testing.T), *povImplMockData) {
 	md.eb = event.GetEventBus(uid)
 
 	return func(t *testing.T) {
-		err := md.ledger.DBStore().Close()
+		err := md.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -139,6 +139,8 @@ func TestPovImpl_ManyBlocks(t *testing.T) {
 		}
 		prevBlk = blk
 	}
+
+	povImpl.chain.CalcBlockRewardByStakingBonus(povImpl.chain.LatestHeader())
 
 	err = povImpl.Stop()
 	if err != nil {

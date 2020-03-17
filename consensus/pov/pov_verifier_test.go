@@ -98,7 +98,7 @@ func setupPovVerifierTestCase(t *testing.T) (func(t *testing.T), *povVerifierMoc
 	md.ledger = ledger.NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
-		err := md.ledger.DBStore().Close()
+		err := md.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -138,6 +138,26 @@ func TestPovVerifier_VerifyFull(t *testing.T) {
 	}
 
 	blk1, _ := mock.GeneratePovBlock(genBlk, 5)
+	stat1 := verifier.VerifyFull(blk1)
+	if stat1.Result != process.Progress {
+		//t.Fatalf("result %s err %s", stat1.Result, stat1.ErrMsg)
+	}
+}
+
+func TestPovVerifier_VerifyFull_Aux(t *testing.T) {
+	teardownTestCase, md := setupPovVerifierTestCase(t)
+	defer teardownTestCase(t)
+
+	verifier := NewPovVerifier(md.ledger, md.chainV, md.cs)
+
+	genBlk, _ := mock.GenerateGenesisPovBlock()
+	stat := verifier.VerifyFull(genBlk)
+	if stat.Result != process.Progress {
+		//t.Fatalf("result %s err %s", stat1.Result, stat1.ErrMsg)
+	}
+
+	blk1, _ := mock.GeneratePovBlock(genBlk, 5)
+	blk1.Header.AuxHdr = mock.GenerateAuxPow(blk1.GetHash())
 	stat1 := verifier.VerifyFull(blk1)
 	if stat1.Result != process.Progress {
 		//t.Fatalf("result %s err %s", stat1.Result, stat1.ErrMsg)

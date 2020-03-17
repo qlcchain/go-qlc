@@ -766,14 +766,26 @@ func (s *SettlementAPI) GenerateInvoicesByContract(addr *types.Address, start, e
 	return cabi.GenerateInvoicesByContract(ctx, addr, start, end)
 }
 
-// GenerateMultiPartyInvoice generate multi-party invoice by settlement contract address
-// @param addr settlement contract address
+// GenerateMultiPartyInvoice generate multi-party invoice by the two settlement contract address
+// @param firstAddr settlement contract address
+// @param second the other settlement contract address
 // @param start report start date (UTC unix time)
 // @param end report end data (UTC unix time)
 // @return settlement invoice
-func (s *SettlementAPI) GenerateMultiPartyInvoice(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
+func (s *SettlementAPI) GenerateMultiPartyInvoice(firstAddr, secondAddr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
 	ctx := vmstore.NewVMContext(s.l)
-	return cabi.GenerateMultiPartyInvoice(ctx, addr, start, end)
+	return cabi.GenerateMultiPartyInvoice(ctx, firstAddr, secondAddr, start, end)
+}
+
+// GenerateMultiPartySummaryReport generate multi-party summary reports by the two settlement contract address
+// @param firstAddr settlement contract address
+// @param second the other settlement contract address
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return settlement invoice
+func (s *SettlementAPI) GenerateMultiPartySummaryReport(firstAddr, secondAddr *types.Address, start, end int64) (*cabi.MultiPartySummaryResult, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetMultiPartySummaryReport(ctx, firstAddr, secondAddr, start, end)
 }
 
 // GetPreStopNames get all previous stop names by user address
@@ -788,7 +800,7 @@ func (s *SettlementAPI) GetNextStopNames(addr *types.Address) ([]string, error) 
 	return cabi.GetNextStopNames(ctx, addr)
 }
 
-var sortCDRFun = func(cdr1, cdr2 *cabi.CDRStatus) bool {
+func sortCDRFun(cdr1, cdr2 *cabi.CDRStatus) bool {
 	dt1, sender1, _, err := cdr1.ExtractID()
 	if err != nil {
 		return false

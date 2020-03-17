@@ -329,3 +329,14 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	}
 	return nil, nil
 }
+
+func SetMinMintageTime(y, m, d, h, i, s int) {
+	minMintageTime = &timeSpan{
+		years:   y,
+		months:  m,
+		days:    d,
+		hours:   h,
+		minutes: i,
+		seconds: s,
+	}
+}

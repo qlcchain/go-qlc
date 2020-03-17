@@ -46,6 +46,7 @@ func AccountMeta(addr types.Address) *types.AccountMeta {
 	am.CoinStorage = types.ZeroBalance
 	am.CoinOracle = types.ZeroBalance
 	am.CoinBalance = types.ZeroBalance
+	am.CoinVote = types.ZeroBalance
 	am.Tokens = []*types.TokenMeta{}
 	for i := 0; i < 5; i++ {
 		t := TokenMeta(addr)
@@ -55,11 +56,18 @@ func AccountMeta(addr types.Address) *types.AccountMeta {
 }
 
 func TokenMeta(addr types.Address) *types.TokenMeta {
+	return TokenMeta2(addr, types.ZeroHash)
+}
+
+func TokenMeta2(addr types.Address, token types.Hash) *types.TokenMeta {
+	if token.IsZero() {
+		token = Hash()
+	}
 	s1, _ := random.Intn(math.MaxInt32)
 	i := new(big.Int).SetInt64(int64(s1))
 	t := types.TokenMeta{
 		//TokenAccount: Address(),
-		Type:           Hash(),
+		Type:           token,
 		BelongTo:       addr,
 		Balance:        types.Balance{Int: i},
 		BlockCount:     1,

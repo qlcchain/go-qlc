@@ -1,6 +1,9 @@
 package common
 
-import "github.com/qlcchain/go-qlc/common/types"
+import (
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
+)
 
 const (
 	OracleTypeEmail uint32 = iota
@@ -56,3 +59,40 @@ const (
 	VerifierMinNum = 1
 	VerifierMaxNum = 5
 )
+
+const (
+	PublicKeyTypeED25519 uint16 = iota
+	PublicKeyTypeRSA4096
+	PublicKeyTypeInvalid
+)
+
+func PublicKeyTypeFromString(t string) uint16 {
+	switch t {
+	case "ed25519":
+		return PublicKeyTypeED25519
+	case "rsa4096":
+		return PublicKeyTypeRSA4096
+	default:
+		return PublicKeyTypeInvalid
+	}
+}
+
+func PublicKeyTypeToString(t uint16) string {
+	switch t {
+	case PublicKeyTypeED25519:
+		return "ed25519"
+	case PublicKeyTypeRSA4096:
+		return "rsa4096"
+	default:
+		return "invalid"
+	}
+}
+
+func PublicKeyWithTypeHash(t uint16, k []byte) []byte {
+	d := make([]byte, 0)
+	d = append(d, util.BE_Uint16ToBytes(t)...)
+	d = append(d, k...)
+
+	h, _ := types.Sha256HashData(d)
+	return h.Bytes()
+}

@@ -107,7 +107,7 @@ func setupPovSyncTestCase(t *testing.T) (func(t *testing.T), *povSyncMockData) {
 	md.chain.InsertBlock(genBlk, genTD)
 
 	return func(t *testing.T) {
-		err := md.ledger.DBStore().Close()
+		err := md.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -182,3 +182,23 @@ func LE_EncodeVarInt(val uint64) []byte {
 	binary.LittleEndian.PutUint64(buf[1:9], val)
 	return buf[0:9]
 }
+
+func BE_Uint16ToBytes(i uint16) []byte {
+	tmp := make([]byte, 8)
+	binary.BigEndian.PutUint16(tmp, i)
+	return tmp
+}
+
+func BE_BytesToUint16(buf []byte) uint16 {
+	return binary.BigEndian.Uint16(buf)
+}
+
+func LE_Uint16ToBytes(i uint16) []byte {
+	tmp := make([]byte, 8)
+	binary.LittleEndian.PutUint16(tmp, i)
+	return tmp
+}
+
+func LE_BytesToUint16(buf []byte) uint16 {
+	return binary.LittleEndian.Uint16(buf)
+}

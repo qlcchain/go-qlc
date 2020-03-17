@@ -44,7 +44,8 @@ func TestVerifierRegister(t *testing.T) {
 		t.Fatal()
 	}
 
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, common.OracleTypeEmail, "test@126.com")
+	vk := mock.Hash()
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, common.OracleTypeEmail, "test@126.com", vk[:])
 	_, _, err = vr.ProcessSend(ctx, blk)
 	if err != ErrNotEnoughPledge {
 		t.Fatal()
@@ -58,7 +59,7 @@ func TestVerifierRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, common.OracleTypeInvalid, "test@126.com")
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, common.OracleTypeInvalid, "test@126.com", vk[:])
 	_, _, err = vr.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal()
@@ -97,7 +98,8 @@ func TestVerifierUnregister(t *testing.T) {
 
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierUnregister, common.OracleTypeEmail)
 	vr := new(VerifierRegister)
-	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com")
+	vk := mock.Hash()
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com", vk[:])
 	_, _, err = vu.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal()
@@ -130,12 +132,13 @@ func TestPublish(t *testing.T) {
 
 	pt := common.OracleTypeInvalid
 	id := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	random.Bytes(pk)
 	vs := make([]types.Address, 0)
 	cs := make([]types.Hash, 0)
 	fee := big.NewInt(5e8)
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, pk, vs, cs, fee)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, kt, pk, vs, cs, fee)
 	_, _, err = p.ProcessSend(ctx, blk)
 	if err != ErrVerifierNum {
 		t.Fatal(err)
@@ -143,14 +146,14 @@ func TestPublish(t *testing.T) {
 
 	vs = append(vs, mock.Address())
 	cs = append(cs, mock.Hash())
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, pk, vs, cs, fee)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, kt, pk, vs, cs, fee)
 	_, _, err = p.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
 	pt = common.OracleTypeEmail
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, pk, vs, cs, fee)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, kt, pk, vs, cs, fee)
 	_, _, err = p.ProcessSend(ctx, blk)
 	if err != ErrCalcAmount {
 		t.Fatal(err)
@@ -195,13 +198,14 @@ func TestUnPublish(t *testing.T) {
 
 	pt := common.OracleTypeInvalid
 	id := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	random.Bytes(pk)
 	hash := mock.Hash()
 	vs := []types.Address{mock.Address(), mock.Address()}
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := types.NewBalance(5e8)
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, pt, id, pk, hash)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, pt, id, kt, pk, hash)
 	_, _, err = up.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
@@ -209,8 +213,8 @@ func TestUnPublish(t *testing.T) {
 
 	pt = common.OracleTypeEmail
 	p := new(Publish)
-	p.SetStorage(ctx, blk.Address, pt, id, pk, vs, cs, fee, hash)
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, pt, id, pk, hash)
+	p.SetStorage(ctx, blk.Address, pt, id, kt, pk, vs, cs, fee, hash)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, pt, id, kt, pk, hash)
 	_, _, err = up.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
@@ -245,9 +249,10 @@ func TestOracle(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	random.Bytes(pk)
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	_, _, err = o.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
@@ -268,16 +273,17 @@ func TestOracle(t *testing.T) {
 	}
 
 	ot = common.OracleTypeEmail
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	vr := new(VerifierRegister)
-	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com")
+	vk := mock.Hash()
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com", vk[:])
 	p := new(Publish)
 	vs := []types.Address{blk.Address}
 	codeComb := append([]byte(types.NewHexBytesFromData(pk).String()), []byte(code)...)
 	codeHash, _ := types.Sha256HashData(codeComb)
 	cs := []types.Hash{codeHash}
 	fee := common.PublishCost
-	p.SetStorage(ctx, blk.Address, ot, id, pk, vs, cs, fee, hash)
+	p.SetStorage(ctx, blk.Address, ot, id, kt, pk, vs, cs, fee, hash)
 	_, _, err = o.ProcessSend(ctx, blk)
 	if err != ErrCalcAmount {
 		t.Fatal(err)
@@ -316,19 +322,20 @@ func TestOracle_DoGap(t *testing.T) {
 	id := mock.Hash()
 	hash := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	random.Bytes(pk)
 	vs := []types.Address{blk.Address}
 	cs := []types.Hash{mock.Hash()}
 	fee := common.PublishCost
-	blk.Data, _ = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk.Data, _ = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	gap, _, _ = o.DoGap(ctx, blk)
 	if gap != common.ContractDPKIGapPublish {
 		t.Fatal(gap)
 	}
 
 	p := new(Publish)
-	p.SetStorage(ctx, blk.Address, ot, id, pk, vs, cs, fee, hash)
+	p.SetStorage(ctx, blk.Address, ot, id, kt, pk, vs, cs, fee, hash)
 	gap, _, _ = o.DoGap(ctx, blk)
 	if gap != common.ContractNoGap {
 		t.Fatal()
@@ -374,7 +381,8 @@ func TestVerifierHeart(t *testing.T) {
 	}
 
 	vr := new(VerifierRegister)
-	vr.SetStorage(ctx, blk.Address, common.OracleTypeWeChat, "wcid12345")
+	vk := mock.Hash()
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeWeChat, "wcid12345", vk[:])
 	am := mock.AccountMeta(blk.Address)
 	am.CoinOracle = common.MinVerifierPledgeAmount
 	l.AddAccountMeta(am, l.Cache().GetCache())
@@ -384,7 +392,7 @@ func TestVerifierHeart(t *testing.T) {
 	}
 
 	ht = []uint32{common.OracleTypeEmail, common.OracleTypeWeChat}
-	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com")
+	vr.SetStorage(ctx, blk.Address, common.OracleTypeEmail, "test@126.com", vk[:])
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, ht)
 	_, _, err = vh.ProcessSend(ctx, blk)
 	if err != ErrCalcAmount {
@@ -455,13 +463,14 @@ func TestPublish_DoSendOnPov(t *testing.T) {
 	vs := []types.Address{mock.Address(), mock.Address()}
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err = random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, pk, vs, cs, fee.Int)
+	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, pt, id, kt, pk, vs, cs, fee.Int)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,10 +480,11 @@ func TestPublish_DoSendOnPov(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	pubInfoKey := &abi.PublishInfoKey{
 		PType:  pt,
 		PID:    id,
-		PubKey: pk,
+		PubKey: kh,
 		Hash:   blk.Previous,
 	}
 	psRawKey := pubInfoKey.ToRawKey()
@@ -502,6 +512,7 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	random.Bytes(pk)
 
@@ -509,12 +520,12 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	pa := mock.Address()
 	vs := []types.Address{mock.Address()}
 	cs := []types.Hash{mock.Hash()}
-	err = p.SetStorage(ctx, pa, ot, id, pk, vs, cs, common.PublishCost, hash)
+	err = p.SetStorage(ctx, pa, ot, id, kt, pk, vs, cs, common.PublishCost, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	blk1.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk1.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -525,7 +536,7 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	}
 
 	blk2 := mock.StateBlockWithoutWork()
-	blk2.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk2.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -536,7 +547,7 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	}
 
 	blk3 := mock.StateBlockWithoutWork()
-	blk3.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk3.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -547,7 +558,7 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	}
 
 	blk4 := mock.StateBlockWithoutWork()
-	blk4.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk4.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -558,7 +569,7 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	}
 
 	blk5 := mock.StateBlockWithoutWork()
-	blk5.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk5.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -569,7 +580,7 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	}
 
 	blk6 := mock.StateBlockWithoutWork()
-	blk6.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk6.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -580,7 +591,7 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	}
 
 	blk7 := mock.StateBlockWithoutWork()
-	blk7.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, pk, code, hash)
+	blk7.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -590,10 +601,11 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	pubInfoKey := &abi.PublishInfoKey{
 		PType:  ot,
 		PID:    id,
-		PubKey: pk,
+		PubKey: kh,
 		Hash:   hash,
 	}
 	psRawKey := pubInfoKey.ToRawKey()
@@ -827,4 +839,30 @@ func mockPKDRewardAddPovBlock(t *testing.T, l ledger.Store, povHeight uint64, tx
 			t.Log("PovGetVerifierState", retPs)
 		}
 	*/
+}
+
+func TestPKDReward_GetTargetReceiver(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	r := new(PKDReward)
+	ctx := vmstore.NewVMContext(l)
+
+	sendBlk := mock.StateBlockWithoutWork()
+	sendBlk.Token = cfg.GasToken()
+	param := new(dpki.PKDRewardParam)
+	param.Account = sendBlk.Address
+	param.Beneficial = mock.Address()
+	param.EndHeight = 1439
+	param.RewardAmount = big.NewInt(100 * 100000000)
+
+	sendBlk.Data, _ = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDReward,
+		param.Account, param.Beneficial, param.EndHeight, param.RewardAmount)
+	recv, err := r.GetTargetReceiver(ctx, sendBlk)
+	if err != nil || recv != param.Beneficial {
+		t.Fatal()
+	}
 }

@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 
 	"github.com/google/uuid"
@@ -28,6 +27,20 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 )
+
+type LedgerStore interface {
+	Close() error
+	DBStore() storage.Store
+	EventBus() event.EventBus
+	Get(k []byte, c ...storage.Cache) (interface{}, []byte, error)
+	Iterator([]byte, []byte, func([]byte, []byte) error) error
+	GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
+	GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error)
+	Action(at storage.ActionType, t int) (interface{}, error)
+	Flush() error
+}
 
 type Ledger struct {
 	io.Closer
@@ -173,29 +186,24 @@ func DefaultStore() Store {
 func (l *Ledger) init() error {
 	vd, err := l.getVerifiedData()
 	if err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("get verified data: %s ", err)
 	}
 	l.VerifiedData = vd
 
 	if err := l.upgrade(); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("upgrade: %s ", err)
 	}
 
 	if err := l.initRelation(); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("init relation: %s ", err)
 	}
 
 	if err := l.removeBlockConfirmed(); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("remove block confirmed: %s ", err)
 	}
 
 	if err := l.updateRepresentation(); err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("update representation: %s ", err)
 	}
 
 	return nil
@@ -352,10 +360,6 @@ func (l *Ledger) Close() error {
 
 func (l *Ledger) DBStore() storage.Store {
 	return l.store
-}
-
-func (l *Ledger) Cache() *MemoryCache {
-	return l.cache
 }
 
 func (l *Ledger) EventBus() event.EventBus {
@@ -611,9 +615,9 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 	return &sb, nil
 }
 
-func (l *Ledger) Flush() error {
-	return nil
-}
+//func (l *Ledger) Flush() error {
+//	return nil
+//}
 
 func (l *Ledger) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
 	if len(c) > 0 {
@@ -684,36 +688,20 @@ func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error)
 	return nil, ErrKeyNotInCache
 }
 
-type kv struct {
-	key   []byte
-	value []byte
-}
-
 func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
-	kvs := make([]*kv, 0)
-	cs := l.cache.prefixIterator(prefix)
-	if len(cs) > 0 {
-		kvs = append(kvs, cs...)
+	keys, err := l.cache.prefixIterator(prefix, fn)
+	if err != nil {
+		return fmt.Errorf("cache iterator : %s", err)
 	}
 	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
-		if !contain(kvs, k) {
-			temp := &kv{
-				key:   k,
-				value: v,
+		if !contain(keys, k) {
+			if err := fn(k, v); err != nil {
+				return fmt.Errorf("ledger iterator: %s", err)
 			}
-			kvs = append(kvs, temp)
 		}
 		return nil
 	}); err != nil {
-		l.logger.Error(err)
-		return err
-	}
-
-	for _, kv := range kvs {
-		if err := fn(kv.key, kv.value); err != nil {
-			l.logger.Error(err)
-			return err
-		}
+		return fmt.Errorf("ledger store iterator: %s", err)
 	}
 
 	return nil
@@ -760,19 +748,8 @@ func (l *Ledger) updateCacheStat(c *CacheStat) {
 	}
 }
 
-func (l *Ledger) GetCacheStat() []*CacheStat {
-	return l.cacheStats
-}
-
-func (l *Ledger) GetCacheStatue() map[string]string {
-	r := make(map[string]string)
-	for i, c := range l.cache.caches {
-		r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
-	}
-	r["read"] = strconv.Itoa(l.cache.readIndex)
-	r["write"] = strconv.Itoa(l.cache.writeIndex)
-	r["lastflush"] = l.cache.lastFlush.Format("2006-01-02 15:04:05")
-	r["flushStatue"] = strconv.FormatBool(l.cache.flushStatue)
-	r["flushChan"] = strconv.Itoa(len(l.cache.flushChan))
-	return r
+func (l *Ledger) Flush() error {
+	lock.Lock()
+	defer lock.Unlock()
+	return l.cache.rebuild()
 }

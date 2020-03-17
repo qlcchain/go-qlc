@@ -20,7 +20,8 @@ const (
 	[
 		{"type":"function","name":"PKDVerifierRegister","inputs":[
 			{"name":"vType","type":"uint32"},
-			{"name":"vInfo","type":"string"}
+			{"name":"vInfo","type":"string"},
+			{"name":"vKey","type":"uint8[]"}
 		]},
 		{"type":"function","name":"PKDVerifierUnregister","inputs":[
 			{"name":"vType","type":"uint32"}
@@ -31,6 +32,7 @@ const (
 		{"type":"function","name":"PKDOracle","inputs":[
 			{"name":"oType","type":"uint32"},
 			{"name":"oID","type":"hash"},
+			{"name":"keyType","type":"uint16"},
 			{"name":"pubKey","type":"uint8[]"},
 			{"name":"code","type":"string"},
 			{"name":"hash","type":"hash"}
@@ -38,6 +40,7 @@ const (
 		{"type":"function","name":"PKDPublish","inputs":[
 			{"name":"pType","type":"uint32"},
 			{"name":"pID","type":"hash"},
+			{"name":"keyType","type":"uint16"},
 			{"name":"pubKey","type":"uint8[]"},
 			{"name":"verifiers","type":"address[]"},
 			{"name":"codes","type":"hash[]"},
@@ -46,6 +49,7 @@ const (
 		{"type":"function","name":"PKDUnPublish","inputs":[
 			{"name":"pType","type":"uint32"},
 			{"name":"pID","type":"hash"},
+			{"name":"keyType","type":"uint16"},
 			{"name":"pubKey","type":"uint8[]"},
 			{"name":"hash","type":"hash"}
 		]},
@@ -57,17 +61,22 @@ const (
 		]},
 		{"type":"variable","name":"PKDVerifierInfo","inputs":[
 			{"name":"vInfo","type":"string"},
+			{"name":"vKey","type":"uint8[]"},
 			{"name":"valid","type":"bool"}
 		]},
 		{"type":"variable","name":"PKDOracleInfo","inputs":[
-			{"name":"code","type":"string"}
+			{"name":"code","type":"string"},
+			{"name":"keyType","type":"uint16"},
+			{"name":"pubKey","type":"uint8[]"}
 		]},
 		{"type":"variable","name":"PKDPublishInfo","inputs":[
 			{"name":"account","type":"address"},
 			{"name":"verifiers","type":"address[]"},
 			{"name":"codes","type":"hash[]"},
 			{"name":"fee","type":"uint256"},
-			{"name":"valid","type":"bool"}
+			{"name":"valid","type":"bool"},
+			{"name":"keyType","type":"uint16"},
+			{"name":"pubKey","type":"uint8[]"}
 		]},
 		{"type":"variable","name":"PKDRewardInfo","inputs":[
 			{"name":"beneficial","type":"address"},
@@ -113,6 +122,7 @@ type VerifierRegInfo struct {
 	Account types.Address
 	VType   uint32
 	VInfo   string
+	VKey    []byte
 }
 
 type VerifierUnRegInfo struct {
@@ -122,6 +132,7 @@ type VerifierUnRegInfo struct {
 
 type VerifierStorage struct {
 	VInfo string
+	VKey  []byte
 	Valid bool
 }
 
@@ -129,18 +140,18 @@ type VerifierHeartInfo struct {
 	VType []uint32
 }
 
-func VerifierRegInfoCheck(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
+func VerifierRegInfoCheck(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
 	switch vType {
 	case common.OracleTypeEmail:
 		if !util.VerifyEmailFormat(vInfo) {
 			return fmt.Errorf("invalid email format (%s)", vInfo)
 		}
 
-		if CheckVerifierInfoExist(ctx, account, vType, vInfo) {
+		if CheckVerifierInfoExist(ctx, account, vType, vInfo, vKey) {
 			return fmt.Errorf("email has been registered (%s)", vInfo)
 		}
 	case common.OracleTypeWeChat:
-		if CheckVerifierInfoExist(ctx, account, vType, vInfo) {
+		if CheckVerifierInfoExist(ctx, account, vType, vInfo, vKey) {
 			return fmt.Errorf("weChat id has been registered (%s)", vInfo)
 		}
 	default:
@@ -175,7 +186,7 @@ func VerifierPledgeCheck(ctx *vmstore.VMContext, account types.Address) error {
 	return nil
 }
 
-func CheckVerifierInfoExist(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) bool {
+func CheckVerifierInfoExist(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) bool {
 	var key []byte
 	key = append(key, PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
@@ -191,7 +202,7 @@ func CheckVerifierInfoExist(ctx *vmstore.VMContext, account types.Address, vType
 		return false
 	}
 
-	if info.Valid && info.VInfo == vInfo {
+	if info.Valid && info.VInfo == vInfo && bytes.Equal(info.VKey, vKey) {
 		return true
 	}
 
@@ -256,6 +267,7 @@ func GetAllVerifiers(ctx *vmstore.VMContext) ([]*VerifierRegInfo, error) {
 			Account: addr,
 			VType:   util.BE_BytesToUint32(key[VerifierTypeIndexS:VerifierTypeIndexE]),
 			VInfo:   vs.VInfo,
+			VKey:    vs.VKey,
 		}
 
 		vrs = append(vrs, vr)
@@ -290,6 +302,7 @@ func GetVerifiersByType(ctx *vmstore.VMContext, vType uint32) ([]*VerifierRegInf
 			Account: addr,
 			VType:   util.BE_BytesToUint32(key[VerifierTypeIndexS:VerifierTypeIndexE]),
 			VInfo:   vs.VInfo,
+			VKey:    vs.VKey,
 		}
 
 		vrs = append(vrs, vr)
@@ -322,6 +335,7 @@ func GetVerifiersByAccount(ctx *vmstore.VMContext, account types.Address) ([]*Ve
 			Account: account,
 			VType:   util.BE_BytesToUint32(key[VerifierTypeIndexS:VerifierTypeIndexE]),
 			VInfo:   vs.VInfo,
+			VKey:    vs.VKey,
 		}
 
 		vrs = append(vrs, vr)
@@ -353,23 +367,35 @@ type OracleInfo struct {
 	Account types.Address
 	OType   uint32
 	OID     types.Hash
+	KeyType uint16
 	PubKey  []byte
 	Code    string
 	Hash    types.Hash
 }
 
 type CodeInfo struct {
-	Code string
+	Code    string
+	KeyType uint16
+	PubKey  []byte
 }
 
-func OracleInfoCheck(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, pk []byte, code string, hash types.Hash) error {
+func OracleInfoCheck(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, kt uint16, pk []byte, code string, hash types.Hash) error {
 	switch ot {
 	case common.OracleTypeEmail, common.OracleTypeWeChat:
-		if len(pk) != ed25519.PublicKeySize {
-			return fmt.Errorf("pk len err")
+		switch kt {
+		case common.PublicKeyTypeED25519:
+			if len(pk) != ed25519.PublicKeySize {
+				return fmt.Errorf("pk len err")
+			}
+		case common.PublicKeyTypeRSA4096:
+			if len(pk) != 512 {
+				return fmt.Errorf("pk len err")
+			}
+		default:
+			return fmt.Errorf("key type err")
 		}
 
-		info := GetPublishInfo(ctx, ot, id, pk, hash)
+		info := GetPublishInfo(ctx, ot, id, kt, pk, hash)
 		if info == nil {
 			return fmt.Errorf("invalid oracle")
 		}
@@ -434,7 +460,8 @@ func GetAllOracleInfo(ctx *vmstore.VMContext) []*OracleInfo {
 			Account: addr,
 			OType:   ot,
 			OID:     id,
-			PubKey:  key[OraclePkIndexS:OraclePkIndexE],
+			KeyType: info.KeyType,
+			PubKey:  info.PubKey,
 			Code:    info.Code,
 			Hash:    hash,
 		}
@@ -480,7 +507,8 @@ func GetOracleInfoByType(ctx *vmstore.VMContext, ot uint32) []*OracleInfo {
 			Account: addr,
 			OType:   ot,
 			OID:     id,
-			PubKey:  key[OraclePkIndexS:OraclePkIndexE],
+			KeyType: info.KeyType,
+			PubKey:  info.PubKey,
 			Code:    info.Code,
 			Hash:    hash,
 		}
@@ -522,7 +550,8 @@ func GetOracleInfoByTypeAndID(ctx *vmstore.VMContext, ot uint32, id types.Hash) 
 			Account: addr,
 			OType:   ot,
 			OID:     id,
-			PubKey:  key[OraclePkIndexS:OraclePkIndexE],
+			KeyType: info.KeyType,
+			PubKey:  info.PubKey,
 			Code:    info.Code,
 			Hash:    hash,
 		}
@@ -537,13 +566,14 @@ func GetOracleInfoByTypeAndID(ctx *vmstore.VMContext, ot uint32, id types.Hash) 
 	return ois
 }
 
-func GetOracleInfoByTypeAndIDAndPk(ctx *vmstore.VMContext, ot uint32, id types.Hash, pk []byte) []*OracleInfo {
+func GetOracleInfoByTypeAndIDAndPk(ctx *vmstore.VMContext, ot uint32, id types.Hash, kt uint16, pk []byte) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
 
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(ot)...)
 	itKey = append(itKey, id[:]...)
-	itKey = append(itKey, pk...)
+	itKey = append(itKey, kh...)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		hash, err := types.BytesToHash(key[OracleHashIndexS:OracleHashIndexE])
 		if err != nil {
@@ -565,6 +595,7 @@ func GetOracleInfoByTypeAndIDAndPk(ctx *vmstore.VMContext, ot uint32, id types.H
 			Account: addr,
 			OType:   ot,
 			OID:     id,
+			KeyType: kt,
 			PubKey:  pk,
 			Code:    info.Code,
 			Hash:    hash,
@@ -611,7 +642,8 @@ func GetOracleInfoByAccount(ctx *vmstore.VMContext, account types.Address) []*Or
 			Account: account,
 			OType:   ot,
 			OID:     id,
-			PubKey:  key[OraclePkIndexS:OraclePkIndexE],
+			KeyType: info.KeyType,
+			PubKey:  info.PubKey,
 			Code:    info.Code,
 			Hash:    hash,
 		}
@@ -656,7 +688,8 @@ func GetOracleInfoByAccountAndType(ctx *vmstore.VMContext, account types.Address
 			Account: account,
 			OType:   ot,
 			OID:     id,
-			PubKey:  key[OraclePkIndexS:OraclePkIndexE],
+			KeyType: info.KeyType,
+			PubKey:  info.PubKey,
 			Code:    info.Code,
 			Hash:    hash,
 		}
@@ -689,10 +722,11 @@ func GetOracleInfoByHash(ctx *vmstore.VMContext, hash types.Hash) []*OracleInfo 
 		return nil
 	}
 
+	kh := common.PublicKeyWithTypeHash(pi.KeyType, pi.PubKey)
 	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(pi.PType)...)
 	itKey = append(itKey, pi.PID[:]...)
-	itKey = append(itKey, pi.PubKey[:]...)
+	itKey = append(itKey, kh...)
 	itKey = append(itKey, hash[:]...)
 	err = ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		addr, err := types.BytesToAddress(key[OracleAccIndexS:OracleAccIndexE])
@@ -710,6 +744,7 @@ func GetOracleInfoByHash(ctx *vmstore.VMContext, hash types.Hash) []*OracleInfo 
 			Account: addr,
 			OType:   pi.PType,
 			OID:     pi.PID,
+			KeyType: pi.KeyType,
 			PubKey:  pi.PubKey,
 			Code:    info.Code,
 			Hash:    hash,
@@ -725,12 +760,13 @@ func GetOracleInfoByHash(ctx *vmstore.VMContext, hash types.Hash) []*OracleInfo 
 	return ois
 }
 
-func CheckOracleInfoExist(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, pk []byte, hash types.Hash) bool {
+func CheckOracleInfoExist(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, kt uint16, pk []byte, hash types.Hash) bool {
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, PKDStorageTypeOracle)
 	key = append(key, util.BE_Uint32ToBytes(ot)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
 	_, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
@@ -774,6 +810,7 @@ type PublishInfo struct {
 	Account   types.Address
 	PType     uint32
 	PID       types.Hash
+	KeyType   uint16
 	PubKey    []byte
 	Verifiers []types.Address
 	Codes     []types.Hash
@@ -785,6 +822,7 @@ type UnPublishInfo struct {
 	Account types.Address
 	PType   uint32
 	PID     types.Hash
+	KeyType uint16
 	PubKey  []byte
 	Hash    types.Hash
 }
@@ -795,17 +833,28 @@ type PubKeyInfo struct {
 	Codes     []types.Hash
 	Fee       *big.Int
 	Valid     bool
+	KeyType   uint16
+	PubKey    []byte
 }
 
-func PublishInfoCheck(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte, fee types.Balance) error {
+func PublishInfoCheck(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte, fee types.Balance) error {
 	switch pt {
 	case common.OracleTypeEmail, common.OracleTypeWeChat:
 		if fee.Compare(common.PublishCost) == types.BalanceCompSmaller {
 			return fmt.Errorf("fee is not enough")
 		}
 
-		if len(pk) != ed25519.PublicKeySize {
-			return fmt.Errorf("pk len err")
+		switch kt {
+		case common.PublicKeyTypeED25519:
+			if len(pk) != ed25519.PublicKeySize {
+				return fmt.Errorf("pk len err")
+			}
+		case common.PublicKeyTypeRSA4096:
+			if len(pk) != 512 {
+				return fmt.Errorf("pk len err")
+			}
+		default:
+			return fmt.Errorf("key type err")
 		}
 	default:
 		return fmt.Errorf("puslish type(%s) err", common.OracleTypeToString(pt))
@@ -814,10 +863,23 @@ func PublishInfoCheck(ctx *vmstore.VMContext, account types.Address, pt uint32, 
 	return nil
 }
 
-func UnPublishInfoCheck(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte, hash types.Hash) error {
+func UnPublishInfoCheck(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte, hash types.Hash) error {
 	switch pt {
 	case common.OracleTypeEmail, common.OracleTypeWeChat:
-		if !CheckPublishInfoExist(ctx, account, pt, id, pk, hash) {
+		switch kt {
+		case common.PublicKeyTypeED25519:
+			if len(pk) != ed25519.PublicKeySize {
+				return fmt.Errorf("pk len err")
+			}
+		case common.PublicKeyTypeRSA4096:
+			if len(pk) != 512 {
+				return fmt.Errorf("pk len err")
+			}
+		default:
+			return fmt.Errorf("key type err")
+		}
+
+		if !CheckPublishInfoExist(ctx, account, pt, id, kt, pk, hash) {
 			return fmt.Errorf("there is no valid kind(%s) of id(%s) for(%s)", common.OracleTypeToString(pt), id, account)
 		}
 	default:
@@ -827,12 +889,13 @@ func UnPublishInfoCheck(ctx *vmstore.VMContext, account types.Address, pt uint32
 	return nil
 }
 
-func CheckPublishInfoExist(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte, hash types.Hash) bool {
+func CheckPublishInfoExist(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte, hash types.Hash) bool {
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	data, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
 	if err != nil {
@@ -848,12 +911,13 @@ func CheckPublishInfoExist(ctx *vmstore.VMContext, account types.Address, pt uin
 	return true
 }
 
-func GetPublishInfoByKey(ctx *vmstore.VMContext, pt uint32, pid types.Hash, pk []byte, blkHash types.Hash) *PubKeyInfo {
+func GetPublishInfoByKey(ctx *vmstore.VMContext, pt uint32, pid types.Hash, kt uint16, pk []byte, blkHash types.Hash) *PubKeyInfo {
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, pid[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, blkHash.Bytes()...)
 
 	data, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
@@ -892,7 +956,8 @@ func GetPublishInfoByTypeAndId(ctx *vmstore.VMContext, pt uint32, id types.Hash)
 			Account:   info.Account,
 			PType:     pt,
 			PID:       id,
-			PubKey:    key[PublishPkIndexS:PublishPkIndexE],
+			KeyType:   info.KeyType,
+			PubKey:    info.PubKey,
 			Verifiers: info.Verifiers,
 			Codes:     info.Codes,
 			Fee:       info.Fee,
@@ -936,7 +1001,8 @@ func GetAllPublishInfo(ctx *vmstore.VMContext) []*PublishInfo {
 			Account:   info.Account,
 			PType:     pt,
 			PID:       id,
-			PubKey:    key[PublishPkIndexS:PublishPkIndexE],
+			KeyType:   info.KeyType,
+			PubKey:    info.PubKey,
 			Verifiers: info.Verifiers,
 			Codes:     info.Codes,
 			Fee:       info.Fee,
@@ -979,7 +1045,8 @@ func GetPublishInfoByType(ctx *vmstore.VMContext, pt uint32) []*PublishInfo {
 			Account:   info.Account,
 			PType:     pt,
 			PID:       id,
-			PubKey:    key[PublishPkIndexS:PublishPkIndexE],
+			KeyType:   info.KeyType,
+			PubKey:    info.PubKey,
 			Verifiers: info.Verifiers,
 			Codes:     info.Codes,
 			Fee:       info.Fee,
@@ -1025,7 +1092,8 @@ func GetPublishInfoByAccount(ctx *vmstore.VMContext, account types.Address) []*P
 			Account:   account,
 			PType:     util.BE_BytesToUint32(key[PublishTypeIndexS:PublishTypeIndexE]),
 			PID:       id,
-			PubKey:    key[PublishPkIndexS:PublishPkIndexE],
+			KeyType:   info.KeyType,
+			PubKey:    info.PubKey,
 			Verifiers: info.Verifiers,
 			Codes:     info.Codes,
 			Fee:       info.Fee,
@@ -1072,7 +1140,8 @@ func GetPublishInfoByAccountAndType(ctx *vmstore.VMContext, account types.Addres
 			Account:   account,
 			PType:     pt,
 			PID:       id,
-			PubKey:    key[PublishPkIndexS:PublishPkIndexE],
+			KeyType:   info.KeyType,
+			PubKey:    info.PubKey,
 			Verifiers: info.Verifiers,
 			Codes:     info.Codes,
 			Fee:       info.Fee,
@@ -1089,12 +1158,13 @@ func GetPublishInfoByAccountAndType(ctx *vmstore.VMContext, account types.Addres
 	return pis
 }
 
-func GetPublishInfo(ctx *vmstore.VMContext, pt uint32, id types.Hash, pk []byte, hash types.Hash) *PublishInfo {
+func GetPublishInfo(ctx *vmstore.VMContext, pt uint32, id types.Hash, kt uint16, pk []byte, hash types.Hash) *PublishInfo {
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	data, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
 	if err != nil {
@@ -1111,7 +1181,8 @@ func GetPublishInfo(ctx *vmstore.VMContext, pt uint32, id types.Hash, pk []byte,
 		Account:   info.Account,
 		PType:     pt,
 		PID:       id,
-		PubKey:    pk,
+		KeyType:   info.KeyType,
+		PubKey:    info.PubKey,
 		Verifiers: info.Verifiers,
 		Codes:     info.Codes,
 		Fee:       info.Fee,

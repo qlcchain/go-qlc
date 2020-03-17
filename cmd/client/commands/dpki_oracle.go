@@ -32,6 +32,12 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "publish id (email address/weChat id)",
 		Value: "",
 	}
+	kt := util.Flag{
+		Name:  "kt",
+		Must:  true,
+		Usage: "publish public key type(ed25519/rsa4096)",
+		Value: "",
+	}
 	pk := util.Flag{
 		Name:  "pk",
 		Must:  true,
@@ -54,7 +60,7 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 		Name: "oracle",
 		Help: "oracle publish id and key",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id, pk, code, hash}
+			args := []util.Flag{account, typ, id, kt, pk, code, hash}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -67,11 +73,12 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 			accountP := util.StringVar(c.Args, account)
 			typeP := util.StringVar(c.Args, typ)
 			idP := util.StringVar(c.Args, id)
+			ktP := util.StringVar(c.Args, kt)
 			pkP := util.StringVar(c.Args, pk)
 			codeP := util.StringVar(c.Args, code)
 			hashP := util.StringVar(c.Args, hash)
 
-			err := oraclePublish(accountP, typeP, idP, pkP, codeP, hashP)
+			err := oraclePublish(accountP, typeP, idP, ktP, pkP, codeP, hashP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -80,7 +87,7 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
+func oraclePublish(accountP, typeP, idP, ktP, pkP, codeP, hashP string) error {
 	if accountP == "" {
 		return fmt.Errorf("account can not be null")
 	}
@@ -91,6 +98,10 @@ func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
 
 	if idP == "" {
 		return fmt.Errorf("publish id can not be null")
+	}
+
+	if ktP == "" {
+		return fmt.Errorf("publish public key type can not be null")
 	}
 
 	if pkP == "" {
@@ -125,6 +136,7 @@ func oraclePublish(accountP, typeP, idP, pkP, codeP, hashP string) error {
 		Account: acc.Address(),
 		OType:   typeP,
 		OID:     idP,
+		KeyType: ktP,
 		PubKey:  pkP,
 		Code:    codeP,
 		Hash:    hashP,

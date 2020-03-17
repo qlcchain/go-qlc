@@ -39,19 +39,19 @@ func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 		return nil, nil, ErrNotEnoughPledge
 	}
 
-	err = abi.VerifierRegInfoCheck(ctx, block.Address, reg.VType, reg.VInfo)
+	err = abi.VerifierRegInfoCheck(ctx, block.Address, reg.VType, reg.VInfo, reg.VKey)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
-	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, reg.VType, reg.VInfo)
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, reg.VType, reg.VInfo, reg.VKey)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrPackMethod
 	}
 
-	err = vr.SetStorage(ctx, block.Address, reg.VType, reg.VInfo)
+	err = vr.SetStorage(ctx, block.Address, reg.VType, reg.VInfo, reg.VKey)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrSetStorage
@@ -60,8 +60,8 @@ func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 	return nil, nil, nil
 }
 
-func (vr *VerifierRegister) SetStorage(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDVerifierInfo, vInfo, true)
+func (vr *VerifierRegister) SetStorage(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDVerifierInfo, vInfo, vKey, true)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.S
 	}
 
 	vs, _ := abi.GetVerifierInfoByAccountAndType(ctx, block.Address, reg.VType)
-	err = vu.SetStorage(ctx, block.Address, reg.VType, vs.VInfo)
+	err = vu.SetStorage(ctx, block.Address, reg.VType, vs.VInfo, vs.VKey)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrSetStorage
@@ -117,8 +117,8 @@ func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.S
 	return nil, nil, nil
 }
 
-func (vu *VerifierUnregister) SetStorage(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDVerifierInfo, vInfo, false)
+func (vu *VerifierUnregister) SetStorage(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDVerifierInfo, vInfo, vKey, false)
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 	}
 
 	fee := types.Balance{Int: info.Fee}
-	err = abi.PublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.PubKey, fee)
+	err = abi.PublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.KeyType, info.PubKey, fee)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrCheckParam
@@ -254,13 +254,13 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 		return nil, nil, ErrNotEnoughFee
 	}
 
-	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, info.PType, info.PID, info.PubKey, info.Verifiers, info.Codes, info.Fee)
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, info.PType, info.PID, info.KeyType, info.PubKey, info.Verifiers, info.Codes, info.Fee)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrPackMethod
 	}
 
-	err = p.SetStorage(ctx, block.Address, info.PType, info.PID, info.PubKey, info.Verifiers, info.Codes, fee, block.Previous)
+	err = p.SetStorage(ctx, block.Address, info.PType, info.PID, info.KeyType, info.PubKey, info.Verifiers, info.Codes, fee, block.Previous)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrSetStorage
@@ -269,18 +269,19 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 	return nil, nil, nil
 }
 
-func (p *Publish) SetStorage(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte,
-	vs []types.Address, cs []types.Hash, fee types.Balance, hash types.Hash) error {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, account, vs, cs, fee.Int, true)
+func (p *Publish) SetStorage(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16,
+	pk []byte, vs []types.Address, cs []types.Hash, fee types.Balance, hash types.Hash) error {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, account, vs, cs, fee.Int, true, kt, pk)
 	if err != nil {
 		return err
 	}
 
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, abi.PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
@@ -297,10 +298,11 @@ func (p *Publish) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractS
 		return err
 	}
 
+	kh := common.PublicKeyWithTypeHash(info.KeyType, info.PubKey)
 	pubInfoKey := &abi.PublishInfoKey{
 		PType:  info.PType,
 		PID:    info.PID,
-		PubKey: info.PubKey,
+		PubKey: kh,
 		Hash:   block.Previous,
 	}
 	psRawKey := pubInfoKey.ToRawKey()
@@ -339,19 +341,19 @@ func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		return nil, nil, ErrUnpackMethod
 	}
 
-	err = abi.UnPublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.PubKey, info.Hash)
+	err = abi.UnPublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.KeyType, info.PubKey, info.Hash)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
-	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, info.PType, info.PID, info.PubKey, info.Hash)
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, info.PType, info.PID, info.KeyType, info.PubKey, info.Hash)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrPackMethod
 	}
 
-	err = up.SetStorage(ctx, info.PType, info.PID, info.PubKey, info.Hash)
+	err = up.SetStorage(ctx, info.PType, info.PID, info.KeyType, info.PubKey, info.Hash)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrSetStorage
@@ -360,12 +362,13 @@ func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	return nil, nil, nil
 }
 
-func (up *UnPublish) SetStorage(ctx *vmstore.VMContext, pt uint32, id types.Hash, pk []byte, hash types.Hash) error {
+func (up *UnPublish) SetStorage(ctx *vmstore.VMContext, pt uint32, id types.Hash, kt uint16, pk []byte, hash types.Hash) error {
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, abi.PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	dataOld, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
 	if err != nil {
@@ -378,7 +381,7 @@ func (up *UnPublish) SetStorage(ctx *vmstore.VMContext, pt uint32, id types.Hash
 		return nil
 	}
 
-	dataNew, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, info.Account, info.Verifiers, info.Codes, info.Fee, false)
+	dataNew, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDPublishInfo, info.Account, info.Verifiers, info.Codes, info.Fee, false, info.KeyType, info.PubKey)
 	if err != nil {
 		return err
 	}
@@ -423,7 +426,7 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 		}
 	}
 
-	err = abi.OracleInfoCheck(ctx, block.Address, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
+	err = abi.OracleInfoCheck(ctx, block.Address, info.OType, info.OID, info.KeyType, info.PubKey, info.Code, info.Hash)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrCheckParam
@@ -440,13 +443,13 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 		return nil, nil, ErrNotEnoughFee
 	}
 
-	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
+	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, info.OType, info.OID, info.KeyType, info.PubKey, info.Code, info.Hash)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrPackMethod
 	}
 
-	err = o.SetStorage(ctx, block.Address, info.OType, info.OID, info.PubKey, info.Code, info.Hash)
+	err = o.SetStorage(ctx, block.Address, info.OType, info.OID, info.KeyType, info.PubKey, info.Code, info.Hash)
 	if err != nil {
 		logger.Info(err)
 		return nil, nil, ErrSetStorage
@@ -455,17 +458,18 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 	return nil, nil, nil
 }
 
-func (o *Oracle) SetStorage(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, pk []byte, code string, hash types.Hash) error {
-	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDOracleInfo, code)
+func (o *Oracle) SetStorage(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, kt uint16, pk []byte, code string, hash types.Hash) error {
+	data, err := abi.PublicKeyDistributionABI.PackVariable(abi.VariableNamePKDOracleInfo, code, kt, pk)
 	if err != nil {
 		return err
 	}
 
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, abi.PKDStorageTypeOracle)
 	key = append(key, util.BE_Uint32ToBytes(ot)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
@@ -483,7 +487,7 @@ func (o *Oracle) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.
 		return common.ContractNoGap, nil, err
 	}
 
-	pi := abi.GetPublishInfo(ctx, info.OType, info.OID, info.PubKey, info.Hash)
+	pi := abi.GetPublishInfo(ctx, info.OType, info.OID, info.KeyType, info.PubKey, info.Hash)
 	if pi == nil {
 		return common.ContractDPKIGapPublish, nil, nil
 	}
@@ -498,10 +502,11 @@ func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractSt
 		return err
 	}
 
+	kh := common.PublicKeyWithTypeHash(oraInfo.KeyType, oraInfo.PubKey)
 	pubInfoKey := &abi.PublishInfoKey{
 		PType:  oraInfo.OType,
 		PID:    oraInfo.OID,
-		PubKey: oraInfo.PubKey,
+		PubKey: kh,
 		Hash:   oraInfo.Hash,
 	}
 	psRawKey := pubInfoKey.ToRawKey()
@@ -510,7 +515,7 @@ func (o *Oracle) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractSt
 	if ps == nil {
 		ps = types.NewPovPublishState()
 
-		pubInfo := abi.GetPublishInfoByKey(ctx, oraInfo.OType, oraInfo.OID, oraInfo.PubKey, oraInfo.Hash)
+		pubInfo := abi.GetPublishInfoByKey(ctx, oraInfo.OType, oraInfo.OID, oraInfo.KeyType, oraInfo.PubKey, oraInfo.Hash)
 		if pubInfo == nil {
 			return errors.New("publish info not exist")
 		}

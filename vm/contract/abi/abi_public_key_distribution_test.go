@@ -23,7 +23,8 @@ func TestPackAndUnpack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := PublicKeyDistributionABI.PackMethod(MethodNamePKDVerifierRegister, common.OracleTypeWeChat, "123@gmail.com")
+	vk := mock.Hash()
+	data, err := PublicKeyDistributionABI.PackMethod(MethodNamePKDVerifierRegister, common.OracleTypeWeChat, "123@gmail.com", vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,10 +35,11 @@ func TestPackAndUnpack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reg.VType != common.OracleTypeWeChat || reg.VInfo != "123@gmail.com" {
+	if reg.VType != common.OracleTypeWeChat || reg.VInfo != "123@gmail.com" || !bytes.Equal(reg.VKey, vk[:]) {
 		t.Fatal()
 	}
 
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, 32)
 	verifiers := make([]types.Address, 0)
 	codes := make([]types.Hash, 0)
@@ -59,7 +61,7 @@ func TestPackAndUnpack(t *testing.T) {
 	codes = append(codes, mock.Hash())
 	codes = append(codes, mock.Hash())
 
-	data, err = PublicKeyDistributionABI.PackMethod(MethodNamePKDPublish, typ, id, pk, verifiers, codes, fee)
+	data, err = PublicKeyDistributionABI.PackMethod(MethodNamePKDPublish, typ, id, kt, pk, verifiers, codes, fee)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,8 +101,8 @@ func TestPackAndUnpack(t *testing.T) {
 	}
 }
 
-func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
-	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, true)
+func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, vKey, true)
 	if err != nil {
 		return err
 	}
@@ -122,8 +124,8 @@ func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType ui
 	return nil
 }
 
-func delTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string) error {
-	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, false)
+func delTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, vKey, false)
 	if err != nil {
 		return err
 	}
@@ -153,12 +155,13 @@ func TestCheckVerifierExist(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
 	if CheckVerifierExist(ctx, account, vt) {
 		t.Fatal()
 	}
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,17 +179,28 @@ func TestCheckVerifierInfoExist(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk1 := mock.Hash()
+	vk2 := mock.Hash()
 
-	if CheckVerifierInfoExist(ctx, account, vt, vi) {
+	if CheckVerifierInfoExist(ctx, account, vt, vi, vk1[:]) {
 		t.Fatal()
 	}
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk2[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !CheckVerifierInfoExist(ctx, account, vt, vi) {
+	if CheckVerifierInfoExist(ctx, account, vt, vi, vk1[:]) {
+		t.Fatal()
+	}
+
+	err = addTestVerifierInfo(ctx, account, vt, vi, vk1[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !CheckVerifierInfoExist(ctx, account, vt, vi, vk1[:]) {
 		t.Fatal()
 	}
 }
@@ -199,14 +213,15 @@ func TestGetAllVerifiers(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account2 := mock.Address()
-	err = addTestVerifierInfo(ctx, account2, vt, vi)
+	err = addTestVerifierInfo(ctx, account2, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,22 +248,23 @@ func TestGetVerifiersByType(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	vt2 := common.OracleTypeWeChat
 	vi2 := "1234"
-	err = addTestVerifierInfo(ctx, account, vt2, vi2)
+	err = addTestVerifierInfo(ctx, account, vt2, vi2, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account3 := mock.Address()
 	vi3 := "1234123"
-	err = addTestVerifierInfo(ctx, account3, vt2, vi3)
+	err = addTestVerifierInfo(ctx, account3, vt2, vi3, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,14 +287,15 @@ func TestGetVerifiersByAccount(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account2 := mock.Address()
-	err = addTestVerifierInfo(ctx, account2, vt, vi)
+	err = addTestVerifierInfo(ctx, account2, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,8 +318,9 @@ func TestGetVerifierInfoByAccountAndType(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,8 +339,9 @@ func TestDeleteVerifier(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
+	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi)
+	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +350,7 @@ func TestDeleteVerifier(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = delTestVerifierInfo(ctx, account, vt, vi)
+	err = delTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,17 +360,18 @@ func TestDeleteVerifier(t *testing.T) {
 	}
 }
 
-func addTestOracleInfo(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, pk []byte, code string, hash types.Hash) error {
-	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDOracleInfo, code)
+func addTestOracleInfo(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, kt uint16, pk []byte, code string, hash types.Hash) error {
+	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDOracleInfo, code, kt, pk)
 	if err != nil {
 		return err
 	}
 
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, PKDStorageTypeOracle)
 	key = append(key, util.BE_Uint32ToBytes(ot)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
@@ -377,13 +397,14 @@ func TestGetAllOracleInfo(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +420,7 @@ func TestGetAllOracleInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account2, ot2, id2, pk2, code2, hash2)
+	err = addTestOracleInfo(ctx, account2, ot2, id2, kt, pk2, code2, hash2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,19 +441,20 @@ func TestGetOracleInfoByAccount(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account2 := mock.Address()
-	err = addTestOracleInfo(ctx, account2, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account2, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,19 +475,20 @@ func TestGetOracleInfoByType(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	ot2 := common.OracleTypeWeChat
-	err = addTestOracleInfo(ctx, account, ot2, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot2, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,13 +509,14 @@ func TestGetOracleInfoByAccountAndType(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -513,13 +537,14 @@ func TestGetOracleInfoByTypeAndID(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -540,18 +565,19 @@ func TestGetOracleInfoByTypeAndIDAndPk(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetOracleInfoByTypeAndIDAndPk(ctx, ot, id, pk)
+	info := GetOracleInfoByTypeAndIDAndPk(ctx, ot, id, kt, pk)
 	if len(info) != 1 || info[0].OID != id || info[0].OType != ot || !bytes.Equal(pk, info[0].PubKey) {
 		t.Fatal()
 	}
@@ -574,13 +600,14 @@ func TestGetOracleInfoByHash(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := pblk.GetHash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err = random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -590,7 +617,7 @@ func TestGetOracleInfoByHash(t *testing.T) {
 	fee := types.NewBalance(5e8)
 	blk := mock.StateBlock()
 	blk.Previous = hash
-	blk.Data, _ = PublicKeyDistributionABI.PackMethod(MethodNamePKDPublish, ot, id, pk[:], vs, cs, fee.Int)
+	blk.Data, _ = PublicKeyDistributionABI.PackMethod(MethodNamePKDPublish, ot, id, kt, pk[:], vs, cs, fee.Int)
 	err = l.AddStateBlock(blk)
 	if err != nil {
 		t.Fatal(err)
@@ -602,18 +629,19 @@ func TestGetOracleInfoByHash(t *testing.T) {
 	}
 }
 
-func addTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte,
+func addTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte,
 	vs []types.Address, cs []types.Hash, fee types.Balance, hash types.Hash) error {
-	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDPublishInfo, account, vs, cs, fee.Int, true)
+	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDPublishInfo, account, vs, cs, fee.Int, true, kt, pk)
 	if err != nil {
 		return err
 	}
 
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
@@ -628,18 +656,19 @@ func addTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32
 	return nil
 }
 
-func delTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, pk []byte,
+func delTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte,
 	vs []types.Address, cs []types.Hash, fee types.Balance, hash types.Hash) error {
-	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDPublishInfo, account, vs, cs, fee.Int, false)
+	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDPublishInfo, account, vs, cs, fee.Int, false, kt, pk)
 	if err != nil {
 		return err
 	}
 
 	var key []byte
+	kh := common.PublicKeyWithTypeHash(kt, pk)
 	key = append(key, PKDStorageTypePublisher)
 	key = append(key, util.BE_Uint32ToBytes(pt)...)
 	key = append(key, id[:]...)
-	key = append(key, pk...)
+	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
@@ -660,31 +689,102 @@ func TestPublishInfoCheck(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	pk := make([]byte, ed25519.PublicKeySize)
-	err := PublishInfoCheck(ctx, mock.Address(), common.OracleTypeInvalid, mock.Hash(), pk, common.PublishCost)
+	kt := common.PublicKeyTypeInvalid
+	err := PublishInfoCheck(ctx, mock.Address(), common.OracleTypeInvalid, mock.Hash(), kt, pk, common.PublishCost)
 	if err == nil {
 		t.Fatal()
 	}
 
+	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), kt, pk, common.PublishCost)
+	if err == nil {
+		t.Fatal()
+	}
+
+	kt = common.PublicKeyTypeED25519
 	pk = make([]byte, ed25519.PublicKeySize+1)
-	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), pk, common.PublishCost)
+	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), kt, pk, common.PublishCost)
 	if err == nil {
 		t.Fatal()
 	}
 
+	kt = common.PublicKeyTypeRSA4096
+	pk = make([]byte, 513)
+	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), kt, pk, common.PublishCost)
+	if err == nil {
+		t.Fatal()
+	}
+
+	kt = common.PublicKeyTypeED25519
 	pk = make([]byte, ed25519.PublicKeySize)
-	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), pk, types.NewBalance(3e8))
+	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), kt, pk, types.NewBalance(3e8))
 	if err == nil {
 		t.Fatal()
 	}
 
-	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), pk, common.PublishCost)
+	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), kt, pk, common.PublishCost)
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), pk, types.NewBalance(10e8))
+	err = PublishInfoCheck(ctx, mock.Address(), common.OracleTypeEmail, mock.Hash(), kt, pk, types.NewBalance(10e8))
 	if err != nil {
 		t.Fatal()
+	}
+}
+
+func TestUnPublishInfoCheck(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	account := mock.Address()
+	pt := common.OracleTypeInvalid
+	id := mock.Hash()
+	pk := make([]byte, ed25519.PublicKeySize)
+	kt := common.PublicKeyTypeInvalid
+	hash := mock.Hash()
+	err := UnPublishInfoCheck(ctx, account, pt, id, kt, pk, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pt = common.OracleTypeEmail
+	err = UnPublishInfoCheck(ctx, account, pt, id, kt, pk, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	kt = common.PublicKeyTypeED25519
+	pk = make([]byte, ed25519.PublicKeySize+1)
+	err = UnPublishInfoCheck(ctx, account, pt, id, kt, pk, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	kt = common.PublicKeyTypeRSA4096
+	pk = make([]byte, 513)
+	err = UnPublishInfoCheck(ctx, account, pt, id, kt, pk, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pk = make([]byte, 512)
+	err = UnPublishInfoCheck(ctx, account, pt, id, kt, pk, hash)
+	if err == nil {
+		t.Fatal()
+	}
+
+	vs := []types.Address{mock.Address()}
+	cs := []types.Hash{mock.Hash()}
+	fee := common.PublishCost
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	if err != nil {
+		t.Fatal()
+	}
+
+	err = UnPublishInfoCheck(ctx, account, pt, id, kt, pk, hash)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -697,6 +797,7 @@ func TestCheckPublishInfoExist(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -707,16 +808,16 @@ func TestCheckPublishInfoExist(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	if CheckPublishInfoExist(ctx, account, pt, id, pk, hash) {
+	if CheckPublishInfoExist(ctx, account, pt, id, kt, pk, hash) {
 		t.Fatal()
 	}
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !CheckPublishInfoExist(ctx, account, pt, id, pk, hash) {
+	if !CheckPublishInfoExist(ctx, account, pt, id, kt, pk, hash) {
 		t.Fatal()
 	}
 }
@@ -730,6 +831,7 @@ func TestGetPublishInfoByTypeAndId(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -740,13 +842,13 @@ func TestGetPublishInfoByTypeAndId(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id2 := mock.Hash()
-	err = addTestPublishInfo(ctx, account, pt, id2, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -779,6 +881,7 @@ func TestGetAllPublishInfo(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -789,14 +892,14 @@ func TestGetAllPublishInfo(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	pt2 := common.OracleTypeWeChat
 	id2 := mock.Hash()
-	err = addTestPublishInfo(ctx, account, pt2, id2, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt2, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -842,6 +945,7 @@ func TestGetPublishInfoByType(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -852,14 +956,14 @@ func TestGetPublishInfoByType(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	pt2 := common.OracleTypeWeChat
 	id2 := mock.Hash()
-	err = addTestPublishInfo(ctx, account, pt2, id2, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt2, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -883,6 +987,7 @@ func TestGetPublishInfoByAccount(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -893,20 +998,20 @@ func TestGetPublishInfoByAccount(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id2 := mock.Hash()
 	account2 := mock.Address()
-	err = addTestPublishInfo(ctx, account2, pt, id2, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account2, pt, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id3 := mock.Hash()
-	err = addTestPublishInfo(ctx, account2, pt, id3, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account2, pt, id3, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -930,6 +1035,7 @@ func TestGetPublishInfoByAccountAndType(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -940,7 +1046,7 @@ func TestGetPublishInfoByAccountAndType(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -948,14 +1054,14 @@ func TestGetPublishInfoByAccountAndType(t *testing.T) {
 	id2 := mock.Hash()
 	pt2 := common.OracleTypeWeChat
 	account2 := mock.Address()
-	err = addTestPublishInfo(ctx, account2, pt2, id2, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account2, pt2, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id3 := mock.Hash()
 	pt3 := common.OracleTypeEmail
-	err = addTestPublishInfo(ctx, account2, pt3, id3, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account2, pt3, id3, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -979,6 +1085,7 @@ func TestDeletePublishInfo(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -989,21 +1096,21 @@ func TestDeletePublishInfo(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := types.NewBalance(5e8)
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !CheckPublishInfoExist(ctx, account, pt, id, pk, hash) {
+	if !CheckPublishInfoExist(ctx, account, pt, id, kt, pk, hash) {
 		t.Fatal(err)
 	}
 
-	err = delTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = delTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if CheckPublishInfoExist(ctx, account, pt, id, pk, hash) {
+	if CheckPublishInfoExist(ctx, account, pt, id, kt, pk, hash) {
 		t.Fatal()
 	}
 }
@@ -1016,36 +1123,37 @@ func TestVerifierRegInfoCheck(t *testing.T) {
 	account := mock.Address()
 	vt := common.OracleTypeInvalid
 	vi := "123@test.com"
+	vk := mock.Hash()
 
-	err := VerifierRegInfoCheck(ctx, account, vt, vi)
+	err := VerifierRegInfoCheck(ctx, account, vt, vi, vk[:])
 	if err == nil {
 		t.Fatal()
 	}
 
 	vt = common.OracleTypeEmail
-	err = addTestVerifierInfo(ctx, account, vt, vi)
+	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	err = VerifierRegInfoCheck(ctx, account, vt, vi, vk[:])
 	if err == nil {
 		t.Fatal()
 	}
 
 	vt = common.OracleTypeWeChat
 	vi = "123456"
-	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	err = VerifierRegInfoCheck(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = addTestVerifierInfo(ctx, account, vt, vi)
+	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = VerifierRegInfoCheck(ctx, account, vt, vi)
+	err = VerifierRegInfoCheck(ctx, account, vt, vi, vk[:])
 	if err == nil {
 		t.Fatal()
 	}
@@ -1071,7 +1179,8 @@ func TestVerifierUnRegInfoCheck(t *testing.T) {
 	}
 
 	vi := "123456"
-	err = addTestVerifierInfo(ctx, account, vt, vi)
+	vk := mock.Hash()
+	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
@@ -1117,25 +1226,26 @@ func TestOracleInfoCheck(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize+1)
 	err := random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = OracleInfoCheck(ctx, account, ot, id, pk, code, hash)
+	err = OracleInfoCheck(ctx, account, ot, id, kt, pk, code, hash)
 	if err == nil {
 		t.Fatal()
 	}
 
 	ot = common.OracleTypeEmail
-	err = OracleInfoCheck(ctx, account, ot, id, pk, code, hash)
+	err = OracleInfoCheck(ctx, account, ot, id, kt, pk, code, hash)
 	if err == nil {
 		t.Fatal()
 	}
 
 	pk = pk[:32]
-	err = OracleInfoCheck(ctx, account, ot, id, pk, code, hash)
+	err = OracleInfoCheck(ctx, account, ot, id, kt, pk, code, hash)
 	if err == nil {
 		t.Fatal()
 	}
@@ -1150,28 +1260,28 @@ func TestOracleInfoCheck(t *testing.T) {
 	code1 := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	vs := []types.Address{account1}
 	cs := []types.Hash{codeHash}
-	err = addTestPublishInfo(ctx, account, ot, id, pk, vs, cs, common.PublishCost, hash)
+	err = addTestPublishInfo(ctx, account, ot, id, kt, pk, vs, cs, common.PublishCost, hash)
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = OracleInfoCheck(ctx, account, ot, id, pk, code1, hash)
+	err = OracleInfoCheck(ctx, account, ot, id, kt, pk, code1, hash)
 	if err == nil {
 		t.Fatal()
 	}
 
 	vs = []types.Address{account}
-	err = addTestPublishInfo(ctx, account, ot, id, pk, vs, cs, common.PublishCost, hash)
+	err = addTestPublishInfo(ctx, account, ot, id, kt, pk, vs, cs, common.PublishCost, hash)
 	if err != nil {
 		t.Fatal()
 	}
 
-	err = OracleInfoCheck(ctx, account, ot, id, pk, code1, hash)
+	err = OracleInfoCheck(ctx, account, ot, id, kt, pk, code1, hash)
 	if err == nil {
 		t.Fatal()
 	}
 
-	err = OracleInfoCheck(ctx, account, ot, id, pk, code, hash)
+	err = OracleInfoCheck(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1187,18 +1297,19 @@ func TestCheckOracleInfoExist(t *testing.T) {
 	id := mock.Hash()
 	code := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, pk, code, hash)
+	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !CheckOracleInfoExist(ctx, account, ot, id, pk, hash) {
+	if !CheckOracleInfoExist(ctx, account, ot, id, kt, pk, hash) {
 		t.Fatal()
 	}
 }
@@ -1212,6 +1323,7 @@ func TestGetPublishInfoByKey(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -1222,12 +1334,12 @@ func TestGetPublishInfoByKey(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetPublishInfoByKey(ctx, pt, id, pk, hash)
+	info := GetPublishInfoByKey(ctx, pt, id, kt, pk, hash)
 	if info == nil {
 		t.Fatal()
 	}
@@ -1242,6 +1354,7 @@ func TestGetPublishInfo(t *testing.T) {
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
 	hash := mock.Hash()
+	kt := common.PublicKeyTypeED25519
 	pk := make([]byte, ed25519.PublicKeySize)
 	err := random.Bytes(pk)
 	if err != nil {
@@ -1252,12 +1365,12 @@ func TestGetPublishInfo(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetPublishInfo(ctx, pt, id, pk, hash)
+	info := GetPublishInfo(ctx, pt, id, kt, pk, hash)
 	if info == nil {
 		t.Fatal()
 	}
