@@ -439,7 +439,6 @@ func TestLedger_Cache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(2 * time.Second)
 	t.Log(l.GetCacheStatue())
 	t.Log(l.GetCacheStat())
 }

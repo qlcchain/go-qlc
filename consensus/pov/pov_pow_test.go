@@ -60,7 +60,7 @@ func setupTestCasePovPow(t *testing.T) (func(t *testing.T), *mockDataPovPow) {
 	md.l = ledger.NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
-		err := md.l.DBStore().Close()
+		err := md.l.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -2,11 +2,10 @@ package ledger
 
 import (
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
+	"testing"
+	"time"
 )
 
 func TestLedger_dump(t *testing.T) {
@@ -85,5 +84,20 @@ func TestLedger_dump(t *testing.T) {
 	if _, err := l.Dump(0); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(5 * time.Second)
+
+	start := time.Now()
+	for {
+		if r, err := l.Dump(1); err != nil {
+			t.Fatal(err)
+		} else {
+			if r == "done" {
+				return
+			}
+			time.Sleep(200 * time.Millisecond)
+			if time.Since(start) > 10*time.Second {
+				t.Fatal("timeout")
+			}
+		}
+
+	}
 }

@@ -134,6 +134,7 @@ func (r *Relation) closed() {
 }
 
 func (r *Relation) process() {
+	r.logger.Debug("relation start process, ", r.dir)
 	addObjs := make([]types.Schema, 0)
 	deleteObjs := make([]types.Schema, 0)
 
@@ -201,11 +202,9 @@ func (r *Relation) process() {
 }
 
 func (r *Relation) flush() {
-	addObjs := make([]types.Schema, 0)
-	deleteObjs := make([]types.Schema, 0)
-
 	//add chan
 	if len(r.addChan) > 0 {
+		addObjs := make([]types.Schema, 0)
 		for b := range r.addChan {
 			addObjs = append(addObjs, b)
 			if len(r.addChan) == 0 {
@@ -230,8 +229,10 @@ func (r *Relation) flush() {
 			r.logger.Errorf("batch update add error: %s", err)
 		}
 	}
+
 	// delete chan
 	if len(r.deleteChan) > 0 {
+		deleteObjs := make([]types.Schema, 0)
 		for b := range r.deleteChan {
 			deleteObjs = append(deleteObjs, b)
 			if len(r.deleteChan) == 0 {
@@ -239,11 +240,11 @@ func (r *Relation) flush() {
 			}
 		}
 		objs := make([]types.Schema, 0)
-		for _, obj := range addObjs {
+		for _, obj := range deleteObjs {
 			objs = append(objs, obj)
 			if len(objs) == batchMaxCount {
 				if err := r.BatchUpdate(func(txn *sqlx.Tx) error {
-					return r.batchDelete(txn, addObjs)
+					return r.batchDelete(txn, deleteObjs)
 				}); err != nil {
 					r.logger.Errorf("batch update delete error: %s", err)
 				}
@@ -251,7 +252,7 @@ func (r *Relation) flush() {
 			}
 		}
 		if err := r.BatchUpdate(func(txn *sqlx.Tx) error {
-			return r.batchDelete(txn, addObjs)
+			return r.batchDelete(txn, deleteObjs)
 		}); err != nil {
 			r.logger.Errorf("batch update delete error: %s", err)
 		}

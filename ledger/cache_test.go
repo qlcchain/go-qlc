@@ -82,13 +82,17 @@ func TestNewCache(t *testing.T) {
 	if err := l.UpdateStateBlock(blk5, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(1 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 
 	blk6 := mock.StateBlockWithoutWork()
 	if err := l.UpdateStateBlock(blk6, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(1 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	if err := l.DeleteStateBlock(blk6.GetHash(), l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +101,9 @@ func TestNewCache(t *testing.T) {
 	if err := l.UpdateStateBlock(blk7, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(1 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 
 	if r, err := l.BlocksCount(); err != nil {
 		t.Fatal(err)
@@ -177,33 +183,6 @@ func TestCache_Iterator(t *testing.T) {
 	}
 }
 
-func TestCache_Put(t *testing.T) {
-	teardownTestCase, l := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	c := time.NewTicker(20 * time.Second)
-	defer c.Stop()
-InfLoop:
-	for {
-		select {
-		case <-c.C:
-			break InfLoop
-		default:
-			cache := l.Cache().GetCache()
-			block := mock.StateBlockWithoutWork()
-			k, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
-			if err := cache.Put(k, block); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-
-	for _, cs := range l.cacheStats {
-		span := strconv.FormatInt((cs.End-cs.Start)/1000000, 10) + "ms"
-		fmt.Printf("index: %d, key: %d, span: %s  \n", cs.Index, cs.Key, span)
-	}
-}
-
 func TestCache_PutConcurrency(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
@@ -214,7 +193,7 @@ func TestCache_PutConcurrency(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			c := time.NewTicker(10 * time.Second)
+			c := time.NewTicker(5 * time.Second)
 			defer c.Stop()
 		InfLoop:
 			for {
@@ -262,7 +241,7 @@ func TestCache_Get(t *testing.T) {
 	teardownTestCase, l := setupTestCase2(t)
 	defer teardownTestCase(t)
 
-	c := time.NewTicker(10 * time.Second)
+	c := time.NewTicker(5 * time.Second)
 	defer c.Stop()
 InfLoop:
 	for {

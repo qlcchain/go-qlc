@@ -42,7 +42,7 @@ type Node struct {
 // dir is path of binary file of node, if set empty, will be default path
 // bootNode can be nil
 func InitNode(t *testing.T) (*Node, error) {
-	cfg, err := config.DefaultConfig(filepath.Join(config.DefaultDataDir(), uuid.New().String()))
+	cfg, err := config.DefaultConfig(filepath.Join(config.QlcTestDataDir(), "nodes", uuid.New().String()))
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +129,9 @@ func (n *Node) startServices() {
 
 func (n *Node) stopServices() {
 	n.stopConsensusService()
+	if err := n.ledger.Close(); err != nil {
+		n.t.Errorf("node close ledger error %s", err)
+	}
 	log.Teardown()
 }
 
