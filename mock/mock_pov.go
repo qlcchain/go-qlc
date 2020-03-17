@@ -3,6 +3,7 @@ package mock
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/qlcchain/go-qlc/ledger"
 	"math"
 	"math/big"
 	"sync"
@@ -196,4 +197,33 @@ func GenerateAuxPow(msgBlockHash types.Hash) *types.PovAuxHeader {
 	}
 
 	return auxPow
+}
+
+func GeneratePovBlocksToLedger(l ledger.Store, blkNum int) ([]*types.PovBlock, error) {
+	var prevBlk *types.PovBlock
+	var allBlks []*types.PovBlock
+	for i := 0; i < blkNum; i++ {
+		blk1, td1 := GeneratePovBlock(prevBlk, 0)
+		err := l.AddPovBlock(blk1, td1)
+		if err != nil {
+			return nil, err
+		}
+		for txIdx, txPov := range blk1.GetAllTxs() {
+			txl := &types.PovTxLookup{BlockHash: blk1.GetHash(), BlockHeight: blk1.GetHeight(), TxIndex: uint64(txIdx)}
+			_ = l.AddPovTxLookup(txPov.Hash, txl)
+		}
+
+		err = l.AddPovBestHash(blk1.GetHeight(), blk1.GetHash())
+		if err != nil {
+			return nil, err
+		}
+		err = l.SetPovLatestHeight(blk1.GetHeight())
+		if err != nil {
+			return nil, err
+		}
+		allBlks = append(allBlks, blk1)
+
+		prevBlk = blk1
+	}
+	return allBlks, nil
 }

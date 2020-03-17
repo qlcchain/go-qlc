@@ -1234,6 +1234,57 @@ type PovApiGetMiningInfo struct {
 	PooledTx           uint32            `json:"pooledTx"`
 	Difficulty         float64           `json:"difficulty"`
 	HashInfo           *PovApiHashInfo   `json:"hashInfo"`
+
+	MinerAddr      string `json:"minerAddr"`
+	AlgoName       string `json:"algoName"`
+	AlgoEfficiency uint   `json:"algoEfficiency"`
+	CpuMining      bool   `json:"cpuMining"`
+}
+
+func (api *PovApi) StartMining(minerAddr types.Address, algoName string) error {
+	if !api.cfg.PoV.PovEnabled {
+		return errors.New("pov service is disabled")
+	}
+
+	inArgs := make(map[interface{}]interface{})
+	inArgs["minerAddr"] = minerAddr
+	inArgs["algoName"] = algoName
+
+	outArgs := make(map[interface{}]interface{})
+	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.StartMining", In: inArgs, Out: outArgs})
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return err
+	}
+
+	return nil
+}
+
+func (api *PovApi) StopMining() error {
+	if !api.cfg.PoV.PovEnabled {
+		return errors.New("pov service is disabled")
+	}
+
+	inArgs := make(map[interface{}]interface{})
+
+	outArgs := make(map[interface{}]interface{})
+	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.StopMining", In: inArgs, Out: outArgs})
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return err
+	}
+
+	return nil
 }
 
 func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
@@ -1272,6 +1323,17 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 
 	apiRsp.Difficulty = types.CalcDifficultyRatio(latestBlock.Header.GetNormBits(), common.PovPowLimitBits)
 	apiRsp.HashInfo = hashInfo
+
+	minerAddr := outArgs["minerAddr"].(types.Address)
+	algoType := outArgs["minerAlgo"].(types.PovAlgoType)
+	if !minerAddr.IsZero() {
+		apiRsp.MinerAddr = minerAddr.String()
+	}
+	if algoType != types.ALGO_UNKNOWN {
+		apiRsp.AlgoName = algoType.String()
+	}
+	apiRsp.AlgoEfficiency = latestBlock.GetAlgoEfficiency()
+	apiRsp.CpuMining = outArgs["cpuMining"].(bool)
 
 	return apiRsp, nil
 }
