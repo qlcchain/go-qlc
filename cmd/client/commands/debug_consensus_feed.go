@@ -2,8 +2,9 @@ package commands
 
 import (
 	"github.com/abiosoft/ishell"
-	"github.com/qlcchain/go-qlc/cmd/util"
 	rpc "github.com/qlcchain/jsonrpc2"
+
+	"github.com/qlcchain/go-qlc/cmd/util"
 )
 
 func addDebugFeedConsensusCmdByShell(parentCmd *ishell.Cmd) {

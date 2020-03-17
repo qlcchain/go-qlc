@@ -1,9 +1,10 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/mock"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestActX_cleanFrontierVotes(t *testing.T) {

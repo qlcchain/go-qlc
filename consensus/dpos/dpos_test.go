@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -30,7 +31,6 @@ import (
 type Node struct {
 	cfgPath string
 	config  *config.Config
-	account *types.Account
 	t       *testing.T
 	ctx     *context.ChainContext
 	ledger  *ledger.Ledger

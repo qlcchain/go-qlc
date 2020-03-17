@@ -10,9 +10,10 @@ package chain
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/log"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 

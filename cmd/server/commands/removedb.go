@@ -15,8 +15,9 @@ import (
 	"github.com/qlcchain/go-qlc/chain/context"
 
 	"github.com/abiosoft/ishell"
-	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/spf13/cobra"
+
+	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 )
 
 func removeDB() {

@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
+
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
-	rpc "github.com/qlcchain/jsonrpc2"
 )
 
 func addVerifierHeartCmdByShell(parentCmd *ishell.Cmd) {

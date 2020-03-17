@@ -2,11 +2,12 @@ package dpos
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/qlcchain/go-qlc/common/types"
 
