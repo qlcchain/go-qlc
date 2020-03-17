@@ -60,6 +60,9 @@ func TokenMeta(addr types.Address) *types.TokenMeta {
 }
 
 func TokenMeta2(addr types.Address, token types.Hash) *types.TokenMeta {
+	if token.IsZero() {
+		token = Hash()
+	}
 	s1, _ := random.Intn(math.MaxInt32)
 	i := new(big.Int).SetInt64(int64(s1))
 	t := types.TokenMeta{
