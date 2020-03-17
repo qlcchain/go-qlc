@@ -9,7 +9,6 @@ import (
 
 	swarmt "github.com/libp2p/go-libp2p-swarm/testing"
 	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	p "github.com/libp2p/go-libp2p/p2p/protocol/ping"
 )
 
 func TestPing(t *testing.T) {
@@ -27,17 +26,17 @@ func TestPing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ps1 := p.NewPingService(h1)
-	ps2 := p.NewPingService(h2)
+	ps1 := NewPinger(h1)
+	ps2 := NewPinger(h2)
 
 	testPing(t, ps1, h2.ID())
 	testPing(t, ps2, h1.ID())
 }
 
-func testPing(t *testing.T, ps *p.PingService, p peer.ID) {
+func testPing(t *testing.T, ps *Pinger, p peer.ID) {
 	pctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ts := ps.Ping(pctx, p)
+	ts := ps.PingService.Ping(pctx, p)
 
 	for i := 0; i < 5; i++ {
 		select {
