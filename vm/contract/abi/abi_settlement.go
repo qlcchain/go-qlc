@@ -1306,7 +1306,7 @@ func GetCDRStatusByDate(ctx *vmstore.VMContext, addr *types.Address, start, end 
 
 	var result []*CDRStatus
 
-	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(addr[:], func(key []byte, value []byte) error {
 		if len(key) == keySize && len(value) > 0 {
 			status := &CDRStatus{}
 			if err := status.FromABI(value); err != nil {
@@ -1705,7 +1705,7 @@ func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp
 
 	var result []*ContractParam
 
-	if err := ctx.Iterator(types.SettlementAddress[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(types.SettlementAddress[:], func(key []byte, value []byte) error {
 		if len(key) == keySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {
@@ -1738,7 +1738,7 @@ func queryContractByAddressAndStopName(ctx *vmstore.VMContext, name string, fn f
 
 	var result *ContractParam
 
-	if err := ctx.Iterator(types.SettlementAddress[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(types.SettlementAddress[:], func(key []byte, value []byte) error {
 		if len(key) == keySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {

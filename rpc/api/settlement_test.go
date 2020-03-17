@@ -264,14 +264,6 @@ func TestSettlementAPI_Integration(t *testing.T) {
 			}
 		}
 
-		for {
-			if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > 0 {
-				break
-			} else {
-				time.Sleep(500 * time.Millisecond)
-			}
-		}
-
 		if contracts, err := api.GetContractsAsPartyA(&pccwAddr, 10, offset(0)); err != nil {
 			t.Fatal(err)
 		} else if len(contracts) != 1 {
@@ -429,25 +421,6 @@ func TestSettlementAPI_Integration(t *testing.T) {
 				}
 			}
 
-			// waiting for data save to db
-			for {
-				if nextStopNames, err := api.GetNextStopNames(&pccwAddr); err != nil {
-					t.Fatal(err)
-				} else if len(nextStopNames) > 0 {
-					t.Logf("next names: %s %s", pccwAddr.String(), nextStopNames)
-					if names, err := api.GetPreStopNames(&cslAddr); err != nil {
-						t.Fatal(err)
-					} else if len(names) > 0 {
-						t.Logf("pre names: %s %s", cslAddr.String(), names)
-						break
-					} else {
-						time.Sleep(500 * time.Millisecond)
-					}
-				} else {
-					time.Sleep(500 * time.Millisecond)
-				}
-			}
-
 			if contracts, err := api.GetContractsByStatus(&pccwAddr, "Activated", 10, offset(0)); err != nil {
 				t.Fatal(err)
 			} else if len(contracts) != 1 {
@@ -509,6 +482,18 @@ func TestSettlementAPI_Integration(t *testing.T) {
 				}
 			}
 
+			if names, err := api.GetPreStopNames(&cslAddr); err != nil {
+				t.Fatal(err)
+			} else if len(names) == 0 {
+				t.Fatal("can not find any pre names")
+			}
+
+			if names, err := api.GetNextStopNames(&pccwAddr); err != nil {
+				t.Fatal(err)
+			} else if len(names) == 0 {
+				t.Fatal("can not find any next names")
+			}
+
 			h, err := cdr1.ToHash()
 			if err != nil {
 				t.Fatal(err)
@@ -524,14 +509,6 @@ func TestSettlementAPI_Integration(t *testing.T) {
 				t.Fatal(err)
 			} else {
 				t.Log(data)
-			}
-
-			for {
-				if records, _ := api.GetAllCDRStatus(&contractAddr1, 10, offset(0)); len(records) == 1 {
-					break
-				} else {
-					time.Sleep(500 * time.Millisecond)
-				}
 			}
 
 			if records, err := api.GetCDRStatusByDate(&contractAddr1, 0, 0, 10, offset(0)); err != nil {
@@ -645,14 +622,6 @@ func TestSettlementAPI_GetTerminateContractBlock(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		for {
-			if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > 0 {
-				break
-			} else {
-				time.Sleep(500 * time.Millisecond)
-			}
-		}
-
 		if contracts, err := api.GetContractsAsPartyB(&cslAddr, 1, offset(0)); err != nil {
 			t.Fatal(err)
 		} else if len(contracts) != 1 {
@@ -722,14 +691,6 @@ func TestSettlementAPI_GetExpiredContracts(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		for {
-			if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > 0 {
-				break
-			} else {
-				time.Sleep(500 * time.Millisecond)
-			}
-		}
-
 		if contracts, err := api.GetContractsAsPartyB(&cslAddr, 1, offset(0)); err != nil {
 			t.Fatal(err)
 		} else if len(contracts) != 1 {
@@ -746,14 +707,6 @@ func TestSettlementAPI_GetExpiredContracts(t *testing.T) {
 				blk.Signature = account2.Sign(blk.GetHash())
 				if err := verifier.BlockProcess(blk); err != nil {
 					t.Fatal(err)
-				}
-			}
-
-			for {
-				if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > 0 && contracts[0].Status == cabi.ContractStatusActivated {
-					break
-				} else {
-					time.Sleep(500 * time.Millisecond)
 				}
 			}
 
@@ -795,7 +748,7 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 	}
 
 	// prepare two settlement contract
-	for idx, p := range params {
+	for _, p := range params {
 		addr1 := p.account1.Address()
 		addr2 := p.account2.Address()
 		param1 := buildContactParam(addr1, addr2, p.name1, p.name2)
@@ -807,14 +760,6 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 			blk.Signature = p.account1.Sign(txHash)
 			if err := verifier.BlockProcess(blk); err != nil {
 				t.Fatal(err)
-			}
-
-			for {
-				if contracts, _ := api.GetAllContracts(10, offset(0)); len(contracts) > idx {
-					break
-				} else {
-					time.Sleep(500 * time.Millisecond)
-				}
 			}
 
 			if contracts, err := api.GetContractsAsPartyB(&addr2, 1, offset(0)); err != nil {
@@ -877,23 +822,14 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 	cslAddr := account3.Address()
 
 	var contractAddr1, contractAddr2 types.Address
-	for {
-		if c1, err := api.GetContractsAsPartyB(&pccwAddr, 1, offset(0)); err == nil &&
-			c1[0].Status == cabi.ContractStatusActivated {
-			contractAddr1 = c1[0].Address
-			if c2, err := api.GetContractsAsPartyA(&pccwAddr, 1, offset(0)); err == nil &&
-				c2[0].Status == cabi.ContractStatusActivated {
-				contractAddr2 = c2[0].Address
-				t.Log(c1[0].String())
-				t.Log(c2[0].String())
-				break
-			} else {
-				time.Sleep(500 * time.Millisecond)
-			}
-		} else {
-			time.Sleep(500 * time.Millisecond)
-		}
+	if c1, err := api.GetContractsAsPartyB(&pccwAddr, 1, offset(0)); err == nil {
+		contractAddr1 = c1[0].Address
 	}
+
+	if c2, err := api.GetContractsAsPartyA(&pccwAddr, 1, offset(0)); err == nil {
+		contractAddr2 = c2[0].Address
+	}
+
 	cdrCount := 10
 	for i := 0; i < cdrCount; i++ {
 		template := cabi.CDRParam{
@@ -963,15 +899,15 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		}
 	}
 
-	for {
-		if status, err := api.GetAllCDRStatus(&contractAddr1, 100, offset(0)); err == nil && len(status) >= cdrCount {
-			if status, err := api.GetAllCDRStatus(&contractAddr2, 100, offset(0)); err == nil && len(status) >= cdrCount {
-				break
-			} else {
-				time.Sleep(500 * time.Millisecond)
-			}
-		} else {
-			time.Sleep(500 * time.Millisecond)
+	if status, err := api.GetAllCDRStatus(&contractAddr1, 100, offset(0)); err == nil {
+		if len(status) != cdrCount {
+			t.Fatalf("invalid cdr count[%d] of %s", len(status), contractAddr1.String())
+		}
+	}
+
+	if status, err := api.GetAllCDRStatus(&contractAddr2, 100, offset(0)); err == nil {
+		if len(status) != cdrCount {
+			t.Fatalf("invalid cdr count[%d] of %s", len(status), contractAddr2.String())
 		}
 	}
 
