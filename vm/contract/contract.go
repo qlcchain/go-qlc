@@ -295,6 +295,7 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 			cabi.MethodNameUpdateNextStop:    &UpdateNextStop{},
 			cabi.MethodNameRemoveNextStop:    &RemoveNextStop{},
 			cabi.MethodNameTerminateContract: &TerminateContract{},
+			cabi.MethodNameRegisterAsset:     &RegisterAsset{},
 		},
 		cabi.SettlementABI,
 		cabi.JsonSettlement,
