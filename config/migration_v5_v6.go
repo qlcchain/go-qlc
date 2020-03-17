@@ -33,7 +33,10 @@ func (m *MigrationV5ToV6) Migration(data []byte, version int) ([]byte, int, erro
 	}
 	cfg6.ConfigV5 = cfg5
 	cfg6.Version = configVersion
-
+	cfg6.P2P.IsBootNode = false
+	cfg6.P2P.BootNodeHttpServer = bootNodeHttpServer
+	cfg6.P2P.BootNodes = bootNodes
+	cfg6.P2P.Discovery.MDNSEnabled = true
 	bytes, _ := json.Marshal(cfg6)
 	return bytes, m.endVersion, err
 }

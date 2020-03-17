@@ -3,6 +3,8 @@ package p2p
 import (
 	"context"
 	"errors"
+	"io/ioutil"
+	"net/http"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -36,6 +38,7 @@ import (
 // Error types
 var (
 	ErrPeerIsNotConnected = errors.New("peer is not connected")
+	ErrNoBootNode         = errors.New("can not get bootNode")
 )
 
 // p2p protocol version
@@ -95,7 +98,6 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		cfg:           config,
 		ctx:           ctx,
 		cancel:        cancel,
-		boostrapAddrs: config.P2P.BootNodes,
 		streamManager: NewStreamManager(),
 		logger:        log.NewLogger("p2p"),
 		isMiner:       config.PoV.PovEnabled,
@@ -119,6 +121,11 @@ func (node *QlcNode) setRepresentativeNode(isRepresentative bool) {
 }
 
 func (node *QlcNode) buildHost() error {
+	bns := getBootNode(node.cfg.P2P.BootNodes)
+	if len(bns) == 0 {
+		return ErrNoBootNode
+	}
+	node.boostrapAddrs = bns
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
 	qlcHost, err := libp2p.New(
@@ -545,4 +552,22 @@ type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
 
 func (node *QlcNode) GetBandwidthStats(stats *p2pmetrics.Stats) {
 	*stats = node.reporter.GetBandwidthTotals()
+}
+
+func getBootNode(urls []string) []string {
+	var bn []string
+	for _, v := range urls {
+		url := "http://" + v + "/bootNode"
+		rsp, err := http.Get(url)
+		if err != nil {
+			continue
+		}
+		body, err := ioutil.ReadAll(rsp.Body)
+		if err != nil {
+			continue
+		}
+		bn = append(bn, string(body))
+		_ = rsp.Body.Close()
+	}
+	return bn
 }

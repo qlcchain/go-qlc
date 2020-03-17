@@ -103,7 +103,7 @@ func TestFork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfg1.P2P.ID.PeerID
+	b1 := "/ip4/0.0.0.0/tcp/19741/p2p/" + cfg1.P2P.ID.PeerID
 
 	// node2
 	dir2 := filepath.Join(rootDir, uuid.New().String())
@@ -124,7 +124,7 @@ func TestFork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b2 := "/ip4/0.0.0.0/tcp/19742/ipfs/" + cfg2.P2P.ID.PeerID
+	b2 := "/ip4/0.0.0.0/tcp/19742/p2p/" + cfg2.P2P.ID.PeerID
 
 	cfg1.P2P.BootNodes = []string{b2}
 	cfg2.P2P.BootNodes = []string{b1}
@@ -269,7 +269,7 @@ func TestPovFork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfg1.P2P.ID.PeerID
+	b1 := "/ip4/0.0.0.0/tcp/19741/p2p/" + cfg1.P2P.ID.PeerID
 
 	// node2
 	dir2 := filepath.Join(rootDir, uuid.New().String())
@@ -290,7 +290,7 @@ func TestPovFork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b2 := "/ip4/0.0.0.0/tcp/19742/ipfs/" + cfg2.P2P.ID.PeerID
+	b2 := "/ip4/0.0.0.0/tcp/19742/p2p/" + cfg2.P2P.ID.PeerID
 
 	cfg1.P2P.BootNodes = []string{b2}
 	cfg2.P2P.BootNodes = []string{b1}
@@ -450,7 +450,7 @@ func TestCacheFork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b1 := "/ip4/0.0.0.0/tcp/19741/ipfs/" + cfg1.P2P.ID.PeerID
+	b1 := "/ip4/0.0.0.0/tcp/19741/p2p/" + cfg1.P2P.ID.PeerID
 
 	// node2
 	dir2 := filepath.Join(rootDir, uuid.New().String())
@@ -471,7 +471,7 @@ func TestCacheFork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b2 := "/ip4/0.0.0.0/tcp/19742/ipfs/" + cfg2.P2P.ID.PeerID
+	b2 := "/ip4/0.0.0.0/tcp/19742/p2p/" + cfg2.P2P.ID.PeerID
 
 	cfg1.P2P.BootNodes = []string{b2}
 	cfg2.P2P.BootNodes = []string{b1}
