@@ -11,17 +11,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/big"
-	"sort"
-	"strings"
-	"time"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"math/big"
+	"sort"
+	"strings"
 )
 
 const (
@@ -379,30 +377,14 @@ func SearchPledgeInfoWithNEP5TxId(ctx *vmstore.VMContext, param *WithdrawPledgeP
 	return result
 }
 
-// FIXME: can't sleep to waiting...
 func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
-	result := searchBeneficialPledgeInfoByTxId(ctx, param)
-	if result != nil {
-		return result
-	}
-	for i := 0; i < 3; i++ {
-		time.Sleep(1 * time.Second)
-		result := searchBeneficialPledgeInfoByTxId(ctx, param)
-		if result != nil {
-			return result
-		}
-	}
-	return nil
-}
-
-func searchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPledgeParam) *PledgeResult {
 	logger := log.NewLogger("GetBeneficialPledgeInfos")
 	defer func() {
 		_ = logger.Sync()
 	}()
 	result := new(PledgeResult)
 	now := common.TimeNow().Unix()
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.IteratorAll(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType && pledgeInfo.Amount.String() == param.Amount.String() &&

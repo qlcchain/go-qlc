@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -65,33 +66,32 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 // get write cache index
 func (lc *MemoryCache) GetCache() *Cache {
 	//lc.logger.Info("GetCache")
+	lc.lock.Lock()
+	defer lc.lock.Unlock()
 	if lc.needsFlush() {
-		lc.lock.Lock()
-		if lc.needsFlush() {
-			//lc.logger.Debug("current write cache need flush: ", lc.writeIndex)
-			newWriteIndex := (lc.writeIndex + 1) % lc.cacheCount // next write cache index
-			st := time.Now()
-			for {
-				if newWriteIndex != lc.readIndex { // next write cache index must flush done
-					break
-				} else {
-					time.Sleep(500 * time.Millisecond)
-				}
-				if time.Now().Sub(st) > 2*time.Second {
-					lc.logger.Error("cache flush timeout ", newWriteIndex)
-				}
+		//lc.logger.Debug("current write cache need flush: ", lc.writeIndex)
+		newWriteIndex := (lc.writeIndex + 1) % lc.cacheCount // next write cache index
+		st := time.Now()
+		for {
+			if newWriteIndex != lc.readIndex { // next write cache index must flush done
+				break
+			} else {
+				time.Sleep(500 * time.Millisecond)
 			}
-			lc.lastFlush = time.Now()
-
-			if len(lc.flushChan) > 1 { // if disk write too slowly
-				<-lc.flushChan
+			if time.Now().Sub(st) > 2*time.Second {
+				lc.logger.Error("cache flush timeout ", newWriteIndex)
 			}
-			lc.flushChan <- true
-			lc.writeIndex = newWriteIndex
-			//lc.logger.Debug("new write cache index: ", lc.writeIndex)
 		}
-		lc.lock.Unlock()
+		lc.lastFlush = time.Now()
+
+		if len(lc.flushChan) > 1 { // if disk write too slowly
+			<-lc.flushChan
+		}
+		lc.flushChan <- true
+		lc.writeIndex = newWriteIndex
+		//lc.logger.Debug("new write cache index: ", lc.writeIndex)
 	}
+
 	//lc.logger.Debug("return write cache index: ", lc.writeIndex)
 	cache := lc.caches[lc.writeIndex]
 	return cache
@@ -152,6 +152,9 @@ func (lc *MemoryCache) closed() {
 }
 
 func (lc *MemoryCache) close() error {
+	lc.lock.Lock()
+	defer lc.lock.Unlock()
+
 	index := lc.readIndex
 	index = (index + 1) % lc.cacheCount // next read cache index to dump
 	finish := false
@@ -167,6 +170,15 @@ func (lc *MemoryCache) close() error {
 		lc.readIndex = index
 		index = (index + 1) % lc.cacheCount // next read cache index to dump
 	}
+	return nil
+}
+
+func (lc *MemoryCache) rebuild() error {
+	if err := lc.close(); err != nil {
+		return err
+	}
+	lc.writeIndex = 1
+	lc.readIndex = 0
 	return nil
 }
 
@@ -232,8 +244,8 @@ func (lc *MemoryCache) Has(key []byte) (bool, error) {
 	return true, nil
 }
 
-func (lc *MemoryCache) prefixIterator(prefix []byte) []*kv {
-	kvs := make([]*kv, 0)
+func (lc *MemoryCache) prefixIterator(prefix []byte, fn func(k []byte, v []byte) error) ([][]byte, error) {
+	keys := make([][]byte, 0)
 	index := lc.writeIndex
 	readIndex := lc.readIndex
 	for index != readIndex {
@@ -241,13 +253,11 @@ func (lc *MemoryCache) prefixIterator(prefix []byte) []*kv {
 		for k, v := range items {
 			key := originalKey(k.(string))
 			if bytes.HasPrefix(key, prefix) {
-				if !contain(kvs, key) && !isDeleteKey(v) {
-					value := v.([]byte)
-					temp := &kv{
-						key:   key,
-						value: value,
+				if !contain(keys, key) && !isDeleteKey(v) {
+					keys = append(keys, key)
+					if err := fn(key, v.([]byte)); err != nil {
+						return nil, fmt.Errorf("ledger iterator: %s", err)
 					}
-					kvs = append(kvs, temp)
 				}
 			}
 		}
@@ -256,12 +266,12 @@ func (lc *MemoryCache) prefixIterator(prefix []byte) []*kv {
 			index = lc.cacheCount - 1
 		}
 	}
-	return kvs
+	return keys, nil
 }
 
-func contain(kvs []*kv, key []byte) bool {
+func contain(kvs [][]byte, key []byte) bool {
 	for _, kv := range kvs {
-		if bytes.EqualFold(kv.key, key) {
+		if bytes.EqualFold(kv, key) {
 			return true
 		}
 	}
@@ -525,3 +535,30 @@ var deleteKeyTag = new(deleteKey)
 
 var ErrKeyDeleted = errors.New("key is deleted")
 var ErrKeyNotInCache = errors.New("key not in cache")
+
+type CacheStore interface {
+	Cache() *MemoryCache
+	GetCacheStat() []*CacheStat
+	GetCacheStatue() map[string]string
+}
+
+func (l *Ledger) Cache() *MemoryCache {
+	return l.cache
+}
+
+func (l *Ledger) GetCacheStat() []*CacheStat {
+	return l.cacheStats
+}
+
+func (l *Ledger) GetCacheStatue() map[string]string {
+	r := make(map[string]string)
+	for i, c := range l.cache.caches {
+		r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
+	}
+	r["read"] = strconv.Itoa(l.cache.readIndex)
+	r["write"] = strconv.Itoa(l.cache.writeIndex)
+	r["lastflush"] = l.cache.lastFlush.Format("2006-01-02 15:04:05")
+	r["flushStatue"] = strconv.FormatBool(l.cache.flushStatue)
+	r["flushChan"] = strconv.Itoa(len(l.cache.flushChan))
+	return r
+}

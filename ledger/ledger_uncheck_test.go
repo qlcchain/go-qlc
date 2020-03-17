@@ -40,20 +40,19 @@ func TestLedger_GetUncheckedBlock(t *testing.T) {
 		t.Log(s)
 	}
 
-	// Deserialize error
-
+	// deserialize error
 	key := mock.Hash()
 	k, err := storage.GetKeyOfParts(l.uncheckedKindToPrefix(types.UncheckedKindPrevious), key)
 	if err != nil {
 		t.Fatal()
 	}
-	d1 := make([]byte, 10)
+	d1 := make([]byte, 0)
 	_ = random.Bytes(d1)
 	if err := l.store.Put(k, d1); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := l.GetUncheckedBlock(key, types.UncheckedKindPrevious); err == nil {
-		t.Fatal(err)
+	if r, u, err := l.GetUncheckedBlock(key, types.UncheckedKindPrevious); err == nil {
+		t.Fatal(err, r, u)
 	}
 
 	if err := l.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {

@@ -28,7 +28,7 @@ import (
 )
 
 func setupDefaultLedgerAPI(t *testing.T) (func(t *testing.T), ledger.Store, *LedgerAPI) {
-	t.Parallel()
+	//t.Parallel()
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
@@ -67,7 +67,7 @@ func setupDefaultLedgerAPI(t *testing.T) (func(t *testing.T), ledger.Store, *Led
 }
 
 func setupMockLedgerAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *LedgerAPI) {
-	t.Parallel()
+	//t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)

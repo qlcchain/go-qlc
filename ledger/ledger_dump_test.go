@@ -79,7 +79,9 @@ func TestLedger_dump(t *testing.T) {
 		fmt.Println(err)
 		return
 	}
-	time.Sleep(2 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := l.Dump(0); err != nil {
 		t.Fatal(err)
 	}

@@ -90,19 +90,19 @@ func TestLedger_GetPeerInfo(t *testing.T) {
 		t.Fatal()
 	}
 
-	// Deserialize error
+	// deserialize error
 	key := random.RandomHexString(46)
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixPeerInfo, []byte(key))
 	if err != nil {
 		t.Fatal()
 	}
-	d1 := make([]byte, 10)
+	d1 := make([]byte, 0)
 	_ = random.Bytes(d1)
 	if err := l.store.Put(k, d1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := l.GetPeerInfo(key); err == nil {
-		t.Fatal(err)
+	if r, err := l.GetPeerInfo(key); err == nil {
+		t.Fatal(err, r)
 	}
 
 	if err := l.GetPeersInfo(func(info *types.PeerInfo) error {

@@ -586,7 +586,7 @@ func Test_searchBeneficialPledgeInfoByTxId(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := searchBeneficialPledgeInfoByTxId(tt.args.ctx, tt.args.param); got == nil && tt.want != nil {
+			if got := SearchBeneficialPledgeInfoByTxId(tt.args.ctx, tt.args.param); got == nil && tt.want != nil {
 				t.Errorf("searchBeneficialPledgeInfoByTxId() = %v, want %v", got, tt.want)
 			}
 		})

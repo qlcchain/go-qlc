@@ -96,7 +96,8 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	if err != nil {
 		return nil, err
 	}
-	amount, _ := ctx.Ledger.CalculateAmount(input)
+	a, _ := ctx.Ledger.CalculateAmount(input)
+	amount := a.Copy()
 
 	var withdrawTime int64
 	pt := cabi.PledgeType(param.PType)
