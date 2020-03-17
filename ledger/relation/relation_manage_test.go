@@ -1,16 +1,17 @@
 package relation
 
 import (
-	"github.com/google/uuid"
-	chaincontext "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common/storage/relationdb"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/config"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
+	chaincontext "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common/storage/relationdb"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
 

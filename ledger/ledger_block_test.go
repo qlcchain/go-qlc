@@ -3,10 +3,11 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
-	"testing"
 )
 
 func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {

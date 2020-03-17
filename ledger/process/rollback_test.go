@@ -2,13 +2,14 @@ package process
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/trie"
-	"testing"
 )
 
 func TestRollback_Block(t *testing.T) {

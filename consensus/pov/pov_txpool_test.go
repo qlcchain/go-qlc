@@ -55,7 +55,7 @@ func setupPovTxPoolTestCase(t *testing.T) (func(t *testing.T), *povTxPoolMockDat
 	md.chain = new(povTxChainReaderMockChain)
 
 	return func(t *testing.T) {
-		err := md.ledger.DBStore().Close()
+		err := md.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

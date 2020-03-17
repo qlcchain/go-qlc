@@ -1,9 +1,10 @@
 package ledger
 
 import (
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
-	"testing"
 )
 
 func addFrontier(t *testing.T, l *Ledger) *types.Frontier {

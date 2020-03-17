@@ -2,13 +2,14 @@ package ledger
 
 import (
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
-	"math/big"
-	"testing"
 )
 
 func addRepresentationWeight(t *testing.T, l *Ledger) *types.AccountMeta {

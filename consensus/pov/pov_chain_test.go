@@ -24,7 +24,6 @@ type povChainMockData struct {
 
 func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData) {
 	t.Parallel()
-
 	md := &povChainMockData{}
 
 	uid := uuid.New().String()
@@ -43,7 +42,7 @@ func setupPovChainTestCase(t *testing.T) (func(t *testing.T), *povChainMockData)
 	md.eb = event.GetEventBus(uid)
 
 	return func(t *testing.T) {
-		err := md.ledger.DBStore().Close()
+		err := md.ledger.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

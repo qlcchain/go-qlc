@@ -38,7 +38,7 @@ func setupPovStateDBTestCase(t *testing.T) (func(t *testing.T), *povStateDBMockD
 	_ = md.l.AddPovBlock(genBlk, genTd)
 
 	return func(t *testing.T) {
-		err := md.l.DBStore().Close()
+		err := md.l.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
