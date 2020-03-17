@@ -2,9 +2,11 @@ package dpos
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common"
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
 
@@ -68,11 +70,22 @@ func TestOnFrontierConfirmed(t *testing.T) {
 	dps := getTestDpos()
 	block := mock.StateBlockWithoutWork()
 	hash := block.GetHash()
-	dps.frontiersStatus.Store(hash, frontierChainConfirmed)
+
 	var confirmed bool
 	dps.onFrontierConfirmed(hash, &confirmed)
+	if confirmed {
+		t.Fatal()
+	}
 
+	dps.frontiersStatus.Store(hash, frontierChainConfirmed)
+	dps.onFrontierConfirmed(hash, &confirmed)
 	if !confirmed {
+		t.Fatal()
+	}
+
+	dps.frontiersStatus.Store(hash, frontierWaitingForVote)
+	dps.onFrontierConfirmed(hash, &confirmed)
+	if confirmed {
 		t.Fatal()
 	}
 }
@@ -106,25 +119,133 @@ func TestBatchVote(t *testing.T) {
 
 func TestCacheAck(t *testing.T) {
 	dps := getTestDpos()
+	hash := mock.Hash()
 
-	vi := &voteInfo{
-		hash:    mock.Hash(),
-		account: mock.Account().Address(),
+	vi1 := &voteInfo{
+		hash:    hash,
+		account: mock.Address(),
+	}
+	dps.cacheAck(vi1)
+	_, err := dps.voteCache.Get(hash)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	dps.cacheAck(vi)
-	v, err := dps.voteCache.Get(vi.hash)
+	vi2 := &voteInfo{
+		hash:    hash,
+		account: mock.Address(),
+	}
+	dps.cacheAck(vi2)
+	v, err := dps.voteCache.Get(hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	vc := v.(*sync.Map)
-	if v, ok := vc.Load(vi.account); ok {
-		vil := v.(*voteInfo)
-		if vil.hash != vi.hash || vil.account != vi.account {
-			t.Fatal()
-		}
-	} else {
+	if _, ok := vc.Load(vi1.account); !ok {
 		t.Fatal()
 	}
+	if _, ok := vc.Load(vi2.account); !ok {
+		t.Fatal()
+	}
+}
+
+func TestHasLocalValidRep(t *testing.T) {
+	dps := getTestDpos()
+	dps.minVoteWeight = types.NewBalance(1000)
+
+	account := mock.Account()
+	dps.localRepAccount.Store(account.Address(), account)
+	if dps.hasLocalValidRep() {
+		t.Fatal()
+	}
+
+	benefit := types.ZeroBenefit
+	benefit.Vote = dps.minVoteWeight
+	benefit.Total = dps.minVoteWeight
+	dps.ledger.AddRepresentation(account.Address(), benefit, dps.ledger.Cache().GetCache())
+	if !dps.hasLocalValidRep() {
+		t.Fatal()
+	}
+}
+
+func TestRefreshAccount(t *testing.T) {
+	dps := getTestDpos()
+	dps.minVoteWeight = types.NewBalance(1000)
+
+	account := mock.Account()
+	dps.accounts = []*types.Account{account}
+
+	benefit := types.ZeroBenefit
+	benefit.Vote = dps.minVoteWeight
+	benefit.Total = dps.minVoteWeight
+	dps.ledger.AddRepresentation(account.Address(), benefit, dps.ledger.Cache().GetCache())
+	dps.refreshAccount()
+
+	if _, ok := dps.localRepAccount.Load(account.Address()); !ok {
+		t.Fatal()
+	}
+}
+
+func TestCleanOnlineReps(t *testing.T) {
+	dps := getTestDpos()
+
+	addr := mock.Address()
+	dps.onlineReps.Store(addr, time.Now().Unix()-int64(repTimeout.Seconds()))
+	dps.cleanOnlineReps()
+	if _, ok := dps.onlineReps.Load(addr); ok {
+		t.Fatal()
+	}
+}
+
+func TestOnRollback(t *testing.T) {
+	dps := getTestDpos()
+	dps.minVoteWeight = types.NewBalance(1000)
+
+	account := mock.Account()
+	dps.accounts = []*types.Account{account}
+	blk := mock.StateBlockWithoutWork()
+	blk.Type = types.Online
+	blk.Address = account.Address()
+
+	benefit := types.ZeroBenefit
+	benefit.Vote = dps.minVoteWeight
+	benefit.Total = dps.minVoteWeight
+	dps.ledger.AddRepresentation(account.Address(), benefit, dps.ledger.Cache().GetCache())
+	dps.ledger.AddStateBlock(blk)
+	dps.onRollback(blk.GetHash())
+}
+
+func TestIsWaitingFrontier(t *testing.T) {
+	dps := getTestDpos()
+	hash := mock.Hash()
+	dps.frontiersStatus.Store(hash, frontierWaitingForVote)
+	ok, s := dps.isWaitingFrontier(hash)
+	if !ok || s != frontierWaitingForVote {
+		t.Fatal()
+	}
+}
+
+func TestDequeueGapPovBlocksFromDb(t *testing.T) {
+	dps := getTestDpos()
+
+	blk := mock.StateBlockWithoutWork()
+	dps.ledger.AddGapPovBlock(2880, blk, types.UnSynchronized)
+
+	ds := types.NewPovMinerDayStat()
+	it := types.NewPovMinerStatItem()
+	it.FirstHeight = 1440
+	it.LastHeight = 2880
+	it.BlockNum = 120
+	it.RewardAmount = types.NewBalance(10)
+	ds.DayIndex = uint32(common.PovMinerRewardHeightStart / uint64(common.POVChainBlocksPerDay))
+	ds.MinerStats[blk.Address.String()] = it
+	dps.ledger.AddPovMinerStat(ds)
+
+	dps.dequeueGapPovBlocksFromDb(2880)
+
+	dps.ledger.WalkGapPovBlocksWithHeight(2880, func(block *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		t.Fatal()
+		return nil
+	})
 }
