@@ -23,6 +23,7 @@ func TestMDNS(t *testing.T) {
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/0.0.0.0/tcp/19523"
 	cfg1.P2P.Discovery.MDNSEnabled = true
+	cfg1.P2P.Discovery.MDNSInterval = 1
 	cfg1.P2P.IsBootNode = true
 	cfg1.P2P.BootNodes = []string{"127.0.0.1:19533/dis1"}
 	http.HandleFunc("/dis1/bootNode", func(w http.ResponseWriter, r *http.Request) {
@@ -41,6 +42,7 @@ func TestMDNS(t *testing.T) {
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/0.0.0.0/tcp/19524"
 	cfg2.P2P.Discovery.MDNSEnabled = true
+	cfg1.P2P.Discovery.MDNSInterval = 0
 	cfg2.P2P.IsBootNode = true
 	cfg2.P2P.BootNodes = []string{"127.0.0.1:19534/dis2"}
 	http.HandleFunc("/dis2/bootNode", func(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +213,7 @@ func TestNodeDiscovery(t *testing.T) {
 		case <-ticker2.C:
 			s := node1.node.streamManager.FindByPeerID(node2.node.cfg.P2P.ID.PeerID)
 			if s != nil {
+				node1.node.HandlePeerFound(node1.node.host.Peerstore().PeerInfo(node2.node.ID))
 				return
 			}
 		default:
