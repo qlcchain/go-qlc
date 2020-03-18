@@ -44,6 +44,7 @@ type SettlementAPI struct {
 	removeNextStop    *contract.RemoveNextStop
 	updateNextStop    *contract.UpdateNextStop
 	terminateContract *contract.TerminateContract
+	registerAsset     *contract.RegisterAsset
 	cc                *context.ChainContext
 }
 
@@ -66,6 +67,7 @@ func NewSettlement(l ledger.Store, cc *context.ChainContext) *SettlementAPI {
 		addNextStop:    &contract.AddNextStop{},
 		removeNextStop: &contract.RemoveNextStop{},
 		updateNextStop: &contract.UpdateNextStop{},
+		registerAsset:  &contract.RegisterAsset{},
 		cc:             cc,
 	}
 }
@@ -798,6 +800,198 @@ func (s *SettlementAPI) GetPreStopNames(addr *types.Address) ([]string, error) {
 func (s *SettlementAPI) GetNextStopNames(addr *types.Address) ([]string, error) {
 	ctx := vmstore.NewVMContext(s.l)
 	return cabi.GetNextStopNames(ctx, addr)
+}
+
+//RegisterAssetParam asset registration  param
+type RegisterAssetParam struct {
+	Owner     cabi.Contractor `json:"owner"`
+	Assets    []*cabi.Asset   `json:"assets"`
+	StartDate int64           `json:"startDate"`
+	EndDate   int64           `json:"endDate"`
+	Status    string          `json:"status"`
+}
+
+// ToAssetParam convert RPC param to contract param
+func (r *RegisterAssetParam) ToAssetParam() (*cabi.AssetParam, error) {
+	status, err := cabi.ParseAssetStatus(r.Status)
+	if err != nil {
+		return nil, err
+	}
+	return &cabi.AssetParam{
+		Owner:     r.Owner,
+		Assets:    r.Assets,
+		SignDate:  time.Now().Unix(),
+		StartDate: r.StartDate,
+		EndDate:   r.EndDate,
+		Status:    status,
+	}, nil
+}
+
+// GetRegisterAssetBlock get register assset block
+// @param param asset registration param
+// @return state block(without signature) to be processed
+func (s *SettlementAPI) GetRegisterAssetBlock(param *RegisterAssetParam) (*types.StateBlock, error) {
+	if !s.cc.IsPoVDone() {
+		return nil, context.ErrPoVNotFinish
+	}
+
+	if param == nil {
+		return nil, errInvalidParam
+	}
+
+	ap, err := param.ToAssetParam()
+	if err != nil {
+		return nil, err
+	}
+	addr := param.Owner.Address
+	ctx := vmstore.NewVMContext(s.l)
+
+	tm, err := ctx.Ledger.GetTokenMeta(addr, config.GasToken())
+	if err != nil {
+		return nil, err
+	}
+	ap.Previous = tm.Header
+
+	if err := ap.Verify(); err != nil {
+		return nil, err
+	}
+
+	if singedData, err := ap.ToABI(); err == nil {
+		povHeader, err := s.l.GetLatestPovHeader()
+		if err != nil {
+			return nil, fmt.Errorf("get pov header error: %s", err)
+		}
+
+		sb := &types.StateBlock{
+			Type:           types.ContractSend,
+			Token:          tm.Type,
+			Address:        param.Owner.Address,
+			Balance:        tm.Balance,
+			Vote:           types.ZeroBalance,
+			Network:        types.ZeroBalance,
+			Oracle:         types.ZeroBalance,
+			Storage:        types.ZeroBalance,
+			Previous:       tm.Header,
+			Link:           types.Hash(types.SettlementAddress),
+			Representative: tm.Representative,
+			Data:           singedData,
+			PoVHeight:      povHeader.GetHeight(),
+			Timestamp:      common.TimeNow().Unix(),
+		}
+
+		if _, _, err := s.registerAsset.ProcessSend(ctx, sb); err != nil {
+			return nil, err
+		}
+
+		h := ctx.Cache.Trie().Hash()
+		if h != nil {
+			sb.Extra = *h
+		}
+
+		return sb, nil
+	} else {
+		return nil, err
+	}
+}
+
+type Asset struct {
+	cabi.Asset
+	AssetID types.Hash `json:"assetID"`
+}
+
+type AssetParam struct {
+	Owner     cabi.Contractor  `json:"owner"`
+	Assets    []*Asset         `json:"assets"`
+	SignDate  int64            `json:"signDate"`
+	StartDate int64            `json:"startDate"`
+	EndDate   int64            `json:"endDate"`
+	Status    cabi.AssetStatus `json:"status"`
+	Address   types.Address    `json:"address"`
+}
+
+func (a *AssetParam) From(param *cabi.AssetParam) error {
+	address, err := param.ToAddress()
+	if err != nil {
+		return err
+	}
+	var assets []*Asset
+	for _, v := range param.Assets {
+		id, err := v.ToAssertID()
+		if err != nil {
+			continue
+		}
+
+		assets = append(assets, &Asset{
+			Asset:   *v,
+			AssetID: id,
+		})
+	}
+	a.Owner = param.Owner
+	a.Assets = assets
+	a.SignDate = param.SignDate
+	a.StartDate = param.StartDate
+	a.EndDate = param.EndDate
+	a.Status = param.Status
+	a.Address = address
+
+	return nil
+}
+
+// GetAllAssets list all assets, for debug
+func (s *SettlementAPI) GetAllAssets(count int, offset *int) ([]*AssetParam, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return s.queryAssets(count, offset, func() ([]*cabi.AssetParam, error) {
+		return cabi.GetAllAsserts(ctx)
+	})
+}
+
+func (s *SettlementAPI) GetAssetsByOwner(owner *types.Address, count int, offset *int) ([]*AssetParam, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return s.queryAssets(count, offset, func() ([]*cabi.AssetParam, error) {
+		return cabi.GetAssertsByAddress(ctx, owner)
+	})
+}
+
+func (s *SettlementAPI) GetAsset(address types.Address) (*AssetParam, error) {
+	ctx := vmstore.NewVMContext(s.l)
+
+	if a, err := cabi.GetAssetParam(ctx, address); err != nil {
+		return nil, err
+	} else {
+		r := &AssetParam{}
+		if err := r.From(a); err != nil {
+			return nil, err
+		} else {
+			return r, nil
+		}
+	}
+}
+
+func (s *SettlementAPI) queryAssets(count int, offset *int, fn func() ([]*cabi.AssetParam, error)) ([]*AssetParam, error) {
+	assets, err := fn()
+	if err != nil {
+		return nil, err
+	}
+
+	size := len(assets)
+
+	start, end, err := calculateRange(size, count, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*AssetParam
+
+	for _, c := range assets[start:end] {
+		a := &AssetParam{}
+		if err = a.From(c); err != nil {
+			s.logger.Error(err)
+		} else {
+			result = append(result, a)
+		}
+	}
+
+	return result, nil
 }
 
 func sortCDRFun(cdr1, cdr2 *cabi.CDRStatus) bool {
