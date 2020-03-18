@@ -172,9 +172,10 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 			ss.logger.Error(err)
 			return
 		}
-
 		ss.syncInit()
-		sv.(common.InterceptCall).RpcCall(common.RpcDPoSOnSyncStateChange, topic.Syncing, nil)
+		if sv != nil {
+			sv.(common.InterceptCall).RpcCall(common.RpcDPoSOnSyncStateChange, topic.Syncing, nil)
+		}
 		ss.logger.Warn("sync start")
 
 		var remoteFrontiers []*types.Frontier
@@ -187,13 +188,17 @@ func (ss *ServiceSync) checkFrontier(message *Message) {
 		remoteFrontiersLen := len(remoteFrontiers)
 
 		if remoteFrontiersLen > 0 {
-			sv.(common.InterceptCall).RpcCall(common.RpcDPoSProcessFrontier, blks, nil)
+			if sv != nil {
+				sv.(common.InterceptCall).RpcCall(common.RpcDPoSProcessFrontier, blks, nil)
+			}
 			sort.Sort(types.Frontiers(remoteFrontiers))
 			zeroFrontier := new(types.Frontier)
 			remoteFrontiers = append(remoteFrontiers, zeroFrontier)
 			state := ss.processFrontiers(remoteFrontiers, message.MessageFrom())
 			ss.netService.msgEvent.Publish(topic.EventSyncStateChange, &topic.EventP2PSyncStateMsg{P2pSyncState: state})
-			sv.(common.InterceptCall).RpcCall(common.RpcDPoSOnSyncStateChange, state, nil)
+			if sv != nil {
+				sv.(common.InterceptCall).RpcCall(common.RpcDPoSOnSyncStateChange, state, nil)
+			}
 		}
 		ss.logger.Warn("sync pull all blocks done")
 	}
@@ -363,15 +368,15 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 		pullRemote.PullType, pullRemote.StartHash, pullRemote.EndHash, pullRemote.Count)
 	startHash := pullRemote.StartHash
 	endHash := pullRemote.EndHash
-	pullType := pullRemote.PullType
+	//	pullType := pullRemote.PullType
 	openBlockHash, err := ss.getOpenBlockHash(endHash)
 	if err != nil {
 		ss.logger.Error(err)
 		return err
 	}
-	if pullType != protos.PullTypeSegment {
-		return ss.onBulkPullRequestExt(message, pullRemote)
-	}
+	//if pullType != protos.PullTypeSegment {
+	//	return ss.onBulkPullRequestExt(message, pullRemote)
+	//}
 
 	if exitPullRsp != nil {
 		exitPullRsp.pullRspTimer.Reset(pullRspTimeOut)
@@ -486,115 +491,115 @@ func (ss *ServiceSync) onBulkPullRequest(message *Message) error {
 	}
 }
 
-func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos.BulkPullReqPacket) error {
-	var err error
-	var blk *types.StateBlock
-	var bulkBlk []*types.StateBlock
-
-	pullType := pullRemote.PullType
-	blkCnt := pullRemote.Count
-
-	if pullType == protos.PullTypeBackward {
-		scanHash := pullRemote.EndHash
-
-		ss.logger.Debugf("need to send %d blocks by backward", blkCnt)
-
-		for {
-			blk, err = ss.qlcLedger.GetStateBlockConfirmed(scanHash)
-			if err != nil {
-				break
-			}
-
-			bulkBlk = append(bulkBlk, blk)
-			blkCnt--
-			if blkCnt <= 0 {
-				break
-			}
-
-			scanHash = blk.GetPrevious()
-		}
-	} else if pullType == protos.PullTypeForward {
-		startHash := pullRemote.StartHash
-		if blkCnt == 0 {
-			blkCnt = 1000
-		}
-
-		ss.logger.Debugf("need to send %d blocks by forward", blkCnt)
-
-		blk, err = ss.qlcLedger.GetStateBlockConfirmed(startHash)
-		if err != nil {
-			return err
-		}
-		tm, err := ss.qlcLedger.GetTokenMeta(blk.GetAddress(), blk.GetToken())
-		if err != nil {
-			return err
-		}
-
-		scanHash := tm.Header
-		for {
-			if scanHash.IsZero() {
-				break
-			}
-
-			blk, err = ss.qlcLedger.GetStateBlockConfirmed(scanHash)
-			if err != nil {
-				break
-			}
-
-			bulkBlk = append(bulkBlk, blk)
-			if startHash == scanHash {
-				break
-			}
-
-			scanHash = blk.GetPrevious()
-		}
-
-		if uint32(len(bulkBlk)) > blkCnt {
-			bulkBlk = bulkBlk[:blkCnt]
-		}
-	} else if pullType == protos.PullTypeBatch {
-		ss.logger.Debugf("need to send %d blocks by batch", blkCnt)
-
-		for _, scanHash := range pullRemote.Hashes {
-			if scanHash == nil {
-				continue
-			}
-
-			blk, err = ss.qlcLedger.GetStateBlockConfirmed(*scanHash)
-			if err != nil {
-				continue
-			}
-
-			bulkBlk = append(bulkBlk, blk)
-		}
-	}
-	reverseBlocks := make(types.StateBlockList, 0)
-	for i := len(bulkBlk) - 1; i >= 0; i-- {
-		reverseBlocks = append(reverseBlocks, bulkBlk[i])
-	}
-	var shardingBlocks types.StateBlockList
-	for len(reverseBlocks) > 0 {
-		sendBlockNum := 0
-		if len(reverseBlocks) > maxPushTxPerTime {
-			sendBlockNum = maxPushTxPerTime
-		} else {
-			sendBlockNum = len(reverseBlocks)
-		}
-		shardingBlocks = reverseBlocks[0:sendBlockNum]
-		if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
-			break
-		}
-		req := new(protos.BulkPullRspPacket)
-		req.PullType = protos.PullTypeBatch
-		req.Blocks = shardingBlocks
-		err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
-		if err != nil {
-			ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
-		}
-		reverseBlocks = reverseBlocks[sendBlockNum:]
-	}
-	return nil
-}
+//func (ss *ServiceSync) onBulkPullRequestExt(message *Message, pullRemote *protos.BulkPullReqPacket) error {
+//	var err error
+//	var blk *types.StateBlock
+//	var bulkBlk []*types.StateBlock
+//
+//	pullType := pullRemote.PullType
+//	blkCnt := pullRemote.Count
+//
+//	if pullType == protos.PullTypeBackward {
+//		scanHash := pullRemote.EndHash
+//
+//		ss.logger.Debugf("need to send %d blocks by backward", blkCnt)
+//
+//		for {
+//			blk, err = ss.qlcLedger.GetStateBlockConfirmed(scanHash)
+//			if err != nil {
+//				break
+//			}
+//
+//			bulkBlk = append(bulkBlk, blk)
+//			blkCnt--
+//			if blkCnt <= 0 {
+//				break
+//			}
+//
+//			scanHash = blk.GetPrevious()
+//		}
+//	} else if pullType == protos.PullTypeForward {
+//		startHash := pullRemote.StartHash
+//		if blkCnt == 0 {
+//			blkCnt = 1000
+//		}
+//
+//		ss.logger.Debugf("need to send %d blocks by forward", blkCnt)
+//
+//		blk, err = ss.qlcLedger.GetStateBlockConfirmed(startHash)
+//		if err != nil {
+//			return err
+//		}
+//		tm, err := ss.qlcLedger.GetTokenMeta(blk.GetAddress(), blk.GetToken())
+//		if err != nil {
+//			return err
+//		}
+//
+//		scanHash := tm.Header
+//		for {
+//			if scanHash.IsZero() {
+//				break
+//			}
+//
+//			blk, err = ss.qlcLedger.GetStateBlockConfirmed(scanHash)
+//			if err != nil {
+//				break
+//			}
+//
+//			bulkBlk = append(bulkBlk, blk)
+//			if startHash == scanHash {
+//				break
+//			}
+//
+//			scanHash = blk.GetPrevious()
+//		}
+//
+//		if uint32(len(bulkBlk)) > blkCnt {
+//			bulkBlk = bulkBlk[:blkCnt]
+//		}
+//	} else if pullType == protos.PullTypeBatch {
+//		ss.logger.Debugf("need to send %d blocks by batch", blkCnt)
+//
+//		for _, scanHash := range pullRemote.Hashes {
+//			if scanHash == nil {
+//				continue
+//			}
+//
+//			blk, err = ss.qlcLedger.GetStateBlockConfirmed(*scanHash)
+//			if err != nil {
+//				continue
+//			}
+//
+//			bulkBlk = append(bulkBlk, blk)
+//		}
+//	}
+//	reverseBlocks := make(types.StateBlockList, 0)
+//	for i := len(bulkBlk) - 1; i >= 0; i-- {
+//		reverseBlocks = append(reverseBlocks, bulkBlk[i])
+//	}
+//	var shardingBlocks types.StateBlockList
+//	for len(reverseBlocks) > 0 {
+//		sendBlockNum := 0
+//		if len(reverseBlocks) > maxPushTxPerTime {
+//			sendBlockNum = maxPushTxPerTime
+//		} else {
+//			sendBlockNum = len(reverseBlocks)
+//		}
+//		shardingBlocks = reverseBlocks[0:sendBlockNum]
+//		if !ss.netService.Node().streamManager.IsConnectWithPeerId(message.MessageFrom()) {
+//			break
+//		}
+//		req := new(protos.BulkPullRspPacket)
+//		req.PullType = protos.PullTypeBatch
+//		req.Blocks = shardingBlocks
+//		err = ss.netService.SendMessageToPeer(BulkPullRsp, req, message.MessageFrom())
+//		if err != nil {
+//			ss.logger.Errorf("err [%s] when send BulkPushBlock", err)
+//		}
+//		reverseBlocks = reverseBlocks[sendBlockNum:]
+//	}
+//	return nil
+//}
 
 func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	blkPacket, err := protos.BulkPullRspPacketFromProto(message.Data())
@@ -605,12 +610,6 @@ func (ss *ServiceSync) onBulkPullRsp(message *Message) error {
 	if len(blocks) == 0 {
 		return nil
 	}
-	//if ss.netService.node.cfg.PerformanceEnabled {
-	//	for _, b := range blocks {
-	//		hash := b.GetHash()
-	//		ss.netService.msgService.addPerformanceTime(hash)
-	//	}
-	//}
 
 	for i, b := range blocks {
 		ss.logger.Debugf("sync block acc[%s]-index[%d]-hash[%s]-prev[%s]", b.Address, i, b.GetHash(), b.Previous)
