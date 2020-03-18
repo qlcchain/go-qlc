@@ -480,7 +480,6 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		}
 		return lv.l.AddAccountMeta(&account, cache)
 	}
-	return nil
 }
 
 func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *ledger.Cache) error {
