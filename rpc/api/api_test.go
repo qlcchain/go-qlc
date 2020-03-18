@@ -4,13 +4,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/types"
 	qcfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func getTestLedger() (func(), *ledger.Ledger, string) {
