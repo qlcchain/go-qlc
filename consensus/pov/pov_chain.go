@@ -134,6 +134,10 @@ func NewPovBlockChain(cfg *config.Config, eb event.EventBus, l ledger.Store) *Po
 	return chain
 }
 
+func (bc *PovBlockChain) GetConfig() *config.Config {
+	return bc.config
+}
+
 func (bc *PovBlockChain) getLedger() ledger.Store {
 	return bc.ledger
 }

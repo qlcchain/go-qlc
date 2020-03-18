@@ -75,6 +75,10 @@ func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {
 					outArgs["syncState"] = int(topic.SyncDone)
 					outArgs["pooledTx"] = uint32(0)
 
+					outArgs["minerAddr"] = types.ZeroAddress
+					outArgs["minerAlgo"] = types.ALGO_UNKNOWN
+					outArgs["cpuMining"] = false
+
 					msg.ResponseChan <- msg.Out
 					t.Log("febRpcMsgCh", "in", msg.In, "out", msg.Out)
 				} else if msg.Name == "Miner.GetWork" {
@@ -87,6 +91,12 @@ func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestPovApi) {
 					msg.ResponseChan <- msg.Out
 					t.Log("febRpcMsgCh", "in", msg.In, "out", msg.Out)
 				} else if msg.Name == "Miner.SubmitWork" {
+					outArgs := msg.Out.(map[interface{}]interface{})
+					outArgs["err"] = nil
+
+					msg.ResponseChan <- msg.Out
+					t.Log("febRpcMsgCh", "in", msg.In, "out", msg.Out)
+				} else if msg.Name == "Miner.StartMining" || msg.Name == "Miner.StopMining" {
 					outArgs := msg.Out.(map[interface{}]interface{})
 					outArgs["err"] = nil
 
@@ -260,6 +270,8 @@ func TestPovAPI_Mining(t *testing.T) {
 
 	mockPovApiGeneratePovBlocksToLedger(t, md, 120)
 
+	minerAcc := mock.Account()
+
 	rspStatus, err := md.api.GetPovStatus()
 	if err != nil {
 		t.Fatal(err)
@@ -282,6 +294,16 @@ func TestPovAPI_Mining(t *testing.T) {
 	}
 	if rspMinerInfo == nil {
 		t.Fatalf("failed to GetMiningInfo")
+	}
+
+	err = md.api.StartMining(minerAcc.Address(), "SHA256D")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = md.api.StopMining()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	mds0 := types.NewPovMinerDayStat()
@@ -318,7 +340,6 @@ func TestPovAPI_Mining(t *testing.T) {
 		t.Fatalf("failed to GetMinerStats")
 	}
 
-	minerAcc := mock.Account()
 	rspGetWork, err := md.api.GetWork(minerAcc.Address(), "SHA256D")
 	if err != nil {
 		t.Fatal(err)

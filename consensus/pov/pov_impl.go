@@ -234,7 +234,7 @@ func (pov *PoVEngine) setEvent() error {
 	pov.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
 		case *topic.EventPovRecvBlockMsg:
-			if err := pov.onRecvPovBlock(msg.Block, msg.From, msg.MsgPeer); err != nil {
+			if err := pov.onRecvPovBlock(msg); err != nil {
 				pov.logger.Error(err)
 			}
 		}
@@ -256,30 +256,35 @@ func (pov *PoVEngine) unsetEvent() {
 	}
 }
 
-func (pov *PoVEngine) onRecvPovBlock(block *types.PovBlock, from types.PovBlockFrom, msgPeer string) error {
-	if from == types.PovBlockFromLocal {
-		return pov.AddMinedBlock(block)
+func (pov *PoVEngine) onRecvPovBlock(msg *topic.EventPovRecvBlockMsg) error {
+	blockHash := msg.Block.GetHash()
+
+	if msg.From == types.PovBlockFromLocal {
+		pov.logger.Infof("receive local block %d/%s", msg.Block.GetHeight(), blockHash)
+		err := pov.AddMinedBlock(msg.Block)
+		if msg.ResponseChan != nil {
+			msg.ResponseChan <- err
+		}
+		return nil
 	}
 
-	if from == types.PovBlockFromRemoteBroadcast {
-		blockHash := block.GetHash()
-
+	if msg.From == types.PovBlockFromRemoteBroadcast {
 		if pov.blkRecvCache.Has(blockHash) {
 			return nil
 		}
 		_ = pov.blkRecvCache.Set(blockHash, struct{}{})
 
-		pov.logger.Infof("receive broadcast block %d/%s from %s", block.GetHeight(), blockHash, msgPeer)
+		pov.logger.Infof("receive broadcast block %d/%s from %s", msg.Block.GetHeight(), blockHash, msg.MsgPeer)
 	}
 
-	err := pov.AddBlock(block, from, msgPeer)
+	err := pov.AddBlock(msg.Block, msg.From, msg.MsgPeer)
 	if err == nil {
-		if from == types.PovBlockFromRemoteBroadcast {
-			pov.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PovPublishReq, Message: block})
+		if msg.From == types.PovBlockFromRemoteBroadcast {
+			pov.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PovPublishReq, Message: msg.Block})
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (pov *PoVEngine) loop() {

@@ -27,7 +27,7 @@ type MinerService struct {
 }
 
 func NewMinerService(cfgFile string, povEngine *pov.PoVEngine) *MinerService {
-	m := miner.NewMiner(cfgFile, povEngine)
+	m := miner.NewMiner(cfgFile, povEngine.GetChain(), povEngine.GetTxPool(), povEngine.GetConsensus())
 	return &MinerService{
 		miner:  m,
 		logger: log.NewLogger("miner_service"),

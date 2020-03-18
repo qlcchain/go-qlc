@@ -3,6 +3,7 @@ package pov
 import (
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 const (
@@ -12,6 +13,7 @@ const (
 
 type PovConsensusChainReader interface {
 	TrieDb() storage.Store
+	GetConfig() *config.Config
 	GetHeaderByHash(hash types.Hash) *types.PovHeader
 	RelativeAncestor(header *types.PovHeader, distance uint64) *types.PovHeader
 }
