@@ -2,10 +2,11 @@ package ledger
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/mock"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestLedger_dump(t *testing.T) {

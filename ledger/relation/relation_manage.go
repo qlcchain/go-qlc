@@ -134,7 +134,6 @@ func (r *Relation) closed() {
 }
 
 func (r *Relation) process() {
-	r.logger.Debug("relation start process, ", r.dir)
 	addObjs := make([]types.Schema, 0)
 	deleteObjs := make([]types.Schema, 0)
 

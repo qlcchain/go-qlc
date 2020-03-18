@@ -130,7 +130,7 @@ func (n *Node) startServices() {
 func (n *Node) stopServices() {
 	n.stopConsensusService()
 	if err := n.ledger.Close(); err != nil {
-		n.t.Errorf("node close ledger error %s", err)
+		n.t.Fatalf("node close ledger error %s", err)
 	}
 	log.Teardown()
 }

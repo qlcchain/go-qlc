@@ -1,9 +1,10 @@
 package api
 
 import (
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/mock/mocks"
-	"testing"
 )
 
 func setupMockChainAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *ChainApi) {

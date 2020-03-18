@@ -1,8 +1,9 @@
 package api
 
 import (
-	"github.com/qlcchain/go-qlc/mock"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestAccountApi_Create(t *testing.T) {
