@@ -34,6 +34,11 @@ func RegisterServices(cc *context.ChainContext) error {
 		_ = cc.Register(context.WalletService, walletService)
 	}
 
+	if cfg.P2P.IsBootNode {
+		httpService := NewHttpService(cfgFile)
+		_ = cc.Register(context.BootNodeHttpService, httpService)
+	}
+
 	if len(cfg.P2P.BootNodes) > 0 {
 		netService, err := NewP2PService(cfgFile)
 		if err != nil {

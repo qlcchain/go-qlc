@@ -27,9 +27,9 @@ func TestBootstrap(t *testing.T) {
 }
 
 func TestConvertPeers(t *testing.T) {
-	BootNodes := []string{"/ip4/47.90.89.43/tcp/29735/ipfs/QmVSWnHEdCD2AciuCECdxspvH3Ej7VSewY1vtiEMAYqoYN",
-		"/ip4/127.0.0.1/tcp/29735/ipfs/QmVSWnHEdCD2AciuCECdxspvH3Ej7VSewY1vtiEMAYqoYN",
-		"/ip4/0.0.0.0/tcp/29735/ipfs/QmVSWnHEdCD2AciuCECdxspvH3Ej7VSewY1vtiEMAYqoYN"}
+	BootNodes := []string{"/ip4/47.90.89.43/tcp/29735/p2p/QmVSWnHEdCD2AciuCECdxspvH3Ej7VSewY1vtiEMAYqoYN",
+		"/ip4/127.0.0.1/tcp/29735/p2p/QmVSWnHEdCD2AciuCECdxspvH3Ej7VSewY1vtiEMAYqoYN",
+		"/ip4/0.0.0.0/tcp/29735/p2p/QmVSWnHEdCD2AciuCECdxspvH3Ej7VSewY1vtiEMAYqoYN"}
 	pInfoS, err := convertPeers(BootNodes)
 	if err != nil {
 		t.Fatal(err)

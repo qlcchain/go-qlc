@@ -2,7 +2,9 @@ package p2p
 
 import (
 	"bytes"
+	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +27,17 @@ func Test_MessageService_Stop(t *testing.T) {
 	cfg, _ := cc1.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19739"
 	cfg.P2P.Discovery.MDNSEnabled = false
-	cfg.P2P.BootNodes = []string{}
+	cfg.P2P.IsBootNode = true
+	cfg.P2P.BootNodes = []string{"127.0.0.1:19639/ms"}
+	http.HandleFunc("/ms/bootNode", func(w http.ResponseWriter, r *http.Request) {
+		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
+		_, _ = fmt.Fprintf(w, bootNode)
+	})
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:19639", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	//start node
 	node, err := NewQlcService(dir1)
@@ -312,11 +324,21 @@ func Test_SendMessage(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "sendMessage", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
-	b := "/ip4/127.0.0.1/tcp/19740/ipfs/" + cfg.P2P.ID.PeerID
-	cfg.P2P.BootNodes = []string{}
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19740"
 	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.LogLevel = "error"
+
+	cfg.P2P.IsBootNode = true
+	cfg.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
+	http.HandleFunc("/msg/bootNode", func(w http.ResponseWriter, r *http.Request) {
+		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
+		_, _ = fmt.Fprintf(w, bootNode)
+	})
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:19640", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	//start bootNode
 	node, err := NewQlcService(dir)
@@ -330,7 +352,7 @@ func Test_SendMessage(t *testing.T) {
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
-	cfg1.P2P.BootNodes = []string{b}
+	cfg1.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
 	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 	cfg1.LogLevel = "error"
@@ -347,7 +369,7 @@ func Test_SendMessage(t *testing.T) {
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
-	cfg2.P2P.BootNodes = []string{b}
+	cfg2.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
 	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 	cfg2.LogLevel = "error"
