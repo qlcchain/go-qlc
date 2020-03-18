@@ -73,7 +73,7 @@ func (l *Ledger) GetPending(pendingKey *types.PendingKey) (*types.PendingInfo, e
 
 func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPending)
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		pendingKey := new(types.PendingKey)
 		if err := pendingKey.Deserialize(key[1:]); err != nil {
 			return fmt.Errorf("pendingKey deserialize: %s", err)
@@ -87,17 +87,13 @@ func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) GetPendingsByAddress(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error) error {
 	pre := make([]byte, 0)
 	pre = append(pre, byte(storage.KeyPrefixPending))
 	pre = append(pre, address.Bytes()...)
-	err := l.store.Iterator(pre, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(pre, nil, func(key []byte, val []byte) error {
 		pendingKey := new(types.PendingKey)
 		if err := pendingKey.Deserialize(key[1:]); err != nil {
 			return err
@@ -111,10 +107,6 @@ func (l *Ledger) GetPendingsByAddress(address types.Address, fn func(key *types.
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) GetPendingsByToken(account types.Address, token types.Hash, fn func(key *types.PendingKey, value *types.PendingInfo) error) error {

@@ -129,8 +129,7 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 	return lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
 		batch := lv.l.DBStore().Batch(true)
 		if err := lv.rollbackBlocks(rollbackMap, c, batch); err != nil {
-			lv.logger.Error(err)
-			return err
+			return fmt.Errorf("rollback cache batch: %s", err)
 		}
 		return lv.l.DBStore().PutBatch(batch)
 	})
@@ -141,8 +140,7 @@ func (lv *LedgerVerifier) RollbackCache(hash types.Hash) error {
 		lv.logger.Warnf("process rollback cache block: %s", hash.String())
 		err := lv.l.DBStore().BatchWrite(true, func(batch storage.Batch) error {
 			if err := lv.rollbackCache(hash, batch); err != nil {
-				lv.logger.Error(err)
-				return err
+				return fmt.Errorf("roll back cache: %s", err)
 			}
 			return nil
 		})
@@ -171,7 +169,7 @@ func (lv *LedgerVerifier) rollbackCache(hash types.Hash, batch storage.Batch) er
 		return nil
 	})
 	if err != nil {
-		lv.logger.Error("get block cache error")
+		return fmt.Errorf("get blocks cache error, %s", err)
 	}
 
 	// if receive repeated , rollback later block
@@ -218,10 +216,7 @@ func (lv *LedgerVerifier) rollbackCache(hash types.Hash, batch storage.Batch) er
 	}
 
 	// delete blocks
-	if err := lv.rollbackCacheBlocks(rollBlocks, true, batch); err != nil {
-		return fmt.Errorf("rollback cache blocks: %s", err)
-	}
-	return nil
+	return lv.rollbackCacheBlocks(rollBlocks, true, batch)
 }
 
 func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache bool, batch storage.Batch) error {
@@ -258,11 +253,7 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache 
 	}
 
 	blk := blocks[0]
-	if err := lv.rollbackCacheAccountDel(blk.GetAddress(), blk.GetToken(), batch); err != nil {
-		lv.logger.Warnf("roll back cache account error : %s", err)
-		return err
-	}
-	return nil
+	return lv.rollbackCacheAccountDel(blk.GetAddress(), blk.GetToken(), batch)
 }
 
 func (lv *LedgerVerifier) rollbackCacheAccount(block *types.StateBlock, batch storage.Batch) error {
@@ -288,11 +279,8 @@ func (lv *LedgerVerifier) rollbackCacheAccount(block *types.StateBlock, batch st
 				for index, t := range ac.Tokens {
 					if t.Type == tm.Type {
 						ac.Tokens[index] = tm
-						if err := lv.l.UpdateAccountMeteCache(ac, batch); err != nil {
-							return err
-						}
 						lv.logger.Warnf("rollback update account cache, %s", ac.String())
-						return nil
+						return lv.l.UpdateAccountMeteCache(ac, batch)
 					}
 				}
 			}
@@ -313,18 +301,11 @@ func (lv *LedgerVerifier) rollbackCacheAccountDel(address types.Address, token t
 	if tm := ac.Token(token); tm == nil {
 		return nil
 	} else {
+		lv.logger.Warnf("rollback delete account cache, %s, tokens: %d", address.String(), len(ac.Tokens))
 		if len(ac.Tokens) == 1 {
-			if err := lv.l.DeleteAccountMetaCache(address, batch); err != nil {
-				return err
-			}
-			lv.logger.Infof("rollback delete account cache, %s", address.String())
-			return nil
+			return lv.l.DeleteAccountMetaCache(address, batch)
 		} else {
-			if err := lv.l.DeleteTokenMetaCache(address, token, batch); err != nil {
-				return err
-			}
-			lv.logger.Infof("rollback delete token cache, %s, %s", address, token)
-			return nil
+			return lv.l.DeleteTokenMetaCache(address, token, batch)
 		}
 	}
 }
@@ -602,9 +583,7 @@ func (lv *LedgerVerifier) rollBackFrontier(pre types.Hash, cur types.Hash, cache
 	if !pre.IsZero() {
 		frontier.HeaderBlock = pre
 		lv.logger.Debug("add frontier, ", frontier)
-		if err := lv.l.AddFrontier(frontier, cache); err != nil {
-			return err
-		}
+		return lv.l.AddFrontier(frontier, cache)
 	}
 	return nil
 }
@@ -634,10 +613,7 @@ func (lv *LedgerVerifier) rollBackToken(token *types.TokenMeta, pre *types.State
 	for index, t := range ac.Tokens {
 		if t.Type == tm.Type {
 			ac.Tokens[index] = tm
-			if err := lv.l.UpdateAccountMeta(ac, cache); err != nil {
-				return err
-			}
-			return nil
+			return lv.l.UpdateAccountMeta(ac, cache)
 		}
 	}
 	return nil
@@ -654,9 +630,7 @@ func (lv *LedgerVerifier) rollBackTokenDel(tm *types.TokenMeta, cache *ledger.Ca
 		return err
 	}
 	if len(ac.Tokens) == 0 {
-		if err := lv.l.DeleteAccountMeta(address, cache); err != nil {
-			return err
-		}
+		return lv.l.DeleteAccountMeta(address, cache)
 	}
 	return nil
 }
@@ -673,9 +647,7 @@ func (lv *LedgerVerifier) rollBackRep(representative types.Address, blockCur, bl
 				Total:   blockPre.TotalBalance().Sub(blockCur.TotalBalance()),
 			}
 			lv.logger.Debugf("add rep(%s) to %s", diff, representative)
-			if err := lv.l.AddRepresentation(representative, diff, cache); err != nil {
-				return err
-			}
+			return lv.l.AddRepresentation(representative, diff, cache)
 		} else {
 			diff := new(types.Benefit)
 			if blockPre == nil {
@@ -698,9 +670,7 @@ func (lv *LedgerVerifier) rollBackRep(representative types.Address, blockCur, bl
 				}
 			}
 			lv.logger.Debugf("sub rep %s from %s", diff, representative)
-			if err := lv.l.SubRepresentation(representative, diff, cache); err != nil {
-				return err
-			}
+			return lv.l.SubRepresentation(representative, diff, cache)
 		}
 	}
 	return nil
@@ -720,10 +690,7 @@ func (lv *LedgerVerifier) rollBackRepChange(preRepresentation types.Address, cur
 		return err
 	}
 	lv.logger.Debugf("sub rep(%s) from %s", diff, curRepresentation)
-	if err := lv.l.SubRepresentation(curRepresentation, diff, cache); err != nil {
-		return err
-	}
-	return nil
+	return lv.l.SubRepresentation(curRepresentation, diff, cache)
 }
 
 func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount types.Balance, token types.Hash, cache *ledger.Cache) error {
@@ -782,17 +749,13 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 			case contract.SpecVer1:
 				if pendingKey, _, err := c.DoPending(blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
-					if err := lv.l.DeletePending(pendingKey, cache); err != nil {
-						return err
-					}
+					return lv.l.DeletePending(pendingKey, cache)
 				}
 			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, _, err := c.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
-					if err := lv.l.DeletePending(pendingKey, cache); err != nil {
-						return err
-					}
+					return lv.l.DeletePending(pendingKey, cache)
 				}
 			default:
 				return fmt.Errorf("unsupported chain contract %d", c.GetDescribe().GetVersion())
@@ -807,10 +770,7 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 			Hash:    hash,
 		}
 		lv.logger.Debug("delete pending ,", pendingkey)
-		if err := lv.l.DeletePending(&pendingkey, cache); err != nil {
-			return err
-		}
-		return nil
+		return lv.l.DeletePending(&pendingkey, cache)
 	}
 }
 

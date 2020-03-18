@@ -451,7 +451,7 @@ func (cacheBlockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBloc
 						return BalanceMismatch, nil
 					}
 				} else {
-					return Other, err
+					return Other, fmt.Errorf("pending check err: %s", err)
 				}
 			} else if err == ledger.ErrPendingNotFound {
 				return UnReceivable, nil
@@ -521,7 +521,7 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 			} else if err == ledger.ErrPendingNotFound {
 				return UnReceivable, nil
 			} else {
-				return Other, err
+				return Other, fmt.Errorf("get contract pending: %s", err)
 			}
 		}
 	} else {
@@ -599,7 +599,7 @@ func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) 
 				if len(g) > 0 {
 					amount, err := lv.l.CalculateAmount(block)
 					if err != nil {
-						lv.logger.Error("calculate amount error:", err)
+						return Other, fmt.Errorf("calculate amount error: %s", err)
 					}
 					if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 						g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
@@ -616,8 +616,7 @@ func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) 
 				if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
 					return GapTokenInfo, nil
 				} else {
-					lv.logger.Error("DoReceive error ", e)
-					return Other, e
+					return Other, fmt.Errorf("DoReceive err: %s ", e)
 				}
 			}
 		} else {
@@ -652,7 +651,7 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 				if len(g) > 0 {
 					amount, err := lv.l.CalculateAmount(block)
 					if err != nil {
-						lv.logger.Error("calculate amount error:", err)
+						return Other, fmt.Errorf("calculate amount error: %s", err)
 					}
 					if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 						g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
@@ -669,8 +668,7 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 				if address == types.MintageAddress && e == vmstore.ErrStorageNotFound {
 					return GapTokenInfo, nil
 				} else {
-					lv.logger.Error("DoReceive error ", e)
-					return Other, e
+					return Other, fmt.Errorf("DoReceive error : %s ", e)
 				}
 			}
 		} else {
@@ -707,8 +705,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return InvalidData, nil
 				}
 			} else {
-				lv.logger.Errorf("v1 ProcessSend error, block: %s, err: ", block.GetHash(), err)
-				return Other, err
+				return Other, fmt.Errorf("v1 ProcessSend error, err: %s", err)
 			}
 		case contract.SpecVer2:
 			if gapResult, _, err := c.DoGap(vmCtx, clone); err == nil {
@@ -719,8 +716,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return GapPublish, nil
 				}
 			} else {
-				lv.logger.Errorf("do gap error: %s", err)
-				return Other, err
+				return Other, fmt.Errorf("do gap error: %s", err)
 			}
 
 			if _, _, err := c.ProcessSend(vmCtx, clone); err == nil {
@@ -731,8 +727,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return InvalidData, nil
 				}
 			} else {
-				lv.logger.Errorf("v2 ProcessSend error, block: %s, err: ", block.GetHash(), err)
-				return Other, err
+				return Other, fmt.Errorf("v2 ProcessSend error,  err: %s", err)
 			}
 		default:
 			return Other, fmt.Errorf("unsupported chain contract version %d", d.GetVersion())

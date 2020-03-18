@@ -51,7 +51,7 @@ func (l *Ledger) GetRepresentation(key types.Address, c ...storage.Cache) (*type
 func (l *Ledger) GetRepresentations(fn func(types.Address, *types.Benefit) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixRepresentation)
 
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		address, err := types.BytesToAddress(key[1:])
 		if err != nil {
 			return fmt.Errorf("benefit BytesToAddress: %s ", err)
@@ -65,11 +65,6 @@ func (l *Ledger) GetRepresentations(fn func(types.Address, *types.Benefit) error
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) CountRepresentations() (uint64, error) {

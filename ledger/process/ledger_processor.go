@@ -63,7 +63,7 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 	if c, ok := lv.blockCheck[block.Type]; ok {
 		r, err := c.Check(lv, block)
 		if err != nil {
-			lv.logger.Errorf("error:%s, block:%s", err.Error(), block.GetHash().String())
+			lv.logger.Errorf("block check error: %s (%s, %s)", err.Error(), block.GetHash().String(), block.GetType().String())
 		}
 		if r != Progress {
 			if r == UnReceivable {
@@ -71,7 +71,7 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 					return Progress, nil
 				}
 			}
-			lv.logger.Debugf("process result:%s, block:%s, type: %s", r.String(), block.GetHash().String(), block.GetType().String())
+			lv.logger.Debugf("block check non-progress: %s (%s, %s)", r.String(), block.GetHash().String(), block.GetType().String())
 		}
 		return r, err
 	} else {
@@ -105,10 +105,7 @@ func (c *sendBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	if r, err := c.fork(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.balance(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.balance(lv, block)
 }
 
 type contractSendBlockCheck struct {
@@ -132,10 +129,7 @@ func (c *contractSendBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlo
 	if r, err := c.balance(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.contract(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.contract(lv, block)
 }
 
 type receiveBlockCheck struct {
@@ -155,10 +149,7 @@ func (c *receiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (
 	if r, err := c.source(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.pending(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.pending(lv, block)
 }
 
 type contractReceiveBlockCheck struct {
@@ -186,10 +177,7 @@ func (c *contractReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.State
 	if r, err := c.source(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.contract(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.contract(lv, block)
 }
 
 type openBlockCheck struct {
@@ -214,10 +202,7 @@ func (c *openBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	if r, err := c.fork(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.pending(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.pending(lv, block)
 }
 
 type changeBlockCheck struct {
@@ -241,10 +226,7 @@ func (c *changeBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 	if r, err := c.fork(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.balance(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.balance(lv, block)
 }
 
 type onlineBlockCheck struct {
@@ -268,10 +250,7 @@ func (c *onlineBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 	if r, err := c.fork(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.balance(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.balance(lv, block)
 }
 
 func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
@@ -329,7 +308,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	case types.Send:
 		preBlk, err := lv.l.GetStateBlockConfirmed(block.Previous)
 		if err != nil {
-			return errors.New("previous block not found")
+			return fmt.Errorf("previous block not found: %s", err)
 		}
 		pending := types.PendingInfo{
 			Source: block.GetAddress(),
@@ -341,18 +320,14 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    hash,
 		}
 		lv.logger.Debug("add pending, ", pendingKey)
-		if err := lv.l.AddPending(&pendingKey, &pending, cache); err != nil {
-			return err
-		}
+		return lv.l.AddPending(&pendingKey, &pending, cache)
 	case types.Open, types.Receive:
 		pendingKey := types.PendingKey{
 			Address: block.GetAddress(),
 			Hash:    block.GetLink(),
 		}
 		lv.logger.Debug("delete pending, ", pendingKey)
-		if err := lv.l.DeletePending(&pendingKey, cache); err != nil {
-			return err
-		}
+		return lv.l.DeletePending(&pendingKey, cache)
 	case types.ContractSend:
 		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
 			d := c.GetDescribe()
@@ -360,33 +335,31 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			case contract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
-					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
-						return err
-					}
+					return lv.l.AddPending(pendingKey, pendingInfo, cache)
 				}
+				return nil
 			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
-					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
-						return err
-					}
+					return lv.l.AddPending(pendingKey, pendingInfo, cache)
 				}
+				return nil
 			default:
 				return fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
 			}
 		}
+		return nil
 	case types.ContractReward:
 		pendingKey := types.PendingKey{
 			Address: block.GetAddress(),
 			Hash:    block.GetLink(),
 		}
 		lv.logger.Debug("contractReward delete pending, ", pendingKey)
-		if err := lv.l.DeletePending(&pendingKey, cache); err != nil {
-			return err
-		}
+		return lv.l.DeletePending(&pendingKey, cache)
+	default:
+		return nil
 	}
-	return nil
 }
 
 func (lv *LedgerVerifier) lock(address types.Address) {
@@ -427,9 +400,7 @@ func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *type
 			Total:   block.TotalBalance(),
 		}
 		lv.logger.Debugf("add rep(%s) to %s ", newBenefit, block.GetRepresentative())
-		if err := lv.l.AddRepresentation(block.GetRepresentative(), newBenefit, cache); err != nil {
-			return err
-		}
+		return lv.l.AddRepresentation(block.GetRepresentative(), newBenefit, cache)
 	}
 	return nil
 }
@@ -453,10 +424,7 @@ func (lv *LedgerVerifier) updateFrontier(block *types.StateBlock, tm *types.Toke
 		frontier.OpenBlock = hash
 	}
 	lv.logger.Debug("add frontier,", *frontier)
-	if err := lv.l.AddFrontier(frontier, cache); err != nil {
-		return err
-	}
-	return nil
+	return lv.l.AddFrontier(frontier, cache)
 }
 
 func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.AccountMeta, cache *ledger.Cache) error {
@@ -496,9 +464,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
-		if err := lv.l.UpdateAccountMeta(am, cache); err != nil {
-			return err
-		}
+		return lv.l.UpdateAccountMeta(am, cache)
 	} else {
 		account := types.AccountMeta{
 			Address: address,
@@ -512,9 +478,7 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
 		}
-		if err := lv.l.AddAccountMeta(&account, cache); err != nil {
-			return err
-		}
+		return lv.l.AddAccountMeta(&account, cache)
 	}
 	return nil
 }
@@ -525,33 +489,29 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 		case types.ContractReward:
 			input, err := lv.l.GetStateBlock(block.GetLink())
 			if err != nil {
-				return err
+				return fmt.Errorf("get contract reward block: %s", err)
 			}
 			address := types.Address(input.GetLink())
 			c, ok, err := contract.GetChainContract(address, input.Data)
 			if !ok || err != nil {
-				lv.logger.Errorf("invaild contract %s", err)
-				return err
+				return fmt.Errorf("invaild contract %s", err)
 			}
 			clone := block.Clone()
 			vmCtx := vmstore.NewVMContext(lv.l)
 			g, err := c.DoReceive(vmCtx, clone, input)
 			if err != nil {
-				lv.logger.Error("updateContract DoReceive error: ", err)
-				return err
+				return fmt.Errorf("updateContract DoReceive error: %s ", err)
 			}
 			if len(g) > 0 {
 				ctx := g[0].VMContext
 				if ctx != nil {
 					err := ctx.SaveStorage(cache)
 					if err != nil {
-						lv.logger.Error("save storage error: ", err)
-						return err
+						return fmt.Errorf("save storage error: %s", err)
 					}
 					err = ctx.SaveTrie(cache)
 					if err != nil {
-						lv.logger.Error("save trie error: ", err)
-						return err
+						return fmt.Errorf("save trie error: %s", err)
 					}
 					return nil
 				}
@@ -566,15 +526,13 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 					vmCtx := vmstore.NewVMContext(lv.l)
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
 						if err := vmCtx.SaveStorage(cache); err != nil {
-							lv.logger.Error("save storage error: ", err)
-							return err
+							return fmt.Errorf("save storage error: %s", err)
 						}
 						if err = vmCtx.SaveTrie(cache); err != nil {
-							lv.logger.Error("save trie error: ", err)
-							return err
+							return fmt.Errorf("save trie error: %s", err)
 						}
 					} else {
-						lv.logger.Errorf("process send error, ", err)
+						lv.logger.Errorf("process send error, %s", err)
 					}
 				}
 			}

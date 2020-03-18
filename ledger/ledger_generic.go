@@ -108,7 +108,7 @@ func (l *Ledger) AddOrUpdateGenericType(key *types.GenericKey, value *types.Gene
 func (l *Ledger) GetGenericTypes(fn func(key *types.GenericKey, value *types.GenericType) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixGenericType)
 
-	err := l.store.Iterator(prefix, nil, func(k []byte, v []byte) error {
+	return l.store.Iterator(prefix, nil, func(k []byte, v []byte) error {
 		key := new(types.GenericKey)
 		if err := key.Deserialize(k[1:]); err != nil {
 			return err
@@ -122,11 +122,6 @@ func (l *Ledger) GetGenericTypes(fn func(key *types.GenericKey, value *types.Gen
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) HasGenericType(key *types.GenericKey) (bool, error) {

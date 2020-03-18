@@ -157,7 +157,7 @@ func (l *Ledger) GetAccountMetaConfirmed(address types.Address, c ...storage.Cac
 func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixAccount)
 
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		am := new(types.AccountMeta)
 		if err := am.Deserialize(val); err != nil {
 			return err
@@ -167,11 +167,6 @@ func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error) error {
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) CountAccountMetas() (uint64, error) {
@@ -259,7 +254,7 @@ func (l *Ledger) GetAccountMeteCache(address types.Address, batch ...storage.Bat
 func (l *Ledger) GetAccountMetaCaches(fn func(am *types.AccountMeta) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount)
 
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		am := new(types.AccountMeta)
 		if err := am.Deserialize(val); err != nil {
 			return err
@@ -269,11 +264,6 @@ func (l *Ledger) GetAccountMetaCaches(fn func(am *types.AccountMeta) error) erro
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) DeleteAccountMetaCache(address types.Address, batch ...storage.Batch) error {

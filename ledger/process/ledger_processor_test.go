@@ -88,6 +88,42 @@ func TestProcess_Exception(t *testing.T) {
 	teardownTestCase, _, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 
+	checkResults := []ProcessResult{
+		Progress,
+		BadWork,
+		BadSignature,
+		BadHash,
+		BadMerkleRoot,
+		BadTarget,
+		BadStateHash,
+		BadCoinbase,
+		Old,
+		Fork,
+		GapPrevious,
+		GapSource,
+		GapSmartContract,
+		GapTransaction,
+		GapTokenInfo,
+		GapPovHeight,
+		GapPublish,
+		BalanceMismatch,
+		UnReceivable,
+		InvalidData,
+		InvalidTime,
+		InvalidTxNum,
+		InvalidHeight,
+		InvalidTxOrder,
+		BadConsensus,
+		ReceiveRepeated,
+		BadAuxHeader,
+	}
+
+	for _, r := range checkResults {
+		if r.String() == "<invalid>" {
+			t.Fatal(r.String())
+		}
+	}
+
 	genesisBlk := config.GenesisBlock()
 	if r, err := lv.BlockCheck(&genesisBlk); err != nil || r != Progress {
 		t.Fatal(r, err)
