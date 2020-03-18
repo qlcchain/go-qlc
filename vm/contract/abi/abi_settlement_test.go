@@ -19,8 +19,9 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/crypto/random"
-	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 var (
@@ -69,6 +70,51 @@ var (
 		//CustomerID:    "11667",
 		SendingStatus: SendingStatusSent,
 		DlrStatus:     DLRStatusDelivered,
+	}
+
+	assetParam = AssetParam{
+		Owner: Contractor{
+			Address: mock.Address(),
+			Name:    "HKT-CSL",
+		},
+		Previous: mock.Hash(),
+		Assets: []*Asset{
+			{
+				Mcc:         42,
+				Mnc:         5,
+				TotalAmount: 1000,
+				SLAs: []*SLA{
+					newLatency(60*time.Second, []*Compensation{
+						{
+							Low:  50,
+							High: 60,
+							Rate: 10,
+						},
+						{
+							Low:  60,
+							High: 80,
+							Rate: 20.5,
+						},
+					}),
+					newDeliveredRate(float32(0.95), []*Compensation{
+						{
+							Low:  0.8,
+							High: 0.9,
+							Rate: 5,
+						},
+						{
+							Low:  0.7,
+							High: 0.8,
+							Rate: 5.5,
+						},
+					}),
+				},
+			},
+		},
+		SignDate:  time.Now().Unix(),
+		StartDate: time.Now().AddDate(0, 0, 1).Unix(),
+		EndDate:   time.Now().AddDate(1, 0, 1).Unix(),
+		Status:    AssetStatusActivated,
 	}
 
 	cdrs = `[
@@ -9240,5 +9286,367 @@ func Test_verifyMultiPartyAddress(t *testing.T) {
 				t.Errorf("verifyMultiPartyAddress() got2 = %v, want %v", got2, tt.want2)
 			}
 		})
+	}
+}
+
+func TestAssert_ToABI(t *testing.T) {
+	asset := assetParam.Assets[0]
+
+	if msg, err := asset.MarshalMsg(nil); err != nil {
+		t.Fatal(err)
+	} else {
+		a := &Asset{}
+		if _, err := a.UnmarshalMsg(msg); err != nil {
+			t.Fatal(err)
+		} else {
+			if id1, err := asset.ToAssertID(); err != nil {
+				t.Fatal(err)
+			} else {
+				if id2, err := a.ToAssertID(); err != nil {
+					t.Fatal(err)
+				} else if id1 != id2 {
+					t.Fatalf("invalid unmarshal, exp: %v, act: %v", asset, a)
+				}
+			}
+		}
+	}
+}
+func TestAssert_ToAssertID(t *testing.T) {
+	asset := assetParam.Assets[0]
+	t.Log(asset.String())
+
+	type fields struct {
+		Mcc         uint64
+		Mnc         uint64
+		TotalAmount uint64
+		SLAs        []*SLA
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    types.Hash
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				Mcc:         asset.Mcc,
+				Mnc:         asset.Mnc,
+				TotalAmount: asset.TotalAmount,
+				SLAs:        asset.SLAs,
+			},
+			want:    types.Hash{},
+			wantErr: false,
+		}, {
+			name: "ok",
+			fields: fields{
+				Mcc:         asset.Mcc,
+				Mnc:         asset.Mnc,
+				TotalAmount: asset.TotalAmount,
+				SLAs:        nil,
+			},
+			want:    types.Hash{},
+			wantErr: false,
+		}, {
+			name: "ok",
+			fields: fields{
+				Mcc:         asset.Mcc,
+				Mnc:         asset.Mnc,
+				TotalAmount: asset.TotalAmount,
+				SLAs: []*SLA{
+					newLatency(60*time.Second, nil),
+				},
+			},
+			want:    types.Hash{},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &Asset{
+				Mcc:         tt.fields.Mcc,
+				Mnc:         tt.fields.Mnc,
+				TotalAmount: tt.fields.TotalAmount,
+				SLAs:        tt.fields.SLAs,
+			}
+			got, err := z.ToAssertID()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ToAssertID() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got.IsZero() {
+				t.Errorf("ToAssertID() got = %v", got)
+			}
+		})
+	}
+}
+
+func TestAssertParam_FromABI(t *testing.T) {
+	a := &assetParam
+	t.Log(a.String())
+	if abi, err := a.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		if param, err := ParseAssertParam(abi); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(a, param) {
+			t.Fatalf("exp: %v, act: %v", a, param)
+		}
+	}
+}
+
+func TestSLA_Deserialize(t *testing.T) {
+	sla := newLatency(60*time.Second, []*Compensation{
+		{
+			Low:  50,
+			High: 60,
+			Rate: 10,
+		},
+		{
+			Low:  60,
+			High: 80,
+			Rate: 20.5,
+		},
+	})
+
+	if data, err := sla.Serialize(); err != nil {
+		t.Fatal(err)
+	} else {
+		s := &SLA{}
+		if err := s.Deserialize(data); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(sla, s) {
+			t.Fatalf("invalid sla, exp: %v, act: %v", sla, s)
+		}
+	}
+}
+
+func TestGetAllAssert(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	addr1 := mock.Address()
+	size := 10
+	for i := 0; i < size; i++ {
+		template := assetParam
+		addr := mock.Address()
+		if i%2 == 0 {
+			addr = addr1
+		}
+		template.Owner.Address = addr
+		template.Previous = mock.Hash()
+		a := &template
+		if abi, err := a.ToABI(); err != nil {
+			t.Fatal(err)
+		} else {
+			if err = SaveAssetParam(ctx, abi); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+
+	if asserts, err := GetAllAsserts(ctx); err != nil {
+		t.Fatal(err)
+	} else if len(asserts) != size {
+		t.Fatalf("invalid assert size, exp: %d, act: %d", size, len(asserts))
+	}
+
+	if asserts, err := GetAssertsByAddress(ctx, &addr1); err != nil {
+		t.Fatal(err)
+	} else if len(asserts) != size/2 {
+		t.Fatalf("invalid assert size, exp: %d, act: %d", size/2, len(asserts))
+	}
+}
+
+func TestAssetParam_Verify(t *testing.T) {
+	type fields struct {
+		Owner     Contractor
+		Previous  types.Hash
+		Asserts   []*Asset
+		SignDate  int64
+		StartDate int64
+		EndDate   int64
+		Status    AssetStatus
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				Owner:     assetParam.Owner,
+				Previous:  assetParam.Previous,
+				Asserts:   assetParam.Assets,
+				SignDate:  assetParam.SignDate,
+				StartDate: assetParam.StartDate,
+				EndDate:   assetParam.EndDate,
+				Status:    assetParam.Status,
+			},
+			wantErr: false,
+		}, {
+			name: "contractor#address",
+			fields: fields{
+				Owner:     Contractor{Address: types.ZeroAddress, Name: "HKT-CSL"},
+				Previous:  assetParam.Previous,
+				Asserts:   assetParam.Assets,
+				SignDate:  assetParam.SignDate,
+				StartDate: assetParam.StartDate,
+				EndDate:   assetParam.EndDate,
+				Status:    assetParam.Status,
+			},
+			wantErr: true,
+		}, {
+			name: "contractor#name",
+			fields: fields{
+				Owner:     Contractor{Address: mock.Address(), Name: ""},
+				Previous:  assetParam.Previous,
+				Asserts:   assetParam.Assets,
+				SignDate:  assetParam.SignDate,
+				StartDate: assetParam.StartDate,
+				EndDate:   assetParam.EndDate,
+				Status:    assetParam.Status,
+			},
+			wantErr: true,
+		}, {
+			name: "previous_hash",
+			fields: fields{
+				Owner:     assetParam.Owner,
+				Previous:  types.ZeroHash,
+				Asserts:   assetParam.Assets,
+				SignDate:  assetParam.SignDate,
+				StartDate: assetParam.StartDate,
+				EndDate:   assetParam.EndDate,
+				Status:    assetParam.Status,
+			},
+			wantErr: true,
+		}, {
+			name: "asset_nil",
+			fields: fields{
+				Owner:     assetParam.Owner,
+				Previous:  assetParam.Previous,
+				Asserts:   nil,
+				SignDate:  assetParam.SignDate,
+				StartDate: assetParam.StartDate,
+				EndDate:   assetParam.EndDate,
+				Status:    assetParam.Status,
+			},
+			wantErr: true,
+		}, {
+			name: "sign_date",
+			fields: fields{
+				Owner:     assetParam.Owner,
+				Previous:  assetParam.Previous,
+				Asserts:   assetParam.Assets,
+				SignDate:  0,
+				StartDate: assetParam.StartDate,
+				EndDate:   assetParam.EndDate,
+				Status:    assetParam.Status,
+			},
+			wantErr: true,
+		}, {
+			name: "start_date",
+			fields: fields{
+				Owner:     assetParam.Owner,
+				Previous:  assetParam.Previous,
+				Asserts:   assetParam.Assets,
+				SignDate:  assetParam.SignDate,
+				StartDate: 0,
+				EndDate:   assetParam.EndDate,
+				Status:    assetParam.Status,
+			},
+			wantErr: true,
+		}, {
+			name: "end_date",
+			fields: fields{
+				Owner:     assetParam.Owner,
+				Previous:  assetParam.Previous,
+				Asserts:   assetParam.Assets,
+				SignDate:  assetParam.SignDate,
+				StartDate: assetParam.StartDate,
+				EndDate:   0,
+				Status:    assetParam.Status,
+			},
+			wantErr: true,
+		}, {
+			name: "asset",
+			fields: fields{
+				Owner:    assetParam.Owner,
+				Previous: assetParam.Previous,
+				Asserts: []*Asset{
+					{
+						Mcc:         0,
+						Mnc:         0,
+						TotalAmount: 0,
+						SLAs:        nil,
+					},
+				},
+				SignDate:  assetParam.SignDate,
+				StartDate: assetParam.StartDate,
+				EndDate:   assetParam.EndDate,
+				Status:    assetParam.Status,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &AssetParam{
+				Owner:     tt.fields.Owner,
+				Previous:  tt.fields.Previous,
+				Assets:    tt.fields.Asserts,
+				SignDate:  tt.fields.SignDate,
+				StartDate: tt.fields.StartDate,
+				EndDate:   tt.fields.EndDate,
+				Status:    tt.fields.Status,
+			}
+			err := z.Verify()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Verify() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
+func TestGetAssetParam(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+	ctx := vmstore.NewVMContext(l)
+
+	template := assetParam
+	template.Owner.Address = mock.Address()
+	template.Previous = mock.Hash()
+	a := &template
+
+	if abi, err := a.ToABI(); err != nil {
+		t.Fatal(err)
+	} else {
+		if err = SaveAssetParam(ctx, abi); err != nil {
+			t.Fatal(err)
+		}
+
+		if err = SaveAssetParam(ctx, abi); err == nil {
+			t.Fatal("should be error")
+		}
+	}
+
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
+	}
+	if hash, err := a.ToAddress(); err != nil {
+		t.Fatal(err)
+	} else {
+		if param, err := GetAssetParam(ctx, hash); err != nil {
+			t.Fatal(err)
+		} else if !reflect.DeepEqual(param, a) {
+			t.Fatalf("invalid param, exp: %v, act: %v", a, param)
+		}
 	}
 }

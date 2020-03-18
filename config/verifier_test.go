@@ -8,8 +8,10 @@
 package config
 
 import (
-	"fmt"
+	"errors"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"gopkg.in/validator.v2"
 )
@@ -25,19 +27,31 @@ func TestValidateStructure(t *testing.T) {
 		args    PoVConfig
 		wantErr bool
 	}{
-		{name: "empty PovCfg config", args: PoVConfig{
-			PovEnabled:   false,
-			MinerEnabled: false,
-			Coinbase:     "",
-		}, wantErr: false}, {name: "invalid PovCfg config", args: PoVConfig{
-			PovEnabled:   false,
-			MinerEnabled: false,
-			Coinbase:     "123",
-		}, wantErr: true}, {name: "valid PovCfg config", args: PoVConfig{
-			PovEnabled:   false,
-			MinerEnabled: false,
-			Coinbase:     "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
-		}, wantErr: false},
+		{
+			name: "empty PovCfg config",
+			args: PoVConfig{
+				PovEnabled:   false,
+				MinerEnabled: false,
+				Coinbase:     "",
+			},
+			wantErr: false,
+		}, {
+			name: "invalid PovCfg config",
+			args: PoVConfig{
+				PovEnabled:   false,
+				MinerEnabled: false,
+				Coinbase:     "123",
+			},
+			wantErr: true,
+		}, {
+			name: "valid PovCfg config",
+			args: PoVConfig{
+				PovEnabled:   false,
+				MinerEnabled: false,
+				Coinbase:     "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -54,35 +68,64 @@ func TestValidateConfig(t *testing.T) {
 		args    config
 		wantErr bool
 	}{
-		{name: "empty PovCfg config inside cfg", args: config{
-			PovCfg: &PoVConfig{
-				PovEnabled:   false,
-				MinerEnabled: false,
-				Coinbase:     "",
+		{
+			name: "empty PovCfg config inside cfg",
+			args: config{
+				PovCfg: &PoVConfig{
+					PovEnabled:   false,
+					MinerEnabled: false,
+					Coinbase:     "",
+				},
+				Padding: "111",
 			},
-			Padding: "111",
-		}, wantErr: false},
-		{name: "invalid PovCfg config  inside cfg", args: config{
-			PovCfg: &PoVConfig{
-				PovEnabled:   false,
-				MinerEnabled: false,
-				Coinbase:     "123",
-			}, Padding: "112",
-		}, wantErr: true},
-		{name: "valid PovCfg config  inside cfg", args: config{
-			PovCfg: &PoVConfig{
-				PovEnabled:   false,
-				MinerEnabled: false,
-				Coinbase:     "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
-			}, Padding: "",
-		}, wantErr: true},
-		{name: "valid PovCfg config  inside cfg", args: config{
-			PovCfg: &PoVConfig{
-				PovEnabled:   false,
-				MinerEnabled: false,
-				Coinbase:     "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
-			}, Padding: "111",
-		}, wantErr: false},
+			wantErr: false,
+		}, {
+			name: "invalid PovCfg config  inside cfg",
+			args: config{
+				PovCfg: &PoVConfig{
+					PovEnabled:   false,
+					MinerEnabled: false,
+					Coinbase:     "123",
+				},
+				Padding: "112",
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid PovCfg config  inside cfg",
+			args: config{
+				PovCfg: &PoVConfig{
+					PovEnabled:   false,
+					MinerEnabled: false,
+					Coinbase:     "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
+				},
+				Padding: "",
+			},
+			wantErr: true,
+		}, {
+			name: "valid PovCfg config  inside cfg",
+			args: config{
+				PovCfg: &PoVConfig{
+					PovEnabled:   false,
+					MinerEnabled: false,
+					Coinbase:     "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
+				},
+				Padding: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid PovCfg config  inside cfg",
+			args: config{
+				PovCfg: &PoVConfig{
+					PovEnabled:   false,
+					MinerEnabled: false,
+					Coinbase:     "qlc_3qjky1ptg9qkzm8iertdzrnx9btjbaea33snh1w4g395xqqczye4kgcfyfs1",
+				},
+				Padding: "111",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -93,9 +136,125 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
+func Test_hash(t *testing.T) {
+	type h1 struct {
+		Hash *types.Hash `validate:"hash"`
+	}
+
+	type h2 struct {
+		Hash types.Hash `validate:"hash"`
+	}
+
+	type h3 struct {
+		Hash types.Address `validate:"hash"`
+	}
+
+	tests := []struct {
+		name    string
+		args    interface{}
+		wantErr bool
+	}{
+		{
+			name: "f1",
+			args: h1{
+				Hash: &types.ZeroHash,
+			},
+			wantErr: true,
+		}, {
+			name: "f2",
+			args: h2{
+				Hash: types.ZeroHash,
+			},
+			wantErr: true,
+		}, {
+			name: "f3",
+			args: &h1{
+				Hash: &types.ZeroHash,
+			},
+			wantErr: true,
+		}, {
+			name: "f4",
+			args: h3{
+				Hash: types.ZeroAddress,
+			},
+			wantErr: true,
+		}, {
+			name: "ok",
+			args: h2{
+				Hash: types.FFFFHash,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validator.Validate(tt.args); (err != nil) != tt.wantErr {
+				t.Errorf("Hash() error = %v, wantErr %v", ErrToString(err), tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestAddress(t *testing.T) {
+	type a1 struct {
+		Address *types.Address `validate:"qlcaddress"`
+	}
+
+	type a2 struct {
+		Address types.Address `validate:"qlcaddress"`
+	}
+
+	type a3 struct {
+		Address types.Hash `validate:"qlcaddress"`
+	}
+
+	tests := []struct {
+		name    string
+		args    interface{}
+		wantErr bool
+	}{
+		{
+			name: "f1",
+			args: a1{
+				Address: &types.ZeroAddress,
+			},
+			wantErr: true,
+		}, {
+			name: "f2",
+			args: a2{
+				Address: types.ZeroAddress,
+			},
+			wantErr: true,
+		}, {
+			name: "f3",
+			args: &a1{
+				Address: &types.ZeroAddress,
+			},
+			wantErr: true,
+		}, {
+			name: "f4",
+			args: a3{
+				Address: types.ZeroHash,
+			},
+			wantErr: true,
+		}, {
+			name: "ok",
+			args: a2{
+				Address: types.MintageAddress,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validator.Validate(tt.args); (err != nil) != tt.wantErr {
+				t.Errorf("Hash() error = %v, wantErr %v", ErrToString(err), tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestErrToString(t *testing.T) {
-	// First create a struct to be validated
-	// according to the validator tags.
 	type ValidateExample struct {
 		Name        string `validate:"nonzero"`
 		Description string
@@ -119,15 +278,41 @@ func TestErrToString(t *testing.T) {
 	ve.Address.Street = ""        // invalid
 
 	err := validator.Validate(ve)
-	if err == nil {
-		fmt.Println("Values are valid.")
-	} else {
-		fmt.Println(ErrToString(err))
+	type args struct {
+		err error
 	}
-
-	// Output:
-	// Invalid due to fields:
-	//	 - Address.Street (zero value)
-	// 	 - Age (less than min)
-	// 	 - Email (regular expression mismatch)
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "c1",
+			args: args{
+				err: nil,
+			},
+			want: "",
+		}, {
+			name: "c2",
+			args: args{
+				err: errors.New("invalid"),
+			},
+			want: "invalid",
+		}, {
+			name: "c3",
+			args: args{
+				err: err,
+			},
+			want: `Invalid due to fields:
+    - Address.Street (zero value)
+    - Age (less than min)
+    - Email (regular expression mismatch)`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ErrToString(tt.args.err)
+			t.Log(got)
+		})
+	}
 }

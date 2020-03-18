@@ -1,10 +1,11 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/ledger/process"
 	"math"
 	"math/big"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/ledger/process"
 
 	"github.com/qlcchain/go-qlc/config"
 
