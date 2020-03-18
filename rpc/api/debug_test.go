@@ -13,6 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/mock/mocks"
+	tmock "github.com/stretchr/testify/mock"
 )
 
 func setupDefaultDebugAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *DebugApi) {
@@ -126,6 +127,20 @@ func TestDebugApi_UncheckAnalysis(t *testing.T) {
 }
 
 func TestDebugApi_BlockCacheCount(t *testing.T) {
+	teardownTestCase, l, debugApi := setupMockDebugAPI(t)
+	defer teardownTestCase(t)
+
+	l.On("GetBlockCaches", tmock.AnythingOfType("func(*types.StateBlock) error")).Return(nil)
+	r, err := debugApi.BlockCaches()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 1 {
+		t.Fatal(len(r))
+	}
+}
+
+func TestDebugApi_BlockCaches(t *testing.T) {
 	teardownTestCase, l, debugApi := setupMockDebugAPI(t)
 	defer teardownTestCase(t)
 

@@ -370,18 +370,15 @@ func (c *Cache) flush(l *Ledger) error {
 			cs.Block = cs.Block + 1
 		}
 		if err := c.dumpToLevelDb(key, v, batch); err != nil {
-			c.logger.Error(err)
 			batch.Cancel()
-			return err
+			return fmt.Errorf("dump to store: %s ", err)
 		}
 		if err := c.dumpToRelation(key, v, l); err != nil {
-			c.logger.Error(err)
-			return err
+			return fmt.Errorf("dump to relation: %s ", err)
 		}
 	}
 	if err := l.store.PutBatch(batch); err != nil {
-		c.logger.Error(err)
-		return err
+		return fmt.Errorf("store put batch: %s ", err)
 	}
 	c.purge()
 	return nil
@@ -393,8 +390,7 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 		case types.Serializer:
 			val, err := o.Serialize()
 			if err != nil {
-				c.logger.Error("serialize error  ", key[:1])
-				return err
+				return fmt.Errorf("serialize error,  %s", key[:1])
 			}
 			if err := b.Put(key, val); err != nil {
 				return err
