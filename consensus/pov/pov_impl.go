@@ -257,16 +257,18 @@ func (pov *PoVEngine) unsetEvent() {
 }
 
 func (pov *PoVEngine) onRecvPovBlock(msg *topic.EventPovRecvBlockMsg) error {
+	blockHash := msg.Block.GetHash()
+
 	if msg.From == types.PovBlockFromLocal {
+		pov.logger.Infof("receive local block %d/%s", msg.Block.GetHeight(), blockHash)
 		err := pov.AddMinedBlock(msg.Block)
 		if msg.ResponseChan != nil {
 			msg.ResponseChan <- err
 		}
+		return nil
 	}
 
 	if msg.From == types.PovBlockFromRemoteBroadcast {
-		blockHash := msg.Block.GetHash()
-
 		if pov.blkRecvCache.Has(blockHash) {
 			return nil
 		}
@@ -282,7 +284,7 @@ func (pov *PoVEngine) onRecvPovBlock(msg *topic.EventPovRecvBlockMsg) error {
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (pov *PoVEngine) loop() {

@@ -80,7 +80,12 @@ func TestPovImpl_StartStop(t *testing.T) {
 	}
 
 	blk1, _ := mock.GeneratePovBlock(nil, 0)
-	err = povImpl.onRecvPovBlock(blk1, types.PovBlockFromRemoteBroadcast, "testPeer1")
+	msg1 := &topic.EventPovRecvBlockMsg{
+		Block:   blk1,
+		From:    types.PovBlockFromRemoteBroadcast,
+		MsgPeer: "testPeer1",
+	}
+	err = povImpl.onRecvPovBlock(msg1)
 	if err != nil {
 		t.Fatal(err)
 	}

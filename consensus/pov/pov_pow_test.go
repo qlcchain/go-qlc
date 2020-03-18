@@ -27,6 +27,10 @@ type mockPovPowConsensusChainReader struct {
 	mockPovBlock map[string]*types.PovBlock
 }
 
+func (cr *mockPovPowConsensusChainReader) GetConfig() *config.Config {
+	return cr.md.cfg
+}
+
 func (cr *mockPovPowConsensusChainReader) TrieDb() storage.Store {
 	return cr.md.l.DBStore()
 }

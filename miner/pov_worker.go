@@ -534,6 +534,12 @@ func (w *PovWorker) checkAndFillBlockByResult(mineBlock *types.PovMineBlock, res
 }
 
 func (w *PovWorker) checkMinerPledge(minerAddr types.Address) error {
+	cfg := w.miner.GetConfig()
+	if cfg.PoV.ChainParams.MinerPledge.Sign() <= 0 {
+		return nil
+	}
+	pledgeAmount := cfg.PoV.ChainParams.MinerPledge
+
 	latestBlock := w.miner.GetChain().LatestBlock()
 
 	if latestBlock.GetHeight() >= (common.PovMinerVerifyHeightStart - 1) {
@@ -546,7 +552,7 @@ func (w *PovWorker) checkMinerPledge(minerAddr types.Address) error {
 		if rs == nil {
 			return errors.New("miner pausing for account state not exist")
 		}
-		if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
+		if rs.Vote.Compare(pledgeAmount) == types.BalanceCompSmaller {
 			return errors.New("miner pausing for vote pledge not enough")
 		}
 	}

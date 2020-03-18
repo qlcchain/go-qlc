@@ -23,8 +23,8 @@ type povVerifierMockData struct {
 	config *config.Config
 	ledger ledger.Store
 
-	chainV  PovVerifierChainReader
-	chainCs PovConsensusChainReader
+	chainV  *mockPovVerifierChainReader
+	chainCs *mockPovConsensusChainReader
 	cs      ConsensusPov
 }
 
@@ -57,7 +57,9 @@ func (c *mockPovVerifierChainReader) TrieDb() storage.Store {
 	return nil
 }
 
-type mockPovConsensusChainReader struct{}
+type mockPovConsensusChainReader struct {
+	md *povVerifierMockData
+}
 
 func (c *mockPovConsensusChainReader) GetHeaderByHash(hash types.Hash) *types.PovHeader {
 	genesisBlk := common.GenesisPovBlock()
@@ -73,6 +75,10 @@ func (c *mockPovConsensusChainReader) RelativeAncestor(header *types.PovHeader, 
 
 func (c *mockPovConsensusChainReader) TrieDb() storage.Store {
 	return nil
+}
+
+func (c *mockPovConsensusChainReader) GetConfig() *config.Config {
+	return c.md.config
 }
 
 func setupPovVerifierTestCase(t *testing.T) (func(t *testing.T), *povVerifierMockData) {

@@ -74,6 +74,12 @@ func (c *ConsensusPow) VerifyHeader(header *types.PovHeader) error {
 }
 
 func (c *ConsensusPow) verifyProducer(header *types.PovHeader) error {
+	cfg := c.chainR.GetConfig()
+	if cfg.PoV.ChainParams.MinerPledge.Sign() <= 0 {
+		return nil
+	}
+	pledgeAmount := cfg.PoV.ChainParams.MinerPledge
+
 	if header.GetHeight() < common.PovMinerVerifyHeightStart {
 		return nil
 	}
@@ -95,7 +101,7 @@ func (c *ConsensusPow) verifyProducer(header *types.PovHeader) error {
 		return errors.New("failed to get rep state")
 	}
 
-	if rs.Vote.Compare(common.PovMinerPledgeAmountMin) == types.BalanceCompSmaller {
+	if rs.Vote.Compare(pledgeAmount) == types.BalanceCompSmaller {
 		return errors.New("pledge amount not enough")
 	}
 
