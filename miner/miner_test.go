@@ -137,7 +137,7 @@ func TestMiner_Work(t *testing.T) {
 	md.eb.Publish(topic.EventPovSyncState, topic.SyncDone)
 	time.Sleep(10 * time.Millisecond)
 
-	allPovBlks, err := mock.GeneratePovBlocksToLedger(md.l, 1)
+	allPovBlks, err := mockMinerGeneratePovBlocksToLedger(md.l, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestMiner_Mining(t *testing.T) {
 	md.eb.Publish(topic.EventPovSyncState, topic.SyncDone)
 	time.Sleep(10 * time.Millisecond)
 
-	allPovBlks, err := mock.GeneratePovBlocksToLedger(md.l, 1)
+	allPovBlks, err := mockMinerGeneratePovBlocksToLedger(md.l, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,4 +214,33 @@ func TestMiner_Mining(t *testing.T) {
 	md.m.povWorker.mineNextBlock()
 
 	_ = md.m.Stop()
+}
+
+func mockMinerGeneratePovBlocksToLedger(l ledger.Store, blkNum int) ([]*types.PovBlock, error) {
+	var prevBlk *types.PovBlock
+	var allBlks []*types.PovBlock
+	for i := 0; i < blkNum; i++ {
+		blk1, td1 := mock.GeneratePovBlock(prevBlk, 0)
+		err := l.AddPovBlock(blk1, td1)
+		if err != nil {
+			return nil, err
+		}
+		for txIdx, txPov := range blk1.GetAllTxs() {
+			txl := &types.PovTxLookup{BlockHash: blk1.GetHash(), BlockHeight: blk1.GetHeight(), TxIndex: uint64(txIdx)}
+			_ = l.AddPovTxLookup(txPov.Hash, txl)
+		}
+
+		err = l.AddPovBestHash(blk1.GetHeight(), blk1.GetHash())
+		if err != nil {
+			return nil, err
+		}
+		err = l.SetPovLatestHeight(blk1.GetHeight())
+		if err != nil {
+			return nil, err
+		}
+		allBlks = append(allBlks, blk1)
+
+		prevBlk = blk1
+	}
+	return allBlks, nil
 }

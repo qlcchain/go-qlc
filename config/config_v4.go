@@ -19,7 +19,7 @@ type PoVConfig struct {
 }
 
 type ChainParams struct {
-	MinerPledge types.Balance `json:"minerPledge"`
+	MinerPledge types.Balance `mapstructure:",squash" json:"minerPledge"`
 }
 
 func DefaultConfigV4(dir string) (*ConfigV4, error) {
