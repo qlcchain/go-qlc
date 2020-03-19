@@ -8,6 +8,7 @@
 package abi
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1831,13 +1832,15 @@ func SaveAssetParam(ctx *vmstore.VMContext, bts []byte) error {
 	if storage, err := ctx.GetStorage(assetKeyPrefix, h[:]); err != nil {
 		if err != vmstore.ErrStorageNotFound {
 			return err
+		} else {
+			if err = ctx.SetStorage(assetKeyPrefix, h[:], bts); err != nil {
+				return err
+			}
 		}
 	} else if len(storage) > 0 {
-		return fmt.Errorf("%s already exist", h.String())
-	}
-
-	if err = ctx.SetStorage(assetKeyPrefix, h[:], bts); err != nil {
-		return err
+		if !bytes.Equal(bts, storage) {
+			return fmt.Errorf("invalid saved data of %s", h.String())
+		}
 	}
 
 	return nil

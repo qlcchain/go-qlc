@@ -1641,7 +1641,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 			t.Fatal(err)
 		} else {
 			t.Log(pendingKey, info)
-			if _, _, err := registerAsset.ProcessSend(ctx, sb); err == nil {
+			if _, _, err := registerAsset.ProcessSend(ctx, sb); err != nil {
 				t.Fatal(err)
 			}
 			if err := ctx.SaveStorage(); err != nil {
