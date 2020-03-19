@@ -15,11 +15,12 @@ MAIN = cmd/main.go
 BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%FT%TZ%z')
-GO_BUILDER_VERSION=v1.13.5.1
+GO_BUILDER_VERSION=v1.14
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+	go get -u golang.org/x/tools/cmd/goimports
 
 build:
 	go build -ldflags "-X github.com/qlcchain/go-qlc/chain/version.Version=${VERSION} \
@@ -64,3 +65,4 @@ release: changelog
 
 lint: 
 	golangci-lint run --fix
+
