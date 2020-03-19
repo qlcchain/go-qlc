@@ -320,14 +320,18 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			Hash:    hash,
 		}
 		lv.logger.Debug("add pending, ", pendingKey)
-		return lv.l.AddPending(&pendingKey, &pending, cache)
+		if err := lv.l.AddPending(&pendingKey, &pending, cache); err != nil {
+			return err
+		}
 	case types.Open, types.Receive:
 		pendingKey := types.PendingKey{
 			Address: block.GetAddress(),
 			Hash:    block.GetLink(),
 		}
 		lv.logger.Debug("delete pending, ", pendingKey)
-		return lv.l.DeletePending(&pendingKey, cache)
+		if err := lv.l.DeletePending(&pendingKey, cache); err != nil {
+			return err
+		}
 	case types.ContractSend:
 		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
 			d := c.GetDescribe()
@@ -335,31 +339,33 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			case contract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
-					return lv.l.AddPending(pendingKey, pendingInfo, cache)
+					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
+						return err
+					}
 				}
-				return nil
 			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
-					return lv.l.AddPending(pendingKey, pendingInfo, cache)
+					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
+						return err
+					}
 				}
-				return nil
 			default:
 				return fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
 			}
 		}
-		return nil
 	case types.ContractReward:
 		pendingKey := types.PendingKey{
 			Address: block.GetAddress(),
 			Hash:    block.GetLink(),
 		}
 		lv.logger.Debug("contractReward delete pending, ", pendingKey)
-		return lv.l.DeletePending(&pendingKey, cache)
-	default:
-		return nil
+		if err := lv.l.DeletePending(&pendingKey, cache); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (lv *LedgerVerifier) lock(address types.Address) {

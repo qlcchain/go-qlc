@@ -9,6 +9,7 @@ package process
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"os"
 	"path/filepath"
 	"testing"
@@ -198,5 +199,78 @@ func TestProcess_Exception(t *testing.T) {
 
 	if err := lv.BlockProcess(bs[1]); err == nil {
 		t.Fatal(err)
+	}
+}
+
+func TestBlock_fork(t *testing.T) {
+	teardownTestCase, l, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	// fork check
+	forkCheck := blockForkCheck{}
+	am := mock.AccountMeta(mock.Address())
+	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err != nil {
+		t.Fatal()
+	}
+	pre := mock.StateBlockWithoutWork()
+	preKey, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, pre.GetHash())
+	preVal, _ := pre.Serialize()
+	if err := l.DBStore().Put(preKey, preVal); err != nil {
+		t.Fatal(err)
+	}
+	blk := mock.StateBlockWithoutWork()
+	blk.Previous = pre.GetHash()
+	blk.Address = am.Address
+	blk.Token = am.Tokens[0].Type
+	r, err := forkCheck.fork(lv, blk)
+	if err != nil || r != Fork {
+		t.Fatal(r, err)
+	}
+	blk.Type = types.Send
+	r, err = forkCheck.fork(lv, blk)
+	if err != nil || r != Fork {
+		t.Fatal(r, err)
+	}
+	blk.Type = types.ContractReward
+	r, err = forkCheck.fork(lv, blk)
+	if err != nil || r != Fork {
+		t.Fatal(r, err)
+	}
+	blk.Previous = types.ZeroHash
+	r, err = forkCheck.fork(lv, blk)
+	if err != nil || r != Fork {
+		t.Fatal(r, err)
+	}
+	r, err = forkCheck.fork(lv, &types.StateBlock{})
+	if err == nil {
+		t.Fatal(r, err)
+	}
+
+	// cache fork  check
+	cForkCheck := cacheBlockForkCheck{}
+	blk.Type = types.Open
+	r, err = cForkCheck.fork(lv, blk)
+	if err != nil || r != Fork {
+		t.Fatal(r, err)
+	}
+	blk.Previous = pre.GetHash()
+	blk.Type = types.Send
+	r, err = cForkCheck.fork(lv, blk)
+	if err != nil || r != Fork {
+		t.Fatal(r, err)
+	}
+	blk.Type = types.ContractReward
+	r, err = cForkCheck.fork(lv, blk)
+	if err != nil || r != Fork {
+		t.Fatal(r, err)
+	}
+	blk.Previous = types.ZeroHash
+	r, err = cForkCheck.fork(lv, blk)
+	if err != nil || r != Fork {
+		t.Fatal(r, err)
+	}
+	r, err = cForkCheck.fork(lv, &types.StateBlock{})
+	if err == nil {
+		t.Fatal(r, err)
 	}
 }
