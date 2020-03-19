@@ -65,6 +65,7 @@ const (
 	PublishConnectPeersInfo  = 20 * time.Second
 	PublishOnlinePeersInfo   = 25 * time.Second
 	PublishBandWithPeersInfo = 60 * time.Second
+	getBootNodeInterval      = 10 * time.Second
 )
 
 type QlcNode struct {
@@ -113,6 +114,9 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		return nil, err
 	}
 	node.reporter = p2pmetrics.NewBandwidthCounter()
+	if node.cfg.P2P.IsBootNode {
+		node.boostrapAddrs = append(node.boostrapAddrs, node.cfg.P2P.Listen+"/p2p/"+node.cfg.P2P.ID.PeerID)
+	}
 	return node, nil
 }
 
@@ -121,11 +125,8 @@ func (node *QlcNode) setRepresentativeNode(isRepresentative bool) {
 }
 
 func (node *QlcNode) buildHost() error {
-	bns := getBootNode(node.cfg.P2P.BootNodes)
-	if len(bns) == 0 {
-		return ErrNoBootNode
-	}
-	node.boostrapAddrs = bns
+	go node.getBootNode(node.cfg.P2P.BootNodes)
+
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
 	qlcHost, err := libp2p.New(
@@ -221,12 +222,7 @@ func (node *QlcNode) StartServices() error {
 
 	if node.dis != nil {
 		go func() {
-			pInfoS, err := convertPeers(node.boostrapAddrs)
-			if err != nil {
-				node.logger.Errorf("Failed to convert bootNode address")
-				return
-			}
-			node.startPeerDiscovery(pInfoS)
+			node.startPeerDiscovery()
 		}()
 	}
 
@@ -365,9 +361,13 @@ func (node *QlcNode) connectBootstrap(pInfoS []peer.AddrInfo) {
 	}
 }
 
-func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
+func (node *QlcNode) startPeerDiscovery() {
 	ticker := time.NewTicker(time.Duration(node.cfg.P2P.Discovery.DiscoveryInterval) * time.Second)
 	ticker1 := time.NewTicker(ConnectBootstrapInterval)
+	pInfoS, err := convertPeers(node.boostrapAddrs)
+	if err != nil {
+		node.logger.Errorf("Failed to convert bootNode address")
+	}
 	node.connectBootstrap(pInfoS)
 	if err := node.findPeers(); err != nil {
 		node.logger.Errorf("find node error[%s]", err)
@@ -383,6 +383,10 @@ func (node *QlcNode) startPeerDiscovery(pInfoS []peer.AddrInfo) {
 				continue
 			}
 		case <-ticker1.C:
+			pInfoS, err := convertPeers(node.boostrapAddrs)
+			if err != nil {
+				node.logger.Errorf("Failed to convert bootNode address")
+			}
 			node.connectBootstrap(pInfoS)
 		}
 	}
@@ -554,20 +558,37 @@ func (node *QlcNode) GetBandwidthStats(stats *p2pmetrics.Stats) {
 	*stats = node.reporter.GetBandwidthTotals()
 }
 
-func getBootNode(urls []string) []string {
-	var bn []string
-	for _, v := range urls {
-		url := "http://" + v + "/bootNode"
-		rsp, err := http.Get(url)
-		if err != nil {
-			continue
+func (node *QlcNode) getBootNode(urls []string) {
+	ticker := time.NewTicker(getBootNodeInterval)
+	for {
+		select {
+		case <-node.ctx.Done():
+			return
+		case <-ticker.C:
+			for _, v := range urls {
+				url := "http://" + v + "/bootNode"
+				rsp, err := http.Get(url)
+				if err != nil {
+					continue
+				}
+				body, err := ioutil.ReadAll(rsp.Body)
+				if err != nil {
+					continue
+				}
+				if len(node.boostrapAddrs) == 0 {
+					node.boostrapAddrs = append(node.boostrapAddrs, string(body))
+				} else {
+					for k, v := range node.boostrapAddrs {
+						if v == string(body) {
+							break
+						}
+						if k == len(node.boostrapAddrs)-1 {
+							node.boostrapAddrs = append(node.boostrapAddrs, string(body))
+						}
+					}
+				}
+				_ = rsp.Body.Close()
+			}
 		}
-		body, err := ioutil.ReadAll(rsp.Body)
-		if err != nil {
-			continue
-		}
-		bn = append(bn, string(body))
-		_ = rsp.Body.Close()
 	}
-	return bn
 }
