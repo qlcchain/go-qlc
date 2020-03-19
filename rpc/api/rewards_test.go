@@ -15,10 +15,11 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"

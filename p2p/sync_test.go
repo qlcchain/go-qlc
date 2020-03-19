@@ -14,6 +14,7 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/config"
 )

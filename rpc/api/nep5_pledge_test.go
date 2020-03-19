@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -24,7 +26,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	"go.uber.org/zap"
 )
 
 func setupNEP5PledgeAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *NEP5PledgeAPI) {

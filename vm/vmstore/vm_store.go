@@ -13,11 +13,12 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/types"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
-	"go.uber.org/zap"
 )
 
 type ContractStore interface {

@@ -11,11 +11,12 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/mock"
-	"go.uber.org/zap"
 )
 
 func TestNewContractApi(t *testing.T) {
