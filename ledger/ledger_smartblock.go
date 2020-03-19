@@ -6,6 +6,7 @@ import (
 )
 
 type SmartBlockStore interface {
+	AddSmartContractBlock(value *types.SmartContractBlock) error
 	HasSmartContractBlock(key types.Hash) (bool, error)
 	GetSmartContractBlock(key types.Hash) (*types.SmartContractBlock, error)
 	GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error) error
@@ -54,7 +55,7 @@ func (l *Ledger) GetSmartContractBlock(key types.Hash) (*types.SmartContractBloc
 
 func (l *Ledger) GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixSmartContractBlock)
-	if err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		blk := new(types.SmartContractBlock)
 		if err := blk.Deserialize(val); err != nil {
 			return nil
@@ -63,10 +64,7 @@ func (l *Ledger) GetSmartContractBlocks(fn func(block *types.SmartContractBlock)
 			return err
 		}
 		return nil
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
 func (l *Ledger) HasSmartContractBlock(key types.Hash) (bool, error) {

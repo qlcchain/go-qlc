@@ -8,215 +8,324 @@
 package api
 
 import (
-	"encoding/hex"
+	"encoding/json"
 	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common/topic"
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/vm/contract"
+
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
-	cfg "github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *context.ChainContext) {
+func setupRewardsTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *RewardsAPI) {
 	t.Parallel()
 
-	dir := filepath.Join(cfg.QlcTestDataDir(), "rewards", uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
-
-	cm := cfg.NewCfgManager(dir)
-	cm.Load()
-	cc := context.NewChainContext(cm.ConfigFile)
-	cc.Init(func() error {
-		return nil
-	})
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+	cc := chainctx.NewChainContext(cm.ConfigFile)
 	l := ledger.NewLedger(cm.ConfigFile)
-	addPovHeader(l)
+
+	verifier := process.NewLedgerVerifier(l)
+	setPovStatus(l, cc, t)
+	setLedgerStatus(l, t)
+
+	api := NewRewardsAPI(l, cc)
+
+	var blocks []*types.StateBlock
+	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range blocks {
+		block := blocks[i]
+		if err := verifier.BlockProcess(block); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	return func(t *testing.T) {
-		//err := l.Store.Erase()
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
-		//CloseLedger()
 		err = os.RemoveAll(dir)
 		if err != nil {
 			t.Fatal(err)
 		}
-	}, l, cc
+		_ = cc.Stop()
+	}, verifier, api
 }
 
-func addPovHeader(l *ledger.Ledger) {
-	header := mock.PovHeader()
-	_ = l.AddPovHeader(header)
-	_ = l.AddPovHeight(header.BasHdr.Hash, header.BasHdr.Height)
-	_ = l.AddPovBestHash(header.BasHdr.Height, header.BasHdr.Hash)
-	_ = l.SetPovLatestHeight(header.BasHdr.Height)
-}
-
-func TestRewardsApi_GetRewardData(t *testing.T) {
-	teardownTestCase, l, cc := setupTestCase(t)
+func TestRewardsAPI_GetUnsignedRewardData(t *testing.T) {
+	teardownTestCase, _, api := setupRewardsTestCase(t)
 	defer teardownTestCase(t)
 
-	api := NewRewardsApi(l, cc)
-	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+	a1 := account1.Address()
+	a2 := account2.Address()
 
-	time.Sleep(2 * time.Second)
-
-	tx := mock.Account()
-	rx := mock.Account()
-
-	//mock tx data
-	am := mock.AccountMeta(tx.Address())
-	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err == nil {
-		token := mock.TokenMeta(tx.Address())
-		token.Type = cfg.GasToken()
-		if err := l.AddTokenMetaConfirmed(token.BelongTo, token, l.Cache().GetCache()); err == nil {
-
-		} else {
-			t.Error(err)
-		}
-	} else {
-		t.Error(err)
+	type fields struct {
+		logger           *zap.SugaredLogger
+		ledger           ledger.Store
+		rewards          *contract.AirdropRewards
+		confidantRewards *contract.ConfidantRewards
+		cc               *chainctx.ChainContext
 	}
-
-	//mock rx data
-	rxAm := mock.AccountMeta(rx.Address())
-	if err := l.AddAccountMeta(rxAm, l.Cache().GetCache()); err == nil {
-
-	} else {
-		t.Error(err)
+	type args struct {
+		param *RewardsParam
 	}
-
-	id := mock.Hash()
-	param := &RewardsParam{
-		Id:     hex.EncodeToString(id[:]),
-		Amount: types.Balance{Int: big.NewInt(10e7)},
-		Self:   tx.Address(),
-		To:     rx.Address(),
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    types.Hash
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				logger:           api.logger,
+				ledger:           api.ledger,
+				rewards:          api.rewards,
+				confidantRewards: api.confidantRewards,
+				cc:               api.cc,
+			},
+			args: args{
+				param: &RewardsParam{
+					Id:     mock.Hash().String(),
+					Amount: types.Balance{Int: big.NewInt(100)},
+					Self:   a1,
+					To:     a2,
+				},
+			},
+			want:    types.Hash{},
+			wantErr: false,
+		}, {
+			name: "f1",
+			fields: fields{
+				logger:           api.logger,
+				ledger:           api.ledger,
+				rewards:          api.rewards,
+				confidantRewards: api.confidantRewards,
+				cc:               api.cc,
+			},
+			args: args{
+				param: nil,
+			},
+			want:    types.Hash{},
+			wantErr: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				logger:           api.logger,
+				ledger:           api.ledger,
+				rewards:          api.rewards,
+				confidantRewards: api.confidantRewards,
+				cc:               api.cc,
+			},
+			args: args{
+				param: &RewardsParam{
+					Id:     "",
+					Amount: types.Balance{Int: big.NewInt(100)},
+					Self:   a1,
+					To:     a2,
+				},
+			},
+			want:    types.Hash{},
+			wantErr: true,
+		},
 	}
-	hash, err := api.GetUnsignedRewardData(param)
-	if err != nil {
-		t.Fatal(err)
-	} else {
-		t.Log(hash.String())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &RewardsAPI{
+				logger:           tt.fields.logger,
+				ledger:           tt.fields.ledger,
+				rewards:          tt.fields.rewards,
+				confidantRewards: tt.fields.confidantRewards,
+				cc:               tt.fields.cc,
+			}
+			_, err := r.GetUnsignedRewardData(tt.args.param)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetUnsignedRewardData() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			//if !reflect.DeepEqual(got, tt.want) {
+			//	t.Errorf("GetUnsignedRewardData() got = %v, want %v", got, tt.want)
+			//}
+		})
 	}
-	sign := tx.Sign(hash)
-	t.Log(tx.Address(), "==>", sign.String())
-
-	blk, err := api.GetSendRewardBlock(param, &sign)
-	if err != nil {
-		t.Fatal(err)
-	} else {
-		//t.Log(util.ToIndentString(blk))
-	}
-
-	t.Log(util.ToIndentString(param))
-	t.Log(sign.String())
-
-	if isAirdropRewards := api.IsAirdropRewards(blk.Data); !isAirdropRewards {
-		t.Fatal("invalid data type")
-	}
-
-	vmContext := vmstore.NewVMContext(l)
-	err = api.rewards.DoSend(vmContext, blk)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	key, info, err := api.rewards.DoPending(blk)
-	if err != nil {
-		t.Fatal(err)
-	} else {
-		t.Log(key, info)
-	}
-
-	//verifier := process.NewLedgerVerifier(api.ledger)
-	//err = verifier.BlockProcess(blk)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//hash = blk.GetHash()
-	//
-	//recv, err := api.GetReceiveRewardBlock(&hash)
-	//if err != nil {
-	//	t.Fatal(err)
-	//} else {
-	//	t.Log(recv)
-	//}
 }
 
-func TestRewardsApi_GetConfidantRewordsRewardData(t *testing.T) {
-	teardownTestCase, l, cc := setupTestCase(t)
+func TestRewardsAPI_GetUnsignedConfidantData(t *testing.T) {
+	teardownTestCase, _, api := setupRewardsTestCase(t)
 	defer teardownTestCase(t)
-	api := NewRewardsApi(l, cc)
-	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
-	time.Sleep(2 * time.Second)
 
-	tx := mock.Account()
-	rx := mock.Account()
+	a1 := account1.Address()
+	a2 := account2.Address()
 
-	//mock tx data
-	am := mock.AccountMeta(tx.Address())
-	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err == nil {
-		token := mock.TokenMeta(tx.Address())
-		token.Type = cfg.GasToken()
-		if err := l.AddTokenMetaConfirmed(token.BelongTo, token, l.Cache().GetCache()); err == nil {
+	type fields struct {
+		logger           *zap.SugaredLogger
+		ledger           ledger.Store
+		rewards          *contract.AirdropRewards
+		confidantRewards *contract.ConfidantRewards
+		cc               *chainctx.ChainContext
+	}
+	type args struct {
+		param *RewardsParam
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    types.Hash
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				logger:           api.logger,
+				ledger:           api.ledger,
+				rewards:          api.rewards,
+				confidantRewards: api.confidantRewards,
+				cc:               api.cc,
+			},
+			args: args{
+				param: &RewardsParam{
+					Id:     mock.Hash().String(),
+					Amount: types.Balance{Int: big.NewInt(100)},
+					Self:   a1,
+					To:     a2,
+				},
+			},
+			want:    types.Hash{},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &RewardsAPI{
+				logger:           tt.fields.logger,
+				ledger:           tt.fields.ledger,
+				rewards:          tt.fields.rewards,
+				confidantRewards: tt.fields.confidantRewards,
+				cc:               tt.fields.cc,
+			}
+			_, err := r.GetUnsignedConfidantData(tt.args.param)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetUnsignedConfidantData() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			//if !reflect.DeepEqual(got, tt.want) {
+			//	t.Errorf("GetUnsignedConfidantData() got = %v, want %v", got, tt.want)
+			//}
+		})
+	}
+}
 
+func TestNewRewardsAPI(t *testing.T) {
+	teardownTestCase, verifier, api := setupRewardsTestCase(t)
+	defer teardownTestCase(t)
+
+	a1 := account1.Address()
+	a2 := account2.Address()
+
+	r := &RewardsParam{
+		Id:     mock.Hash().String(),
+		Amount: types.Balance{Int: big.NewInt(100)},
+		Self:   a1,
+		To:     a2,
+	}
+
+	if h, err := api.GetUnsignedRewardData(r); err != nil {
+		t.Fatal(err)
+	} else {
+		sign := account1.Sign(h)
+		if blk, err := api.GetSendRewardBlock(r, &sign); err != nil {
+			t.Fatal(err)
 		} else {
-			t.Error(err)
+			txHash := blk.GetHash()
+			if err := verifier.BlockProcess(blk); err != nil {
+				t.Fatal(err)
+			}
+
+			if rxBlk, err := api.GetReceiveRewardBlock(&txHash); err != nil {
+				t.Fatal(err)
+			} else {
+				if err := verifier.BlockProcess(rxBlk); err != nil {
+					t.Fatal(err)
+				}
+
+				if b := api.IsAirdropRewards(blk.Data); !b {
+					t.Fatal("IsAirdropRewards failed...")
+				}
+			}
 		}
-	} else {
-		t.Error(err)
 	}
 
-	//mock rx data
-	rxAm := mock.AccountMeta(rx.Address())
-	if err := l.AddAccountMeta(rxAm, l.Cache().GetCache()); err == nil {
-
-	} else {
-		t.Error(err)
+	r2 := &RewardsParam{
+		Id:     mock.Hash().String(),
+		Amount: types.Balance{Int: big.NewInt(1000)},
+		Self:   a1,
+		To:     a2,
 	}
 
-	param := &RewardsParam{
-		Id:     mock.NewRandomMac().String(),
-		Amount: types.Balance{Int: big.NewInt(10e7)},
-		Self:   tx.Address(),
-		To:     rx.Address(),
-	}
-	hash, err := api.GetUnsignedConfidantData(param)
-	if err != nil {
+	if h, err := api.GetUnsignedConfidantData(r2); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Log(hash.String())
-	}
-	sign := tx.Sign(hash)
-	t.Log(sign.String())
+		sign := account1.Sign(h)
+		if blk, err := api.GetSendConfidantBlock(r2, &sign); err != nil {
+			t.Fatal(err)
+		} else {
+			txHash := blk.GetHash()
+			if err := verifier.BlockProcess(blk); err != nil {
+				t.Fatal(err)
+			}
 
-	blk, err := api.GetSendConfidantBlock(param, &sign)
-	if err != nil {
+			if rxBlk, err := api.GetReceiveRewardBlock(&txHash); err != nil {
+				t.Fatal(err)
+			} else {
+				if err := verifier.BlockProcess(rxBlk); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+
+	if amount, err := api.GetTotalRewards(r.Id); err != nil {
 		t.Fatal(err)
+	} else if amount.Cmp(r.Amount.Int) != 0 {
+		t.Fatalf("invalid amount, exp: %d, act: %d", r.Amount, amount)
+	}
+
+	if detail, err := api.GetRewardsDetail(r.Id); err != nil {
+		t.Fatal(err)
+	} else if len(detail) != 1 {
+		t.Fatal("invalid rewards detail")
+	}
+
+	if rewards, err := api.GetConfidantRewards(r2.To); err != nil {
+		t.Fatal(err)
+	} else if len(rewards) == 0 {
+		t.Fatal("invalid confidant rewards...")
 	} else {
-		t.Log(util.ToIndentString(blk))
+		t.Log(rewards)
 	}
 
-	if isAirdrop := api.IsAirdropRewards(blk.Data); isAirdrop {
-		t.Fatal("invalid block data")
-	}
-
-	vmContext := vmstore.NewVMContext(l)
-	err = api.confidantRewards.DoSend(vmContext, blk)
-	if err != nil {
+	if detail, err := api.GetConfidantRewordsDetail(r2.To); err != nil {
 		t.Fatal(err)
+	} else if len(detail) != 1 {
+		t.Fatal("invalid confidant detail")
 	}
+
 }

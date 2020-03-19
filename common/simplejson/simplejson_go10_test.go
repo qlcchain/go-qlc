@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/bmizerany/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewFromReader(t *testing.T) {

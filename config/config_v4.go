@@ -1,14 +1,25 @@
 package config
 
+import (
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
+)
+
 type ConfigV4 struct {
 	ConfigV3 `mapstructure:",squash"`
 	PoV      *PoVConfig `json:"pov"`
 }
 
 type PoVConfig struct {
-	PovEnabled   bool   `json:"povEnabled"`
-	MinerEnabled bool   `json:"minerEnabled"`
-	Coinbase     string `json:"coinbase" validate:"address"`
+	PovEnabled   bool         `json:"povEnabled"`
+	MinerEnabled bool         `json:"minerEnabled"`
+	Coinbase     string       `json:"coinbase" validate:"address"`
+	AlgoName     string       `json:"algoName"`
+	ChainParams  *ChainParams `json:"chainParams"`
+}
+
+type ChainParams struct {
+	MinerPledge types.Balance `mapstructure:",squash" json:"minerPledge"`
 }
 
 func DefaultConfigV4(dir string) (*ConfigV4, error) {
@@ -29,5 +40,9 @@ func defaultPoV() *PoVConfig {
 		PovEnabled:   false,
 		MinerEnabled: false,
 		Coinbase:     "",
+		AlgoName:     "",
+		ChainParams: &ChainParams{
+			MinerPledge: common.PovMinerPledgeAmountMin,
+		},
 	}
 }

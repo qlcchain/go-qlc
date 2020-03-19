@@ -20,8 +20,10 @@ type ConfigV2 struct {
 }
 
 type P2PConfigV2 struct {
-	BootNodes []string `json:"bootNode" mapstructure:"bootNode"`
-	Listen    string   `json:"listen"`
+	BootNodes          []string `json:"bootNode" mapstructure:"bootNode"`
+	IsBootNode         bool     `json:"isBootNode"`
+	BootNodeHttpServer string   `json:"bootNodeHttpServer"`
+	Listen             string   `json:"listen"`
 	//Time in seconds between sync block interval
 	SyncInterval int                `json:"syncInterval"`
 	Discovery    *DiscoveryConfigV2 `json:"discovery"`

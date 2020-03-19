@@ -109,47 +109,6 @@ func (ms *MessageService) Start() {
 	go ms.messageResponseLoop()
 }
 
-//func (ms *MessageService) processBlockCacheLoop() {
-//	ms.netService.node.logger.VInfo("Started process blockCache loop.")
-//	ticker := time.NewTicker(checkBlockCacheInterval)
-//	for {
-//		select {
-//		case <-ms.ctx.Done():
-//			return
-//		case <-ticker.C:
-//			ms.processBlockCache()
-//		}
-//	}
-//}
-//
-//func (ms *MessageService) processBlockCache() {
-//	blocks := make([]*types.StateBlock, 0)
-//	err := ms.ledger.GetBlockCaches(func(block *types.StateBlock) error {
-//		blocks = append(blocks, block)
-//		return nil
-//	})
-//	if err != nil {
-//		ms.netService.node.logger.Error("get block cache error")
-//	}
-//	for _, blk := range blocks {
-//		hash := blk.GetHash()
-//		if b, err := ms.ledger.HasStateBlockConfirmed(blk.GetHash()); b && err == nil {
-//			_ = ms.ledger.DeleteBlockCache(hash)
-//		} else {
-//			b, _ := ms.ledger.HasStateBlock(hash)
-//			if b {
-//				if uk, _ := ms.ledger.HasUncheckedBlock(blk.Link, types.UncheckedKindLink); !uk {
-//					if up, _ := ms.ledger.HasUncheckedBlock(blk.Previous, types.UncheckedKindPrevious); !up {
-//						ms.netService.node.logger.Infof("resend blockCache hash is %s:", hash.String())
-//						ms.netService.msgEvent.Publish(common.EventBroadcast, PublishReq, blk)
-//						ms.netService.msgEvent.Publish(common.EventGenerateBlock, process.Progress, blk)
-//					}
-//				}
-//			}
-//		}
-//	}
-//}
-
 func (ms *MessageService) startLoop() {
 	ms.netService.node.logger.Info("Started Message Service.")
 	for {
@@ -363,7 +322,7 @@ func (ms *MessageService) Stop() {
 	//ms.netService.node.logger.VInfo("stopped message monitor")
 	// quit.
 	ms.cancel()
-	ms.syncService.quitCh <- true
+	ms.syncService.Stop()
 	ms.netService.Deregister(NewSubscriber(ms.publishMessageCh, PublishReq))
 	ms.netService.Deregister(NewSubscriber(ms.confirmReqMessageCh, ConfirmReq))
 	ms.netService.Deregister(NewSubscriber(ms.confirmAckMessageCh, ConfirmAck))

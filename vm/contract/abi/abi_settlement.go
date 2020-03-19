@@ -8,12 +8,14 @@
 package abi
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"sort"
 	"strings"
+	"time"
 
 	"gopkg.in/validator.v2"
 
@@ -116,6 +118,12 @@ const (
     "inputs": [
         { "name": "contractAddress", "type": "address" }
     ]
+  },{
+    "type": "function",
+    "name": "RegisterAsset",
+    "inputs": [
+        { "name": "asset", "type": "string" }
+    ]
   }
 ]
 `
@@ -129,12 +137,21 @@ const (
 	MethodNameAddNextStop       = "AddNextStop"
 	MethodNameRemoveNextStop    = "RemoveNextStop"
 	MethodNameUpdateNextStop    = "UpdateNextStop"
+	MethodNameRegisterAsset     = "RegisterAsset"
+)
+
+const (
+	ContractFlag byte = iota
+	AssetFlag
+	AddressMappingFlag
 )
 
 var (
 	SettlementABI, _ = abi.JSONToABIContract(strings.NewReader(JsonSettlement))
 	keySize          = types.AddressSize*2 + 1
-	mappingPrefix    = []byte{33}
+	assetKeySize     = keySize + 1
+	assetKeyPrefix   = append(types.SettlementAddress[:], AssetFlag)
+	mappingPrefix    = append(types.SettlementAddress[:], AddressMappingFlag)
 )
 
 type ABIer interface {
@@ -210,8 +227,8 @@ func (z *TerminateParam) String() string {
 }
 
 type Contractor struct {
-	Address types.Address `msg:"a,extension" json:"address"`
-	Name    string        `msg:"n" json:"name"`
+	Address types.Address `msg:"a,extension" json:"address" validate:"qlcaddress"`
+	Name    string        `msg:"n" json:"name" validate:"nonzero"`
 }
 
 func (z *Contractor) ToABI() ([]byte, error) {
@@ -311,8 +328,6 @@ func (z *CreateContractParam) ToContractParam() *ContractParam {
 }
 
 func (z *CreateContractParam) ToABI() ([]byte, error) {
-	//return SettlementABI.PackMethod(MethodNameCreateContract, z.PartyA, z.PartyAName, z.PartyB, z.PartyBName, z.Previous,
-	//	z.ServiceId, z.Mcc, z.Mnc, z.TotalAmount, z.UnitPrice, z.Currency, z.SignDate, z.SignatureA)
 	id := SettlementABI.Methods[MethodNameCreateContract].Id()
 	if data, err := z.MarshalMsg(nil); err != nil {
 		return nil, err
@@ -323,7 +338,6 @@ func (z *CreateContractParam) ToABI() ([]byte, error) {
 }
 
 func (z *CreateContractParam) FromABI(data []byte) error {
-	//return SettlementABI.UnpackMethod(z, MethodNameCreateContract, data)
 	_, err := z.UnmarshalMsg(data[4:])
 	return err
 }
@@ -385,7 +399,7 @@ func (z *CreateContractParam) Balance() (types.Balance, error) {
 	return total, nil
 }
 
-//go:generate go-enum -f=$GOFILE --marshal --names
+//go:generate go-enum -f=$GOFILE --marshal --names --noprefix
 /*
 ENUM(
 ActiveStage1
@@ -589,39 +603,16 @@ Empty
 */
 type DLRStatus int
 
-// we should make sure that can use CDR data to match to a specific settlement contract
 type CDRParam struct {
 	ContractAddress types.Address `msg:"a" json:"contractAddress"`
 	Index           uint64        `msg:"i" json:"index" validate:"min=1"`
 	SmsDt           int64         `msg:"dt" json:"smsDt" validate:"min=1"`
 	Sender          string        `msg:"tx" json:"sender" validate:"nonzero"`
 	Destination     string        `msg:"d" json:"destination" validate:"nonzero"`
-	//DstCountry    string        `msg:"dc" json:"dstCountry" validate:"nonzero"`
-	//DstOperator   string        `msg:"do" json:"dstOperator" validate:"nonzero"`
-	//DstMcc        uint64        `msg:"mcc" json:"dstMcc"`
-	//DstMnc        uint64        `msg:"mnc" json:"dstMnc"`
-	//SellPrice     float64       `msg:"p" json:"sellPrice" validate:"nonzero"`
-	//SellCurrency  string        `msg:"c" json:"sellCurrency" validate:"nonzero"`
-	//CustomerName  string        `msg:"cn" json:"customerName" validate:"nonzero"`
-	//CustomerID    string        `msg:"cid" json:"customerID" validate:"nonzero"`
-	SendingStatus SendingStatus `msg:"s" json:"sendingStatus"`
-	DlrStatus     DLRStatus     `msg:"ds" json:"dlrStatus"`
-	PreStop       string        `msg:"ps" json:"preStop" `
-	NextStop      string        `msg:"ns" json:"nextStop" `
-	//MessageID    string  `msg:"id" json:"messageID"`
-	//connection         string
-	//clientIp           string
-	//failureCode        string
-	//dlrDt              string
-	//buyPrice           float64
-	//buyCurrency        string
-	//mnpPrice           string
-	//mnpCurrency        string
-	//supplierGateName   string
-	//supplierGateID     string
-	//supplierCustomerID string
-	//briefMessage       string
-	//foreignMessageID   string
+	SendingStatus   SendingStatus `msg:"s" json:"sendingStatus"`
+	DlrStatus       DLRStatus     `msg:"ds" json:"dlrStatus"`
+	PreStop         string        `msg:"ps" json:"preStop" `
+	NextStop        string        `msg:"ns" json:"nextStop" `
 }
 
 func (z *CDRParam) ToABI() ([]byte, error) {
@@ -712,8 +703,6 @@ func (z *CDRStatus) ToHash() (types.Hash, error) {
 				return v[0].ToHash()
 			}
 		}
-		//keys := reflect.ValueOf(z.Params).MapKeys()
-		//return z.Params[keys[0].Interface().(string)][0].ToHash()
 	}
 	return types.ZeroHash, errors.New("no cdr record")
 }
@@ -1016,7 +1005,7 @@ func GetAllCDRStatus(ctx *vmstore.VMContext, addr *types.Address) ([]*CDRStatus,
 
 //FindSettlementContract query settlement contract by user address and CDR data
 func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *CDRParam) (*ContractParam, error) {
-	if contracts, err := queryContractParamByAddress(ctx, "FindSettlementContract", func(cp *ContractParam) bool {
+	if contracts, err := queryContractParam(ctx, "FindSettlementContract", func(cp *ContractParam) bool {
 		if cp.PartyA.Address == *addr {
 			return len(param.NextStop) > 0 && cp.IsNextStop(param.NextStop)
 		} else if cp.PartyB.Address == *addr {
@@ -1039,7 +1028,7 @@ func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *
 
 func GetPreStopNames(ctx *vmstore.VMContext, addr *types.Address) ([]string, error) {
 	var result []string
-	if contracts, err := queryContractParamByAddress(ctx, "GetPreStopNames", func(cp *ContractParam) bool {
+	if contracts, err := queryContractParam(ctx, "GetPreStopNames", func(cp *ContractParam) bool {
 		return cp.PartyB.Address == *addr && (cp.Status == ContractStatusActivated || cp.Status == ContractStatusActiveStage1)
 	}); err != nil {
 		return nil, err
@@ -1056,7 +1045,7 @@ func GetPreStopNames(ctx *vmstore.VMContext, addr *types.Address) ([]string, err
 
 func GetNextStopNames(ctx *vmstore.VMContext, addr *types.Address) ([]string, error) {
 	var result []string
-	if contracts, err := queryContractParamByAddress(ctx, "GetPreStopNames", func(cp *ContractParam) bool {
+	if contracts, err := queryContractParam(ctx, "GetPreStopNames", func(cp *ContractParam) bool {
 		return cp.PartyA.Address == *addr && (cp.Status == ContractStatusActivated || cp.Status == ContractStatusActiveStage1)
 	}); err != nil {
 		return nil, err
@@ -1092,42 +1081,42 @@ func GetSettlementContract(ctx *vmstore.VMContext, addr *types.Address) (*Contra
 }
 
 func GetAllSettlementContract(ctx *vmstore.VMContext) ([]*ContractParam, error) {
-	return queryContractParamByAddress(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
+	return queryContractParam(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
 		return true
 	})
 }
 
 // GetContractsByAddress get all contract data by address both Party A and Party B
 func GetContractsByAddress(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
-	return queryContractParamByAddress(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
+	return queryContractParam(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
 		return cp.IsContractor(*addr)
 	})
 }
 
 // GetContractsByStatus get all contract data by address both Party A and Party B
 func GetContractsByStatus(ctx *vmstore.VMContext, addr *types.Address, status ContractStatus) ([]*ContractParam, error) {
-	return queryContractParamByAddress(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
+	return queryContractParam(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
 		return cp.IsContractor(*addr) && status == cp.Status
 	})
 }
 
 // GetContractsByStatus get all expired contract data by address both Party A and Party B
 func GetExpiredContracts(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
-	return queryContractParamByAddress(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
+	return queryContractParam(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
 		return cp.IsContractor(*addr) && cp.IsExpired()
 	})
 }
 
 // GetContractsIDByAddressAsPartyA get all contracts ID as Party A
 func GetContractsIDByAddressAsPartyA(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
-	return queryContractParamByAddress(ctx, "GetContractsIDByAddressAsPartyA", func(cp *ContractParam) bool {
+	return queryContractParam(ctx, "GetContractsIDByAddressAsPartyA", func(cp *ContractParam) bool {
 		return cp.PartyA.Address == *addr
 	})
 }
 
 // GetContractsIDByAddressAsPartyB get all contracts ID as Party B
 func GetContractsIDByAddressAsPartyB(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
-	return queryContractParamByAddress(ctx, "GetContractsIDByAddressAsPartyB", func(cp *ContractParam) bool {
+	return queryContractParam(ctx, "GetContractsIDByAddressAsPartyB", func(cp *ContractParam) bool {
 		return cp.PartyB.Address == *addr
 	})
 }
@@ -1668,6 +1657,207 @@ func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, firstAddr, secondAddr *ty
 	return result, nil
 }
 
+type Asset struct {
+	Mcc         uint64 `msg:"mcc" json:"mcc"`
+	Mnc         uint64 `msg:"mnc" json:"mnc"`
+	TotalAmount uint64 `msg:"t" json:"totalAmount" validate:"min=1"`
+	SLAs        []*SLA `msg:"s" json:"sla,omitempty"`
+}
+
+func (z *Asset) ToAssertID() (types.Hash, error) {
+	var result []byte
+	result = append(result, util.BE_Uint64ToBytes(z.Mcc)...)
+	result = append(result, util.BE_Uint64ToBytes(z.Mnc)...)
+	result = append(result, util.BE_Uint64ToBytes(z.TotalAmount)...)
+	for _, sla := range z.SLAs {
+		bts, err := sla.Serialize()
+		if err != nil {
+			return types.ZeroHash, err
+		}
+		result = append(result, bts...)
+	}
+
+	return types.HashData(result), nil
+}
+
+func (z *Asset) String() string {
+	return util.ToString(z)
+}
+
+//go:generate go-enum -f=$GOFILE --marshal --names
+/*
+ENUM(
+DeliveredRate
+Latency
+)
+*/
+type SLAType int
+
+type Compensation struct {
+	Low  float32 `msg:"l" json:"low"`
+	High float32 `msg:"h" json:"high"`
+	Rate float32 `msg:"r" json:"rate"`
+}
+
+type SLA struct {
+	SLAType       SLAType         `msg:"t" json:"type"`
+	Priority      uint            `msg:"p" json:"priority"`
+	Value         float32         `msg:"v" json:"value"`
+	Compensations []*Compensation `msg:"c" json:"compensations,omitempty"`
+}
+
+func (z *SLA) Serialize() ([]byte, error) {
+	return z.MarshalMsg(nil)
+}
+
+func (z *SLA) Deserialize(bts []byte) error {
+	_, err := z.UnmarshalMsg(bts)
+	return err
+}
+
+func (z *SLA) String() string {
+	return util.ToString(z)
+}
+
+func newDeliveredRate(rate float32, c []*Compensation) *SLA {
+	return &SLA{
+		SLAType:       SLATypeDeliveredRate,
+		Priority:      1,
+		Value:         rate,
+		Compensations: c,
+	}
+}
+
+func newLatency(latency time.Duration, c []*Compensation) *SLA {
+	return &SLA{
+		SLAType:       SLATypeLatency,
+		Priority:      0,
+		Value:         float32(latency),
+		Compensations: c,
+	}
+}
+
+//go:generate go-enum -f=$GOFILE --marshal --names
+/*
+ENUM(
+Deactivated
+Activated
+)
+*/
+type AssetStatus int
+
+type AssetParam struct {
+	Owner     Contractor  `msg:"o" json:"owner"`
+	Previous  types.Hash  `msg:"pre,extension" json:"-" validate:"hash"`
+	Assets    []*Asset    `msg:"a" json:"assets" validate:"nonzero"`
+	SignDate  int64       `msg:"t1" json:"signDate" validate:"min=1"`
+	StartDate int64       `msg:"t3" json:"startDate" validate:"min=1"`
+	EndDate   int64       `msg:"t4" json:"endDate" validate:"min=1"`
+	Status    AssetStatus `msg:"s" json:"status"`
+}
+
+func (z *AssetParam) ToABI() ([]byte, error) {
+	id := SettlementABI.Methods[MethodNameRegisterAsset].Id()
+	if data, err := z.MarshalMsg(nil); err != nil {
+		return nil, err
+	} else {
+		id = append(id, data...)
+		return id, nil
+	}
+}
+
+func (z *AssetParam) FromABI(data []byte) error {
+	_, err := z.UnmarshalMsg(data[4:])
+	return err
+}
+
+func (z *AssetParam) ToAddress() (types.Address, error) {
+	if h, err := types.HashBytes(z.Owner.Address[:], z.Previous[:],
+		util.BE_Int2Bytes(z.StartDate), util.BE_Int2Bytes(z.EndDate)); err == nil {
+		return types.Address(h), nil
+	} else {
+		return types.ZeroAddress, err
+	}
+
+}
+
+func (z *AssetParam) Verify() error {
+	if err := validator.Validate(z); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (z *AssetParam) String() string {
+	return util.ToString(z)
+}
+
+func ParseAssertParam(bts []byte) (*AssetParam, error) {
+	param := new(AssetParam)
+	if err := param.FromABI(bts); err != nil {
+		return nil, err
+	} else {
+		return param, nil
+	}
+}
+
+func GetAssetParam(ctx *vmstore.VMContext, h types.Address) (*AssetParam, error) {
+	if storage, err := ctx.GetStorage(assetKeyPrefix, h[:]); err != nil {
+		return nil, err
+	} else {
+		if param, err := ParseAssertParam(storage); err != nil {
+			return nil, err
+		} else {
+			return param, nil
+		}
+	}
+}
+
+func SaveAssetParam(ctx *vmstore.VMContext, bts []byte) error {
+	param, err := ParseAssertParam(bts)
+	if err != nil {
+		return err
+	}
+
+	if err := param.Verify(); err != nil {
+		return err
+	}
+
+	h, err := param.ToAddress()
+	if err != nil {
+		return err
+	}
+
+	if storage, err := ctx.GetStorage(assetKeyPrefix, h[:]); err != nil {
+		if err != vmstore.ErrStorageNotFound {
+			return err
+		} else {
+			if err = ctx.SetStorage(assetKeyPrefix, h[:], bts); err != nil {
+				return err
+			}
+		}
+	} else if len(storage) > 0 {
+		if !bytes.Equal(bts, storage) {
+			return fmt.Errorf("invalid saved data of %s", h.String())
+		}
+	}
+
+	return nil
+}
+
+func GetAllAsserts(ctx *vmstore.VMContext) ([]*AssetParam, error) {
+	return queryAsserts(ctx, "GetAllAssert", func(param *AssetParam) bool {
+		return true
+	})
+}
+
+func GetAssertsByAddress(ctx *vmstore.VMContext, owner *types.Address) ([]*AssetParam, error) {
+	return queryAsserts(ctx, "GetAssertsByAddress", func(param *AssetParam) bool {
+		return param.Owner.Address == *owner
+	})
+}
+
 func verifyMultiPartyAddress(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address) (*ContractParam, *ContractParam, bool, error) {
 	c1, err := GetSettlementContract(ctx, firstAddr)
 	if err != nil {
@@ -1697,7 +1887,7 @@ func sortContractParam(r1, r2 *ContractParam) bool {
 	return r1.EndDate < r2.EndDate
 }
 
-func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) ([]*ContractParam, error) {
+func queryContractParam(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) ([]*ContractParam, error) {
 	logger := log.NewLogger(name)
 	defer func() {
 		_ = logger.Sync()
@@ -1721,7 +1911,7 @@ func queryContractParamByAddress(ctx *vmstore.VMContext, name string, fn func(cp
 		return nil, err
 	}
 
-	if len(result) > 0 {
+	if len(result) > 1 {
 		sort.Slice(result, func(i, j int) bool {
 			return sortContractParam(result[i], result[j])
 		})
@@ -1763,4 +1953,43 @@ func queryContractByAddressAndStopName(ctx *vmstore.VMContext, name string, fn f
 		return &addr, nil
 	}
 	return nil, fmt.Errorf("can not find any contract")
+}
+
+func queryAsserts(ctx *vmstore.VMContext, name string, fn func(param *AssetParam) bool) ([]*AssetParam, error) {
+	logger := log.NewLogger(name)
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	var result []*AssetParam
+	if err := ctx.IteratorAll(assetKeyPrefix, func(key []byte, value []byte) error {
+		if len(key) == assetKeySize && len(value) > 0 {
+			if param, err := ParseAssertParam(value); err != nil {
+				logger.Error(err)
+			} else if fn(param) {
+				result = append(result, param)
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if len(result) > 1 {
+		sort.Slice(result, func(i, j int) bool {
+			r1 := result[i]
+			r2 := result[j]
+
+			if r1.StartDate < r2.StartDate {
+				return true
+			}
+			if r1.StartDate > r2.StartDate {
+				return false
+			}
+
+			return r1.EndDate < r2.EndDate
+		})
+	}
+
+	return result, nil
 }

@@ -10,14 +10,16 @@
 package config
 
 const (
-	QlcConfigFile = "qlc.json"
-	configVersion = 6
-	cfgDir        = "GQlcchain_test"
-	nixCfgDir     = ".gqlcchain_test"
-	ipcName       = "gqlc-test.ipc"
+	QlcConfigFile      = "qlc.json"
+	configVersion      = 6
+	cfgDir             = "GQlcchain_test"
+	nixCfgDir          = ".gqlcchain_test"
+	ipcName            = "gqlc-test.ipc"
+	bootNodeHttpServer = "0.0.0.0:19737"
 )
 
 var (
+	bootNodes   = []string{"seed1-test.qlcchain.online:19737", "seed2-test.qlcchain.online:19737"}
 	jsonMintage = `{
         	"type": "ContractSend",
         	"token": "a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582",

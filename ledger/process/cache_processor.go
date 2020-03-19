@@ -51,10 +51,7 @@ func (c *cacheSendBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock)
 	if r, err := c.fork(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.balance(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.balance(lv, block)
 }
 
 type cacheContractSendBlockCheck struct {
@@ -78,10 +75,7 @@ func (c *cacheContractSendBlockCheck) Check(lv *LedgerVerifier, block *types.Sta
 	if r, err := c.balance(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.contract(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.contract(lv, block)
 }
 
 type cacheReceiveBlockCheck struct {
@@ -101,10 +95,7 @@ func (c *cacheReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlo
 	if r, err := c.source(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.pending(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.pending(lv, block)
 }
 
 type cacheContractReceiveBlockCheck struct {
@@ -132,10 +123,7 @@ func (c *cacheContractReceiveBlockCheck) Check(lv *LedgerVerifier, block *types.
 	if r, err := c.pending(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.contract(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.contract(lv, block)
 }
 
 type cacheOpenBlockCheck struct {
@@ -160,10 +148,7 @@ func (c *cacheOpenBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock)
 	if r, err := c.fork(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.pending(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.pending(lv, block)
 }
 
 type cacheChangeBlockCheck struct {
@@ -187,10 +172,7 @@ func (c *cacheChangeBlockCheck) Check(lv *LedgerVerifier, block *types.StateBloc
 	if r, err := c.fork(lv, block); r != Progress || err != nil {
 		return r, err
 	}
-	if r, err := c.balance(lv, block); r != Progress || err != nil {
-		return r, err
-	}
-	return Progress, nil
+	return c.balance(lv, block)
 }
 
 func (lv *LedgerVerifier) BlockCacheProcess(block *types.StateBlock) error {
@@ -245,9 +227,7 @@ func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *ty
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
-		if err := lv.l.AddOrUpdateAccountMetaCache(am, batch); err != nil {
-			return err
-		}
+		return lv.l.AddOrUpdateAccountMetaCache(am, batch)
 	} else {
 		account := types.AccountMeta{
 			Address: address,
@@ -261,9 +241,6 @@ func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *ty
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
 		}
-		if err := lv.l.AddAccountMetaCache(&account, batch); err != nil {
-			return err
-		}
+		return lv.l.AddAccountMetaCache(&account, batch)
 	}
-	return nil
 }

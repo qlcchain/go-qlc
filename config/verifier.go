@@ -19,10 +19,10 @@ import (
 )
 
 // qlc address validator
-func address(v interface{}, param string) error {
+func addressString(v interface{}, param string) error {
 	st := reflect.ValueOf(v)
 	if st.Kind() != reflect.String {
-		return errors.New("QLCAddress only validates string")
+		return errors.New("address only validates string")
 	}
 	s := st.String()
 	if len(s) > 0 && !types.IsValidHexAddress(s) {
@@ -31,11 +31,46 @@ func address(v interface{}, param string) error {
 	return nil
 }
 
+func hash(v interface{}, param string) error {
+	st := reflect.ValueOf(v)
+	h := st.Interface()
+
+	switch v := h.(type) {
+	case types.Hash:
+		if v.IsZero() {
+			return errors.New("hash can not be zero")
+		}
+	default:
+		return errors.New("hash only validates types.Hash")
+	}
+	return nil
+}
+
+func address(v interface{}, param string) error {
+	st := reflect.ValueOf(v)
+	h := st.Interface()
+
+	switch v := h.(type) {
+	case types.Address:
+		if v.IsZero() {
+			return errors.New("address can not be zero")
+		}
+	default:
+		return errors.New("hash only validates types.Address")
+	}
+	return nil
+}
+
 func init() {
-	_ = validator.SetValidationFunc("address", address)
+	_ = validator.SetValidationFunc("address", addressString)
+	_ = validator.SetValidationFunc("qlcaddress", address)
+	_ = validator.SetValidationFunc("hash", hash)
 }
 
 func ErrToString(err error) string {
+	if err == nil {
+		return ""
+	}
 	if errs, ok := err.(validator.ErrorMap); ok {
 		var errOuts []string
 		// Iterate through the list of fields and respective errors

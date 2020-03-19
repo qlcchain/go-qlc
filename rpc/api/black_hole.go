@@ -46,20 +46,24 @@ func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock
 	}
 
 	vmContext := vmstore.NewVMContext(b.l)
-	stateBlock, err := cabi.PackSendBlock(vmContext, param)
+	sb, err := cabi.PackSendBlock(vmContext, param)
 	if err != nil {
 		return nil, err
 	}
+	povHeader, err := b.l.GetLatestPovHeader()
+	if err != nil {
+		return nil, fmt.Errorf("get pov header error: %s", err)
+	}
+	sb.PoVHeight = povHeader.GetHeight()
+	if _, _, err := b.blackHoleContract.ProcessSend(vmContext, sb); err != nil {
+		return nil, err
+	}
+
 	h := vmContext.Cache.Trie().Hash()
 	if h != nil {
-		povHeader, err := b.l.GetLatestPovHeader()
-		if err != nil {
-			return nil, fmt.Errorf("get pov header error: %s", err)
-		}
-		stateBlock.PoVHeight = povHeader.GetHeight()
-		stateBlock.Extra = *h
+		sb.Extra = *h
 	}
-	return stateBlock, nil
+	return sb, nil
 }
 
 func (b *BlackHoleAPI) GetRewardsBlock(send *types.Hash) (*types.StateBlock, error) {

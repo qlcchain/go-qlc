@@ -64,7 +64,8 @@ func (m *MintageAPI) GetMintageData(param *MintageParams) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals)
+	return cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol,
+		totalSupply, param.Decimals, param.Beneficial, param.NEP5TxId)
 }
 
 func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, error) {
@@ -80,7 +81,8 @@ func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 	if err != nil {
 		return nil, err
 	}
-	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol, totalSupply, param.Decimals, param.Beneficial, param.NEP5TxId)
+	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol,
+		totalSupply, param.Decimals, param.Beneficial, param.NEP5TxId)
 	if err != nil {
 		return nil, err
 	}

@@ -16,10 +16,7 @@ func convertPeers(peers []string) ([]peer.AddrInfo, error) {
 	pInfoS := make([]peer.AddrInfo, len(peers))
 	for i, p := range peers {
 		mAddr := ma.StringCast(p)
-		pr, err := peer.AddrInfoFromP2pAddr(mAddr)
-		if err != nil {
-			return nil, err
-		}
+		pr, _ := peer.AddrInfoFromP2pAddr(mAddr)
 		pInfoS[i] = *pr
 	}
 	return pInfoS, nil

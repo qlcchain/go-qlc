@@ -27,6 +27,10 @@ type mockPovPowConsensusChainReader struct {
 	mockPovBlock map[string]*types.PovBlock
 }
 
+func (cr *mockPovPowConsensusChainReader) GetConfig() *config.Config {
+	return cr.md.cfg
+}
+
 func (cr *mockPovPowConsensusChainReader) TrieDb() storage.Store {
 	return cr.md.l.DBStore()
 }
@@ -60,7 +64,7 @@ func setupTestCasePovPow(t *testing.T) (func(t *testing.T), *mockDataPovPow) {
 	md.l = ledger.NewLedger(cm.ConfigFile)
 
 	return func(t *testing.T) {
-		err := md.l.DBStore().Close()
+		err := md.l.Close()
 		if err != nil {
 			t.Fatal(err)
 		}

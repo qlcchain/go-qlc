@@ -9,6 +9,69 @@ import (
 )
 
 const (
+	// AssetStatusDeactivated is a AssetStatus of type Deactivated
+	AssetStatusDeactivated AssetStatus = iota
+	// AssetStatusActivated is a AssetStatus of type Activated
+	AssetStatusActivated
+)
+
+const _AssetStatusName = "DeactivatedActivated"
+
+var _AssetStatusNames = []string{
+	_AssetStatusName[0:11],
+	_AssetStatusName[11:20],
+}
+
+// AssetStatusNames returns a list of possible string values of AssetStatus.
+func AssetStatusNames() []string {
+	tmp := make([]string, len(_AssetStatusNames))
+	copy(tmp, _AssetStatusNames)
+	return tmp
+}
+
+var _AssetStatusMap = map[AssetStatus]string{
+	0: _AssetStatusName[0:11],
+	1: _AssetStatusName[11:20],
+}
+
+// String implements the Stringer interface.
+func (x AssetStatus) String() string {
+	if str, ok := _AssetStatusMap[x]; ok {
+		return str
+	}
+	return fmt.Sprintf("AssetStatus(%d)", x)
+}
+
+var _AssetStatusValue = map[string]AssetStatus{
+	_AssetStatusName[0:11]:  0,
+	_AssetStatusName[11:20]: 1,
+}
+
+// ParseAssetStatus attempts to convert a string to a AssetStatus
+func ParseAssetStatus(name string) (AssetStatus, error) {
+	if x, ok := _AssetStatusValue[name]; ok {
+		return x, nil
+	}
+	return AssetStatus(0), fmt.Errorf("%s is not a valid AssetStatus, try [%s]", name, strings.Join(_AssetStatusNames, ", "))
+}
+
+// MarshalText implements the text marshaller method
+func (x AssetStatus) MarshalText() ([]byte, error) {
+	return []byte(x.String()), nil
+}
+
+// UnmarshalText implements the text unmarshaller method
+func (x *AssetStatus) UnmarshalText(text []byte) error {
+	name := string(text)
+	tmp, err := ParseAssetStatus(name)
+	if err != nil {
+		return err
+	}
+	*x = tmp
+	return nil
+}
+
+const (
 	// ContractStatusActiveStage1 is a ContractStatus of type ActiveStage1
 	ContractStatusActiveStage1 ContractStatus = iota
 	// ContractStatusActivated is a ContractStatus of type Activated
@@ -71,7 +134,7 @@ func ParseContractStatus(name string) (ContractStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x *ContractStatus) MarshalText() ([]byte, error) {
+func (x ContractStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -149,7 +212,7 @@ func ParseDLRStatus(name string) (DLRStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x *DLRStatus) MarshalText() ([]byte, error) {
+func (x DLRStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -157,6 +220,69 @@ func (x *DLRStatus) MarshalText() ([]byte, error) {
 func (x *DLRStatus) UnmarshalText(text []byte) error {
 	name := string(text)
 	tmp, err := ParseDLRStatus(name)
+	if err != nil {
+		return err
+	}
+	*x = tmp
+	return nil
+}
+
+const (
+	// SLATypeDeliveredRate is a SLAType of type DeliveredRate
+	SLATypeDeliveredRate SLAType = iota
+	// SLATypeLatency is a SLAType of type Latency
+	SLATypeLatency
+)
+
+const _SLATypeName = "DeliveredRateLatency"
+
+var _SLATypeNames = []string{
+	_SLATypeName[0:13],
+	_SLATypeName[13:20],
+}
+
+// SLATypeNames returns a list of possible string values of SLAType.
+func SLATypeNames() []string {
+	tmp := make([]string, len(_SLATypeNames))
+	copy(tmp, _SLATypeNames)
+	return tmp
+}
+
+var _SLATypeMap = map[SLAType]string{
+	0: _SLATypeName[0:13],
+	1: _SLATypeName[13:20],
+}
+
+// String implements the Stringer interface.
+func (x SLAType) String() string {
+	if str, ok := _SLATypeMap[x]; ok {
+		return str
+	}
+	return fmt.Sprintf("SLAType(%d)", x)
+}
+
+var _SLATypeValue = map[string]SLAType{
+	_SLATypeName[0:13]:  0,
+	_SLATypeName[13:20]: 1,
+}
+
+// ParseSLAType attempts to convert a string to a SLAType
+func ParseSLAType(name string) (SLAType, error) {
+	if x, ok := _SLATypeValue[name]; ok {
+		return x, nil
+	}
+	return SLAType(0), fmt.Errorf("%s is not a valid SLAType, try [%s]", name, strings.Join(_SLATypeNames, ", "))
+}
+
+// MarshalText implements the text marshaller method
+func (x SLAType) MarshalText() ([]byte, error) {
+	return []byte(x.String()), nil
+}
+
+// UnmarshalText implements the text unmarshaller method
+func (x *SLAType) UnmarshalText(text []byte) error {
+	name := string(text)
+	tmp, err := ParseSLAType(name)
 	if err != nil {
 		return err
 	}
@@ -217,7 +343,7 @@ func ParseSendingStatus(name string) (SendingStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x *SendingStatus) MarshalText() ([]byte, error) {
+func (x SendingStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
@@ -300,7 +426,7 @@ func ParseSettlementStatus(name string) (SettlementStatus, error) {
 }
 
 // MarshalText implements the text marshaller method
-func (x *SettlementStatus) MarshalText() ([]byte, error) {
+func (x SettlementStatus) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 

@@ -187,7 +187,7 @@ func GetTotalDestroyInfo(ctx *vmstore.VMContext, addr *types.Address) (types.Bal
 	}()
 
 	result := types.ZeroBalance
-	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(addr[:], func(key []byte, value []byte) error {
 		if len(key) == KeySize && len(value) > 0 {
 			if di, err := ParseDestroyInfo(value); err == nil {
 				result = result.Add(types.Balance{Int: di.Amount})
@@ -211,7 +211,7 @@ func GetDestroyInfoDetail(ctx *vmstore.VMContext, addr *types.Address) ([]*Destr
 	}()
 
 	var result []*DestroyInfo
-	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(addr[:], func(key []byte, value []byte) error {
 		if len(key) == KeySize && len(value) > 0 {
 			if di, err := ParseDestroyInfo(value); err == nil {
 				result = append(result, di)

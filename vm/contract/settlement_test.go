@@ -155,7 +155,6 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 			t.Fatal("can not find any contact params")
 		}
 		for _, cp := range contractParams {
-			t.Log(cp.String())
 			if cp.PartyB.Address != a2 {
 				t.Fatalf("invalid contract, partyB exp: %s,act: %s", a2.String(), cp.PartyB.Address.String())
 			}
@@ -754,7 +753,6 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 				t.Fatal("can not find any contact params")
 			}
 			for _, cp := range contractParams {
-				t.Log(cp.String())
 				if cp.PartyB.Address != a2 {
 					t.Fatalf("invalid contract, partyB exp: %s,act: %s", a2.String(), cp.PartyB.Address.String())
 				}
@@ -1571,4 +1569,101 @@ func Test_timeString(t *testing.T) {
 	t.Log(timeString(0))
 	t.Log(timeString(-1))
 	t.Log(timeString(time.Now().Unix()))
+}
+
+func TestRegisterAsset_ProcessSend(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+
+	a1 := account1.Address()
+	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assetParam := &cabi.AssetParam{
+		Owner: cabi.Contractor{
+			Address: a1,
+			Name:    "HKT-CSL",
+		},
+		Previous: tm.Header,
+		Assets: []*cabi.Asset{
+			{
+				Mcc:         42,
+				Mnc:         5,
+				TotalAmount: 1000,
+				SLAs:        nil,
+			},
+		},
+		SignDate:  time.Now().Unix(),
+		StartDate: time.Now().AddDate(0, 0, 1).Unix(),
+		EndDate:   time.Now().AddDate(1, 0, 1).Unix(),
+		Status:    cabi.AssetStatusActivated,
+	}
+
+	if abi, err := assetParam.ToABI(); err == nil {
+		sb := &types.StateBlock{
+			Type:           types.ContractSend,
+			Token:          tm.Type,
+			Address:        a1,
+			Balance:        tm.Balance,
+			Vote:           types.ZeroBalance,
+			Network:        types.ZeroBalance,
+			Oracle:         types.ZeroBalance,
+			Storage:        types.ZeroBalance,
+			Previous:       tm.Header,
+			Link:           types.Hash(types.SettlementAddress),
+			Representative: tm.Representative,
+			Data:           abi,
+			Timestamp:      common.TimeNow().Unix(),
+		}
+
+		sb.Signature = account1.Sign(sb.GetHash())
+
+		h := ctx.Cache.Trie().Hash()
+		if h != nil {
+			povHeader, err := l.GetLatestPovHeader()
+			if err != nil {
+				t.Fatalf("get pov header error: %s", err)
+			}
+			sb.PoVHeight = povHeader.GetHeight()
+			sb.Extra = *h
+		}
+
+		if err := updateBlock(l, sb); err != nil {
+			t.Fatal(err)
+		}
+
+		registerAsset := RegisterAsset{}
+		if pendingKey, info, err := registerAsset.ProcessSend(ctx, sb); err != nil {
+			t.Fatal(err)
+		} else {
+			t.Log(pendingKey, info)
+			if _, _, err := registerAsset.ProcessSend(ctx, sb); err != nil {
+				t.Fatal(err)
+			}
+			if err := ctx.SaveStorage(); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		rev := &types.StateBlock{
+			Timestamp: common.TimeNow().Unix(),
+		}
+		if rb, err := registerAsset.DoReceive(ctx, rev, sb); err != nil {
+			t.Fatal(err)
+		} else {
+			if len(rb) > 0 {
+				rb1 := rb[0].Block
+				rb1.Signature = account1.Sign(rb1.GetHash())
+				t.Log(rb1.String())
+			} else {
+				t.Fatal("fail to generate create contract reward block")
+			}
+		}
+	} else {
+		t.Fatal(err)
+	}
 }

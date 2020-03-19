@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,13 +16,25 @@ import (
 )
 
 func TestMDNS(t *testing.T) {
+
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/0.0.0.0/tcp/19523"
 	cfg1.P2P.Discovery.MDNSEnabled = true
-	cfg1.P2P.BootNodes = []string{}
+	cfg1.P2P.Discovery.MDNSInterval = 1
+	cfg1.P2P.IsBootNode = true
+	cfg1.P2P.BootNodes = []string{"127.0.0.1:19533/dis1"}
+	http.HandleFunc("/dis1/bootNode", func(w http.ResponseWriter, r *http.Request) {
+		bootNode := cfg1.P2P.Listen + "/p2p/" + cfg1.P2P.ID.PeerID
+		_, _ = fmt.Fprintf(w, bootNode)
+	})
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:19533", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	//node2 config
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
@@ -28,7 +42,18 @@ func TestMDNS(t *testing.T) {
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/0.0.0.0/tcp/19524"
 	cfg2.P2P.Discovery.MDNSEnabled = true
-	cfg2.P2P.BootNodes = []string{}
+	cfg1.P2P.Discovery.MDNSInterval = 0
+	cfg2.P2P.IsBootNode = true
+	cfg2.P2P.BootNodes = []string{"127.0.0.1:19534/dis2"}
+	http.HandleFunc("/dis2/bootNode", func(w http.ResponseWriter, r *http.Request) {
+		bootNode := cfg2.P2P.Listen + "/p2p/" + cfg2.P2P.ID.PeerID
+		_, _ = fmt.Fprintf(w, bootNode)
+	})
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:19534", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	//start node1
 	node1, err := NewQlcService(dir1)
@@ -94,8 +119,17 @@ func TestNodeDiscovery(t *testing.T) {
 	cfg, _ := cc.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19736"
 	cfg.P2P.Discovery.MDNSEnabled = false
-	cfg.P2P.BootNodes = []string{}
-	b := "/ip4/127.0.0.1/tcp/19736/ipfs/" + cfg.P2P.ID.PeerID
+	cfg.P2P.IsBootNode = true
+	cfg.P2P.BootNodes = []string{"127.0.0.1:19636/discovery"}
+	http.HandleFunc("/discovery/bootNode", func(w http.ResponseWriter, r *http.Request) {
+		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
+		_, _ = fmt.Fprintf(w, bootNode)
+	})
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:19636", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "discovery", uuid.New().String(), config.QlcConfigFile)
@@ -103,7 +137,7 @@ func TestNodeDiscovery(t *testing.T) {
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19737"
 	cfg1.P2P.Discovery.MDNSEnabled = false
-	cfg1.P2P.BootNodes = []string{b}
+	cfg1.P2P.BootNodes = []string{"127.0.0.1:19636/discovery"}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
@@ -112,7 +146,7 @@ func TestNodeDiscovery(t *testing.T) {
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19738"
 	cfg2.P2P.Discovery.MDNSEnabled = false
-	cfg2.P2P.BootNodes = []string{b}
+	cfg2.P2P.BootNodes = []string{"127.0.0.1:19636/discovery"}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start bootNode
@@ -179,6 +213,7 @@ func TestNodeDiscovery(t *testing.T) {
 		case <-ticker2.C:
 			s := node1.node.streamManager.FindByPeerID(node2.node.cfg.P2P.ID.PeerID)
 			if s != nil {
+				node1.node.HandlePeerFound(node1.node.host.Peerstore().PeerInfo(node2.node.ID))
 				return
 			}
 		default:

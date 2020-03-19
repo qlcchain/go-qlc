@@ -800,6 +800,42 @@ func (t *TerminateContract) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 	}
 }
 
+type RegisterAsset struct {
+	internalContract
+}
+
+func (r *RegisterAsset) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	return handleReceive(ctx, block, input, func(data []byte) error {
+		param, err := cabi.ParseAssertParam(input.GetData())
+		if err != nil {
+			return err
+		}
+		h, err := param.ToAddress()
+		if err != nil {
+			return err
+		}
+		if _, err := cabi.GetAssetParam(ctx, h); err != nil {
+			return fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
+		}
+		return nil
+	})
+}
+
+func (r *RegisterAsset) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if err := cabi.SaveAssetParam(ctx, block.Data); err != nil {
+		return nil, nil, err
+	}
+
+	return &types.PendingKey{
+			Address: block.Address,
+			Hash:    block.GetHash(),
+		}, &types.PendingInfo{
+			Source: types.Address(block.Link),
+			Amount: types.ZeroBalance,
+			Type:   block.Token,
+		}, nil
+}
+
 func timeString(t int64) string {
 	return time.Unix(t, 0).Format(time.RFC3339)
 }

@@ -2,7 +2,9 @@ package p2p
 
 import (
 	"bytes"
+	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +27,17 @@ func Test_MessageService_Stop(t *testing.T) {
 	cfg, _ := cc1.Config()
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19739"
 	cfg.P2P.Discovery.MDNSEnabled = false
-	cfg.P2P.BootNodes = []string{}
+	cfg.P2P.IsBootNode = true
+	cfg.P2P.BootNodes = []string{"127.0.0.1:19639/ms"}
+	http.HandleFunc("/ms/bootNode", func(w http.ResponseWriter, r *http.Request) {
+		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
+		_, _ = fmt.Fprintf(w, bootNode)
+	})
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:19639", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	//start node
 	node, err := NewQlcService(dir1)
@@ -234,8 +246,7 @@ func Test_MarshalMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal("Marshal BulkPullRsp err1")
 	}
-	//blks := make(types.StateBlockList, 0)
-	//blks = append(blks, blk)
+
 	r := &protos.BulkPullRspPacket{
 		Blocks: blks,
 	}
@@ -260,15 +271,8 @@ func Test_MarshalMessage(t *testing.T) {
 	if bytes.Compare(data15, data16) != 0 {
 		t.Fatal("Marshal BulkPushBlock err3")
 	}
-	var start1, start2 types.Hash
-	err = start1.Of("D2F6F6A6422000C60C0CB2708B10C8CA664C874EB8501D2E109CB4830EA41D47")
-	if err != nil {
-		t.Fatal("Of StartHash1 error")
-	}
-	err = start2.Of("12F6F6A6422000C60C0CB2708B10C8CA664C874EB8501D2E109CB4830EA41D47")
-	if err != nil {
-		t.Fatal("Of StartHash2 error")
-	}
+	start1 := mock.Hash()
+	start2 := mock.Hash()
 	var Locators []*types.Hash
 	Locators = append(Locators, &start1)
 	Locators = append(Locators, &start2)
@@ -304,6 +308,17 @@ func Test_MarshalMessage(t *testing.T) {
 	if err == nil {
 		t.Fatal("should return unKnown Message Type")
 	}
+
+	ps := &protos.PovStatus{CurrentHeight: 100}
+	_, err = marshalMessage(PovStatus, ps)
+	if err != nil {
+		t.Fatal("Marshal pov status err")
+	}
+
+	_, err = marshalMessage(PovPublishReq, blk1)
+	if err != nil {
+		t.Fatal("Marshal pov publish err")
+	}
 }
 
 func Test_SendMessage(t *testing.T) {
@@ -312,11 +327,21 @@ func Test_SendMessage(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), "sendMessage", uuid.New().String(), config.QlcConfigFile)
 	cc := context.NewChainContext(dir)
 	cfg, _ := cc.Config()
-	b := "/ip4/127.0.0.1/tcp/19740/ipfs/" + cfg.P2P.ID.PeerID
-	cfg.P2P.BootNodes = []string{}
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19740"
 	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.LogLevel = "error"
+
+	cfg.P2P.IsBootNode = true
+	cfg.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
+	http.HandleFunc("/msg/bootNode", func(w http.ResponseWriter, r *http.Request) {
+		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
+		_, _ = fmt.Fprintf(w, bootNode)
+	})
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:19640", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	//start bootNode
 	node, err := NewQlcService(dir)
@@ -330,7 +355,7 @@ func Test_SendMessage(t *testing.T) {
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
-	cfg1.P2P.BootNodes = []string{b}
+	cfg1.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
 	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 	cfg1.LogLevel = "error"
@@ -347,7 +372,7 @@ func Test_SendMessage(t *testing.T) {
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
-	cfg2.P2P.BootNodes = []string{b}
+	cfg2.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
 	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 	cfg2.LogLevel = "error"
@@ -416,15 +441,8 @@ func Test_SendMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 	node1.Broadcast(PublishReq, blk)
-	var start1, start2 types.Hash
-	err = start1.Of("D2F6F6A6422000C60C0CB2708B10C8CA664C874EB8501D2E109CB4830EA41D47")
-	if err != nil {
-		t.Fatal("Of StartHash1 error")
-	}
-	err = start2.Of("12F6F6A6422000C60C0CB2708B10C8CA664C874EB8501D2E109CB4830EA41D47")
-	if err != nil {
-		t.Fatal("Of StartHash2 error")
-	}
+	start1 := mock.Hash()
+	start2 := mock.Hash()
 	var Locators []*types.Hash
 	Locators = append(Locators, &start1)
 	Locators = append(Locators, &start2)
@@ -478,6 +496,49 @@ func Test_SendMessage(t *testing.T) {
 	node1.Broadcast(BulkPushBlock, blks)
 	node1.Broadcast(MessageType(100), "")
 	_ = node1.node.SendMessageToPeer(FrontierRsp, fs, node2.node.ID.Pretty())
-	_ = node1.node.SendMessageToPeer(MessageResponse, start1, node2.node.ID.Pretty())
-	time.Sleep(500 * time.Millisecond)
+
+	ConfirmReqBlocks := make([]*types.StateBlock, 0)
+	ConfirmReqBlocks = append(ConfirmReqBlocks, blk)
+	data, err := marshalMessage(ConfirmReq, ConfirmReqBlocks)
+	if err != nil {
+		t.Fatal("Marshal ConfirmReq err1")
+	}
+	message := NewMessage(ConfirmReq, node2.node.ID.Pretty(), data, nil)
+	node1.msgService.confirmReqMessageCh <- message
+
+	var va protos.ConfirmAckBlock
+	a := mock.Account()
+	va.Sequence = 0
+	va.Hash = append(va.Hash, blk.GetHash())
+	va.Account = a.Address()
+	va.Signature = a.Sign(blk.GetHash())
+	dataAck, err := marshalMessage(ConfirmAck, &va)
+	if err != nil {
+		t.Fatal("Marshal ConfirmAck err1")
+	}
+	messageAck := NewMessage(ConfirmAck, node2.node.ID.Pretty(), dataAck, nil)
+	node1.msgService.confirmAckMessageCh <- messageAck
+
+	ps := &protos.PovStatus{CurrentHeight: 100}
+	dataPovStatus, err := marshalMessage(PovStatus, ps)
+	if err != nil {
+		t.Fatal("Marshal pov status err")
+	}
+	node1.msgService.povMessageCh <- NewMessage(PovStatus, node2.node.ID.Pretty(), dataPovStatus, nil)
+
+	dataPovPublish, err := marshalMessage(PovPublishReq, blk1)
+	if err != nil {
+		t.Fatal("Marshal pov publish err")
+	}
+	node1.msgService.povMessageCh <- NewMessage(PovPublishReq, node2.node.ID.Pretty(), dataPovPublish, nil)
+
+	data, err = marshalMessage(MessageResponse, start1)
+	if err != nil {
+		t.Fatal("Marshal MessageResponse err")
+	}
+	pr := &peerPullRsp{pullRspHash: start1}
+	node1.msgService.pullRspMap.Store(node2.node.ID.Pretty(), pr)
+	node1.msgService.rspMessageCh <- NewMessage(MessageResponse, node2.node.ID.Pretty(), data, nil)
+
+	time.Sleep(60 * time.Second)
 }

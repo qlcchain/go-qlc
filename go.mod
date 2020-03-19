@@ -8,7 +8,6 @@ require (
 	github.com/awnumar/memguard v0.16.2
 	github.com/beevik/ntp v0.2.0
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/cheekybits/genny v1.0.0
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect

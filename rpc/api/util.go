@@ -17,20 +17,20 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type UtilApi struct {
+type UtilAPI struct {
 	logger *zap.SugaredLogger
 	ctx    *vmstore.VMContext
 }
 
-func NewUtilApi(l ledger.Store) *UtilApi {
-	return &UtilApi{ctx: vmstore.NewVMContext(l), logger: log.NewLogger("api_util")}
+func NewUtilAPI(l ledger.Store) *UtilAPI {
+	return &UtilAPI{ctx: vmstore.NewVMContext(l), logger: log.NewLogger("api_util")}
 }
 
-func (u *UtilApi) Decrypt(cryptograph string, passphrase string) (string, error) {
+func (u *UtilAPI) Decrypt(cryptograph string, passphrase string) (string, error) {
 	return util.Decrypt(cryptograph, passphrase)
 }
 
-func (u *UtilApi) Encrypt(raw string, passphrase string) (string, error) {
+func (u *UtilAPI) Encrypt(raw string, passphrase string) (string, error) {
 	return util.Encrypt(raw, passphrase)
 }
 
@@ -42,7 +42,7 @@ func decimal(d uint8) int64 {
 	return m
 }
 
-func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *string) (*APIBalance, error) {
+func (u *UtilAPI) RawToBalance(balance types.Balance, unit string, tokenName *string) (*APIBalance, error) {
 	if tokenName != nil {
 		token, err := abi.GetTokenByName(u.ctx, *tokenName)
 		if err != nil {
@@ -62,7 +62,7 @@ func (u *UtilApi) RawToBalance(balance types.Balance, unit string, tokenName *st
 	return &APIBalance{b}, nil
 }
 
-func (u *UtilApi) BalanceToRaw(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
+func (u *UtilAPI) BalanceToRaw(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
 	if tokenName != nil {
 		token, err := abi.GetTokenByName(u.ctx, *tokenName)
 		if err != nil {

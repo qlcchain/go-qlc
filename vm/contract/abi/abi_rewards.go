@@ -145,7 +145,7 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 		return nil, err
 	}
 	var result []*RewardsInfo
-	if err := ctx.Iterator(types.RewardsAddress[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(types.RewardsAddress[:], func(key []byte, value []byte) error {
 		if bytes.HasPrefix(key[types.AddressSize+1:], id) && len(value) > 0 {
 			if info, err := ParseRewardsInfo(value); err == nil {
 				if isValidContract(ctx, info) {
@@ -206,7 +206,7 @@ func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) 
 
 	result := make(map[string][]*RewardsInfo)
 
-	if err := ctx.Iterator(types.RewardsAddress[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(types.RewardsAddress[:], func(key []byte, value []byte) error {
 		k := key[types.AddressSize+1:]
 		if bytes.HasPrefix(k, confidant[:]) && len(value) > 0 {
 			if info, err := ParseRewardsInfo(value); err == nil {

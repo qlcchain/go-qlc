@@ -9,6 +9,9 @@ package config
 
 import (
 	"encoding/json"
+
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 type MigrationV5ToV6 struct {
@@ -33,6 +36,19 @@ func (m *MigrationV5ToV6) Migration(data []byte, version int) ([]byte, int, erro
 	}
 	cfg6.ConfigV5 = cfg5
 	cfg6.Version = configVersion
+
+	cfg6.P2P.IsBootNode = false
+	cfg6.P2P.BootNodeHttpServer = bootNodeHttpServer
+	cfg6.P2P.BootNodes = bootNodes
+	cfg6.P2P.Discovery.MDNSEnabled = true
+
+	cfg6.PoV.AlgoName = types.ALGO_SHA256D.String()
+	if cfg6.PoV.ChainParams == nil {
+		cfg6.PoV.ChainParams = &ChainParams{}
+	}
+	cfg6.PoV.ChainParams.MinerPledge = common.PovMinerPledgeAmountMin
+	cfg6.RPC.PublicModules = []string{"ledger", "account", "net", "util", "mintage", "contract", "pledge",
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement"}
 
 	bytes, _ := json.Marshal(cfg6)
 	return bytes, m.endVersion, err

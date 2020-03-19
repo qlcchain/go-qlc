@@ -9,6 +9,8 @@ import (
 )
 
 type FrontierStore interface {
+	AddFrontier(frontier *types.Frontier, c *Cache) error
+	DeleteFrontier(key types.Hash, c *Cache) error
 	GetFrontier(hash types.Hash, cache ...storage.Cache) (*types.Frontier, error)
 	GetFrontiers() ([]*types.Frontier, error)
 	CountFrontiers() (uint64, error)

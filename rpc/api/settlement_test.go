@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/util"
+
 	"github.com/google/uuid"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -26,6 +28,46 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+)
+
+var (
+	assetParam = cabi.AssetParam{
+		Owner: cabi.Contractor{
+			Address: mock.Address(),
+			Name:    "HKT-CSL",
+		},
+		Previous: mock.Hash(),
+		Assets: []*cabi.Asset{
+			{
+				Mcc:         42,
+				Mnc:         5,
+				TotalAmount: 1000,
+				SLAs: []*cabi.SLA{
+					{
+						SLAType:  cabi.SLATypeLatency,
+						Priority: 0,
+						Value:    30,
+						Compensations: []*cabi.Compensation{
+							{
+								Low:  50,
+								High: 60,
+								Rate: 10,
+							},
+							{
+								Low:  60,
+								High: 80,
+								Rate: 20.5,
+							},
+						},
+					},
+				},
+			},
+		},
+		SignDate:  time.Now().Unix(),
+		StartDate: time.Now().AddDate(0, 0, 1).Unix(),
+		EndDate:   time.Now().AddDate(1, 0, 1).Unix(),
+		Status:    cabi.AssetStatusActivated,
+	}
 )
 
 func setupSettlementAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *SettlementAPI) {
@@ -921,5 +963,90 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		t.Log(report)
+	}
+}
+
+func TestAssetParam_From(t *testing.T) {
+	a := &AssetParam{}
+	if err := a.From(&assetParam); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(util.ToIndentString(a))
+	}
+}
+
+func TestRegisterAssetParam_ToAssetParam(t *testing.T) {
+	r := &RegisterAssetParam{
+		Owner:     assetParam.Owner,
+		Assets:    assetParam.Assets,
+		StartDate: assetParam.StartDate,
+		EndDate:   assetParam.EndDate,
+		Status:    cabi.AssetStatusActivated.String(),
+	}
+	if param, err := r.ToAssetParam(); err != nil {
+		t.Fatal(err)
+	} else {
+		param.Previous = mock.Hash()
+		if err := param.Verify(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestSettlementAPI_GetRegisterAssetBlock(t *testing.T) {
+	testcase, verifier, api := setupSettlementAPI(t)
+	defer testcase(t)
+
+	r := &RegisterAssetParam{
+		Owner:     assetParam.Owner,
+		Assets:    assetParam.Assets,
+		StartDate: assetParam.StartDate,
+		EndDate:   assetParam.EndDate,
+		Status:    cabi.AssetStatusActivated.String(),
+	}
+	address := account1.Address()
+	r.Owner.Address = address
+
+	t.Log(util.ToIndentString(r))
+
+	if blk, err := api.GetRegisterAssetBlock(r); err != nil {
+		t.Fatal(err)
+	} else {
+		txHash := blk.GetHash()
+		blk.Signature = account1.Sign(txHash)
+		if err := verifier.BlockProcess(blk); err != nil {
+			t.Fatal(err)
+		}
+
+		if blk, err := api.GetSettlementRewardsBlock(&txHash); err != nil {
+			t.Fatal(err)
+		} else {
+			txHash := blk.GetHash()
+			blk.Signature = account1.Sign(txHash)
+			if err := verifier.BlockProcess(blk); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	if assets, err := api.GetAllAssets(10, offset(0)); err != nil {
+		t.Fatal(err)
+	} else if len(assets) != 1 {
+		t.Fatalf("invalid assets len, exp: 1, act: %d", len(assets))
+	}
+
+	if assets, err := api.GetAssetsByOwner(&address, 10, offset(0)); err != nil {
+		t.Fatal(err)
+	} else if len(assets) != 1 {
+		t.Fatalf("invalid assets len, exp: 1, act: %d", len(assets))
+	} else {
+		t.Log(util.ToIndentString(assets[0]))
+		if asset, err := api.GetAsset(assets[0].Address); err != nil {
+			t.Fatal(err)
+		} else if asset == nil {
+			t.Fatal("")
+		} else {
+			t.Log(asset)
+		}
 	}
 }

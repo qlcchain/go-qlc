@@ -7,13 +7,20 @@ import (
 )
 
 type SyncStore interface {
+	AddUncheckedSyncBlock(previous types.Hash, blk *types.StateBlock) error
 	GetUncheckedSyncBlock(hash types.Hash) (*types.StateBlock, error)
 	HasUncheckedSyncBlock(hash types.Hash) (bool, error)
 	CountUncheckedSyncBlocks() (uint64, error)
+	DeleteUncheckedSyncBlock(hash types.Hash) error
 
+	AddUnconfirmedSyncBlock(hash types.Hash, blk *types.StateBlock) error
+	GetUnconfirmedSyncBlock(hash types.Hash) (*types.StateBlock, error)
 	HasUnconfirmedSyncBlock(hash types.Hash) (bool, error)
 	CountUnconfirmedSyncBlocks() (uint64, error)
+	DeleteUnconfirmedSyncBlock(hash types.Hash) error
+
 	WalkSyncCache(visit common.SyncCacheWalkFunc)
+	CleanSyncCache()
 }
 
 func (l *Ledger) getUncheckedSyncBlockKey(hash types.Hash) []byte {

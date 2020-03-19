@@ -13,6 +13,8 @@ type EventPovRecvBlockMsg struct {
 	Block   *types.PovBlock
 	From    types.PovBlockFrom
 	MsgPeer string
+
+	ResponseChan chan interface{}
 }
 
 type EventRPCSyncCallMsg struct {
