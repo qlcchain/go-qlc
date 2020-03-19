@@ -82,6 +82,8 @@ func (ns *QlcService) setEvent() error {
 		switch msg := c.Message().(type) {
 		case *EventBroadcastMsg:
 			ns.Broadcast(msg.Type, msg.Message)
+		case *topic.EventBroadcastMsg:
+			ns.Broadcast(MessageType(msg.Type), msg.Message)
 		case *EventSendMsgToSingleMsg:
 			if err := ns.SendMessageToPeer(msg.Type, msg.Message, msg.PeerID); err != nil {
 				ns.node.logger.Error(err)

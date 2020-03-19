@@ -15,14 +15,12 @@ import (
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -873,11 +871,6 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 			return types.ZeroHash, err
 		}
 		l.logger.Info("block cache process done, ", block.GetHash().String())
-		l.eb.Publish(topic.EventAddBlockCache, block)
-		l.logger.Debug("broadcast block")
-		//TODO: refine
-		l.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: block})
-		l.eb.Publish(topic.EventGenerateBlock, block)
 		return hash, nil
 	case process.BadWork:
 		return types.ZeroHash, errors.New("bad work")
