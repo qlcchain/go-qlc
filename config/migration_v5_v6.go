@@ -47,6 +47,8 @@ func (m *MigrationV5ToV6) Migration(data []byte, version int) ([]byte, int, erro
 		cfg6.PoV.ChainParams = &ChainParams{}
 	}
 	cfg6.PoV.ChainParams.MinerPledge = common.PovMinerPledgeAmountMin
+	cfg6.RPC.PublicModules = []string{"ledger", "account", "net", "util", "mintage", "contract", "pledge",
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement"}
 
 	bytes, _ := json.Marshal(cfg6)
 	return bytes, m.endVersion, err

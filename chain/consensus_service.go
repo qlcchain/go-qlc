@@ -13,6 +13,9 @@ import (
 	"github.com/qlcchain/go-qlc/consensus/dpos"
 )
 
+// Verify that *ConsensusService implements InterceptCall
+var _ common.InterceptCall = (*ConsensusService)(nil)
+
 type ConsensusService struct {
 	common.ServiceLifecycle
 	cfgFile string

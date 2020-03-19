@@ -28,6 +28,8 @@ func DefaultConfigV6(dir string) (*ConfigV6, error) {
 	cfg.ConfigV5 = *cfg5
 	cfg.Version = configVersion
 	cfg.Genesis = defaultGenesis()
+	cfg.RPC.PublicModules = []string{"ledger", "account", "net", "util", "mintage", "contract", "pledge",
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement"}
 	return &cfg, nil
 }
 

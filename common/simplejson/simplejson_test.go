@@ -2,9 +2,10 @@ package simplejson
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
-	"github.com/bmizerany/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSimplejson(t *testing.T) {
@@ -262,4 +263,35 @@ func TestPathWillOverwriteExisting(t *testing.T) {
 	s, err := js.GetPath("this", "a", "foo").String()
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "bar", s)
+}
+
+func TestVersion(t *testing.T) {
+	v := Version()
+	t.Log(v)
+}
+
+func TestNewArray(t *testing.T) {
+	j := Wrap(1)
+	if i := j.Interface(); reflect.TypeOf(i).Kind() != reflect.Int {
+		t.Fatal()
+	}
+	t.Log(j.ToInt())
+	t.Log(j.ToString())
+	if encode, err := j.Encode(); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(string(encode))
+	}
+	if encode, err := j.EncodePretty(); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(string(encode))
+	}
+}
+
+func TestNewArray1(t *testing.T) {
+	j := NewArray(2)
+	j.AddArray(222)
+	i := j.ArrayLen()
+	t.Log(i)
 }
