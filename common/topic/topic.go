@@ -47,7 +47,8 @@ const (
 	EventConsensusSyncFinished  TopicType = "consensusSyncFinished"
 	EventRepresentativeNode     TopicType = "representativeNode"
 
-	EventAddBlockCache TopicType = "addBlockCache"
+	EventAddBlockCache        TopicType = "addBlockCache"
+	EventPermissionNodeUpdate TopicType = "permissionNodeUpdate"
 )
 
 // Sync state

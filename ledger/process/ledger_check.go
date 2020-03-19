@@ -508,16 +508,8 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 	if c, ok, err := contract.GetChainContract(types.Address(input.Link), input.Data); ok && err == nil {
 		d := c.GetDescribe()
 		if d.WithPending() {
-			if pending, err := lv.l.GetPending(&pendingKey); err == nil {
-				if pendingKey, pendingInfo, err := c.DoPending(input); err == nil && pendingKey != nil {
-					if pending.Type == pendingInfo.Type && pending.Amount.Equal(pendingInfo.Amount) && pending.Source == pendingInfo.Source {
-						return Progress, nil
-					} else {
-						lv.logger.Errorf("pending from chain, %s, %s, %s, %s, pending from contract, %s, %s, %s, %s",
-							pending.Type, pending.Source, pending.Amount, pendingInfo.Type, pendingInfo.Source, pendingInfo.Amount)
-						return InvalidData, nil
-					}
-				}
+			if _, err := lv.l.GetPending(&pendingKey); err == nil {
+				return Progress, nil
 			} else if err == ledger.ErrPendingNotFound {
 				return UnReceivable, nil
 			} else {

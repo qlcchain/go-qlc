@@ -89,71 +89,59 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	param := new(cabi.MinerRewardParam)
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.Data)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrUnpackMethod
 	}
 
 	if _, err := param.Verify(); err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
 	if param.Coinbase != block.Address {
-		logger.Info("account is not coinbase")
 		return nil, nil, ErrAccountInvalid
 	}
 
 	if block.Token != cfg.ChainToken() {
-		logger.Info("token is not chain token")
 		return nil, nil, ErrToken
 	}
 
 	// check account exist
 	amCb, _ := ctx.Ledger.GetAccountMeta(param.Coinbase)
 	if amCb == nil {
-		logger.Info("coinbase account not exist")
 		return nil, nil, ErrAccountNotExist
 	}
 
 	nodeRewardHeight, err := m.GetNodeRewardHeight(ctx)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrGetNodeHeight
 	}
 
 	if param.EndHeight > nodeRewardHeight {
-		logger.Infof("end height %d greater than node height %d", param.EndHeight, nodeRewardHeight)
 		return nil, nil, ErrEndHeightInvalid
 	}
 
 	// check same start & end height exist in old reward infos
 	err = m.checkParamExistInOldRewardInfos(ctx, param)
 	if err != nil {
-		logger.Infof("section exist, %s", err)
 		return nil, nil, ErrClaimRepeat
 	}
 
 	calcRewardBlocks, calcRewardAmount, err := m.calcRewardBlocksByDayStats(ctx, param.Coinbase, param.StartHeight, param.EndHeight)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCalcAmount
 	}
 
 	if calcRewardBlocks != param.RewardBlocks || calcRewardAmount.Compare(types.Balance{Int: param.RewardAmount}) != types.BalanceCompEqual {
-		logger.Infof("calc reward mismatch")
 		return nil, nil, ErrCheckParam
 	}
 
 	block.Data, err = cabi.MinerABI.PackMethod(cabi.MethodNameMinerReward, param.Coinbase, param.Beneficial,
 		param.StartHeight, param.EndHeight, param.RewardBlocks, param.RewardAmount)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrPackMethod
 	}
 
 	oldInfo, err := m.GetRewardHistory(ctx, param.Coinbase)
 	if err != nil && err != vmstore.ErrStorageNotFound {
-		logger.Info(err)
 		return nil, nil, ErrGetRewardHistory
 	}
 
@@ -167,26 +155,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 		new(big.Int).Add(param.RewardAmount, oldInfo.RewardAmount))
 	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], data)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrSetStorage
-	}
-
-	return &types.PendingKey{
-			Address: param.Beneficial,
-			Hash:    block.GetHash(),
-		}, &types.PendingInfo{
-			Source: types.Address(block.Link),
-			Amount: types.Balance{Int: param.RewardAmount},
-			Type:   cfg.GasToken(),
-		}, nil
-}
-
-func (m *MinerReward) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(cabi.MinerRewardParam)
-	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, block.Data)
-	if err != nil {
-		logger.Info(err)
-		return nil, nil, ErrUnpackMethod
 	}
 
 	return &types.PendingKey{
@@ -226,17 +195,14 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, input.Data)
 	if err != nil {
-		logger.Info(err)
 		return nil, ErrUnpackMethod
 	}
 
 	if _, err := param.Verify(); err != nil {
-		logger.Info(err)
 		return nil, ErrCheckParam
 	}
 
 	if param.Coinbase != input.Address {
-		logger.Info("input account is not coinbase")
 		return nil, ErrAccountInvalid
 	}
 

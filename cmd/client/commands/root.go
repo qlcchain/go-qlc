@@ -91,4 +91,5 @@ func addcommands() {
 	addRepCmd()
 	addTxCmd()
 	addPKDCmd()
+	addPermissionCmd()
 }

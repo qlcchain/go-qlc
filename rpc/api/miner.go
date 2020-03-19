@@ -240,7 +240,7 @@ func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.Sta
 		return nil, errors.New("pov service is disabled")
 	}
 
-	input, err := m.ledger.GetStateBlock(sendHash)
+	input, err := m.ledger.GetStateBlockConfirmed(sendHash)
 	if err != nil {
 		return nil, err
 	}

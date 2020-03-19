@@ -257,7 +257,7 @@ func (r *RepApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.State
 		return nil, errors.New("pov service is disabled")
 	}
 
-	input, err := r.ledger.GetStateBlock(sendHash)
+	input, err := r.ledger.GetStateBlockConfirmed(sendHash)
 	if err != nil {
 		return nil, err
 	}

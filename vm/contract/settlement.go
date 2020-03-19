@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/event"
+
 	cfg "github.com/qlcchain/go-qlc/config"
 
 	"github.com/bluele/gcache"
@@ -63,6 +65,10 @@ func (i internalContract) DoSendOnPov(_ *vmstore.VMContext, _ *statedb.PovContra
 
 func (i internalContract) DoReceiveOnPov(_ *vmstore.VMContext, _ *statedb.PovContractStateDB, _ uint64, _ *types.StateBlock, _ *types.StateBlock) error {
 	return ErrNotImplement
+}
+
+func (i internalContract) EventNotify(_ event.EventBus, _ *vmstore.VMContext, _ *types.StateBlock) error {
+	return nil
 }
 
 type CreateContract struct {
