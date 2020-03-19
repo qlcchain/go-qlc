@@ -31,7 +31,6 @@ import (
 type Node struct {
 	cfgPath string
 	config  *config.Config
-	account *types.Account
 	t       *testing.T
 	ctx     *context.ChainContext
 	ledger  *ledger.Ledger
@@ -499,7 +498,7 @@ func (n *Node) TokenTransactionAndConfirmed(from, to *types.Account, amount type
 // Wait for block consensus confirmed
 // if can not confirmed in one minute, return timeout error
 func (n *Node) WaitBlockConfirmed(hash types.Hash) {
-	t := time.NewTimer(time.Second * 3)
+	t := time.NewTimer(time.Second * 30)
 	defer t.Stop()
 	for {
 		select {

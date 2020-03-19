@@ -22,38 +22,29 @@ type VerifierRegister struct {
 
 func (vr *VerifierRegister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.ChainToken() {
-		logger.Info("not qlc chain")
 		return nil, nil, ErrToken
 	}
 
 	reg := new(abi.VerifierRegInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(reg, abi.MethodNamePKDVerifierRegister, block.Data)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrUnpackMethod
 	}
 
 	err = abi.VerifierPledgeCheck(ctx, block.Address)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrNotEnoughPledge
 	}
 
 	err = abi.VerifierRegInfoCheck(ctx, block.Address, reg.VType, reg.VInfo, reg.VKey)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierRegister, reg.VType, reg.VInfo, reg.VKey)
-	if err != nil {
-		logger.Info(err)
-		return nil, nil, ErrPackMethod
-	}
 
 	err = vr.SetStorage(ctx, block.Address, reg.VType, reg.VInfo, reg.VKey)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrSetStorage
 	}
 
@@ -84,33 +75,25 @@ type VerifierUnregister struct {
 
 func (vu *VerifierUnregister) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.ChainToken() {
-		logger.Info("not qlc chain")
 		return nil, nil, ErrToken
 	}
 
 	reg := new(abi.VerifierRegInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(reg, abi.MethodNamePKDVerifierUnregister, block.Data)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrUnpackMethod
 	}
 
 	err = abi.VerifierUnRegInfoCheck(ctx, block.Address, reg.VType)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierUnregister, reg.VType)
-	if err != nil {
-		logger.Info(err)
-		return nil, nil, ErrPackMethod
-	}
 
 	vs, _ := abi.GetVerifierInfoByAccountAndType(ctx, block.Address, reg.VType)
 	err = vu.SetStorage(ctx, block.Address, reg.VType, vs.VInfo, vs.VKey)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrSetStorage
 	}
 
@@ -141,14 +124,12 @@ type VerifierHeart struct {
 
 func (vh *VerifierHeart) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.GasToken() {
-		logger.Info("not gas chain")
 		return nil, nil, ErrToken
 	}
 
 	info := new(abi.VerifierHeartInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDVerifierHeart, block.GetData())
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrUnpackMethod
 	}
 
@@ -156,14 +137,12 @@ func (vh *VerifierHeart) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 	if !block.IsFromSync() {
 		err := abi.VerifierPledgeCheck(ctx, block.GetAddress())
 		if err != nil {
-			logger.Info(err)
 			return nil, nil, ErrNotEnoughPledge
 		}
 
 		for _, vt := range info.VType {
 			_, err = abi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), vt)
 			if err != nil {
-				logger.Info(err)
 				return nil, nil, ErrGetVerifier
 			}
 		}
@@ -171,20 +150,14 @@ func (vh *VerifierHeart) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 
 	amount, err := ctx.Ledger.CalculateAmount(block)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCalcAmount
 	}
 
 	if amount.Compare(common.OracleCost) != types.BalanceCompEqual {
-		logger.Infof("balance(exp:%s-%s) wrong", common.OracleCost, amount)
 		return nil, nil, ErrNotEnoughFee
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, info.VType)
-	if err != nil {
-		logger.Info(err)
-		return nil, nil, ErrPackMethod
-	}
 
 	return nil, nil, nil
 }
@@ -219,50 +192,39 @@ type Publish struct {
 
 func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.GasToken() {
-		logger.Info("not gas chain")
 		return nil, nil, ErrToken
 	}
 
 	info := new(abi.PublishInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDPublish, block.GetData())
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrUnpackMethod
 	}
 
 	if len(info.Verifiers) < common.VerifierMinNum || len(info.Verifiers) > common.VerifierMaxNum ||
 		len(info.Codes) < common.VerifierMinNum || len(info.Codes) > common.VerifierMaxNum {
-		logger.Info(err)
 		return nil, nil, ErrVerifierNum
 	}
 
 	fee := types.Balance{Int: info.Fee}
 	err = abi.PublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.KeyType, info.PubKey, fee)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
 	amount, err := ctx.Ledger.CalculateAmount(block)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCalcAmount
 	}
 
 	if amount.Compare(fee) != types.BalanceCompEqual {
-		logger.Infof("balance mismatch(data:%s--amount:%s)", fee, amount)
 		return nil, nil, ErrNotEnoughFee
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDPublish, info.PType, info.PID, info.KeyType, info.PubKey, info.Verifiers, info.Codes, info.Fee)
-	if err != nil {
-		logger.Info(err)
-		return nil, nil, ErrPackMethod
-	}
 
 	err = p.SetStorage(ctx, block.Address, info.PType, info.PID, info.KeyType, info.PubKey, info.Verifiers, info.Codes, fee, block.Previous)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrSetStorage
 	}
 
@@ -330,32 +292,24 @@ type UnPublish struct {
 
 func (up *UnPublish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.GasToken() {
-		logger.Info("not gas chain")
 		return nil, nil, ErrToken
 	}
 
 	info := new(abi.UnPublishInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDUnPublish, block.GetData())
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrUnpackMethod
 	}
 
 	err = abi.UnPublishInfoCheck(ctx, block.Address, info.PType, info.PID, info.KeyType, info.PubKey, info.Hash)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDUnPublish, info.PType, info.PID, info.KeyType, info.PubKey, info.Hash)
-	if err != nil {
-		logger.Info(err)
-		return nil, nil, ErrPackMethod
-	}
 
 	err = up.SetStorage(ctx, info.PType, info.PID, info.KeyType, info.PubKey, info.Hash)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrSetStorage
 	}
 
@@ -400,14 +354,12 @@ type Oracle struct {
 
 func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.GasToken() {
-		logger.Info("not gas chain")
 		return nil, nil, ErrToken
 	}
 
 	info := new(abi.OracleInfo)
 	err := abi.PublicKeyDistributionABI.UnpackMethod(info, abi.MethodNamePKDOracle, block.GetData())
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrUnpackMethod
 	}
 
@@ -415,43 +367,33 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 	if !block.IsFromSync() {
 		err = abi.VerifierPledgeCheck(ctx, block.GetAddress())
 		if err != nil {
-			logger.Info(err)
 			return nil, nil, ErrNotEnoughPledge
 		}
 
 		_, err = abi.GetVerifierInfoByAccountAndType(ctx, block.GetAddress(), info.OType)
 		if err != nil {
-			logger.Info(err)
 			return nil, nil, ErrGetVerifier
 		}
 	}
 
 	err = abi.OracleInfoCheck(ctx, block.Address, info.OType, info.OID, info.KeyType, info.PubKey, info.Code, info.Hash)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCheckParam
 	}
 
 	amount, err := ctx.Ledger.CalculateAmount(block)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrCalcAmount
 	}
 
 	if amount.Compare(common.OracleCost) != types.BalanceCompEqual {
-		logger.Infof("balance(exp:%s-%s) wrong", common.OracleCost, amount)
 		return nil, nil, ErrNotEnoughFee
 	}
 
 	block.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, info.OType, info.OID, info.KeyType, info.PubKey, info.Code, info.Hash)
-	if err != nil {
-		logger.Info(err)
-		return nil, nil, ErrPackMethod
-	}
 
 	err = o.SetStorage(ctx, block.Address, info.OType, info.OID, info.KeyType, info.PubKey, info.Code, info.Hash)
 	if err != nil {
-		logger.Info(err)
 		return nil, nil, ErrSetStorage
 	}
 
@@ -655,23 +597,6 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	newInfo.Timestamp = block.Timestamp
 
 	err = r.SetRewardInfo(ctx, param.Account, newInfo)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &types.PendingKey{
-			Address: param.Beneficial,
-			Hash:    block.GetHash(),
-		}, &types.PendingInfo{
-			Source: types.Address(block.Link),
-			Amount: types.Balance{Int: param.RewardAmount},
-			Type:   cfg.GasToken(),
-		}, nil
-}
-
-func (r *PKDReward) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(dpki.PKDRewardParam)
-	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, block.Data)
 	if err != nil {
 		return nil, nil, err
 	}

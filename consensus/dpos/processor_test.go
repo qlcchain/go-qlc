@@ -177,7 +177,7 @@ func TestProcessor_confirmBlock(t *testing.T) {
 
 	blk1 := mock.StateBlockWithoutWork()
 	blk2 := blk1.Clone()
-	blk2.Timestamp += 1
+	blk2.Timestamp++
 
 	vk := getVoteKey(blk1)
 	el := newElection(dps, blk1)
