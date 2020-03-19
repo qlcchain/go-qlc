@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
+	"go.uber.org/atomic"
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
@@ -19,8 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"go.uber.org/atomic"
-	"go.uber.org/zap"
 )
 
 const (

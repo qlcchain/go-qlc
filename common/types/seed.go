@@ -30,10 +30,8 @@ const (
 )
 
 //Seed of account
+//go:generate msgp
 type Seed [SeedSize]byte
-
-// ZeroAddress
-var ZeroSeed = Seed{}
 
 //NewSeed generate new seed
 func NewSeed() (*Seed, error) {
@@ -84,7 +82,7 @@ func (s *Seed) MasterAddress() Address {
 }
 
 // String seed tostring
-func (s *Seed) String() string {
+func (s Seed) String() string {
 	return hex.EncodeToString(s[:])
 }
 
@@ -99,8 +97,8 @@ func (s *Seed) Len() int {
 }
 
 //ExtensionType implements Extension.MarshalBinaryTo interface
-func (s *Seed) MarshalBinaryTo(text []byte) error {
-	copy(text, (*s)[:])
+func (s Seed) MarshalBinaryTo(text []byte) error {
+	copy(text, s[:])
 	return nil
 }
 
@@ -115,7 +113,7 @@ func (s *Seed) UnmarshalBinary(text []byte) error {
 }
 
 //MarshalJSON implements json.Marshaler interface
-func (s *Seed) MarshalJSON() ([]byte, error) {
+func (s Seed) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
 }
 

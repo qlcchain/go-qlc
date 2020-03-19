@@ -28,7 +28,7 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type NEP5PledgeApi struct {
+type NEP5PledgeAPI struct {
 	logger   *zap.SugaredLogger
 	l        ledger.Store
 	pledge   *contract.Nep5Pledge
@@ -36,8 +36,8 @@ type NEP5PledgeApi struct {
 	cc       *chainctx.ChainContext
 }
 
-func NewNEP5PledgeAPI(cfgFile string, l ledger.Store) *NEP5PledgeApi {
-	api := &NEP5PledgeApi{
+func NewNEP5PledgeAPI(cfgFile string, l ledger.Store) *NEP5PledgeAPI {
+	api := &NEP5PledgeAPI{
 		l:        l,
 		pledge:   &contract.Nep5Pledge{},
 		withdraw: &contract.WithdrawNep5Pledge{},
@@ -55,7 +55,7 @@ type PledgeParam struct {
 	NEP5TxId      string
 }
 
-func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
+func (p *NEP5PledgeAPI) GetPledgeData(param *PledgeParam) ([]byte, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -75,15 +75,16 @@ func (p *NEP5PledgeApi) GetPledgeData(param *PledgeParam) ([]byte, error) {
 	return p2.ToABI()
 }
 
-func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, error) {
+func (p *NEP5PledgeAPI) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, error) {
+	if !p.cc.IsPoVDone() {
+		return nil, chainctx.ErrPoVNotFinish
+	}
+
 	if param == nil {
 		return nil, ErrParameterNil
 	}
 	if param.PledgeAddress.IsZero() || param.Beneficial.IsZero() || len(param.PType) == 0 || len(param.NEP5TxId) == 0 {
 		return nil, errors.New("invalid param")
-	}
-	if !p.cc.IsPoVDone() {
-		return nil, chainctx.ErrPoVNotFinish
 	}
 
 	am, err := p.l.GetAccountMeta(param.PledgeAddress)
@@ -132,7 +133,7 @@ func (p *NEP5PledgeApi) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 	return send, nil
 }
 
-func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
+func (p *NEP5PledgeAPI) GetPledgeRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	if input == nil {
 		return nil, ErrParameterNil
 	}
@@ -140,7 +141,9 @@ func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
-	reward := &types.StateBlock{}
+	reward := &types.StateBlock{
+		Timestamp: common.TimeNow().Unix(),
+	}
 	blocks, err := p.pledge.DoReceive(vmstore.NewVMContext(p.l), reward, input)
 	if err != nil {
 		return nil, err
@@ -151,16 +154,18 @@ func (p *NEP5PledgeApi) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 			return nil, fmt.Errorf("get pov header error: %s", err)
 		}
 		reward.PoVHeight = povHeader.GetHeight()
-		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
-		reward.Extra = *h
+		if h != nil {
+			reward.Extra = *h
+		}
+
 		return reward, nil
 	}
 
 	return nil, errors.New("can not generate pledge reward block")
 }
 
-func (p *NEP5PledgeApi) GetPledgeRewardBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+func (p *NEP5PledgeAPI) GetPledgeRewardBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
 	sendBlock, err := p.l.GetStateBlock(sendHash)
 	if err != nil {
 		return nil, err
@@ -176,7 +181,7 @@ type WithdrawPledgeParam struct {
 	NEP5TxId   string        `json:"nep5TxId"`
 }
 
-func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byte, error) {
+func (p *NEP5PledgeAPI) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byte, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -196,7 +201,7 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeData(param *WithdrawPledgeParam) ([]byt
 	return p2.ToABI()
 }
 
-func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*types.StateBlock, error) {
+func (p *NEP5PledgeAPI) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -265,15 +270,18 @@ func (p *NEP5PledgeApi) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 	return send, nil
 }
 
-func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
-	if input == nil {
-		return nil, ErrParameterNil
-	}
+func (p *NEP5PledgeAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.StateBlock, error) {
 	if !p.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
-	reward := &types.StateBlock{}
+	if input == nil {
+		return nil, ErrParameterNil
+	}
+
+	reward := &types.StateBlock{
+		Timestamp: common.TimeNow().Unix(),
+	}
 
 	blocks, err := p.withdraw.DoReceive(vmstore.NewVMContext(p.l), reward, input)
 	if err != nil {
@@ -286,16 +294,17 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 		}
 		reward.PoVHeight = povHeader.GetHeight()
 
-		reward.Timestamp = common.TimeNow().Unix()
 		h := blocks[0].VMContext.Cache.Trie().Hash()
-		reward.Extra = *h
+		if h != nil {
+			reward.Extra = *h
+		}
 		return reward, nil
 	}
 
 	return nil, errors.New("can not generate pledge withdraw reward block")
 }
 
-func (p *NEP5PledgeApi) GetWithdrawRewardBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
+func (p *NEP5PledgeAPI) GetWithdrawRewardBlockBySendHash(sendHash types.Hash) (*types.StateBlock, error) {
 	sendBlock, err := p.l.GetStateBlock(sendHash)
 	if err != nil {
 		return nil, err
@@ -304,7 +313,7 @@ func (p *NEP5PledgeApi) GetWithdrawRewardBlockBySendHash(sendHash types.Hash) (*
 	return p.GetWithdrawRewardBlock(sendBlock)
 }
 
-func (p *NEP5PledgeApi) ParsePledgeInfo(data []byte) (*cabi.NEP5PledgeInfo, error) {
+func (p *NEP5PledgeAPI) ParsePledgeInfo(data []byte) (*cabi.NEP5PledgeInfo, error) {
 	return cabi.ParsePledgeInfo(data)
 }
 
@@ -323,7 +332,7 @@ type PledgeInfos struct {
 }
 
 //get pledge info by pledge address ,return pledgeinfos
-func (p *NEP5PledgeApi) GetPledgeInfosByPledgeAddress(addr types.Address) *PledgeInfos {
+func (p *NEP5PledgeAPI) GetPledgeInfosByPledgeAddress(addr types.Address) *PledgeInfos {
 	infos, am := cabi.GetPledgeInfos(vmstore.NewVMContext(p.l), addr)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
@@ -345,13 +354,13 @@ func (p *NEP5PledgeApi) GetPledgeInfosByPledgeAddress(addr types.Address) *Pledg
 }
 
 //get pledge total amount by beneficial address ,return total amount
-func (p *NEP5PledgeApi) GetPledgeBeneficialTotalAmount(addr types.Address) (*big.Int, error) {
+func (p *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(addr types.Address) (*big.Int, error) {
 	am, err := cabi.GetPledgeBeneficialTotalAmount(vmstore.NewVMContext(p.l), addr)
 	return am, err
 }
 
 //get pledge info by beneficial,pType ,return PledgeInfos
-func (p *NEP5PledgeApi) GetBeneficialPledgeInfosByAddress(beneficial types.Address) *PledgeInfos {
+func (p *NEP5PledgeAPI) GetBeneficialPledgeInfosByAddress(beneficial types.Address) *PledgeInfos {
 	infos, am := cabi.GetBeneficialInfos(vmstore.NewVMContext(p.l), beneficial)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
@@ -373,7 +382,7 @@ func (p *NEP5PledgeApi) GetBeneficialPledgeInfosByAddress(beneficial types.Addre
 }
 
 //get pledge info by beneficial,pType ,return PledgeInfos
-func (p *NEP5PledgeApi) GetBeneficialPledgeInfos(beneficial types.Address, pType string) (*PledgeInfos, error) {
+func (p *NEP5PledgeAPI) GetBeneficialPledgeInfos(beneficial types.Address, pType string) (*PledgeInfos, error) {
 	pt, err := cabi.StringToPledgeType(pType)
 	if err != nil {
 		return nil, err
@@ -400,7 +409,7 @@ func (p *NEP5PledgeApi) GetBeneficialPledgeInfos(beneficial types.Address, pType
 }
 
 //search pledge info by beneficial address,pType,return total amount
-func (p *NEP5PledgeApi) GetPledgeBeneficialAmount(beneficial types.Address, pType string) (*big.Int, error) {
+func (p *NEP5PledgeAPI) GetPledgeBeneficialAmount(beneficial types.Address, pType string) (*big.Int, error) {
 	pt, err := cabi.StringToPledgeType(pType)
 	if err != nil {
 		return nil, err
@@ -411,7 +420,7 @@ func (p *NEP5PledgeApi) GetPledgeBeneficialAmount(beneficial types.Address, pTyp
 }
 
 //search pledge info by Beneficial,amount pType
-func (p *NEP5PledgeApi) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
+func (p *NEP5PledgeAPI) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -444,7 +453,7 @@ func (p *NEP5PledgeApi) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5Pledge
 }
 
 //search pledge info by nep5Txid
-func (p *NEP5PledgeApi) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*NEP5PledgeInfo, error) {
+func (p *NEP5PledgeAPI) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*NEP5PledgeInfo, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -476,7 +485,7 @@ func (p *NEP5PledgeApi) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*
 }
 
 //search pledge info by Beneficial,amount pType
-func (p *NEP5PledgeApi) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
+func (p *NEP5PledgeAPI) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam) ([]*NEP5PledgeInfo, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -508,7 +517,7 @@ func (p *NEP5PledgeApi) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam)
 }
 
 //search all pledge info
-func (p *NEP5PledgeApi) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
+func (p *NEP5PledgeAPI) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 	var result []*NEP5PledgeInfo
 
 	infos, err := cabi.SearchAllPledgeInfos(vmstore.NewVMContext(p.l))
@@ -541,6 +550,6 @@ func (p *NEP5PledgeApi) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 }
 
 // GetTotalPledgeAmount get all pledge amount
-func (p *NEP5PledgeApi) GetTotalPledgeAmount() (*big.Int, error) {
+func (p *NEP5PledgeAPI) GetTotalPledgeAmount() (*big.Int, error) {
 	return cabi.GetTotalPledgeAmount(vmstore.NewVMContext(p.l)), nil
 }

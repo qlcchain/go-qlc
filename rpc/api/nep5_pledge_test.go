@@ -1,215 +1,468 @@
+/*
+ * Copyright (c) 2020 QLC Chain Team
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
 package api
 
 import (
+	"encoding/json"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-
-	"github.com/qlcchain/go-qlc/crypto/random"
-
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/vm/contract"
 )
 
-func setupTestCasePledge(t *testing.T) (func(t *testing.T), *ledger.Ledger, *NEP5PledgeApi, *types.Account, *types.Account, *process.LedgerVerifier) {
-	t.Parallel()
+func setupNEP5PledgeAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *NEP5PledgeAPI) {
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
-	_ = cc.Init(nil)
 	l := ledger.NewLedger(cm.ConfigFile)
-	cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
 
-	pledgeAPI := NewNEP5PledgeAPI(cm.ConfigFile, l)
-	bs, ac1, ac2, _ := mock.BlockChainWithAccount(false)
-	lv := process.NewLedgerVerifier(l)
-	if err := lv.BlockProcess(bs[0]); err != nil {
+	verifier := process.NewLedgerVerifier(l)
+	setPovStatus(l, cc, t)
+	setLedgerStatus(l, t)
+
+	api := NewNEP5PledgeAPI(cc.ConfigFile(), l)
+
+	var blocks []*types.StateBlock
+	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
-	t.Log("bs hash", bs[0].GetHash())
-	for _, b := range bs[1:] {
-		if p, err := lv.Process(b); err != nil || p != process.Progress {
-			t.Fatal(p, err)
+
+	for i := range blocks {
+		block := blocks[i]
+		if err := verifier.BlockProcess(block); err != nil {
+			t.Fatal(err)
 		}
 	}
-	block, td := mock.GeneratePovBlock(nil, 0)
-	if err := l.AddPovBlock(block, td); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.AddPovBestHash(block.GetHeight(), block.GetHash()); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.SetPovLatestHeight(block.GetHeight()); err != nil {
-		t.Fatal(err)
-	}
+
 	return func(t *testing.T) {
 		err := l.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
-		_ = cc.Stop()
 		err = os.RemoveAll(dir)
 		if err != nil {
 			t.Fatal(err)
 		}
-	}, l, pledgeAPI, ac1, ac2, lv
+		_ = cc.Stop()
+	}, verifier, api
 }
 
-func TestNEP5PledgeApi(t *testing.T) {
-	teardownTestCase, l, pledgeAPI, ac1, ac2, lv := setupTestCasePledge(t)
-	defer teardownTestCase(t)
-	am := types.StringToBalance("1000000000")
-	NEP5tTxId := random.RandomHexString(32)
-	pledgeParam := &PledgeParam{
-		Beneficial:    ac2.Address(),
-		PledgeAddress: ac1.Address(),
-		Amount:        am,
+func TestNewNEP5PledgeAPI(t *testing.T) {
+	testcase, verifier, api := setupNEP5PledgeAPI(t)
+	defer testcase(t)
+
+	a1 := account1.Address()
+	a2 := account2.Address()
+	contract.SetPledgeTime(0, 0, 0, 0, 0, 1)
+	param := &PledgeParam{
+		Beneficial:    a2,
+		PledgeAddress: a1,
+		Amount:        types.Balance{Int: big.NewInt(100 * 1e8)},
 		PType:         "vote",
-		NEP5TxId:      NEP5tTxId,
-	}
-
-	_, err := pledgeAPI.GetPledgeData(pledgeParam)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	send, err := pledgeAPI.GetPledgeBlock(pledgeParam)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sendHash := send.GetHash()
-	send.Signature = ac1.Sign(sendHash)
-	var w types.Work
-	worker, _ := types.NewWorker(w, send.Root())
-	send.Work = worker.NewWork()
-
-	reward, err := pledgeAPI.GetPledgeRewardBlock(send)
-	if err != nil {
-		t.Fatal(err)
-	}
-	reward.Signature = ac2.Sign(reward.GetHash())
-	var w2 types.Work
-	worker2, _ := types.NewWorker(w2, reward.Root())
-	reward.Work = worker2.NewWork()
-
-	result, err := lv.Process(send)
-	if result != process.Progress {
-		t.Fatal("block check error for send")
-	}
-	_, err = pledgeAPI.GetPledgeRewardBlockBySendHash(sendHash)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err = lv.Process(reward)
-	if result != process.Progress {
-		t.Fatal("block check error for send")
-	}
-
-	tm, err := l.GetAccountMeta(ac2.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !tm.CoinVote.Equal(am) {
-		t.Fatal("get voting fail")
-	}
-	withdrawPledgeParam := &WithdrawPledgeParam{
-		Beneficial: ac2.Address(),
-		Amount:     am,
-		PType:      "vote",
-		NEP5TxId:   NEP5tTxId,
-	}
-
-	_, err = pledgeAPI.GetWithdrawPledgeData(withdrawPledgeParam)
-	if err != nil {
-		t.Fatal(err)
-	}
-	send1, err := pledgeAPI.GetWithdrawPledgeBlock(withdrawPledgeParam)
-	if err != nil {
-		t.Fatal(err)
-	}
-	send1Hash := send1.GetHash()
-	send1.Signature = ac2.Sign(send1Hash)
-	var w1 types.Work
-	worker1, _ := types.NewWorker(w1, send1.Root())
-	send1.Work = worker1.NewWork()
-
-	_, err = pledgeAPI.GetWithdrawRewardBlock(send1)
-	if err == nil {
-		t.Fatal("should return error: pledge is not ready")
-	}
-	_, err = pledgeAPI.GetWithdrawRewardBlockBySendHash(send1Hash)
-	if err == nil {
-		t.Fatal("should return error: pledge is not ready")
-	}
-	info := &abi.NEP5PledgeInfo{
-		PType:         uint8(abi.Network),
-		Amount:        big.NewInt(100),
-		WithdrawTime:  time.Now().Unix(),
-		Beneficial:    mock.Address(),
-		PledgeAddress: mock.Address(),
 		NEP5TxId:      mock.Hash().String(),
 	}
-	if data, err := info.ToABI(); err != nil {
+
+	if data, err := api.GetPledgeData(param); err != nil {
+		t.Fatal(err)
+	} else if len(data) == 0 {
+		t.Fatal("invalid GetPledgeData")
+	}
+
+	if blk, err := api.GetPledgeBlock(param); err != nil {
 		t.Fatal(err)
 	} else {
-		if info2, err := pledgeAPI.ParsePledgeInfo(data); err != nil {
+		txHash := blk.GetHash()
+		blk.Signature = account1.Sign(txHash)
+		if err := verifier.BlockProcess(blk); err != nil {
 			t.Fatal(err)
-		} else if !reflect.DeepEqual(info, info2) {
-			t.Fatalf("exp: %v, act: %v", info, info2)
+		}
+
+		if _, err := api.GetPledgeRewardBlock(blk); err != nil {
+			t.Fatal(err)
+		}
+
+		if txBlk, err := api.GetPledgeRewardBlockBySendHash(txHash); err != nil {
+			t.Fatal(err)
+		} else {
+			txHash := txBlk.GetHash()
+			txBlk.Signature = account2.Sign(txHash)
+			if err := verifier.BlockProcess(txBlk); err != nil {
+				t.Fatal(err)
+			}
+
+			if _, err := api.ParsePledgeInfo(txBlk.Data); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		time.Sleep(2 * time.Second)
+
+		w := &WithdrawPledgeParam{
+			Beneficial: a2,
+			Amount:     param.Amount,
+			PType:      param.PType,
+			NEP5TxId:   param.NEP5TxId,
+		}
+
+		if info, err := api.GetPledgeInfo(w); err != nil {
+			t.Fatal(err)
+		} else {
+			t.Log(info)
+		}
+
+		if info, err := api.GetPledgeInfoWithNEP5TxId(w); err != nil {
+			t.Fatal(err)
+		} else {
+			t.Log(info)
+		}
+		if info, err := api.GetPledgeInfoWithTimeExpired(w); err != nil {
+			t.Fatal(err)
+		} else {
+			t.Log(info)
+		}
+
+		if data, err := api.GetWithdrawPledgeData(w); err != nil {
+			t.Fatal(err)
+		} else if len(data) == 0 {
+			t.Fatal("invalid GetWithdrawPledgeData")
+		}
+
+		if blk, err := api.GetWithdrawPledgeBlock(w); err != nil {
+			t.Fatal(err)
+		} else {
+			txHash := blk.GetHash()
+			blk.Signature = account2.Sign(txHash)
+			if err := verifier.BlockProcess(blk); err != nil {
+				t.Fatal(err)
+			}
+
+			if _, err := api.GetWithdrawRewardBlock(blk); err != nil {
+				t.Fatal(err)
+			}
+
+			if rxBlk, err := api.GetWithdrawRewardBlockBySendHash(txHash); err != nil {
+				t.Fatal(err)
+			} else {
+				txHash := rxBlk.GetHash()
+				rxBlk.Signature = account1.Sign(txHash)
+				if err := verifier.BlockProcess(rxBlk); err != nil {
+					t.Fatal(err)
+				}
+			}
 		}
 	}
-	pi := pledgeAPI.GetPledgeInfosByPledgeAddress(ac1.Address())
-	if len(pi.PledgeInfo) != 1 {
-		t.Fatal("pledger info error")
+
+	if info := api.GetPledgeInfosByPledgeAddress(a1); info == nil {
+		t.Fatal()
+	} else {
+		t.Log(info)
 	}
-	_, err = pledgeAPI.GetPledgeBeneficialTotalAmount(ac1.Address())
-	if err != nil {
+
+	if amount, err := api.GetPledgeBeneficialTotalAmount(a2); err != nil {
 		t.Fatal(err)
+	} else if amount.Cmp(big.NewInt(0)) == 0 {
+		t.Fatal("invalid amount")
+	} else {
+		t.Log("amount: ", amount)
 	}
-	pb := pledgeAPI.GetBeneficialPledgeInfosByAddress(ac2.Address())
-	if len(pb.PledgeInfo) != 1 {
-		t.Fatal("beneficial pledger info error")
+
+	if info := api.GetBeneficialPledgeInfosByAddress(a2); info == nil {
+		t.Fatal()
+	} else {
+		t.Log(info)
 	}
-	pi1, err := pledgeAPI.GetBeneficialPledgeInfos(ac2.Address(), "vote")
-	if err != nil {
+
+	if infos, err := api.GetBeneficialPledgeInfos(a2, "vote"); err != nil || infos == nil {
 		t.Fatal(err)
+	} else if len(infos.PledgeInfo) == 0 {
+		t.Fatal("invalid pledge info")
 	}
-	t.Log(pi1)
-	_, err = pledgeAPI.GetPledgeBeneficialAmount(ac2.Address(), "vote")
-	if err != nil {
+
+	if amount, err := api.GetPledgeBeneficialAmount(a2, "vote"); err != nil {
 		t.Fatal(err)
+	} else if amount.Cmp(big.NewInt(0)) == 0 {
+		t.Fatal("invalid amount")
+	} else {
+		t.Log("amount: ", amount)
 	}
-	_, err = pledgeAPI.GetPledgeInfo(withdrawPledgeParam)
-	if err != nil {
+
+	if amount, err := api.GetTotalPledgeAmount(); err != nil {
 		t.Fatal(err)
+	} else if amount.Cmp(big.NewInt(0)) == 0 {
+		t.Fatal("invalid amount")
+	} else {
+		t.Log("amount: ", amount)
 	}
-	_, err = pledgeAPI.GetPledgeInfoWithNEP5TxId(withdrawPledgeParam)
-	if err != nil {
+
+	if info, err := api.GetAllPledgeInfo(); err != nil {
 		t.Fatal(err)
+	} else if len(info) == 0 {
+		t.Fatal("GetAllPledgeInfo")
 	}
-	_, err = pledgeAPI.GetPledgeInfoWithTimeExpired(withdrawPledgeParam)
-	if err != nil {
-		t.Fatal(err)
+}
+
+func TestNEP5PledgeAPI_GetPledgeBlock(t *testing.T) {
+	testcase, _, api := setupNEP5PledgeAPI(t)
+	defer testcase(t)
+
+	a1 := account1.Address()
+	a2 := account2.Address()
+
+	param := &PledgeParam{
+		Beneficial:    a2,
+		PledgeAddress: a1,
+		Amount:        types.Balance{Int: big.NewInt(100 * 1e8)},
+		PType:         "vote",
+		NEP5TxId:      mock.Hash().String(),
 	}
-	_, err = pledgeAPI.GetAllPledgeInfo()
-	if err != nil {
-		t.Fatal(err)
+
+	type fields struct {
+		logger   *zap.SugaredLogger
+		l        ledger.Store
+		pledge   *contract.Nep5Pledge
+		withdraw *contract.WithdrawNep5Pledge
+		cc       *qlcchainctx.ChainContext
 	}
-	_, err = pledgeAPI.GetTotalPledgeAmount()
-	if err != nil {
-		t.Fatal(err)
+	type args struct {
+		param *PledgeParam
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				logger:   api.logger,
+				l:        api.l,
+				pledge:   api.pledge,
+				withdraw: api.withdraw,
+				cc:       api.cc,
+			},
+			args: args{
+				param: param,
+			},
+			want:    nil,
+			wantErr: false,
+		}, {
+			name: "f1",
+			fields: fields{
+				logger:   api.logger,
+				l:        api.l,
+				pledge:   api.pledge,
+				withdraw: api.withdraw,
+				cc:       api.cc,
+			},
+			args: args{
+				param: &PledgeParam{
+					Beneficial:    a2,
+					PledgeAddress: mock.Address(),
+					Amount:        types.Balance{Int: big.NewInt(100 * 1e8)},
+					PType:         "vote",
+					NEP5TxId:      mock.Hash().String(),
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				logger:   api.logger,
+				l:        api.l,
+				pledge:   api.pledge,
+				withdraw: api.withdraw,
+				cc:       api.cc,
+			},
+			args: args{
+				param: &PledgeParam{
+					Beneficial:    a2,
+					PledgeAddress: a1,
+					Amount:        types.Balance{Int: big.NewInt(math.MaxInt64)},
+					PType:         "vote",
+					NEP5TxId:      mock.Hash().String(),
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		}, {
+			name: "f3",
+			fields: fields{
+				logger:   api.logger,
+				l:        api.l,
+				pledge:   api.pledge,
+				withdraw: api.withdraw,
+				cc:       api.cc,
+			},
+			args: args{
+				param: nil,
+			},
+			want:    nil,
+			wantErr: true,
+		}, {
+			name: "f4",
+			fields: fields{
+				logger:   api.logger,
+				l:        api.l,
+				pledge:   api.pledge,
+				withdraw: api.withdraw,
+				cc:       api.cc,
+			},
+			args: args{
+				param: &PledgeParam{
+					Beneficial:    types.ZeroAddress,
+					PledgeAddress: a1,
+					Amount:        types.Balance{Int: big.NewInt(math.MaxInt64)},
+					PType:         "vote",
+					NEP5TxId:      mock.Hash().String(),
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &NEP5PledgeAPI{
+				logger:   tt.fields.logger,
+				l:        tt.fields.l,
+				pledge:   tt.fields.pledge,
+				withdraw: tt.fields.withdraw,
+				cc:       tt.fields.cc,
+			}
+			_, err := p.GetPledgeBlock(tt.args.param)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetPledgeData() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			//if !reflect.DeepEqual(got, tt.want) {
+			//	t.Errorf("GetPledgeData() got = %v, want %v", got, tt.want)
+			//}
+		})
+	}
+}
+
+func TestNEP5PledgeAPI_GetPledgeData(t *testing.T) {
+	testcase, _, api := setupNEP5PledgeAPI(t)
+	defer testcase(t)
+
+	a1 := account1.Address()
+	a2 := account2.Address()
+
+	param := &PledgeParam{
+		Beneficial:    a2,
+		PledgeAddress: a1,
+		Amount:        types.Balance{Int: big.NewInt(100 * 1e8)},
+		PType:         "vote",
+		NEP5TxId:      mock.Hash().String(),
+	}
+
+	type fields struct {
+		logger   *zap.SugaredLogger
+		l        ledger.Store
+		pledge   *contract.Nep5Pledge
+		withdraw *contract.WithdrawNep5Pledge
+		cc       *qlcchainctx.ChainContext
+	}
+	type args struct {
+		param *PledgeParam
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				logger:   api.logger,
+				l:        api.l,
+				pledge:   api.pledge,
+				withdraw: api.withdraw,
+				cc:       api.cc,
+			},
+			args: args{
+				param: param,
+			},
+			want:    nil,
+			wantErr: false,
+		}, {
+			name: "f1",
+			fields: fields{
+				logger:   api.logger,
+				l:        api.l,
+				pledge:   api.pledge,
+				withdraw: api.withdraw,
+				cc:       api.cc,
+			},
+			args: args{
+				param: nil,
+			},
+			want:    nil,
+			wantErr: true,
+		}, {
+			name: "f2",
+			fields: fields{
+				logger:   api.logger,
+				l:        api.l,
+				pledge:   api.pledge,
+				withdraw: api.withdraw,
+				cc:       api.cc,
+			},
+			args: args{
+				param: &PledgeParam{
+					Beneficial:    a2,
+					PledgeAddress: a1,
+					Amount:        types.Balance{Int: big.NewInt(100 * 1e8)},
+					PType:         "invalid",
+					NEP5TxId:      mock.Hash().String(),
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &NEP5PledgeAPI{
+				logger:   tt.fields.logger,
+				l:        tt.fields.l,
+				pledge:   tt.fields.pledge,
+				withdraw: tt.fields.withdraw,
+				cc:       tt.fields.cc,
+			}
+			_, err := p.GetPledgeData(tt.args.param)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetPledgeData() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			//if !reflect.DeepEqual(got, tt.want) {
+			//	t.Errorf("GetPledgeData() got = %v, want %v", got, tt.want)
+			//}
+		})
 	}
 }

@@ -34,10 +34,10 @@ jobs:
             exit 1
           fi
           go vet `go list ./... | egrep -v "platform"`
-          go vet -tags testnet -v `go list ./... | egrep -v "platform"`
+          go vet -tags testnet -v `go list ./...`
           echo "" > "coverage.txt"
-          for d in $(go list ./... | egrep -v "vendor|edwards25519"); do
-            go test -coverprofile=profile.out "$d"
+          for d in $(go list ./... | egrep -v 'mocks'); do
+            go test -coverprofile=profile.out -covermode=atomic "$d"
             if [[ -f profile.out ]]; then
               cat profile.out >> "coverage.txt"
               rm profile.out

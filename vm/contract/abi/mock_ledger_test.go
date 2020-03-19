@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cfg "github.com/qlcchain/go-qlc/config"

@@ -324,7 +324,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 
 	am, _ := ctx.Ledger.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
 	if am == nil {
-		return nil, fmt.Errorf("%s do not found", pledgeInfo.PledgeInfo.PledgeAddress.String())
+		return nil, fmt.Errorf("can not find %s", pledgeInfo.PledgeInfo.PledgeAddress.String())
 	}
 	tm := am.Token(cfg.ChainToken())
 	if tm != nil {
@@ -384,5 +384,30 @@ func (*WithdrawNep5Pledge) GetTargetReceiver(ctx *vmstore.VMContext, block *type
 		}
 	} else {
 		return tr, err
+	}
+}
+
+// SetPledgeTime only for test
+func SetPledgeTime(y, m, d, h, i, s int) {
+	t := &timeSpan{
+		years:   y,
+		months:  m,
+		days:    d,
+		hours:   h,
+		minutes: i,
+		seconds: s,
+	}
+	config = map[cabi.PledgeType]pledgeInfo{
+		cabi.Network: {
+			pledgeTime:   t, // 3 minutes
+			pledgeAmount: big.NewInt(10 * 1e8),
+		},
+		cabi.Vote: {
+			pledgeTime:   t, //  10 minutes
+			pledgeAmount: big.NewInt(1 * 1e8),
+		},
+		cabi.Oracle: {
+			pledgeAmount: big.NewInt(3 * 1e8), // 3M
+		},
 	}
 }

@@ -9632,8 +9632,8 @@ func TestGetAssetParam(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err = SaveAssetParam(ctx, abi); err == nil {
-			t.Fatal("should be error")
+		if err = SaveAssetParam(ctx, abi); err != nil {
+			t.Fatal(err)
 		}
 	}
 

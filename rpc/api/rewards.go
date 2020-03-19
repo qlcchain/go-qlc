@@ -26,7 +26,7 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type RewardsApi struct {
+type RewardsAPI struct {
 	logger           *zap.SugaredLogger
 	ledger           ledger.Store
 	rewards          *contract.AirdropRewards
@@ -41,8 +41,8 @@ type sendParam struct {
 	tm *types.TokenMeta
 }
 
-func NewRewardsApi(l ledger.Store, cc *chainctx.ChainContext) *RewardsApi {
-	api := &RewardsApi{
+func NewRewardsAPI(l ledger.Store, cc *chainctx.ChainContext) *RewardsAPI {
+	api := &RewardsAPI{
 		ledger:           l,
 		logger:           log.NewLogger("api_rewards"),
 		rewards:          &contract.AirdropRewards{},
@@ -60,7 +60,7 @@ type RewardsParam struct {
 	To     types.Address `json:"to"`
 }
 
-func (r *RewardsApi) GetUnsignedRewardData(param *RewardsParam) (types.Hash, error) {
+func (r *RewardsAPI) GetUnsignedRewardData(param *RewardsParam) (types.Hash, error) {
 	if param == nil {
 		return types.ZeroHash, ErrParameterNil
 	}
@@ -69,7 +69,7 @@ func (r *RewardsApi) GetUnsignedRewardData(param *RewardsParam) (types.Hash, err
 	})
 }
 
-func (r *RewardsApi) GetUnsignedConfidantData(param *RewardsParam) (types.Hash, error) {
+func (r *RewardsAPI) GetUnsignedConfidantData(param *RewardsParam) (types.Hash, error) {
 	if param == nil {
 		return types.ZeroHash, ErrParameterNil
 	}
@@ -79,7 +79,7 @@ func (r *RewardsApi) GetUnsignedConfidantData(param *RewardsParam) (types.Hash, 
 	})
 }
 
-func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn func(param *RewardsParam) ([]byte, error)) (types.Hash, error) {
+func (r *RewardsAPI) generateHash(param *RewardsParam, methodName string, fn func(param *RewardsParam) ([]byte, error)) (types.Hash, error) {
 	if param == nil {
 		return types.ZeroHash, ErrParameterNil
 	}
@@ -128,12 +128,13 @@ func (r *RewardsApi) generateHash(param *RewardsParam, methodName string, fn fun
 	}
 }
 
-func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signature) (*types.StateBlock, error) {
-	if param == nil || sign == nil {
-		return nil, ErrParameterNil
-	}
+func (r *RewardsAPI) GetSendRewardBlock(param *RewardsParam, sign *types.Signature) (*types.StateBlock, error) {
 	if !r.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
+	}
+
+	if param == nil || sign == nil {
+		return nil, ErrParameterNil
 	}
 
 	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedAirdropRewards, func(param *RewardsParam) (types.Hash, error) {
@@ -153,12 +154,13 @@ func (r *RewardsApi) GetSendRewardBlock(param *RewardsParam, sign *types.Signatu
 	}
 }
 
-func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Signature) (*types.StateBlock, error) {
-	if param == nil || sign == nil {
-		return nil, ErrParameterNil
-	}
+func (r *RewardsAPI) GetSendConfidantBlock(param *RewardsParam, sign *types.Signature) (*types.StateBlock, error) {
 	if !r.cc.IsPoVDone() {
 		return nil, chainctx.ErrPoVNotFinish
+	}
+
+	if param == nil || sign == nil {
+		return nil, ErrParameterNil
 	}
 
 	if p, err := r.verifySign(param, sign, cabi.MethodNameUnsignedConfidantRewards, func(param *RewardsParam) (types.Hash, error) {
@@ -171,7 +173,7 @@ func (r *RewardsApi) GetSendConfidantBlock(param *RewardsParam, sign *types.Sign
 	}
 }
 
-func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, methodName string, fn func(param *RewardsParam) (types.Hash, error)) (*sendParam, error) {
+func (r *RewardsAPI) verifySign(param *RewardsParam, sign *types.Signature, methodName string, fn func(param *RewardsParam) (types.Hash, error)) (*sendParam, error) {
 	if param == nil || sign == nil {
 		return nil, ErrParameterNil
 	}
@@ -229,7 +231,7 @@ func (r *RewardsApi) verifySign(param *RewardsParam, sign *types.Signature, meth
 	}
 }
 
-func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.StateBlock, error) {
+func (r *RewardsAPI) generateSend(param *sendParam, methodName string) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -260,7 +262,7 @@ func (r *RewardsApi) generateSend(param *sendParam, methodName string) (*types.S
 	}
 }
 
-func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock, error) {
+func (r *RewardsAPI) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock, error) {
 	if send == nil {
 		return nil, ErrParameterNil
 	}
@@ -273,7 +275,7 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 		return nil, err
 	}
 
-	rev := &types.StateBlock{}
+	rev := &types.StateBlock{Timestamp: common.TimeNow().Unix()}
 
 	var result []*contract.ContractBlock
 
@@ -290,7 +292,6 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 				return nil, fmt.Errorf("get pov header error: %s", err)
 			}
 			rev.PoVHeight = povHeader.GetHeight()
-			rev.Timestamp = common.TimeNow().Unix()
 			h := result[0].VMContext.Cache.Trie().Hash()
 			if h != nil {
 				rev.Extra = *h
@@ -304,26 +305,26 @@ func (r *RewardsApi) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 	}
 }
 
-func (r *RewardsApi) IsAirdropRewards(data []byte) bool {
+func (r *RewardsAPI) IsAirdropRewards(data []byte) bool {
 	if s, err := checkContractMethod(data); err == nil && s == cabi.MethodNameAirdropRewards {
 		return true
 	}
 	return false
 }
 
-func (r *RewardsApi) GetTotalRewards(txId string) (*big.Int, error) {
+func (r *RewardsAPI) GetTotalRewards(txId string) (*big.Int, error) {
 	return cabi.GetTotalRewards(vmstore.NewVMContext(r.ledger), txId)
 }
 
-func (r *RewardsApi) GetRewardsDetail(txId string) ([]*cabi.RewardsInfo, error) {
+func (r *RewardsAPI) GetRewardsDetail(txId string) ([]*cabi.RewardsInfo, error) {
 	return cabi.GetRewardsDetail(vmstore.NewVMContext(r.ledger), txId)
 }
 
-func (r *RewardsApi) GetConfidantRewards(confidant types.Address) (map[string]*big.Int, error) {
+func (r *RewardsAPI) GetConfidantRewards(confidant types.Address) (map[string]*big.Int, error) {
 	return cabi.GetConfidantRewords(vmstore.NewVMContext(r.ledger), confidant)
 }
 
-func (r *RewardsApi) GetConfidantRewordsDetail(confidant types.Address) (map[string][]*cabi.RewardsInfo, error) {
+func (r *RewardsAPI) GetConfidantRewordsDetail(confidant types.Address) (map[string][]*cabi.RewardsInfo, error) {
 	return cabi.GetConfidantRewordsDetail(vmstore.NewVMContext(r.ledger), confidant)
 }
 
