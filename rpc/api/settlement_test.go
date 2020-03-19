@@ -85,7 +85,7 @@ func setupSettlementAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifi
 	api := NewSettlement(l, cc)
 
 	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
 

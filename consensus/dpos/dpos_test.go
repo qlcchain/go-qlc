@@ -191,7 +191,7 @@ func (n *Node) startLedgerService() {
 
 func (n *Node) startConsensusService() {
 	DPoS := NewDPoS(n.ctx.ConfigFile())
-	DPoS.localRepAccount.Store(mock.TestAccount.Address(), mock.TestAccount)
+	DPoS.localRepAccount.Store(TestAccount.Address(), TestAccount)
 	cons := consensus.NewConsensus(DPoS, n.ctx.ConfigFile())
 	n.cons = cons
 	n.dps = DPoS

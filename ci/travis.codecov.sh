@@ -2,7 +2,7 @@
 
 set -e
 
-tags=(mainnet testnet)
+tags=(testnet mainnet)
 
 for t in "${tags[@]}"; do
   echo "run test cases by $t"

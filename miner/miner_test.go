@@ -1,12 +1,14 @@
 package miner
 
 import (
-	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/qlcchain/go-qlc/common/merkle"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/AsynkronIT/protoactor-go/actor"
+
+	"github.com/qlcchain/go-qlc/common/merkle"
 
 	"github.com/google/uuid"
 

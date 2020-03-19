@@ -40,7 +40,7 @@ func setupMintageAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifier,
 	api := NewMintageApi(cc.ConfigFile(), l)
 
 	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
 

@@ -9,6 +9,7 @@ package chain
 
 import (
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -160,4 +161,54 @@ func (as *AutoReceiveService) Stop() error {
 
 func (as *AutoReceiveService) Status() int32 {
 	return as.State()
+}
+
+// ReceiveBlock generate receive block
+func ReceiveBlock(sendBlock *types.StateBlock, account *types.Account, cc *context.ChainContext) (err error) {
+	rpcService, err := cc.Service(context.RPCService)
+	if err != nil {
+		return
+	}
+
+	ledgerService, err := cc.Service(context.LedgerService)
+	if err != nil {
+		return
+	}
+
+	l := ledgerService.(*LedgerService).Ledger
+
+	if rpcService.Status() != int32(common.Started) || ledgerService.Status() != int32(common.Started) {
+		return fmt.Errorf("rpc or ledger service not started")
+	}
+
+	client, err := rpcService.(*RPCService).RPC().Attach()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if client != nil {
+			client.Close()
+		}
+	}()
+	var receiveBlock *types.StateBlock
+	if sendBlock.Type == types.Send {
+		receiveBlock, err = l.GenerateReceiveBlock(sendBlock, account.PrivateKey())
+		if err != nil {
+			return
+		}
+	} else if sendBlock.Type == types.ContractSend && sendBlock.Link == types.Hash(types.RewardsAddress) {
+		sendHash := sendBlock.GetHash()
+		err = client.Call(&receiveBlock, "rewards_getReceiveRewardBlock", &sendHash)
+		if err != nil {
+			return
+		}
+	}
+	if receiveBlock != nil {
+		var h types.Hash
+		err = client.Call(&h, "ledger_process", &receiveBlock)
+		if err != nil {
+			return
+		}
+	}
+	return nil
 }

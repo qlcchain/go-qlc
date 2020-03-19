@@ -43,7 +43,7 @@ func setupDefaultLedgerAPI(t *testing.T) (func(t *testing.T), ledger.Store, *Led
 
 	var blocks []*types.StateBlock
 
-	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
 	for i := range blocks {
@@ -641,7 +641,7 @@ func TestLedgerAPI_Chain(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
 	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
 	r, err := ledgerApi.Chain(blocks[6].GetHash(), -1)
