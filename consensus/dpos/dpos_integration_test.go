@@ -298,6 +298,5 @@ func TestGap(t *testing.T) {
 	n2.ctx.EventBus().Publish(topic.EventPublish, &topic.EventPublishMsg{Block: cs1, From: "123"})
 	n2.ctx.EventBus().Publish(topic.EventPublish, &topic.EventPublishMsg{Block: cr1, From: "123"})
 
-	time.Sleep(3 * time.Second)
 	n2.WaitBlocksConfirmed(hashes)
 }

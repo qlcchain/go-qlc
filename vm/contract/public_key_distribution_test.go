@@ -737,20 +737,6 @@ func TestPKDReward_ProcessSend(t *testing.T) {
 		t.Fatal("ProcessSend pendInfo amount not equal", pendInfo.Amount, param1.RewardAmount)
 	}
 
-	doPendKey, doPendInfo, err := r.DoPending(sendBlk)
-	if doPendKey == nil {
-		t.Fatal("DoPending pendKey is nil")
-	}
-	if doPendKey.Address != param1.Account {
-		t.Fatal("DoPending pendKey address not equal", doPendKey.Address, param1.Account)
-	}
-	if doPendInfo == nil {
-		t.Fatal("DoPending pendInfo is nil")
-	}
-	if doPendInfo.Amount.Compare(types.NewBalanceFromBigInt(param1.RewardAmount)) != types.BalanceCompEqual {
-		t.Fatal("DoPending pendInfo amount not equal", doPendInfo.Amount, param1.RewardAmount)
-	}
-
 	recvBlk := new(types.StateBlock)
 	retConBlks, err := r.DoReceive(ctx, recvBlk, sendBlk)
 	if err != nil {
