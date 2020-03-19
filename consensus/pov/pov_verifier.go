@@ -94,14 +94,6 @@ func NewPovVerifier(store ledger.Store, chain PovVerifierChainReader, cs Consens
 	return &PovVerifier{store: store, chain: chain, cs: cs, logger: log.NewLogger("pov_verifier")}
 }
 
-func (pv *PovVerifier) Process(block types.Block) (process.ProcessResult, error) {
-	return process.Other, nil
-}
-
-func (pv *PovVerifier) BlockCheck(block types.Block) (process.ProcessResult, error) {
-	return process.Other, nil
-}
-
 func (pv *PovVerifier) VerifyNet(block *types.PovBlock) *PovVerifyStat {
 	stat := NewPovVerifyStat()
 

@@ -97,7 +97,7 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 	}
 
 	blk2, _ := mock.GeneratePovBlock(blk1, 10)
-	setupPovTxBlock2Ledger(md, blk2)
+	setupPovTxBlock2Ledger(md.ledger, blk2)
 	err = chain.InsertBlock(blk2, statDB)
 	if err != nil {
 		t.Fatal(err)
@@ -137,6 +137,20 @@ func TestPovChain_InsertBlocks(t *testing.T) {
 	retHdr3 := chain.GetHeaderByHeight(blk3.GetHeight())
 	if retHdr3 == nil || retHdr3.GetHash() != blk3.GetHash() {
 		t.Fatalf("failed to get header3 by height %d", blk3.GetHeight())
+	}
+
+	chkHdr3 := chain.HasHeader(blk3.GetHash(), blk3.GetHeight())
+	if !chkHdr3 {
+		t.Fatalf("failed to HasHeader")
+	}
+
+	retTd3 := chain.GetBlockTDByHash(blk3.GetHash())
+	if retTd3 == nil {
+		t.Fatalf("failed to GetBlockTDByHash")
+	}
+	retTd3 = chain.GetBlockTDByHashAndHeight(blk3.GetHash(), blk3.GetHeight())
+	if retTd3 == nil {
+		t.Fatalf("failed to GetBlockTDByHashAndHeight")
 	}
 
 	chain.CalcPastMedianTime(blk3.GetHeader())
@@ -230,28 +244,28 @@ func TestPovChain_ForkChain_WithTx(t *testing.T) {
 	statDB := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), stateHash)
 
 	blk1, _ := mock.GeneratePovBlock(latestBlk, 5)
-	setupPovTxBlock2Ledger(md, blk1)
+	setupPovTxBlock2Ledger(md.ledger, blk1)
 	err := chain.InsertBlock(blk1, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk21, _ := mock.GeneratePovBlock(blk1, 5)
-	setupPovTxBlock2Ledger(md, blk21)
+	setupPovTxBlock2Ledger(md.ledger, blk21)
 	err = chain.InsertBlock(blk21, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk22, _ := mock.GeneratePovBlock(blk1, 5)
-	setupPovTxBlock2Ledger(md, blk22)
+	setupPovTxBlock2Ledger(md.ledger, blk22)
 	err = chain.InsertBlock(blk22, statDB)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	blk3, _ := mock.GeneratePovBlock(blk22, 5)
-	setupPovTxBlock2Ledger(md, blk3)
+	setupPovTxBlock2Ledger(md.ledger, blk3)
 	err = chain.InsertBlock(blk3, statDB)
 	if err != nil {
 		t.Fatal(err)
@@ -288,7 +302,7 @@ func TestPovChain_TrieState(t *testing.T) {
 	contractBlks := mock.ContractBlocks()
 	blk1Txs[1].Block.Type = types.Online
 	blk1Txs[2].Block = contractBlks[0]
-	setupPovTxBlock2Ledger(md, blk1)
+	setupPovTxBlock2Ledger(md.ledger, blk1)
 
 	accTxsBlk1 := blk1.GetAccountTxs()
 	gsdb := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), prevStateHash)
@@ -323,13 +337,46 @@ func TestPovChain_TrieState(t *testing.T) {
 		}
 	}
 
+	hdr1Copy := blk1.GetHeader().Copy()
+	hdr1Copy.CbTx.StateHash = curStatHash
+	chain.GetAllOnlineRepStates(hdr1Copy)
+
 	_ = chain.Stop()
 }
 
-func setupPovTxBlock2Ledger(md *povChainMockData, povBlock *types.PovBlock) {
-	for _, txPov := range povBlock.Body.Txs {
-		if txPov.Block != nil {
-			_ = md.ledger.AddStateBlock(txPov.Block)
-		}
-	}
+func TestPovChain_TrieStateDetail(t *testing.T) {
+	teardownTestCase, md := setupPovChainTestCase(t)
+	defer teardownTestCase(t)
+
+	chain := NewPovBlockChain(md.config, md.eb, md.ledger)
+
+	_ = chain.Init()
+	_ = chain.Start()
+
+	genesisBlk := chain.GenesisBlock()
+
+	povBlk, _ := mock.GeneratePovBlock(genesisBlk, 1)
+	povTxs := povBlk.GetAllTxs()
+
+	gsdb := statedb.NewPovGlobalStateDB(md.ledger.DBStore(), genesisBlk.GetStateHash())
+
+	// DPKI Oracle Method
+	povTxs[1].Block.Type = types.ContractSend
+	copy(povTxs[1].Block.Link[:], types.PubKeyDistributionAddress[:])
+	povTxs[1].Block.Data = []byte{32, 106, 90, 35}
+
+	var oldAs *types.PovAccountState
+	var newAs = types.NewPovAccountState()
+	_ = chain.updateAccountState(gsdb, povTxs[1], oldAs, newAs)
+	_ = chain.updateRepState(gsdb, povTxs[1], oldAs, newAs)
+
+	var newAs2 = newAs.Clone()
+	_ = chain.updateAccountState(gsdb, povTxs[1], newAs, newAs2)
+	_ = chain.updateRepState(gsdb, povTxs[1], newAs, newAs2)
+
+	_ = chain.updateRepOnline(povBlk.GetHeight(), gsdb, povTxs[1])
+
+	_ = chain.updateContractState(povBlk.GetHeight(), gsdb, povTxs[1])
+
+	_ = chain.Stop()
 }
