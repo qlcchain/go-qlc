@@ -1,11 +1,12 @@
 package miner
 
 import (
+	"time"
+
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"go.uber.org/zap"
-	"time"
 
 	"github.com/qlcchain/go-qlc/common/topic"
 

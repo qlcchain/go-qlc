@@ -45,4 +45,3 @@ func TestGenericKey_Serialize(t *testing.T) {
 		}
 	}
 }
-

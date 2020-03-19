@@ -17,7 +17,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -25,11 +24,10 @@ import (
 
 type ContractApi struct {
 	logger *zap.SugaredLogger
-	ledger ledger.Store
 }
 
-func NewContractApi(ledger ledger.Store) *ContractApi {
-	return &ContractApi{logger: log.NewLogger("api_contract"), ledger: ledger}
+func NewContractApi() *ContractApi {
+	return &ContractApi{logger: log.NewLogger("api_contract")}
 }
 
 func (c *ContractApi) GetAbiByContractAddress(address types.Address) (string, error) {
@@ -83,8 +81,10 @@ func convertOne(param string, t abi.Type) (interface{}, error) {
 		return convertToUint(param, t.Size)
 	} else if typeString == "address" {
 		return types.HexToAddress(param)
-	} else if typeString == "tokenId" {
+	} else if typeString == "tokenId" || typeString == "hash" {
 		return types.NewHash(param)
+	} else if typeString == "signature" {
+		return types.NewSignature(param)
 	} else if typeString == "string" {
 		return param, nil
 	} else if typeString == "bytes" {
@@ -108,10 +108,12 @@ func convertToArray(param string, t abi.Type) (interface{}, error) {
 		return convertToUintArray(param, *t.Elem)
 	} else if typeString == "address" {
 		return convertToAddressArray(param)
-	} else if typeString == "tokenId" {
+	} else if typeString == "tokenId" || typeString == "hash" {
 		return convertToTokenIdArray(param)
 	} else if typeString == "string" {
 		return convertToStringArray(param)
+	} else if typeString == "signature" {
+		return convertToSignatureArray(param)
 	}
 	return nil, errors.New(typeString + " array type not supported")
 }
@@ -199,8 +201,17 @@ func convertToAddressArray(param string) (interface{}, error) {
 	}
 	return resultList, nil
 }
+
 func convertToTokenIdArray(param string) (interface{}, error) {
-	resultList := types.ZeroHash
+	resultList := make([]types.Hash, 0)
+	if err := json.Unmarshal([]byte(param), &resultList); err != nil {
+		return nil, err
+	}
+	return resultList, nil
+}
+
+func convertToSignatureArray(param string) (interface{}, error) {
+	resultList := make([]types.Signature, 0)
 	if err := json.Unmarshal([]byte(param), &resultList); err != nil {
 		return nil, err
 	}
@@ -256,14 +267,6 @@ func convertToUint(param string, size int) (interface{}, error) {
 		return uint64(bigInt.Uint64()), nil
 	} else {
 		return bigInt, nil
-	}
-}
-
-func convertToBytes(param string, size int) (interface{}, error) {
-	if size == 0 {
-		return convertToDynamicBytes(param)
-	} else {
-		return convertToFixedBytes(param, size)
 	}
 }
 
