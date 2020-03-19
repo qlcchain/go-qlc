@@ -147,6 +147,8 @@ func TestPovImpl_ManyBlocks(t *testing.T) {
 
 	povImpl.chain.CalcBlockRewardByStakingBonus(povImpl.chain.LatestHeader())
 
+	povImpl.chain.GetBlockLocator(types.ZeroHash)
+
 	err = povImpl.Stop()
 	if err != nil {
 		t.Fatal(err)

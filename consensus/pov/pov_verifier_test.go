@@ -46,7 +46,7 @@ func (c *mockPovVerifierChainReader) CalcPastMedianTime(prevHeader *types.PovHea
 }
 
 func (c *mockPovVerifierChainReader) CalcBlockReward(header *types.PovHeader) (types.Balance, types.Balance, error) {
-	return types.ZeroBalance, types.ZeroBalance, nil
+	return types.NewBalance(common.PovMinerRewardPerBlockInt.Int64()), types.NewBalance(common.PovMinerRewardPerBlockInt.Int64()), nil
 }
 
 func (c *mockPovVerifierChainReader) TransitStateDB(height uint64, txs []*types.PovTransaction, gsdb *statedb.PovGlobalStateDB) error {
@@ -148,6 +148,19 @@ func TestPovVerifier_VerifyFull(t *testing.T) {
 	if stat1.Result != process.Progress {
 		//t.Fatalf("result %s err %s", stat1.Result, stat1.ErrMsg)
 	}
+}
+
+func TestPovVerifier_Detail(t *testing.T) {
+	teardownTestCase, md := setupPovVerifierTestCase(t)
+	defer teardownTestCase(t)
+
+	verifier := NewPovVerifier(md.ledger, md.chainV, md.cs)
+
+	blk1, _ := mock.GeneratePovBlock(nil, 5)
+	setupPovTxBlock2Ledger(md.ledger, blk1)
+
+	stat := NewPovVerifyStat()
+	verifier.verifyTransactions(blk1, stat)
 }
 
 func TestPovVerifier_VerifyFull_Aux(t *testing.T) {
