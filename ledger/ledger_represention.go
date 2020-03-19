@@ -14,6 +14,8 @@ type RepresentationStore interface {
 	GetRepresentations(fn func(types.Address, *types.Benefit) error) error
 	CountRepresentations() (uint64, error)
 
+	AddRepresentation(address types.Address, diff *types.Benefit, c *Cache) error
+	SubRepresentation(address types.Address, diff *types.Benefit, c *Cache) error
 	GetOnlineRepresentations() ([]types.Address, error)
 	SetOnlineRepresentations(addresses []*types.Address) error
 }

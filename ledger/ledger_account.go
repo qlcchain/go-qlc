@@ -20,6 +20,8 @@ type AccountStore interface {
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error)
 
+	AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache *Cache) error
+	DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *Cache) error
 	GetTokenMetaConfirmed(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 
 	AddOrUpdateAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error
@@ -275,11 +277,7 @@ func (l *Ledger) DeleteAccountMetaCache(address types.Address, batch ...storage.
 		return err
 	}
 
-	if err := b.Delete(key); err != nil {
-		return err
-	}
-
-	return nil
+	return b.Delete(key)
 }
 
 func (l *Ledger) HasAccountMetaCache(address types.Address) (bool, error) {

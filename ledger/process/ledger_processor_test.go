@@ -129,6 +129,11 @@ func TestProcess_Exception(t *testing.T) {
 		t.Fatal(r, err)
 	}
 
+	// invalid type
+	if r, err := lv.BlockCheck(&types.StateBlock{}); err == nil {
+		t.Fatal(r, err)
+	}
+
 	// open
 	bc[0].Signature, _ = types.NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600")
 	if r, err := lv.BlockCheck(bc[0]); err != nil || r != BadSignature {

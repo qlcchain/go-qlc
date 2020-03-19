@@ -22,7 +22,12 @@ type UncheckedBlockStore interface {
 	//GetGapPovBlock(height uint64) (types.StateBlockList, []types.SynchronizedKind, error)
 	//CountGapPovBlocks() uint64
 	DeleteGapPovBlock(height uint64, hash types.Hash) error
+	WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlockWalkFunc) error
 	WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error
+
+	AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error
+	DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error
+	GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error
 }
 
 func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) storage.KeyPrefix {

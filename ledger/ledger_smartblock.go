@@ -6,6 +6,7 @@ import (
 )
 
 type SmartBlockStore interface {
+	AddSmartContractBlock(value *types.SmartContractBlock) error
 	HasSmartContractBlock(key types.Hash) (bool, error)
 	GetSmartContractBlock(key types.Hash) (*types.SmartContractBlock, error)
 	GetSmartContractBlocks(fn func(block *types.SmartContractBlock) error) error

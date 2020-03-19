@@ -166,7 +166,6 @@ func TestLedgerApi_Subscription(t *testing.T) {
 			Type:   config.ChainToken(),
 			Amount: amount,
 		}
-		time.Sleep(1 * time.Second)
 		if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
 			t.Fatal(err)
 		}
@@ -180,38 +179,32 @@ func TestLedgerApi_Subscription(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(r)
-
+	t.Log(r.ID)
 	r, err = ledgerApi.NewBlock(rpc.SubscriptionContextRandom())
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(r)
-
+	t.Log(r.ID)
 	r, err = ledgerApi.BalanceChange(rpc.SubscriptionContextRandom(), ac1.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(r)
-
+	t.Log(r.ID)
 	r, err = ledgerApi.BalanceChange(rpc.SubscriptionContextRandom(), ac1.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(r)
-
+	t.Log(r.ID)
 	r, err = ledgerApi.NewAccountBlock(rpc.SubscriptionContextRandom(), ac1.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(r)
-
+	t.Log(r.ID)
 	r, err = ledgerApi.NewPending(rpc.SubscriptionContextRandom(), ac2.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(r)
-
+	t.Log(r.ID)
 	time.Sleep(3 * time.Second)
 
 }

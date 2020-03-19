@@ -136,10 +136,7 @@ func (l *Ledger) setStateBlock(block *types.StateBlock, c storage.Cache) error {
 	if err := l.setBlockLink(block, c); err != nil {
 		return fmt.Errorf("add block link error: %s", err)
 	}
-	if err := c.Put(k, block.Clone()); err != nil {
-		return err
-	}
-	return nil
+	return c.Put(k, block.Clone())
 }
 
 func (l *Ledger) DeleteStateBlock(key types.Hash, c storage.Cache) error {

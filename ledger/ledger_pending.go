@@ -14,6 +14,7 @@ type PendingStore interface {
 	GetPendingsByToken(account types.Address, token types.Hash, fn func(key *types.PendingKey, value *types.PendingInfo) error) error
 	PendingAmount(address types.Address, token types.Hash) (types.Balance, error)
 	AddPending(key *types.PendingKey, value *types.PendingInfo, c *Cache) error
+	DeletePending(key *types.PendingKey, c *Cache) error
 }
 
 func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, c *Cache) error {

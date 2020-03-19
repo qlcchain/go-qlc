@@ -9,9 +9,12 @@ import (
 )
 
 type PeerInfoStore interface {
+	AddPeerInfo(info *types.PeerInfo) error
 	GetPeerInfo(peerID string) (*types.PeerInfo, error)
 	GetPeersInfo(fn func(info *types.PeerInfo) error) error
 	CountPeersInfo() (uint64, error)
+	UpdatePeerInfo(value *types.PeerInfo) error
+	AddOrUpdatePeerInfo(value *types.PeerInfo) error
 }
 
 func (l *Ledger) AddPeerInfo(info *types.PeerInfo) error {
