@@ -136,10 +136,7 @@ func (l *Ledger) setStateBlock(block *types.StateBlock, c storage.Cache) error {
 	if err := l.setBlockLink(block, c); err != nil {
 		return fmt.Errorf("add block link error: %s", err)
 	}
-	if err := c.Put(k, block.Clone()); err != nil {
-		return err
-	}
-	return nil
+	return c.Put(k, block.Clone())
 }
 
 func (l *Ledger) DeleteStateBlock(key types.Hash, c storage.Cache) error {
@@ -200,7 +197,7 @@ func (l *Ledger) GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*t
 
 func (l *Ledger) GetStateBlocksConfirmed(fn func(*types.StateBlock) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock)
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
 			l.logger.Errorf("deserialize block error: %s", err)
@@ -212,11 +209,6 @@ func (l *Ledger) GetStateBlocksConfirmed(fn func(*types.StateBlock) error) error
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) HasStateBlockConfirmed(hash types.Hash) (bool, error) {
@@ -442,7 +434,7 @@ func (l *Ledger) CountBlocksCache() (uint64, error) {
 
 func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlockCache)
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		blk := new(types.StateBlock)
 		if err := blk.Deserialize(val); err != nil {
 			l.logger.Errorf("deserialize block error: %s", err)
@@ -454,9 +446,4 @@ func (l *Ledger) GetBlockCaches(fn func(*types.StateBlock) error) error {
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-	return nil
 }

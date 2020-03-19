@@ -363,11 +363,7 @@ func (l *Ledger) dumpAccountCache(blockCacheMap map[types.Hash]*Block, db *sqlx.
 	if err != nil {
 		return err
 	}
-	if err := dumpAccounts(accountDumps, tableBlockCache, db); err != nil {
-		return err
-	}
-
-	return nil
+	return dumpAccounts(accountDumps, tableBlockCache, db)
 }
 
 func (l *Ledger) dumpBlockUnchecked(db *sqlx.DB) error {
@@ -390,10 +386,7 @@ func (l *Ledger) dumpBlockUnchecked(db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
-	if err := dumpBlocks(blockUncheckedMap, tableBlockUnchecked, db); err != nil {
-		return err
-	}
-	return nil
+	return dumpBlocks(blockUncheckedMap, tableBlockUnchecked, db)
 }
 
 func (l *Ledger) dumpBlockLink(db *sqlx.DB) error {
@@ -418,10 +411,7 @@ func (l *Ledger) dumpBlockLink(db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
-	if err := dumpBlockLinks(blkLinks, db); err != nil {
-		return err
-	}
-	return nil
+	return dumpBlockLinks(blkLinks, db)
 }
 
 const (
@@ -464,10 +454,7 @@ func dumpBlocks(blocks map[types.Hash]*Block, table byte, db *sqlx.DB) error {
 		rows = append(rows, cs)
 	}
 
-	if err := execSql(tableName, cols, rows, db); err != nil {
-		return err
-	}
-	return nil
+	return execSql(tableName, cols, rows, db)
 }
 
 func dumpAccounts(accounts []*Account, table byte, db *sqlx.DB) error {
@@ -502,10 +489,7 @@ func dumpAccounts(accounts []*Account, table byte, db *sqlx.DB) error {
 		rows = append(rows, cs)
 	}
 
-	if err := execSql(tableName, cols, rows, db); err != nil {
-		return err
-	}
-	return nil
+	return execSql(tableName, cols, rows, db)
 }
 
 func dumpBlockLinks(bLinks []*BlockLink, db *sqlx.DB) error {
@@ -535,10 +519,7 @@ func dumpBlockLinks(bLinks []*BlockLink, db *sqlx.DB) error {
 		rows = append(rows, cs)
 	}
 
-	if err := execSql(tableName, cols, rows, db); err != nil {
-		return err
-	}
-	return nil
+	return execSql(tableName, cols, rows, db)
 }
 
 // create tables schema

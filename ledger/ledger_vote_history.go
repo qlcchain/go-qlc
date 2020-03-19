@@ -5,6 +5,13 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
+type VoteStore interface {
+	AddVoteHistory(hash types.Hash, address types.Address) error
+	HasVoteHistory(hash types.Hash, address types.Address) bool
+	CleanBlockVoteHistory(hash types.Hash) error
+	CleanAllVoteHistory() error
+}
+
 func (l *Ledger) AddVoteHistory(hash types.Hash, address types.Address) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixVoteHistory, hash, address)
 	if err != nil {

@@ -19,6 +19,7 @@ type Store interface {
 	SyncStore
 	DposStore
 	PovStore
+	VoteStore
 	Relation
 	CacheStore
 	LedgerStore

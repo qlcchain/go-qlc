@@ -20,6 +20,8 @@ type AccountStore interface {
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error)
 
+	AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache *Cache) error
+	DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *Cache) error
 	GetTokenMetaConfirmed(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 
 	AddOrUpdateAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error
@@ -157,7 +159,7 @@ func (l *Ledger) GetAccountMetaConfirmed(address types.Address, c ...storage.Cac
 func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixAccount)
 
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		am := new(types.AccountMeta)
 		if err := am.Deserialize(val); err != nil {
 			return err
@@ -167,11 +169,6 @@ func (l *Ledger) GetAccountMetas(fn func(am *types.AccountMeta) error) error {
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) CountAccountMetas() (uint64, error) {
@@ -259,7 +256,7 @@ func (l *Ledger) GetAccountMeteCache(address types.Address, batch ...storage.Bat
 func (l *Ledger) GetAccountMetaCaches(fn func(am *types.AccountMeta) error) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixBlockCacheAccount)
 
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		am := new(types.AccountMeta)
 		if err := am.Deserialize(val); err != nil {
 			return err
@@ -269,11 +266,6 @@ func (l *Ledger) GetAccountMetaCaches(fn func(am *types.AccountMeta) error) erro
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) DeleteAccountMetaCache(address types.Address, batch ...storage.Batch) error {
@@ -285,11 +277,7 @@ func (l *Ledger) DeleteAccountMetaCache(address types.Address, batch ...storage.
 		return err
 	}
 
-	if err := b.Delete(key); err != nil {
-		return err
-	}
-
-	return nil
+	return b.Delete(key)
 }
 
 func (l *Ledger) HasAccountMetaCache(address types.Address) (bool, error) {

@@ -75,87 +75,6 @@ func (l *DebugApi) BlockCaches() ([]types.Hash, error) {
 	return r, nil
 }
 
-func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
-	unchecks := make([]*APIUncheckBlock, 0)
-	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
-		uncheck := new(APIUncheckBlock)
-		uncheck.Block = block
-		uncheck.Hash = block.GetHash()
-		uncheck.Link = link
-
-		switch unCheckType {
-		case types.UncheckedKindPrevious:
-			uncheck.UnCheckType = "GapPrevious"
-		case types.UncheckedKindLink:
-			uncheck.UnCheckType = "GapLink"
-		case types.UncheckedKindTokenInfo:
-			uncheck.UnCheckType = "GapTokenInfo"
-		case types.UncheckedKindPublish:
-			uncheck.UnCheckType = "GapPublish"
-		}
-
-		uncheck.SyncType = sync
-		unchecks = append(unchecks, uncheck)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
-		uncheck := new(APIUncheckBlock)
-		uncheck.Block = blk
-		uncheck.Hash = blk.GetHash()
-		uncheck.UnCheckType = "GapPovHeight"
-		uncheck.SyncType = sync
-		uncheck.Height = height
-		unchecks = append(unchecks, uncheck)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return unchecks, nil
-}
-
-func (l *DebugApi) UncheckBlocksCount() (map[string]int, error) {
-	unchecks := make(map[string]int)
-
-	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
-		hash := block.GetHash()
-		if hash.IsZero() {
-			return fmt.Errorf("invalid block : %s", block)
-		}
-		switch unCheckType {
-		case types.UncheckedKindPrevious:
-			unchecks["GapPrevious"] = unchecks["GapPrevious"] + 1
-		case types.UncheckedKindLink:
-			unchecks["GapLink"] = unchecks["GapLink"] + 1
-		case types.UncheckedKindTokenInfo:
-			unchecks["GapTokenInfo"] = unchecks["GapTokenInfo"] + 1
-		case types.UncheckedKindPublish:
-			unchecks["GapPublish"] = unchecks["GapPublish"] + 1
-		}
-		unchecks["Total"] = unchecks["Total"] + 1
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
-		unchecks["GapPovHeight"] = unchecks["GapPovHeight"] + 1
-		unchecks["Total"] = unchecks["Total"] + 1
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return unchecks, nil
-}
-
 func (l *DebugApi) Action(at storage.ActionType, t int) (string, error) {
 	r, err := l.ledger.Action(at, t)
 	if err != nil {
@@ -166,19 +85,6 @@ func (l *DebugApi) Action(at storage.ActionType, t int) (string, error) {
 	} else {
 		return "", errors.New("error action")
 	}
-}
-
-func (c *DebugApi) LedgerSize() (map[string]int64, error) {
-	result, err := c.ledger.Action(storage.Size, 0)
-	if err != nil {
-		return nil, err
-	}
-	s := result.(map[string]int64)
-	r := make(map[string]int64)
-	r["lsm"] = s["lsm"]
-	r["vlog"] = s["vlog"]
-	r["total"] = s["lsm"] + s["vlog"]
-	return r, nil
 }
 
 func (l *DebugApi) BlockLink(hash types.Hash) (map[string]types.Hash, error) {
@@ -710,6 +616,87 @@ func (l *DebugApi) UncheckBlock(hash types.Hash) ([]*UncheckInfo, error) {
 
 	uis = append(uis, ui)
 	return uis, nil
+}
+
+func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
+	unchecks := make([]*APIUncheckBlock, 0)
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		uncheck := new(APIUncheckBlock)
+		uncheck.Block = block
+		uncheck.Hash = block.GetHash()
+		uncheck.Link = link
+
+		switch unCheckType {
+		case types.UncheckedKindPrevious:
+			uncheck.UnCheckType = "GapPrevious"
+		case types.UncheckedKindLink:
+			uncheck.UnCheckType = "GapLink"
+		case types.UncheckedKindTokenInfo:
+			uncheck.UnCheckType = "GapTokenInfo"
+		case types.UncheckedKindPublish:
+			uncheck.UnCheckType = "GapPublish"
+		}
+
+		uncheck.SyncType = sync
+		unchecks = append(unchecks, uncheck)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		uncheck := new(APIUncheckBlock)
+		uncheck.Block = blk
+		uncheck.Hash = blk.GetHash()
+		uncheck.UnCheckType = "GapPovHeight"
+		uncheck.SyncType = sync
+		uncheck.Height = height
+		unchecks = append(unchecks, uncheck)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return unchecks, nil
+}
+
+func (l *DebugApi) UncheckBlocksCount() (map[string]int, error) {
+	unchecks := make(map[string]int)
+
+	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+		hash := block.GetHash()
+		if hash.IsZero() {
+			return fmt.Errorf("invalid block : %s", block)
+		}
+		switch unCheckType {
+		case types.UncheckedKindPrevious:
+			unchecks["GapPrevious"] = unchecks["GapPrevious"] + 1
+		case types.UncheckedKindLink:
+			unchecks["GapLink"] = unchecks["GapLink"] + 1
+		case types.UncheckedKindTokenInfo:
+			unchecks["GapTokenInfo"] = unchecks["GapTokenInfo"] + 1
+		case types.UncheckedKindPublish:
+			unchecks["GapPublish"] = unchecks["GapPublish"] + 1
+		}
+		unchecks["Total"] = unchecks["Total"] + 1
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+		unchecks["GapPovHeight"] = unchecks["GapPovHeight"] + 1
+		unchecks["Total"] = unchecks["Total"] + 1
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return unchecks, nil
 }
 
 func (l *DebugApi) FeedConsensus() error {

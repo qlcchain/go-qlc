@@ -382,6 +382,11 @@ func TestLedger_Weight(t *testing.T) {
 	ac := addRepresentationWeight(t, l)
 	r := l.Weight(ac.Address)
 	t.Log(r)
+
+	if !l.Weight(mock.Address()).Equal(types.ZeroBalance) {
+		t.Fatal()
+	}
+
 }
 
 func TestLedger_CalculateAmount(t *testing.T) {

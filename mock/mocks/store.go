@@ -52,6 +52,20 @@ func (_m *Store) AddAccountMeta(value *types.AccountMeta, c storage.Cache) error
 	return r0
 }
 
+// AddFrontier provides a mock function with given fields: frontier, c
+func (_m *Store) AddFrontier(frontier *types.Frontier, c *ledger.Cache) error {
+	ret := _m.Called(frontier, c)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.Frontier, *ledger.Cache) error); ok {
+		r0 = rf(frontier, c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AddGapPovBlock provides a mock function with given fields: height, block, sync
 func (_m *Store) AddGapPovBlock(height uint64, block *types.StateBlock, sync types.SynchronizedKind) error {
 	ret := _m.Called(height, block, sync)
@@ -59,6 +73,20 @@ func (_m *Store) AddGapPovBlock(height uint64, block *types.StateBlock, sync typ
 	var r0 error
 	if rf, ok := ret.Get(0).(func(uint64, *types.StateBlock, types.SynchronizedKind) error); ok {
 		r0 = rf(height, block, sync)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// AddGapPublishBlock provides a mock function with given fields: key, blk, sync
+func (_m *Store) AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error {
+	ret := _m.Called(key, blk, sync)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, *types.StateBlock, types.SynchronizedKind) error); ok {
+		r0 = rf(key, blk, sync)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -80,6 +108,34 @@ func (_m *Store) AddOrUpdateAccountMetaCache(value *types.AccountMeta, batch ...
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*types.AccountMeta, ...storage.Batch) error); ok {
 		r0 = rf(value, batch...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// AddOrUpdatePeerInfo provides a mock function with given fields: value
+func (_m *Store) AddOrUpdatePeerInfo(value *types.PeerInfo) error {
+	ret := _m.Called(value)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.PeerInfo) error); ok {
+		r0 = rf(value)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// AddPeerInfo provides a mock function with given fields: info
+func (_m *Store) AddPeerInfo(info *types.PeerInfo) error {
+	ret := _m.Called(info)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.PeerInfo) error); ok {
+		r0 = rf(info)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -262,6 +318,34 @@ func (_m *Store) AddPovTxLookupInBatch(txHash types.Hash, txLookup *types.PovTxL
 	return r0
 }
 
+// AddRepresentation provides a mock function with given fields: address, diff, c
+func (_m *Store) AddRepresentation(address types.Address, diff *types.Benefit, c *ledger.Cache) error {
+	ret := _m.Called(address, diff, c)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Address, *types.Benefit, *ledger.Cache) error); ok {
+		r0 = rf(address, diff, c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// AddSmartContractBlock provides a mock function with given fields: value
+func (_m *Store) AddSmartContractBlock(value *types.SmartContractBlock) error {
+	ret := _m.Called(value)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.SmartContractBlock) error); ok {
+		r0 = rf(value)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AddStateBlock provides a mock function with given fields: block
 func (_m *Store) AddStateBlock(block *types.StateBlock) error {
 	ret := _m.Called(block)
@@ -276,6 +360,20 @@ func (_m *Store) AddStateBlock(block *types.StateBlock) error {
 	return r0
 }
 
+// AddTokenMetaConfirmed provides a mock function with given fields: address, meta, cache
+func (_m *Store) AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache *ledger.Cache) error {
+	ret := _m.Called(address, meta, cache)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Address, *types.TokenMeta, *ledger.Cache) error); ok {
+		r0 = rf(address, meta, cache)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AddUncheckedBlock provides a mock function with given fields: key, value, kind, sync
 func (_m *Store) AddUncheckedBlock(key types.Hash, value *types.StateBlock, kind types.UncheckedKind, sync types.SynchronizedKind) error {
 	ret := _m.Called(key, value, kind, sync)
@@ -283,6 +381,48 @@ func (_m *Store) AddUncheckedBlock(key types.Hash, value *types.StateBlock, kind
 	var r0 error
 	if rf, ok := ret.Get(0).(func(types.Hash, *types.StateBlock, types.UncheckedKind, types.SynchronizedKind) error); ok {
 		r0 = rf(key, value, kind, sync)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// AddUncheckedSyncBlock provides a mock function with given fields: previous, blk
+func (_m *Store) AddUncheckedSyncBlock(previous types.Hash, blk *types.StateBlock) error {
+	ret := _m.Called(previous, blk)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, *types.StateBlock) error); ok {
+		r0 = rf(previous, blk)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// AddUnconfirmedSyncBlock provides a mock function with given fields: hash, blk
+func (_m *Store) AddUnconfirmedSyncBlock(hash types.Hash, blk *types.StateBlock) error {
+	ret := _m.Called(hash, blk)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, *types.StateBlock) error); ok {
+		r0 = rf(hash, blk)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// AddVoteHistory provides a mock function with given fields: hash, address
+func (_m *Store) AddVoteHistory(hash types.Hash, address types.Address) error {
+	ret := _m.Called(hash, address)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, types.Address) error); ok {
+		r0 = rf(hash, address)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -461,6 +601,39 @@ func (_m *Store) CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	}
 
 	return r0, r1
+}
+
+// CleanAllVoteHistory provides a mock function with given fields:
+func (_m *Store) CleanAllVoteHistory() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CleanBlockVoteHistory provides a mock function with given fields: hash
+func (_m *Store) CleanBlockVoteHistory(hash types.Hash) error {
+	ret := _m.Called(hash)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash) error); ok {
+		r0 = rf(hash)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CleanSyncCache provides a mock function with given fields:
+func (_m *Store) CleanSyncCache() {
+	_m.Called()
 }
 
 // Close provides a mock function with given fields:
@@ -792,6 +965,20 @@ func (_m *Store) DeleteAccountMetaCache(key types.Address, batch ...storage.Batc
 	return r0
 }
 
+// DeleteFrontier provides a mock function with given fields: key, c
+func (_m *Store) DeleteFrontier(key types.Hash, c *ledger.Cache) error {
+	ret := _m.Called(key, c)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, *ledger.Cache) error); ok {
+		r0 = rf(key, c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // DeleteGapPovBlock provides a mock function with given fields: height, hash
 func (_m *Store) DeleteGapPovBlock(height uint64, hash types.Hash) error {
 	ret := _m.Called(height, hash)
@@ -799,6 +986,34 @@ func (_m *Store) DeleteGapPovBlock(height uint64, hash types.Hash) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(uint64, types.Hash) error); ok {
 		r0 = rf(height, hash)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeleteGapPublishBlock provides a mock function with given fields: key, blkHash
+func (_m *Store) DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error {
+	ret := _m.Called(key, blkHash)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, types.Hash) error); ok {
+		r0 = rf(key, blkHash)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeletePending provides a mock function with given fields: key, c
+func (_m *Store) DeletePending(key *types.PendingKey, c *ledger.Cache) error {
+	ret := _m.Called(key, c)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.PendingKey, *ledger.Cache) error); ok {
+		r0 = rf(key, c)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -960,6 +1175,20 @@ func (_m *Store) DeletePovTxLookupInBatch(txHash types.Hash, batch storage.Batch
 	return r0
 }
 
+// DeleteTokenMetaConfirmed provides a mock function with given fields: address, tokenType, c
+func (_m *Store) DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *ledger.Cache) error {
+	ret := _m.Called(address, tokenType, c)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Address, types.Hash, *ledger.Cache) error); ok {
+		r0 = rf(address, tokenType, c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // DeleteUncheckedBlock provides a mock function with given fields: key, kind
 func (_m *Store) DeleteUncheckedBlock(key types.Hash, kind types.UncheckedKind) error {
 	ret := _m.Called(key, kind)
@@ -967,6 +1196,34 @@ func (_m *Store) DeleteUncheckedBlock(key types.Hash, kind types.UncheckedKind) 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(types.Hash, types.UncheckedKind) error); ok {
 		r0 = rf(key, kind)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeleteUncheckedSyncBlock provides a mock function with given fields: hash
+func (_m *Store) DeleteUncheckedSyncBlock(hash types.Hash) error {
+	ret := _m.Called(hash)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash) error); ok {
+		r0 = rf(hash)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeleteUnconfirmedSyncBlock provides a mock function with given fields: hash
+func (_m *Store) DeleteUnconfirmedSyncBlock(hash types.Hash) error {
+	ret := _m.Called(hash)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash) error); ok {
+		r0 = rf(hash)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1559,6 +1816,20 @@ func (_m *Store) GetFrontiers() ([]*types.Frontier, error) {
 	}
 
 	return r0, r1
+}
+
+// GetGapPublishBlock provides a mock function with given fields: key, visit
+func (_m *Store) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error {
+	ret := _m.Called(key, visit)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, types.GapPublishBlockWalkFunc) error); ok {
+		r0 = rf(key, visit)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // GetLastGapPovHeight provides a mock function with given fields:
@@ -2472,6 +2743,29 @@ func (_m *Store) GetUncheckedSyncBlock(hash types.Hash) (*types.StateBlock, erro
 	return r0, r1
 }
 
+// GetUnconfirmedSyncBlock provides a mock function with given fields: hash
+func (_m *Store) GetUnconfirmedSyncBlock(hash types.Hash) (*types.StateBlock, error) {
+	ret := _m.Called(hash)
+
+	var r0 *types.StateBlock
+	if rf, ok := ret.Get(0).(func(types.Hash) *types.StateBlock); ok {
+		r0 = rf(hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.StateBlock)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(types.Hash) error); ok {
+		r1 = rf(hash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // HasAccountMetaCache provides a mock function with given fields: key
 func (_m *Store) HasAccountMetaCache(key types.Address) (bool, error) {
 	ret := _m.Called(key)
@@ -2787,6 +3081,20 @@ func (_m *Store) HasUnconfirmedSyncBlock(hash types.Hash) (bool, error) {
 	return r0, r1
 }
 
+// HasVoteHistory provides a mock function with given fields: hash, address
+func (_m *Store) HasVoteHistory(hash types.Hash, address types.Address) bool {
+	ret := _m.Called(hash, address)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(types.Hash, types.Address) bool); ok {
+		r0 = rf(hash, address)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // Iterator provides a mock function with given fields: _a0, _a1, _a2
 func (_m *Store) Iterator(_a0 []byte, _a1 []byte, _a2 func([]byte, []byte) error) error {
 	ret := _m.Called(_a0, _a1, _a2)
@@ -2878,6 +3186,20 @@ func (_m *Store) SetPovTxlScanCursor(height uint64, batch ...storage.Batch) erro
 	return r0
 }
 
+// SubRepresentation provides a mock function with given fields: address, diff, c
+func (_m *Store) SubRepresentation(address types.Address, diff *types.Benefit, c *ledger.Cache) error {
+	ret := _m.Called(address, diff, c)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Address, *types.Benefit, *ledger.Cache) error); ok {
+		r0 = rf(address, diff, c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpdateAccountMeteCache provides a mock function with given fields: value, batch
 func (_m *Store) UpdateAccountMeteCache(value *types.AccountMeta, batch ...storage.Batch) error {
 	_va := make([]interface{}, len(batch))
@@ -2899,6 +3221,20 @@ func (_m *Store) UpdateAccountMeteCache(value *types.AccountMeta, batch ...stora
 	return r0
 }
 
+// UpdatePeerInfo provides a mock function with given fields: value
+func (_m *Store) UpdatePeerInfo(value *types.PeerInfo) error {
+	ret := _m.Called(value)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.PeerInfo) error); ok {
+		r0 = rf(value)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // WalkGapPovBlocks provides a mock function with given fields: visit
 func (_m *Store) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error {
 	ret := _m.Called(visit)
@@ -2906,6 +3242,20 @@ func (_m *Store) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(types.GapPovBlockWalkFunc) error); ok {
 		r0 = rf(visit)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// WalkGapPovBlocksWithHeight provides a mock function with given fields: height, visit
+func (_m *Store) WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlockWalkFunc) error {
+	ret := _m.Called(height, visit)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(uint64, types.GapPovBlockWalkFunc) error); ok {
+		r0 = rf(height, visit)
 	} else {
 		r0 = ret.Error(0)
 	}

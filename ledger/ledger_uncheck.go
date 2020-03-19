@@ -22,7 +22,12 @@ type UncheckedBlockStore interface {
 	//GetGapPovBlock(height uint64) (types.StateBlockList, []types.SynchronizedKind, error)
 	//CountGapPovBlocks() uint64
 	DeleteGapPovBlock(height uint64, hash types.Hash) error
+	WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlockWalkFunc) error
 	WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error
+
+	AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error
+	DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error
+	GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error
 }
 
 func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) storage.KeyPrefix {
@@ -99,7 +104,7 @@ func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (b
 
 func (l *Ledger) getUncheckedBlocks(kind types.UncheckedKind, visit types.UncheckedBlockWalkFunc) error {
 	prefix, _ := storage.GetKeyOfParts(l.uncheckedKindToPrefix(kind))
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		u := new(types.Unchecked)
 		if err := u.Deserialize(val); err != nil {
 			return fmt.Errorf("uncheck deserialize err: %s", err)
@@ -115,10 +120,6 @@ func (l *Ledger) getUncheckedBlocks(kind types.UncheckedKind, visit types.Unchec
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (l *Ledger) GetUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error {
@@ -192,7 +193,7 @@ func (l *Ledger) WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlo
 	var itKey []byte
 	itKey = append(itKey, byte(storage.KeyPrefixUncheckedPovHeight))
 	itKey = append(itKey, util.BE_Uint64ToBytes(height)...)
-	err := l.store.Iterator(itKey, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(itKey, nil, func(key []byte, val []byte) error {
 		u := new(types.Unchecked)
 		if err := u.Deserialize(val); err != nil {
 			return fmt.Errorf("uncheck deserialize err: %s", err)
@@ -200,17 +201,12 @@ func (l *Ledger) WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlo
 
 		return visit(u.Block, height, u.Kind)
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (l *Ledger) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixUncheckedPovHeight)
 
-	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
 		u := new(types.Unchecked)
 		if err := u.Deserialize(val); err != nil {
 			return fmt.Errorf("uncheck deserialize err: %s", err)
@@ -219,11 +215,6 @@ func (l *Ledger) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error {
 		height := util.BE_BytesToUint64(key[1:9])
 		return visit(u.Block, height, u.Kind)
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (l *Ledger) AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error {

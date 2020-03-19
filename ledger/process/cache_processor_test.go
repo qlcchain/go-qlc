@@ -60,12 +60,34 @@ func TestProcess_CacheContractBlockProcess(t *testing.T) {
 	}
 }
 
+func TestProcess_BlockRepeated(t *testing.T) {
+	teardownTestCase, l, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	sendblk := mock.StateBlockWithoutWork()
+	r1 := mock.StateBlockWithoutWork()
+	r1.Link = sendblk.GetHash()
+	r2 := mock.StateBlockWithoutWork()
+	r2.Link = sendblk.GetHash()
+	if err := l.AddBlockCache(r1); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkReceiveBlockRepeat(lv, r2); err != ReceiveRepeated {
+		t.Fatal(err)
+	}
+}
+
 func TestProcess_CacheException(t *testing.T) {
 	teardownTestCase, _, lv := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	genesisBlk := config.GenesisBlock()
 	if r, err := lv.BlockCacheCheck(&genesisBlk); err != nil || r != Progress {
+		t.Fatal(r, err)
+	}
+
+	// invalid type
+	if r, err := lv.BlockCacheCheck(&types.StateBlock{}); err == nil {
 		t.Fatal(r, err)
 	}
 

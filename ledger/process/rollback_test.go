@@ -3,6 +3,7 @@ package process
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -389,8 +390,45 @@ func TestRollback_blockOrderCompare(t *testing.T) {
 	}
 }
 
-//func TestRollback_checkBlockCache(t *testing.T) {
-//	teardownTestCase, _, lv := setupTestCase(t)
-//	defer teardownTestCase(t)
-//
-//}
+func TestRollback_Exception(t *testing.T) {
+	teardownTestCase, _, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	if err := lv.Rollback(mock.Hash()); err != nil {
+		t.Fatal(err)
+	}
+
+	blk := mock.StateBlockWithoutWork()
+	if err := lv.l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := lv.Rollback(blk.GetHash()); err == nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestRollback_CacheException(t *testing.T) {
+	teardownTestCase, _, lv := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := mock.StateBlockWithoutWork()
+	blkLink1 := mock.StateBlockWithoutWork()
+	blkLink1.Link = blk.GetHash()
+	if err := lv.l.AddBlockCache(blkLink1); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(1 * time.Second)
+	blkLink2 := mock.StateBlockWithoutWork()
+	blkLink2.Link = blk.GetHash()
+	blkLink2.Address = blkLink1.Address
+	blkLink2.Token = blkLink1.Token
+	if err := lv.l.AddBlockCache(blkLink2); err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(blkLink1.Timestamp, blkLink2.Timestamp)
+	if err := lv.RollbackCache(blkLink1.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+
+}

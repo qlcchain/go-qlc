@@ -358,6 +358,28 @@ func TestLedger_GenerateSendBlock(t *testing.T) {
 	if !b3.Equal(types.ZeroBalance) {
 		t.Fatal()
 	}
+	// CalculateAmount
+	cblk := mock.StateBlockWithoutWork()
+	cblk.Previous = mock.Hash()
+	cblk.Type = types.Send
+	if _, err := l.CalculateAmount(cblk); err == nil {
+		t.Fatal()
+	}
+	cblk.Type = types.Receive
+	if _, err := l.CalculateAmount(cblk); err == nil {
+		t.Fatal()
+	}
+	cblk.Type = types.ContractSend
+	if _, err := l.CalculateAmount(cblk); err == nil {
+		t.Fatal()
+	}
+	cblk.Type = types.ContractReward
+	if _, err := l.CalculateAmount(cblk); err == nil {
+		t.Fatal()
+	}
+	if _, err := l.CalculateAmount(&types.StateBlock{}); err == nil {
+		t.Fatal()
+	}
 }
 
 func TestLedger_TestStore(t *testing.T) {
