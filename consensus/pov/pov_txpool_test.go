@@ -91,6 +91,8 @@ func TestPovTxPool_AddDelTx(t *testing.T) {
 	txHash1 := txBlk1.GetHash()
 
 	txPool.onAddStateBlock(txBlk1)
+	txPool.onAddSyncStateBlock(txBlk1, false)
+
 	time.Sleep(time.Millisecond)
 	//txPool.addTx(txHash1, txBlk1)
 
@@ -107,6 +109,11 @@ func TestPovTxPool_AddDelTx(t *testing.T) {
 	if retTxBlk1 != nil {
 		t.Fatalf("failed to delete tx %s", txHash1)
 	}
+
+	povBlk1, _ := mock.GeneratePovBlock(nil, 1)
+	txPool.OnPovBlockEvent(EventConnectPovBlock, povBlk1)
+	txPool.OnPovBlockEvent(EventDisconnectPovBlock, povBlk1)
+	time.Sleep(time.Millisecond)
 
 	txPool.Stop()
 }
