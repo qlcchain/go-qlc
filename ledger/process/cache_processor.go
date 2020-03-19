@@ -5,6 +5,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -188,7 +189,15 @@ func (lv *LedgerVerifier) BlockCacheProcess(block *types.StateBlock) error {
 	if err := lv.updateAccountMetaCache(block, am, batch); err != nil {
 		return fmt.Errorf("update account meta cache error: %s", err)
 	}
-	return lv.l.DBStore().PutBatch(batch)
+	err = lv.l.DBStore().PutBatch(batch)
+	if err != nil {
+		return err
+	}
+	lv.l.EB.Publish(topic.EventAddBlockCache, block)
+	lv.logger.Debug("broadcast block")
+	lv.l.EB.Publish(topic.EventBroadcast, &topic.EventBroadcastMsg{Type: topic.PublishReq, Message: block})
+	lv.l.EB.Publish(topic.EventGenerateBlock, block)
+	return nil
 }
 
 func (lv *LedgerVerifier) updateAccountMetaCache(block *types.StateBlock, am *types.AccountMeta, batch storage.Batch) error {

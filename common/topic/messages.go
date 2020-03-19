@@ -9,6 +9,26 @@ package topic
 
 import "github.com/qlcchain/go-qlc/common/types"
 
+// MessageType a string for message type.
+type MessageType byte
+
+//  Message Type
+const (
+	PublishReq      MessageType = iota //PublishReq
+	ConfirmReq                         //ConfirmReq
+	ConfirmAck                         //ConfirmAck
+	FrontierRequest                    //FrontierReq
+	FrontierRsp                        //FrontierRsp
+	BulkPullRequest                    //BulkPullRequest
+	BulkPullRsp                        //BulkPullRsp
+	BulkPushBlock                      //BulkPushBlock
+	MessageResponse                    //MessageResponse
+	PovStatus
+	PovPublishReq
+	PovBulkPullReq
+	PovBulkPullRsp
+)
+
 type EventPovRecvBlockMsg struct {
 	Block   *types.PovBlock
 	From    types.PovBlockFrom
@@ -61,4 +81,9 @@ type EventP2PConnectPeersMsg struct {
 
 type EventP2POnlinePeersMsg struct {
 	PeersInfo []*types.PeerInfo
+}
+
+type EventBroadcastMsg struct {
+	Type    MessageType
+	Message interface{}
 }
