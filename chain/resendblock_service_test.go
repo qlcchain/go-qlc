@@ -8,86 +8,93 @@
 package chain
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+
+	"github.com/qlcchain/go-qlc/ledger/process"
+
+	"github.com/qlcchain/go-qlc/mock"
 
 	"github.com/google/uuid"
 	ctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 )
 
-type mockLedgerService struct {
-	common.ServiceLifecycle
-}
-
-func (m *mockLedgerService) Init() error {
-	if !m.PreInit() {
-		return errors.New("pre init fail")
-	}
-	defer m.PostInit()
-	return nil
-}
-
-func (m *mockLedgerService) Start() error {
-	if !m.PreStart() {
-		return errors.New("pre start fail")
-	}
-	defer m.PostStart()
-	return nil
-}
-
-func (m *mockLedgerService) Stop() error {
-	if !m.PreStop() {
-		return errors.New("pre stop fail")
-	}
-	defer m.PostStop()
-
-	return nil
-}
-
-func (m *mockLedgerService) Status() int32 {
-	return m.State()
-}
-
-func TestNewResendBlockService(t *testing.T) {
-	t.Skip()
-	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+func setupTestCaseResend(t *testing.T) (func(t *testing.T), *ledger.Ledger, *ResendBlockService) {
+	t.Parallel()
+	dir := filepath.Join(config.QlcTestDataDir(), "rb", uuid.New().String())
+	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	_, err := cm.Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		_ = os.RemoveAll(dir)
-	}()
-
+	_, _ = cm.Load()
 	cc := ctx.NewChainContext(cm.ConfigFile)
-	m := &mockLedgerService{}
-	_ = m.Init()
-	_ = m.Start()
-	_ = cc.Register(ctx.LedgerService, m)
+	ls := NewLedgerService(cm.ConfigFile)
 
-	ls := NewResendBlockService(cm.ConfigFile)
-
-	err = ls.Init()
+	err := ls.Init()
 	if err != nil {
 		t.Fatal(err)
-	}
-	if ls.State() != 2 {
-		t.Fatal("resend init failed")
 	}
 	_ = ls.Start()
-	err = ls.Stop()
+	_ = cc.Register(ctx.LedgerService, ls)
+	rb := NewResendBlockService(cm.ConfigFile)
+
+	return func(t *testing.T) {
+		err := ls.Ledger.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = cc.Stop()
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}, ls.Ledger, rb
+}
+
+func TestResendBlockService(t *testing.T) {
+	teardownTestCase, l, rb := setupTestCaseResend(t)
+	defer teardownTestCase(t)
+	err := rb.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if ls.Status() != 6 {
-		t.Fatal("stop failed.")
+	lv := process.NewLedgerVerifier(l)
+	bs, _ := mock.BlockChain(false)
+	if err := lv.BlockCacheProcess(bs[0]); err != nil {
+		t.Fatal(err)
+	}
+	t.Log("bs hash", bs[0].GetHash())
+	for _, b := range bs[1:] {
+		if err := lv.BlockCacheProcess(b); err != nil {
+			t.Fatal(err)
+		}
+	}
+	block := mock.StateBlockWithoutWork()
+	block1 := mock.StateBlockWithoutWork()
+	block2 := mock.StateBlockWithoutWork()
+	rb.cc.EventBus().Publish(topic.EventAddBlockCache, block)
+	rb.cc.EventBus().Publish(topic.EventAddBlockCache, block1)
+	rb.cc.EventBus().Publish(topic.EventAddBlockCache, block2)
+	if err := lv.BlockCacheProcess(block); err != nil {
+		t.Fatal(err)
+	}
+	err = rb.Start()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	_ = m.Stop()
+	time.Sleep(5 * time.Second)
+	err = rb.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rb.Status() != 6 {
+		t.Fatal("stop failed.")
+	}
+	time.Sleep(100 * time.Millisecond)
 }

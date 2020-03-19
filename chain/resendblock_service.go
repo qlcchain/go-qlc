@@ -41,11 +41,11 @@ type ResendBlockService struct {
 	common.ServiceLifecycle
 	hashSet    *sync.Map
 	subscriber *event.ActorSubscriber
-	cfgFile    string
 	blockCache chan *types.StateBlock
 	ctx        context.Context
 	cancel     context.CancelFunc
 	logger     *zap.SugaredLogger
+	cc         *ctx.ChainContext
 }
 
 type ResendTimes struct {
@@ -54,14 +54,15 @@ type ResendTimes struct {
 }
 
 func NewResendBlockService(cfgFile string) *ResendBlockService {
-	ctx, cancel := context.WithCancel(context.Background())
+	c, cancel := context.WithCancel(context.Background())
+	cc := ctx.NewChainContext(cfgFile)
 	return &ResendBlockService{
 		hashSet:    new(sync.Map),
-		cfgFile:    cfgFile,
 		blockCache: make(chan *types.StateBlock, 100),
-		ctx:        ctx,
+		ctx:        c,
 		cancel:     cancel,
 		logger:     log.NewLogger("resend_block_service"),
+		cc:         cc,
 	}
 }
 
@@ -70,7 +71,6 @@ func (rb *ResendBlockService) Init() error {
 		return errors.New("pre init fail")
 	}
 	defer rb.PostInit()
-	cc := ctx.NewChainContext(rb.cfgFile)
 
 	rb.subscriber = event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
 		switch msg := c.Message().(type) {
@@ -79,7 +79,7 @@ func (rb *ResendBlockService) Init() error {
 				rb.blockCache <- msg
 			}
 		}
-	}), cc.EventBus())
+	}), rb.cc.EventBus())
 
 	return rb.subscriber.Subscribe(topic.EventAddBlockCache)
 }
@@ -90,8 +90,7 @@ func (rb *ResendBlockService) Start() error {
 	}
 	defer rb.PostStart()
 
-	cc := ctx.NewChainContext(rb.cfgFile)
-	ledgerService, _ := cc.Service(ctx.LedgerService)
+	ledgerService, _ := rb.cc.Service(ctx.LedgerService)
 	for {
 		//ledger service started
 		if ledgerService != nil && ledgerService.Status() == int32(common.Started) {
@@ -158,7 +157,6 @@ func (rb *ResendBlockService) Start() error {
 					h := key.(types.Hash)
 					hs := value.([]*ResendTimes)
 					hsTemp := make([]*ResendTimes, 0)
-
 					for _, j := range hs {
 						if b, _ := l.HasStateBlockConfirmed(j.hash); b {
 							hsTemp = append(hsTemp, j)
@@ -169,8 +167,8 @@ func (rb *ResendBlockService) Start() error {
 								break
 							} else {
 								if sb, err := l.GetStateBlock(j.hash); err == nil {
-									cc.EventBus().Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: sb})
-									cc.EventBus().Publish(topic.EventGenerateBlock, sb)
+									rb.cc.EventBus().Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: sb})
+									rb.cc.EventBus().Publish(topic.EventGenerateBlock, sb)
 								}
 								j.resendTimes++
 								break
@@ -184,7 +182,6 @@ func (rb *ResendBlockService) Start() error {
 					} else {
 						rb.hashSet.Delete(h)
 					}
-
 					return true
 				})
 			}
@@ -211,7 +208,6 @@ func (rb *ResendBlockService) Start() error {
 					rb.hashSet.Store(key, hs)
 				} else {
 					hs := v.([]*ResendTimes)
-
 					// disorder
 					if len(hs) > 0 && blk.Previous != hs[len(hs)-1].hash {
 						am, err := l.GetAccountMeteCache(blk.Address)
@@ -219,12 +215,10 @@ func (rb *ResendBlockService) Start() error {
 							rb.logger.Error(err)
 							break
 						}
-
 						tm := am.Token(blk.Token)
 						if tm != nil {
 							header := tm.Header
 							blockCaches := make([]*types.StateBlock, 0)
-
 							for {
 								sb, _ := l.GetBlockCache(header)
 								if sb != nil {
@@ -234,7 +228,6 @@ func (rb *ResendBlockService) Start() error {
 								}
 								header = sb.Previous
 							}
-
 							for i := len(blockCaches) - 1; i >= 0; i-- {
 								rt := &ResendTimes{
 									hash:        blockCaches[i].GetHash(),
