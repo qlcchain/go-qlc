@@ -1,6 +1,8 @@
 package miner
 
 import (
+	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/qlcchain/go-qlc/common/merkle"
 	"os"
 	"path/filepath"
 	"testing"
@@ -101,6 +103,19 @@ func setupTestCasePov(t *testing.T) (func(t *testing.T), *mockDataTestMiner) {
 	md.eb = md.cc.EventBus()
 	md.feb = md.cc.FeedEventBus()
 
+	subscriber := event.NewActorSubscriber(event.Spawn(func(c actor.Context) {
+		switch msg := c.Message().(type) {
+		case *topic.EventPovRecvBlockMsg:
+			if msg.ResponseChan != nil {
+				msg.ResponseChan <- nil
+			}
+		}
+	}), md.eb)
+
+	if err := subscriber.Subscribe(topic.EventPovRecvBlock); err != nil {
+		t.Fatalf("failed to subscribe events")
+	}
+
 	md.ch = new(mockPovChainReader)
 	md.ch.mockPovBlocks = make(map[string]*types.PovBlock)
 	md.cs = new(mockPovConsensusReader)
@@ -147,6 +162,9 @@ func TestMiner_Work(t *testing.T) {
 
 	minerAcc := mock.Account()
 
+	md.m.GetAccounts()
+	md.m.povWorker.GetMinerAccount()
+
 	inArgs1 := make(map[interface{}]interface{})
 	inArgs1["minerAddr"] = minerAcc.Address()
 	inArgs1["algoName"] = types.ALGO_SHA256D.String()
@@ -160,9 +178,23 @@ func TestMiner_Work(t *testing.T) {
 	inArgs2 := make(map[interface{}]interface{})
 	mineRes := types.NewPovMineResult()
 	mineRes.WorkHash = mineBlk.WorkHash
+
+	mineRes.CoinbaseExtra = []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	mineBlk.Header.CbTx.TxIns[0].Extra = mineRes.CoinbaseExtra
+	mineRes.CoinbaseHash = mineBlk.Header.CbTx.ComputeHash()
+	mineBlk.AllTxHashes[0] = &mineRes.CoinbaseHash
+	mineRes.MerkleRoot = merkle.CalcMerkleTreeRootHash(mineBlk.AllTxHashes)
+
+	mineBlk.Header.BasHdr.Timestamp = mineRes.Timestamp
+	mineBlk.Header.BasHdr.Nonce = mineRes.Nonce
+	mineBlk.Header.BasHdr.MerkleRoot = mineRes.MerkleRoot
+	mineRes.BlockHash = mineBlk.Header.ComputeHash()
+
 	inArgs2["mineResult"] = mineRes
 	outArgs2 := make(map[interface{}]interface{})
 	md.m.povWorker.OnEventRpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.SubmitWork", In: inArgs2, Out: outArgs2})
+
+	//md.m.povWorker.submitBlock()
 
 	_ = md.m.Stop()
 }
@@ -199,7 +231,7 @@ func TestMiner_Mining(t *testing.T) {
 	outArgs1 := make(map[interface{}]interface{})
 	md.m.povWorker.OnEventRpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.StartMining", In: inArgs1, Out: outArgs1})
 
-	time.Sleep(1100 * time.Millisecond)
+	time.Sleep(3100 * time.Millisecond)
 
 	inArgs2 := make(map[interface{}]interface{})
 	outArgs2 := make(map[interface{}]interface{})
