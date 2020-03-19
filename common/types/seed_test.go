@@ -9,6 +9,7 @@ package types
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"testing"
 )
 
@@ -80,6 +81,27 @@ func TestSeed_IsZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if data, err := json.Marshal(seed); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(string(data))
+	}
+
+	bts := make([]byte, SeedSize)
+	if err = seed.MarshalBinaryTo(bts); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(hex.EncodeToString(bts))
+	}
+
+	if i := seed.Len(); i != SeedSize {
+		t.Fatalf("invalid len, exp: %d, act: %d", SeedSize, i)
+	}
+
+	if type_ := seed.ExtensionType(); type_ != SeedExtensionType {
+		t.Fatalf("invalid type, exp: %d, act: %d", SeedExtensionType, type_)
+	}
+
 	b := seed.IsZero()
 	if b {
 		t.Fatal("seed should not be zero")
