@@ -8,6 +8,7 @@
 package chain
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -18,9 +19,13 @@ import (
 )
 
 func TestRegisterServices(t *testing.T) {
-	cfgFile2 := filepath.Join(config.QlcTestDataDir(), "config1", uuid.New().String(), config.QlcConfigFile)
-	cm := config.NewCfgManagerWithName(filepath.Dir(cfgFile2), filepath.Base(cfgFile2))
+	cfgFile := filepath.Join(config.QlcTestDataDir(), "config", uuid.New().String(), config.QlcConfigFile)
+	cm := config.NewCfgManagerWithName(filepath.Dir(cfgFile), filepath.Base(cfgFile))
 	cc := context.NewChainContext(cm.ConfigFile)
+
+	defer func() {
+		os.RemoveAll(cfgFile)
+	}()
 
 	if err := RegisterServices(cc); err != nil {
 		t.Fatal(err)

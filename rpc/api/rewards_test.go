@@ -44,7 +44,7 @@ func setupRewardsTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVeri
 	api := NewRewardsAPI(l, cc)
 
 	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
 

@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/mock"
+
 	"github.com/google/uuid"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -40,7 +42,7 @@ func setupBlackHoleAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifie
 	api := NewBlackHoleApi(l, cc)
 
 	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
 

@@ -43,7 +43,7 @@ func setupNEP5PledgeAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifi
 	api := NewNEP5PledgeAPI(cc.ConfigFile(), l)
 
 	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(MockBlocks), &blocks); err != nil {
+	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
 
