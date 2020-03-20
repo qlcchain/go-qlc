@@ -125,10 +125,7 @@ func TestOnline(t *testing.T) {
 	n1.TestWithTimeout(30*time.Second, func() bool {
 		repOnline := make(map[uint64]*RepOnlinePeriod)
 		n1.cons.RPC(common.RpcDPoSOnlineInfo, nil, repOnline)
-		if repOnline[0].Stat[TestAccount.Address()].HeartCount != 59 {
-			return false
-		}
-		return true
+		return repOnline[0].Stat[TestAccount.Address()].HeartCount == 59
 	})
 
 	n1.TestWithTimeout(30*time.Second, func() bool {

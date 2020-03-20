@@ -210,3 +210,31 @@ func TestProcessor_dequeueGapPublish(t *testing.T) {
 		return nil
 	})
 }
+
+func TestProcessor_processFrontier(t *testing.T) {
+	dps := getTestDpos()
+	processor := dps.processors[0]
+	blk1 := mock.StateBlockWithoutWork()
+	blk2 := mock.StateBlockWithoutWork()
+
+	blk1.Previous = mock.Hash()
+	blk2.Previous = blk1.Previous
+	dps.acTrx.addToRoots(blk1)
+	processor.processFrontier(blk2)
+
+	if _, ok := dps.hash2el.Load(blk2.GetHash()); !ok {
+		t.Fatal()
+	}
+}
+
+func TestProcessor_enqueueUncheckedSync(t *testing.T) {
+	dps := getTestDpos()
+	processor := dps.processors[0]
+	blk := mock.StateBlockWithoutWork()
+	blk.Previous = mock.Hash()
+
+	processor.enqueueUncheckedSync(blk)
+	if has, _ := dps.ledger.HasUncheckedSyncBlock(blk.Previous); !has {
+		t.Fatal()
+	}
+}
