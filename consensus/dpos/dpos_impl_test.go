@@ -214,6 +214,15 @@ func TestOnRollback(t *testing.T) {
 	benefit.Total = dps.minVoteWeight
 	dps.ledger.AddRepresentation(account.Address(), benefit, dps.ledger.Cache().GetCache())
 	dps.ledger.AddStateBlock(blk)
+
+	header := mock.StateBlockWithoutWork()
+	header.Address = mock.Address()
+	dps.ledger.AddStateBlock(header)
+	am := mock.AccountMeta(account.Address())
+	am.Tokens[0].Type = config.ChainToken()
+	am.Tokens[0].Header = header.GetHash()
+	dps.ledger.AddAccountMeta(am, dps.ledger.Cache().GetCache())
+
 	dps.onRollback(blk.GetHash())
 }
 

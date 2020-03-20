@@ -46,6 +46,8 @@ func TestGetOnlineInfo(t *testing.T) {
 	} else {
 		t.Fatal()
 	}
+
+	t.Log(repg.String())
 }
 
 func TestVoteHistoryUpdate(t *testing.T) {

@@ -549,3 +549,19 @@ func (n *Node) VoteBlock(acc *types.Account, blk *types.StateBlock) {
 	}
 	n.dps.processors[index].acks <- vi
 }
+
+func (n *Node) TestWithTimeout(to time.Duration, fn func() bool) {
+	ti := time.NewTimer(to)
+	defer ti.Stop()
+	for {
+		select {
+		case <-ti.C:
+			n.t.Fatal()
+		default:
+			if fn() {
+				return
+			}
+			time.Sleep(time.Second)
+		}
+	}
+}
