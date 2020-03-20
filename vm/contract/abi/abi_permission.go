@@ -140,8 +140,11 @@ func GetAllPermissionNodes(ctx *vmstore.VMContext) ([]*PermNode, error) {
 			return err
 		}
 
-		pn.Index = index
-		nodes = append(nodes, pn)
+		if pn.Valid {
+			pn.Index = index
+			nodes = append(nodes, pn)
+		}
+
 		return nil
 	})
 
