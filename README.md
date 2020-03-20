@@ -5,7 +5,6 @@
 ---
 
 [![Actions Status](https://github.com/qlcchain/go-qlc/workflows/Main%20workflow/badge.svg)](https://github.com/qlcchain/go-qlc/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/qlcchain/go-qlc)](https://goreportcard.com/report/github.com/qlcchain/go-qlc)
 [![codecov](https://codecov.io/gh/qlcchain/go-qlc/branch/master/graph/badge.svg)](https://codecov.io/gh/qlcchain/go-qlc)
 
 ---
@@ -83,15 +82,15 @@ docker container run -d --name go-qlc \
             container_name: qlcchain_node
             command: ["--configParams=rpc.rpcEnabled=true", "--seed=B4F6494E3DD8A036EFF547C0293055B2A0644605DE4D9AC91B45343CD0E0E559", "--nobootnode=true"]
             ports:
-            - "9734:9734"
-            - "9735:9735"
-            - "127.0.0.1:9736:9736"
+                - "9734:9734"
+                - "9735:9735"
+                - "127.0.0.1:9736:9736"
             networks:
-            - qlcchain
+                - qlcchain
             volumes:
-            - type: bind
-                source: ./data/
-                target: /root/.gqlcchain/
+                - type: bind
+                    source: ./data/
+                    target: /root/.gqlcchain/
             restart: unless-stopped
     
     networks:
