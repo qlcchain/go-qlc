@@ -560,9 +560,8 @@ func (n *Node) TestWithTimeout(to time.Duration, fn func() bool) {
 		default:
 			if fn() {
 				return
-			} else {
-				time.Sleep(time.Second)
 			}
+			time.Sleep(time.Second)
 		}
 	}
 }
