@@ -122,25 +122,31 @@ func TestOnline(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	repOnline := make(map[uint64]*RepOnlinePeriod, 0)
-	n1.cons.RPC(common.RpcDPoSOnlineInfo, nil, repOnline)
-	if repOnline[0].Stat[TestAccount.Address()].HeartCount != 59 {
-		t.Fatal()
-	}
-
-	time.Sleep(3 * time.Second)
-
-	hasOnline := false
-	err = n1.dps.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
-		if block.Type == types.Online && block.Address == TestAccount.Address() {
-			hasOnline = true
+	n1.TestWithTimeout(30*time.Second, func() bool {
+		repOnline := make(map[uint64]*RepOnlinePeriod, 0)
+		n1.cons.RPC(common.RpcDPoSOnlineInfo, nil, repOnline)
+		if repOnline[0].Stat[TestAccount.Address()].HeartCount != 59 {
+			return false
+		} else {
+			return true
 		}
-		return nil
 	})
 
-	if err != nil || !hasOnline {
-		t.Fatal(err, hasOnline)
-	}
+	n1.TestWithTimeout(30*time.Second, func() bool {
+		hasOnline := false
+		err = n1.dps.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
+			if block.Type == types.Online && block.Address == TestAccount.Address() {
+				hasOnline = true
+			}
+			return nil
+		})
+
+		if err != nil || !hasOnline {
+			return false
+		}
+
+		return true
+	})
 }
 
 func TestSynchronize(t *testing.T) {
@@ -171,7 +177,7 @@ func TestSynchronize(t *testing.T) {
 	n2.cons.RPC(common.RpcDPoSOnSyncStateChange, topic.SyncDone, nil)
 	n2.VoteBlock(TestAccount, frontier)
 
-	finishTimer := time.NewTimer(3 * time.Second)
+	finishTimer := time.NewTimer(30 * time.Second)
 
 	for {
 		select {
@@ -198,7 +204,7 @@ SyncOneBlockTest:
 	n2.ctx.EventBus().Publish(topic.EventSyncBlock, bs)
 	n2.cons.RPC(common.RpcDPoSOnSyncStateChange, topic.SyncDone, nil)
 
-	finishTimer.Reset(3 * time.Second)
+	finishTimer.Reset(30 * time.Second)
 
 	for {
 		select {
@@ -229,25 +235,26 @@ func TestRollback(t *testing.T) {
 	r := n1.GenerateReceiveBlock(s, toAcc)
 	n1.ProcessBlockLocal(r)
 
-	if has, _ := n1.ledger.HasStateBlockConfirmed(s.GetHash()); !has {
-		t.Fatal()
-	}
-
-	if has, _ := n1.ledger.HasStateBlockConfirmed(r.GetHash()); !has {
-		t.Fatal()
-	}
+	n1.WaitBlockConfirmed(s.GetHash())
+	n1.WaitBlockConfirmed(r.GetHash())
 
 	var blks []*types.StateBlock
 	blks = append(blks, s)
 	n1.dps.acTrx.rollBack(blks)
 
-	if has, _ := n1.ledger.HasStateBlockConfirmed(s.GetHash()); has {
-		t.Fatal(s.GetHash())
-	}
+	n1.TestWithTimeout(30*time.Second, func() bool {
+		if has, _ := n1.ledger.HasStateBlockConfirmed(s.GetHash()); has {
+			return false
+		}
+		return true
+	})
 
-	if has, _ := n1.ledger.HasStateBlockConfirmed(r.GetHash()); has {
-		t.Fatal(s.GetHash())
-	}
+	n1.TestWithTimeout(30*time.Second, func() bool {
+		if has, _ := n1.ledger.HasStateBlockConfirmed(r.GetHash()); has {
+			return false
+		}
+		return true
+	})
 }
 
 func TestGap(t *testing.T) {
