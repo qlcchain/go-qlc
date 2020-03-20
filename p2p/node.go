@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -575,15 +576,20 @@ func (node *QlcNode) getBootNode(urls []string) {
 				if err != nil {
 					continue
 				}
+				ss := strings.Split(v, ":")
+				if len(ss) < 2 {
+					continue
+				}
+				boot := strings.ReplaceAll(string(body), "0.0.0.0", ss[0])
 				if len(node.boostrapAddrs) == 0 {
-					node.boostrapAddrs = append(node.boostrapAddrs, string(body))
+					node.boostrapAddrs = append(node.boostrapAddrs, boot)
 				} else {
 					for k, v := range node.boostrapAddrs {
-						if v == string(body) {
+						if v == boot {
 							break
 						}
 						if k == len(node.boostrapAddrs)-1 {
-							node.boostrapAddrs = append(node.boostrapAddrs, string(body))
+							node.boostrapAddrs = append(node.boostrapAddrs, boot)
 						}
 					}
 				}
