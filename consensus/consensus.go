@@ -22,7 +22,7 @@ type Consensus struct {
 	ca       ConsensusAlgorithm
 	recv     *Receiver
 	logger   *zap.SugaredLogger
-	ledger   *ledger.Ledger
+	ledger   ledger.Store
 	verifier *process.LedgerVerifier
 }
 

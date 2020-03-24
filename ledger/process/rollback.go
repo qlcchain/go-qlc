@@ -224,7 +224,7 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache 
 			if err := lv.l.DeleteBlockCache(block.GetHash(), batch); err != nil {
 				return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
 			}
-			lv.l.EB.Publish(topic.EventRollback, block.GetHash())
+			lv.l.EventBus().Publish(topic.EventRollback, block.GetHash())
 			lv.logger.Infof("rollback delete cache block %s (previous: %s, type: %s,  address: %s)", block.GetHash().String(), block.GetPrevious().String(), block.GetType(), block.GetAddress().String())
 
 			if b, _ := lv.l.HasBlockCache(block.GetPrevious()); b {
@@ -243,7 +243,7 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache 
 		if err := lv.l.DeleteBlockCache(block.GetHash(), batch); err != nil {
 			return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
 		}
-		lv.l.EB.Publish(topic.EventRollback, block.GetHash())
+		lv.l.EventBus().Publish(topic.EventRollback, block.GetHash())
 		lv.logger.Errorf("rollback delete cache block %s (previous: %s, type: %s,  address: %s)", block.GetHash().String(), block.GetPrevious().String(), block.GetType(), block.GetAddress().String())
 	}
 
@@ -434,7 +434,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Hash]*types.State
 			if err := lv.l.DeleteStateBlock(hashCur, cache); err != nil {
 				return fmt.Errorf("delete state block error: %s, %s", err, hashCur)
 			}
-			lv.l.EB.Publish(topic.EventRollback, hashCur)
+			lv.l.EventBus().Publish(topic.EventRollback, hashCur)
 			lv.logger.Errorf("rollback delete block done: %s (previous: %s, type: %s,  address: %s) ", hashCur.String(), blockCur.GetPrevious().String(), blockCur.GetType(), blockCur.GetAddress().String())
 
 			if err := lv.checkBlockCache(blockCur, batch); err != nil {

@@ -30,7 +30,7 @@ const (
 type PoVEngine struct {
 	logger     *zap.SugaredLogger
 	cfg        *config.Config
-	ledger     *ledger.Ledger
+	ledger     ledger.Store
 	eb         event.EventBus
 	feb        *event.FeedEventBus
 	subscriber *event.ActorSubscriber

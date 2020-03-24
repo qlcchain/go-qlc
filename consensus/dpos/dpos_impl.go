@@ -86,7 +86,7 @@ const (
 )
 
 type DPoS struct {
-	ledger              *ledger.Ledger
+	ledger              ledger.Store
 	acTrx               *ActiveTrx
 	accounts            []*types.Account
 	onlineReps          sync.Map

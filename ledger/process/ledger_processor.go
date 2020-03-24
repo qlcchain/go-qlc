@@ -26,7 +26,7 @@ import (
 )
 
 type LedgerVerifier struct {
-	l               *ledger.Ledger
+	l               ledger.Store
 	blockCheck      map[types.BlockType]blockCheck
 	cacheBlockCheck map[types.BlockType]blockCheck
 	//syncBlockCheck  map[types.BlockType]blockCheck
@@ -34,7 +34,7 @@ type LedgerVerifier struct {
 	logger        *zap.SugaredLogger
 }
 
-func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
+func NewLedgerVerifier(l ledger.Store) *LedgerVerifier {
 	return &LedgerVerifier{
 		l:               l,
 		blockCheck:      newBlockCheck(),
@@ -67,7 +67,8 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 		}
 		if r != Progress {
 			if r == UnReceivable {
-				if _, ok := lv.l.VerifiedData[block.GetHash()]; ok {
+				vd := lv.l.GetVerifiedData()
+				if _, ok := vd[block.GetHash()]; ok {
 					return Progress, nil
 				}
 			}
@@ -268,7 +269,7 @@ func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 		return err
 	}
 	lv.logger.Debug("publish addRelation,", block.GetHash())
-	lv.l.EB.Publish(topic.EventAddRelation, block)
+	lv.l.EventBus().Publish(topic.EventAddRelation, block)
 	return nil
 }
 

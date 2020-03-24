@@ -17,11 +17,15 @@ type BlockStore interface {
 	HasStateBlock(hash types.Hash) (bool, error)
 	GetRandomStateBlock() (*types.StateBlock, error)
 	//
+	UpdateStateBlock(block *types.StateBlock, c storage.Cache) error
+	DeleteStateBlock(key types.Hash, c storage.Cache) error
 	GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error)
 	GetStateBlocksConfirmed(fn func(*types.StateBlock) error) error
 	HasStateBlockConfirmed(hash types.Hash) (bool, error)
 	CountStateBlocks() (uint64, error)
 
+	AddBlockCache(blk *types.StateBlock, batch ...storage.Batch) error
+	DeleteBlockCache(hash types.Hash, batch ...storage.Batch) error
 	GetBlockCache(key types.Hash) (*types.StateBlock, error)
 	GetBlockCaches(fn func(*types.StateBlock) error) error
 	HasBlockCache(key types.Hash) (bool, error)
