@@ -132,6 +132,7 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 
 	return lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
 		batch := lv.l.DBStore().Batch(true)
+		defer batch.Discard()
 		if err := lv.rollbackBlocks(rollbackMap, c, batch); err != nil {
 			return fmt.Errorf("rollback cache batch: %s", err)
 		}

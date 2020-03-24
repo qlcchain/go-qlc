@@ -32,7 +32,7 @@ type Batch interface {
 	Get([]byte) (interface{}, error)
 	Iterator(prefix []byte, end []byte, f func(k, v []byte) error) error
 	Drop(prefix []byte) error
-	Cancel()
+	Discard()
 }
 
 type KeyPrefix byte
