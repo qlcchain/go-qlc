@@ -19,6 +19,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
 	"github.com/spf13/cobra"
@@ -48,6 +50,7 @@ var (
 	cfgPathP      string
 	isProfileP    bool
 	profPortP     int16
+	isSingleP     bool
 	configParamsP string
 	genesisSeedP  string
 
@@ -58,7 +61,7 @@ var (
 	cfgPath      cmdutil.Flag
 	isProfile    cmdutil.Flag
 	profPort     cmdutil.Flag
-	noBootstrap  cmdutil.Flag
+	isSingle     cmdutil.Flag
 	configParams cmdutil.Flag
 	genesisSeed  cmdutil.Flag
 	//chainContext   *context.ChainContext
@@ -107,6 +110,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().Int16Var(&profPortP, "profPort", 6060, "profile port")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
 		rootCmd.PersistentFlags().StringVar(&genesisSeedP, "genesisSeed", "", "genesis seed")
+		rootCmd.PersistentFlags().BoolVar(&isSingleP, "single", false, "single node, no PoV, no bootnodes")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			log.Root.Info(err)
@@ -149,6 +153,12 @@ func start() error {
 					return err
 				}
 			}
+		}
+
+		if isSingleP {
+			// clear boot nodes
+			cfg.P2P.BootNodes = cfg.P2P.BootNodes[:0]
+			log.Root.Debug("clear all boot nodes...")
 		}
 
 		return nil
@@ -229,6 +239,12 @@ func start() error {
 	if err != nil {
 		log.Root.Error(err)
 		return err
+	}
+
+	if isSingleP {
+		cfg, _ := cm.Config()
+		chainContext.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+		chainContext.EventBus().Publish(topic.EventAddP2PStream, &topic.EventAddP2PStreamMsg{PeerID: cfg.P2P.ID.PeerID})
 	}
 	err = chainContext.Start()
 
@@ -323,7 +339,7 @@ func run() {
 		Name: "run",
 		Help: "start qlc server",
 		Func: func(c *ishell.Context) {
-			args := []cmdutil.Flag{seed, cfgPath, isProfile, profPort}
+			args := []cmdutil.Flag{seed, cfgPath, isProfile, profPort, isSingle}
 			if cmdutil.HelpText(c, args) {
 				return
 			}
@@ -337,6 +353,7 @@ func run() {
 			seedP = cmdutil.StringVar(c.Args, seed)
 			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
+			isSingleP = cmdutil.BoolVar(c.Args, isSingle)
 			profPortTmp, _ := cmdutil.IntVar(c.Args, profPort)
 			if profPortTmp > 0 {
 				profPortP = int16(profPortTmp)
