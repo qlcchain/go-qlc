@@ -12,32 +12,20 @@ import (
 )
 
 const (
-	JsonPermission = `
-	[
+	JsonPermission = `[
 		{"type":"function","name":"PermissionAdminUpdate","inputs":[
-			{"name":"addr","type":"address"},
-			{"name":"comment","type":"string"}
-		]},
-		{"type":"function","name":"PermissionNodeAdd","inputs":[
-			{"name":"kind","type":"uint8"},
-			{"name":"node","type":"string"},
+			{"name":"successor","type":"address"},
 			{"name":"comment","type":"string"}
 		]},
 		{"type":"function","name":"PermissionNodeUpdate","inputs":[
-			{"name":"index","type":"uint32"},
-			{"name":"kind","type":"uint8"},
-			{"name":"node","type":"string"},
+			{"name":"id","type":"string"},
+			{"name":"ip","type":"string"},
 			{"name":"comment","type":"string"}
-		]},
-		{"type":"function","name":"PermissionNodeRemove","inputs":[
-			{"name":"index","type":"uint32"}
 		]}
 	]`
 
 	MethodNamePermissionAdminUpdate = "PermissionAdminUpdate"
-	MethodNamePermissionNodeAdd     = "PermissionNodeAdd"
 	MethodNamePermissionNodeUpdate  = "PermissionNodeUpdate"
-	MethodNamePermissionNodeRemove  = "PermissionNodeRemove"
 )
 
 var (
