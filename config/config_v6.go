@@ -24,6 +24,7 @@ type GenesisInfo struct {
 }
 
 type Privacy struct {
+	Enable  bool   `json:"enable"`
 	PtmNode string `json:"ptmNode"`
 }
 

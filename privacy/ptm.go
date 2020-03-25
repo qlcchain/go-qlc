@@ -2,71 +2,90 @@ package privacy
 
 import (
 	"errors"
-	"github.com/bluele/gcache"
-	"github.com/qlcchain/go-qlc/config"
 	"time"
+
+	"go.uber.org/atomic"
+	"go.uber.org/zap"
+
+	"github.com/bluele/gcache"
+	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/log"
+)
+
+const (
+	ptmNodeUnknown = iota
+	ptmNodeRunning
+	ptmNodeOffline
 )
 
 type PTM struct {
-	cfg         *config.Config
-	client      *Client
-	cache       gcache.Cache
-	isNotUsePTM bool
+	cfg    *config.Config
+	logger *zap.SugaredLogger
+	client *Client
+	cache  gcache.Cache
+	status atomic.Int32
+	quitCh chan struct{}
 }
 
 var (
-	errPTMNotUsed = errors.New("PTM not in use")
+	errPtmNodeNotRunning = errors.New("PTM node not running")
 )
+
+func NewPTM(cfg *config.Config) *PTM {
+	m := &PTM{cfg: cfg}
+	m.status.Store(ptmNodeUnknown)
+	return m
+}
 
 func (m *PTM) Init() error {
 	m.cache = gcache.New(10000).LRU().Expiration(5 * time.Minute).Build()
+	m.logger = log.NewLogger("privacy_ptm")
 	return nil
 }
 
 func (m *PTM) Start() error {
-	err := RunNode(m.cfg.Privacy.PtmNode)
-	if err != nil {
-		return nil
-	}
+	m.client = NewClient(m.cfg.Privacy.PtmNode)
+	m.quitCh = make(chan struct{})
 
-	m.client, err = NewClient(m.cfg.Privacy.PtmNode)
-	if err != nil {
-		return err
-	}
+	m.logger.Info("ptm node at ", m.cfg.Privacy.PtmNode)
+
+	common.Go(m.mainLoop)
 
 	return nil
 }
 
-func (g *PTM) Stop() error {
+func (m *PTM) Stop() error {
+	close(m.quitCh)
 	return nil
 }
 
-func (g *PTM) Send(data []byte, from string, to []string) (out []byte, err error) {
-	if g.isNotUsePTM {
-		return nil, errPTMNotUsed
+func (m *PTM) Send(data []byte, from string, to []string) (out []byte, err error) {
+	if m.status.Load() != ptmNodeRunning {
+		return nil, errPtmNodeNotRunning
 	}
-	out, err = g.client.SendPayload(data, from, to)
+	out, err = m.client.SendPayload(data, from, to)
 	if err != nil {
 		return nil, err
 	}
-	g.cache.Set(string(out), data)
+	m.cache.Set(string(out), data)
 	return out, nil
 }
 
-func (g *PTM) SendSignedTx(data []byte, to []string) (out []byte, err error) {
-	if g.isNotUsePTM {
-		return nil, errPTMNotUsed
+func (m *PTM) SendSignedTx(data []byte, to []string) (out []byte, err error) {
+	if m.status.Load() != ptmNodeRunning {
+		return nil, errPtmNodeNotRunning
 	}
-	out, err = g.client.SendSignedPayload(data, to)
+	out, err = m.client.SendSignedPayload(data, to)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (g *PTM) Receive(data []byte) ([]byte, error) {
-	if g.isNotUsePTM {
-		return nil, nil
+func (m *PTM) Receive(data []byte) ([]byte, error) {
+	if m.status.Load() != ptmNodeRunning {
+		return nil, errPtmNodeNotRunning
 	}
 	if len(data) == 0 {
 		return data, nil
@@ -76,15 +95,49 @@ func (g *PTM) Receive(data []byte) ([]byte, error) {
 	// TODO: Return an error if it's anything OTHER than
 	// 'you are not a recipient.'
 	dataStr := string(data)
-	x, err := g.cache.Get(dataStr)
+	x, err := m.cache.Get(dataStr)
 	if err != nil {
 		return x.([]byte), nil
 	}
-	pl, _ := g.client.ReceivePayload(data)
-	g.cache.Set(dataStr, pl)
+	pl, _ := m.client.ReceivePayload(data)
+	m.cache.Set(dataStr, pl)
 	return pl, nil
 }
 
-func NewPTM(cfg *config.Config) *PTM {
-	return &PTM{cfg: cfg}
+func (m *PTM) mainLoop() {
+	upChkTicker := time.NewTicker(time.Second)
+	defer upChkTicker.Stop()
+
+	for {
+		select {
+		case <-m.quitCh:
+			return
+		case <-upChkTicker.C:
+			m.onUpCheckTicker()
+		}
+	}
+}
+
+func (m *PTM) onUpCheckTicker() {
+	oldStatus := m.status.Load()
+	newStatus := int32(ptmNodeUnknown)
+
+	chkOk, chkErr := m.client.Upcheck()
+	if chkOk {
+		newStatus = int32(ptmNodeRunning)
+	} else {
+		newStatus = int32(ptmNodeOffline)
+	}
+
+	if oldStatus == newStatus {
+		return
+	}
+
+	if newStatus == int32(ptmNodeRunning) {
+		m.logger.Info("ptm node is online")
+	} else {
+		m.logger.Error("ptm node is offline, err", chkErr)
+	}
+
+	m.status.Store(newStatus)
 }

@@ -75,17 +75,17 @@ func (c *Controller) Stop() error {
 }
 
 func (c *Controller) onEventPrivacySendReqMsg(msg *topic.EventPrivacySendReqMsg) {
-	c.logger.Infof("PrivacySendReq Event for block:[%s]", msg.Block.GetHash())
+	c.logger.Infof("PrivacySendReq Event, PrivateFrom:%s", msg.PrivateFrom)
 
-	rspMsg := &topic.EventPrivacySendRspMsg{Block: msg.Block}
-	rspMsg.EnclaveKey, rspMsg.Err = c.ptm.Send(msg.Block.Data, msg.Block.PrivateFrom, msg.Block.PrivateFor)
+	rspMsg := &topic.EventPrivacySendRspMsg{ReqData: msg.ReqData}
+	rspMsg.EnclaveKey, rspMsg.Err = c.ptm.Send(msg.RawPayload, msg.PrivateFrom, msg.PrivateFor)
 	msg.RspChan <- rspMsg
 }
 
 func (c *Controller) onEventPrivacyRecvReqMsg(msg *topic.EventPrivacyRecvReqMsg) {
-	c.logger.Infof("PrivacyRecvReq Event for block:[%s]", msg.Block.GetHash())
+	c.logger.Infof("PrivacyRecvReq Event, EnclaveKey:%s", msg.EnclaveKey)
 
-	rspMsg := &topic.EventPrivacyRecvRspMsg{Block: msg.Block}
-	rspMsg.RawPayload, rspMsg.Err = c.ptm.Receive(msg.Block.Data)
+	rspMsg := &topic.EventPrivacyRecvRspMsg{ReqData: msg.ReqData}
+	rspMsg.RawPayload, rspMsg.Err = c.ptm.Receive(msg.EnclaveKey)
 	msg.RspChan <- rspMsg
 }

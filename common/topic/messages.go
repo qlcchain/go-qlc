@@ -89,23 +89,32 @@ type EventBroadcastMsg struct {
 }
 
 type EventPrivacySendReqMsg struct {
-	Block   *types.StateBlock
+	RawPayload     types.HexBytes
+	PrivateFrom    string
+	PrivateFor     []string
+	PrivateGroupID string
+
+	ReqData interface{}
 	RspChan chan *EventPrivacySendRspMsg
 }
 
 type EventPrivacySendRspMsg struct {
-	Block      *types.StateBlock
+	ReqData interface{}
+
 	Err        error
 	EnclaveKey []byte
 }
 
 type EventPrivacyRecvReqMsg struct {
-	Block   *types.StateBlock
+	EnclaveKey []byte
+
+	ReqData interface{}
 	RspChan chan *EventPrivacyRecvRspMsg
 }
 
 type EventPrivacyRecvRspMsg struct {
-	Block      *types.StateBlock
+	ReqData interface{}
+
 	Err        error
 	RawPayload []byte
 }

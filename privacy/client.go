@@ -30,20 +30,14 @@ func unixClient(socketPath string) *http.Client {
 	}
 }
 
-func RunNode(socketPath string) error {
-	c := unixClient(socketPath)
-	res, err := c.Get("http+unix://c/upcheck")
-	if err != nil {
-		return err
-	}
-	if res.StatusCode == 200 {
-		return nil
-	}
-	return errors.New("private transaction manager did not respond to upcheck request")
-}
-
 type Client struct {
 	httpClient *http.Client
+}
+
+func NewClient(socketPath string) *Client {
+	return &Client{
+		httpClient: unixClient(socketPath),
+	}
 }
 
 func (c *Client) doJson(path string, apiReq interface{}) (*http.Response, error) {
@@ -62,6 +56,18 @@ func (c *Client) doJson(path string, apiReq interface{}) (*http.Response, error)
 		return nil, fmt.Errorf("Non-200 status code: %+v", res)
 	}
 	return res, err
+}
+
+func (c *Client) Upcheck() (bool, error) {
+	res, err := c.httpClient.Get("http+unix://c/upcheck")
+	if err != nil {
+		return false, err
+	}
+	if res.StatusCode == 200 {
+		return true, nil
+	}
+
+	return false, errors.New("PTM did not respond to upcheck request")
 }
 
 func (c *Client) SendPayload(pl []byte, b64From string, b64To []string) ([]byte, error) {
@@ -133,10 +139,4 @@ func (c *Client) ReceivePayload(key []byte) ([]byte, error) {
 	}
 
 	return ioutil.ReadAll(res.Body)
-}
-
-func NewClient(socketPath string) (*Client, error) {
-	return &Client{
-		httpClient: unixClient(socketPath),
-	}, nil
 }
