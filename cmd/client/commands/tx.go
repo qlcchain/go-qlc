@@ -4,10 +4,9 @@ import (
 	"fmt"
 
 	"github.com/abiosoft/ishell"
+	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/common/types"
-
-	"github.com/spf13/cobra"
 )
 
 func addTxCmd() {

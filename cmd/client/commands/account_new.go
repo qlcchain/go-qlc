@@ -14,9 +14,8 @@ import (
 	"github.com/abiosoft/ishell"
 	"github.com/spf13/cobra"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func addGenerateAccountCmdByShell(parentCmd *ishell.Cmd) {
@@ -32,12 +31,12 @@ func addGenerateAccountCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "account seed",
 		Value: "",
 	}
-
+	args := []util.Flag{count, seed}
 	c := &ishell.Cmd{
-		Name: "new",
-		Help: "generate account",
+		Name:                "new",
+		Help:                "generate account",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{count, seed}
 			if util.HelpText(c, args) {
 				return
 			}

@@ -13,12 +13,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/cmd/util"
-
+	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 
-	"github.com/abiosoft/ishell"
-
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
 )
@@ -39,12 +37,12 @@ func addPledgeRecvPendCmdByShell(parentCmd *ishell.Cmd) {
 		Must:  true,
 		Usage: "method type, etc pledge/withdraw",
 	}
-
+	args := []util.Flag{priKey, hash, method}
 	s := &ishell.Cmd{
-		Name: "recvPending",
-		Help: "pledge receive pending",
+		Name:                "recvPending",
+		Help:                "pledge receive pending",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{priKey, hash, method}
 			if util.HelpText(c, args) {
 				return
 			}

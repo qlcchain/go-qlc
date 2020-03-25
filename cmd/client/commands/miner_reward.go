@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/cmd/util"
-
-	rpc "github.com/qlcchain/jsonrpc2"
-
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
@@ -36,12 +34,12 @@ func addMinerRewardCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "beneficial account address hex string",
 		Value: "",
 	}
-
+	args := []util.Flag{cbPriKey, bnfPriKey, bnfAddr}
 	cmd := &ishell.Cmd{
-		Name: "reward",
-		Help: "miner reward (gas token)",
+		Name:                "reward",
+		Help:                "miner reward (gas token)",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{cbPriKey, bnfPriKey, bnfAddr}
 			if util.HelpText(c, args) {
 				return
 			}

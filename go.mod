@@ -3,7 +3,7 @@ module github.com/qlcchain/go-qlc
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20191118225719-e21ff1a235dd
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
-	github.com/abiosoft/ishell v2.0.0+incompatible
+	github.com/abiosoft/ishell v0.0.0-20190613190920-79d20b1325a4
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db
 	github.com/awnumar/memguard v0.16.2
 	github.com/beevik/ntp v0.2.0
@@ -47,6 +47,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/qlcchain/jsonrpc2 v0.0.7
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
+	github.com/sahilm/fuzzy v0.1.0
 	github.com/shirou/gopsutil v2.19.12+incompatible
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect

@@ -10,8 +10,6 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"math/big"
 	"net/http"
 	_ "net/http/pprof"
@@ -21,8 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
 	"github.com/spf13/cobra"
@@ -30,7 +26,10 @@ import (
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -337,12 +336,19 @@ func run() {
 		Usage: "genesis seed",
 		Value: "",
 	}
-
+	profPort = cmdutil.Flag{
+		Name:  "profPort",
+		Must:  false,
+		Usage: "prof port ",
+		Value: "",
+	}
+	args := []cmdutil.Flag{account, seed, cfgPath, isProfile, profPort, password, privateKey,
+		configParams, genesisSeed}
 	s := &ishell.Cmd{
-		Name: "run",
-		Help: "start qlc server",
+		Name:                "run",
+		Help:                "start qlc server",
+		CompleterWithPrefix: cmdutil.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []cmdutil.Flag{seed, cfgPath, isProfile, profPort, isSingle}
 			if cmdutil.HelpText(c, args) {
 				return
 			}

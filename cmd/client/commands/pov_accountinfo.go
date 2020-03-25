@@ -18,12 +18,12 @@ func addPovAccountInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "address of account",
 		Value: "",
 	}
-
+	args := []util.Flag{accountAddrFlag}
 	cmd := &ishell.Cmd{
-		Name: "getAccountInfo",
-		Help: "get account state info",
+		Name:                "getAccountInfo",
+		Help:                "get account state info",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{accountAddrFlag}
 			if util.HelpText(c, args) {
 				return
 			}

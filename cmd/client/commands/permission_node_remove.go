@@ -26,11 +26,12 @@ func addPermissionNodeRemoveCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "node index",
 		Value: "",
 	}
+	args := []util.Flag{admin, index}
 	c := &ishell.Cmd{
-		Name: "nodeRemove",
-		Help: "permission remove node",
+		Name:                "nodeRemove",
+		Help:                "permission remove node",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{admin, index}
 			if util.HelpText(c, args) {
 				return
 			}

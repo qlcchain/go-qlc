@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/perlin-network/life/exec"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/log"

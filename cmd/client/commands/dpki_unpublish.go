@@ -50,11 +50,12 @@ func addUnPublishCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "unPublish hash",
 		Value: "",
 	}
+	args := []util.Flag{account, typ, id, kt, pk, hash}
 	c := &ishell.Cmd{
-		Name: "unPublish",
-		Help: "unPublish id and key",
+		Name:                "unPublish",
+		Help:                "unPublish id and key",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id, kt, pk, hash}
 			if util.HelpText(c, args) {
 				return
 			}

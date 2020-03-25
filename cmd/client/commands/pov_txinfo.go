@@ -18,12 +18,12 @@ func addPovTxInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "hash of transaction",
 		Value: "",
 	}
-
+	args := []util.Flag{txHashFlag}
 	cmd := &ishell.Cmd{
-		Name: "getTxInfo",
-		Help: "get transaction info",
+		Name:                "getTxInfo",
+		Help:                "get transaction info",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{txHashFlag}
 			if util.HelpText(c, args) {
 				return
 			}

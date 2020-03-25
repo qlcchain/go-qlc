@@ -11,9 +11,8 @@ import (
 	"github.com/abiosoft/ishell"
 	"github.com/spf13/cobra"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func addSendToCreateByShell(parentCmd *ishell.Cmd) {

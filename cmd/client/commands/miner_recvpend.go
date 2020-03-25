@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
-
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/abiosoft/ishell"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
 )
@@ -28,12 +25,12 @@ func addMinerRecvPendCmdByShell(parentCmd *ishell.Cmd) {
 		Must:  true,
 		Usage: "reward send block hash string",
 	}
-
+	args := []util.Flag{account, sendHash}
 	cmd := &ishell.Cmd{
-		Name: "recvPending",
-		Help: "miner recv pending reward (gas token)",
+		Name:                "recvPending",
+		Help:                "miner recv pending reward (gas token)",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, sendHash}
 			if util.HelpText(c, args) {
 				return
 			}

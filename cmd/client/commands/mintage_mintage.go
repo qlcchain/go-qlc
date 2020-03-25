@@ -11,13 +11,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/rpc/api"
@@ -54,12 +52,12 @@ func addMintageMintageCmdByShell(parentCmd *ishell.Cmd) {
 		Must:  true,
 		Usage: "token decimals",
 	}
-
+	args := []util.Flag{account, preHash, tokenName, tokenSymbol, totalSupply, decimals}
 	s := &ishell.Cmd{
-		Name: "mine",
-		Help: "mine token",
+		Name:                "mine",
+		Help:                "mine token",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, preHash, tokenName, tokenSymbol, totalSupply, decimals}
 			if util.HelpText(c, args) {
 				return
 			}

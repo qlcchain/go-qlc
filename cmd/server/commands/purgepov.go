@@ -27,12 +27,12 @@ func purgePov() {
 			Usage: "pov block start height",
 			Value: -1,
 		}
-
+		args := []cmdutil.Flag{startHeight}
 		cmd := &ishell.Cmd{
-			Name: "purgepov",
-			Help: "purge pov blocks from database",
+			Name:                "purgepov",
+			Help:                "purge pov blocks from database",
+			CompleterWithPrefix: cmdutil.OptsCompleter(args),
 			Func: func(c *ishell.Context) {
-				args := []cmdutil.Flag{startHeight}
 				if cmdutil.HelpText(c, args) {
 					return
 				}

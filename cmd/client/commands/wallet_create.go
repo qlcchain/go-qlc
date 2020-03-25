@@ -10,13 +10,11 @@ package commands
 import (
 	"fmt"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -33,11 +31,12 @@ func addWalletCreateCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "seed for wallet",
 		Value: "",
 	}
+	args := []util.Flag{pwd, seed}
 	c := &ishell.Cmd{
-		Name: "create",
-		Help: "create a wallet for QLCChain node",
+		Name:                "create",
+		Help:                "create a wallet for QLCChain node",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{pwd, seed}
 			if util.HelpText(c, args) {
 				return
 			}

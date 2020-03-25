@@ -56,11 +56,12 @@ func addOraclePublishCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "hash verified for",
 		Value: "",
 	}
+	args := []util.Flag{account, typ, id, kt, pk, code, hash}
 	c := &ishell.Cmd{
-		Name: "oracle",
-		Help: "oracle publish id and key",
+		Name:                "oracle",
+		Help:                "oracle publish id and key",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id, kt, pk, code, hash}
 			if util.HelpText(c, args) {
 				return
 			}
