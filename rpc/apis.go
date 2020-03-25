@@ -141,6 +141,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewPermissionApi(r.cfgFile, r.ledger),
 			Public:    true,
 		}
+	case "privacy":
+		return rpc.API{
+			Namespace: "privacy",
+			Version:   "1.0",
+			Service:   api.NewPrivacyApi(r.config, r.ledger, r.eb, r.cc),
+			Public:    true,
+		}
 	default:
 		return rpc.API{}
 	}

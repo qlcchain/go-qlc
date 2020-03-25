@@ -87,3 +87,25 @@ type EventBroadcastMsg struct {
 	Type    MessageType
 	Message interface{}
 }
+
+type EventPrivacySendReqMsg struct {
+	Block   *types.StateBlock
+	RspChan chan *EventPrivacySendRspMsg
+}
+
+type EventPrivacySendRspMsg struct {
+	Block      *types.StateBlock
+	Err        error
+	EnclaveKey []byte
+}
+
+type EventPrivacyRecvReqMsg struct {
+	Block   *types.StateBlock
+	RspChan chan *EventPrivacyRecvRspMsg
+}
+
+type EventPrivacyRecvRspMsg struct {
+	Block      *types.StateBlock
+	Err        error
+	RawPayload []byte
+}

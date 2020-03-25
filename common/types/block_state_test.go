@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"reflect"
 	"testing"
 )
@@ -276,5 +277,28 @@ func TestStateBlock_TableSchema(t *testing.T) {
 	}
 	if r := b.RemoveRelation(); len(r) != 1 {
 		t.Fatal()
+	}
+}
+
+func TestStateBlock_PrivateHash(t *testing.T) {
+	blk := StateBlock{}
+	blk.Balance = NewBalance(rand.Int63())
+	blk.Vote = NewBalance(rand.Int63())
+
+	h1 := blk.GetHashNotUsed()
+
+	h2 := blk.GetHash()
+	if h1 != h2 {
+		t.Fatal("public GetHash != GetHashNotUsed")
+	}
+
+	blk.PrivateFrom = NewHexBytesFromHex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1")
+	blk.PrivateFor = append(blk.PrivateFor, NewHexBytesFromHex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff2"))
+	blk.PrivateFor = append(blk.PrivateFor, NewHexBytesFromHex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3"))
+	blk.PrivateGroupID = NewHexBytesFromHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff10")
+
+	h3 := blk.GetHash()
+	if h1 == h3 {
+		t.Fatal("private GetHash == GetHashNotUsed")
 	}
 }
