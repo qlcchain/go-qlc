@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"strings"
 	"time"
 
@@ -278,7 +279,7 @@ func (pv *PovVerifier) verifyTransactions(block *types.PovBlock, stat *PovVerify
 
 	for txIdx := 0; txIdx < len(accTxs); txIdx++ {
 		tx := accTxs[txIdx]
-		isCA := types.IsContractAddress(tx.Block.GetAddress())
+		isCA := contractaddress.IsContractAddress(tx.Block.GetAddress())
 		addrToken := types.AddressToken{Address: tx.Block.GetAddress(), Token: tx.Block.GetToken()}
 
 		prevHashWant, ok := addrTokenPrevHashes[addrToken]

@@ -7,6 +7,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -80,7 +81,7 @@ type MinerRewardInfo struct {
 }
 
 func GetLastMinerRewardHeightByAccount(ctx *vmstore.VMContext, coinbase types.Address) (uint64, error) {
-	data, err := ctx.GetStorage(types.MinerAddress[:], coinbase[:])
+	data, err := ctx.GetStorage(contractaddress.MinerAddress[:], coinbase[:])
 	if err == nil {
 		info := new(MinerRewardInfo)
 		er := MinerABI.UnpackVariable(info, VariableNameMinerReward, data)

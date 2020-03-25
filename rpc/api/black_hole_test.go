@@ -14,8 +14,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -24,6 +22,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 

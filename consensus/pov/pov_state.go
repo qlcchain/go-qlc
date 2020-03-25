@@ -3,6 +3,7 @@ package pov
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
 
 	"github.com/qlcchain/go-qlc/config"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -257,7 +257,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 		return nil
 	}
 
-	cf, ok, err := contract.GetChainContract(ca, methodSig)
+	cf, ok, err := vmcontract.GetChainContract(ca, methodSig)
 	if err != nil {
 		bc.logger.Errorf("failed to get chain contract err %s", err)
 		return err

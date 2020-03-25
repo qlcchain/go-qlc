@@ -7,6 +7,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -70,7 +71,7 @@ func TestGetLastRepRewardHeightByAccount(t *testing.T) {
 	ctx := vmstore.NewVMContext(l)
 	data, _ := RepABI.PackVariable(VariableNameRepReward, param.EndHeight,
 		param.RewardBlocks, time.Now().Unix(), param.RewardAmount)
-	err := ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], data)
+	err := ctx.SetStorage(contractaddress.RepAddress.Bytes(), param.Account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}

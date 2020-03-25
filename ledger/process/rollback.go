@@ -11,10 +11,11 @@ import (
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/trie"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -693,16 +694,16 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 	}
 
 	if blockCur.GetType() == types.ContractReward {
-		if c, ok, err := contract.GetChainContract(types.Address(blockLink.Link), blockLink.Data); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(blockLink.Link), blockLink.Data); ok && err == nil {
 			switch c.GetDescribe().GetVersion() {
-			case contract.SpecVer1:
+			case vmcontract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(blockLink); err == nil && pendingKey != nil {
 					lv.logger.Debug("add contract reward pending , ", pendingKey)
 					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
 						return fmt.Errorf("contract ver1 add pending: %s", err)
 					}
 				}
-			case contract.SpecVer2:
+			case vmcontract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, blockLink); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
@@ -737,14 +738,14 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 
 func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *ledger.Cache) error {
 	if blockCur.GetType() == types.ContractSend {
-		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.Data); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(blockCur.Link), blockCur.Data); ok && err == nil {
 			switch c.GetDescribe().GetVersion() {
-			case contract.SpecVer1:
+			case vmcontract.SpecVer1:
 				if pendingKey, _, err := c.DoPending(blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
 					return lv.l.DeletePending(pendingKey, cache)
 				}
-			case contract.SpecVer2:
+			case vmcontract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, _, err := c.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
@@ -796,7 +797,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 				}
 			}
 		}
-		if types.IsRewardContractAddress(types.Address(block.GetLink())) {
+		if contractaddress.IsRewardContractAddress(types.Address(block.GetLink())) {
 			preHash := block.GetPrevious()
 			for {
 				if preHash.IsZero() {
@@ -844,7 +845,7 @@ func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {
 				return
 			}
 			address := types.Address(input.GetLink())
-			if address == types.MintageAddress {
+			if address == contractaddress.MintageAddress {
 				var param = new(cabi.ParamMintage)
 				tokenId = param.TokenId
 				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {

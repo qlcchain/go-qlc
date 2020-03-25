@@ -12,16 +12,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/event"
-
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/sync"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -31,8 +31,8 @@ var ErrNotImplement = errors.New("not implemented")
 type internalContract struct {
 }
 
-func (i internalContract) GetDescribe() Describe {
-	return Describe{withPending: true, withSignature: true, specVer: SpecVer2}
+func (i internalContract) GetDescribe() vmcontract.Describe {
+	return vmcontract.Describe{Pending: true, Signature: true, SpecVer: vmcontract.SpecVer2}
 }
 
 func (i internalContract) GetTargetReceiver(_ *vmstore.VMContext, _ *types.StateBlock) (types.Address, error) {
@@ -85,7 +85,7 @@ func (c *CreateContract) GetTargetReceiver(_ *vmstore.VMContext, blk *types.Stat
 	}
 }
 
-func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify send block data
 		param := new(cabi.CreateContractParam)
@@ -97,7 +97,7 @@ func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlo
 		if err != nil {
 			return err
 		}
-		if b, err := ctx.GetStorage(types.SettlementAddress[:], address[:]); err == nil && len(b) > 0 {
+		if b, err := ctx.GetStorage(contractaddress.SettlementAddress[:], address[:]); err == nil && len(b) > 0 {
 			if _, err := cabi.ParseContractParam(b); err != nil {
 				return err
 			}
@@ -141,7 +141,7 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 		if err != nil {
 			return nil, nil, err
 		}
-		storage, err := ctx.GetStorage(types.SettlementAddress[:], address[:])
+		storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], address[:])
 		if err != nil && err != vmstore.ErrStorageNotFound {
 			return nil, nil, err
 		}
@@ -157,7 +157,7 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 			}
 		} else {
 			if data, err := param.ToContractParam().ToABI(); err == nil {
-				if err := ctx.SetStorage(types.SettlementAddress[:], address[:], data); err != nil {
+				if err := ctx.SetStorage(contractaddress.SettlementAddress[:], address[:], data); err != nil {
 					return nil, nil, err
 				}
 			} else {
@@ -182,7 +182,7 @@ type SignContract struct {
 	internalContract
 }
 
-func (s *SignContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (s *SignContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify send block data
 		param := new(cabi.SignContractParam)
@@ -190,7 +190,7 @@ func (s *SignContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock
 		if err != nil {
 			return err
 		}
-		if b, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+		if b, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
 			if _, err := cabi.ParseContractParam(b); err != nil {
 				return err
 			}
@@ -213,7 +213,7 @@ func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 		return nil, nil, err
 	}
 
-	if storage, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err != nil {
+	if storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err != nil {
 		return nil, nil, err
 	} else {
 		if len(storage) > 0 {
@@ -228,7 +228,7 @@ func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 
 				if data, err := cp.ToABI(); err == nil {
 					// save confirm data
-					if err := ctx.SetStorage(types.SettlementAddress[:], param.ContractAddress[:], data); err == nil {
+					if err := ctx.SetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:], data); err == nil {
 						return &types.PendingKey{
 								Address: block.Address,
 								Hash:    block.GetHash(),
@@ -256,7 +256,7 @@ type ProcessCDR struct {
 	internalContract
 }
 
-func (p *ProcessCDR) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (p *ProcessCDR) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		param := new(cabi.CDRParam)
 		err := param.FromABI(data)
@@ -367,7 +367,7 @@ type AddPreStop struct {
 	internalContract
 }
 
-func (a *AddPreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (a *AddPreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		stopParam := new(cabi.StopParam)
 		return stopParam.FromABI(cabi.MethodNameAddPreStop, data)
@@ -400,7 +400,7 @@ type RemovePreStop struct {
 	internalContract
 }
 
-func (r *RemovePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (r *RemovePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		stopParam := new(cabi.StopParam)
 		return stopParam.FromABI(cabi.MethodNameRemovePreStop, data)
@@ -423,7 +423,7 @@ type UpdatePreStop struct {
 	internalContract
 }
 
-func (u *UpdatePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (u *UpdatePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify block data
 		param := new(cabi.UpdateStopParam)
@@ -464,7 +464,7 @@ type AddNextStop struct {
 	internalContract
 }
 
-func (a *AddNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (a *AddNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		stopParam := new(cabi.StopParam)
 		return stopParam.FromABI(cabi.MethodNameAddNextStop, data)
@@ -497,7 +497,7 @@ type RemoveNextStop struct {
 	internalContract
 }
 
-func (r *RemoveNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (r *RemoveNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		stopParam := new(cabi.StopParam)
 		return stopParam.FromABI(cabi.MethodNameRemoveNextStop, data)
@@ -520,7 +520,7 @@ type UpdateNextStop struct {
 	internalContract
 }
 
-func (u *UpdateNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (u *UpdateNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify block data
 		param := new(cabi.UpdateStopParam)
@@ -615,7 +615,7 @@ func verifyStopName(s []string, name string) (bool, int) {
 	return false, 0
 }
 
-func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock, fn func(data []byte) error) ([]*ContractBlock, error) {
+func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock, fn func(data []byte) error) ([]*vmcontract.ContractBlock, error) {
 	if err := fn(input.Data); err != nil {
 		return nil, err
 	}
@@ -638,7 +638,7 @@ func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types
 	block.Previous = txToken.Header
 	block.Representative = input.Representative
 
-	return []*ContractBlock{
+	return []*vmcontract.ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -660,7 +660,7 @@ func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, 
 
 	// make sure that the same block only process once
 	//address := types.Address(block.Link)
-	storage, err := ctx.GetStorage(types.SettlementAddress[:], address[:])
+	storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], address[:])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -682,7 +682,7 @@ func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, 
 			}
 
 			if data, err := param.ToABI(); err == nil {
-				if err := ctx.SetStorage(types.SettlementAddress[:], address[:], data); err != nil {
+				if err := ctx.SetStorage(contractaddress.SettlementAddress[:], address[:], data); err != nil {
 					return nil, nil, err
 				}
 			} else {
@@ -716,7 +716,7 @@ func (t *TerminateContract) GetTargetReceiver(ctx *vmstore.VMContext, blk *types
 		return types.ZeroAddress, err
 	}
 
-	if b, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+	if b, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
 		if cp, err := cabi.ParseContractParam(b); err != nil {
 			return types.ZeroAddress, err
 		} else {
@@ -731,7 +731,7 @@ func (t *TerminateContract) GetTargetReceiver(ctx *vmstore.VMContext, blk *types
 	}
 }
 
-func (t *TerminateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (t *TerminateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify send block data
 		param := new(cabi.TerminateParam)
@@ -739,7 +739,7 @@ func (t *TerminateContract) DoReceive(ctx *vmstore.VMContext, block *types.State
 		if err != nil {
 			return err
 		}
-		if b, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+		if b, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
 			if _, err := cabi.ParseContractParam(b); err != nil {
 				return err
 			}
@@ -762,7 +762,7 @@ func (t *TerminateContract) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 		return nil, nil, err
 	}
 
-	if storage, err := ctx.GetStorage(types.SettlementAddress[:], param.ContractAddress[:]); err != nil {
+	if storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err != nil {
 		return nil, nil, err
 	} else {
 		if len(storage) > 0 {
@@ -778,7 +778,7 @@ func (t *TerminateContract) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 
 				if data, err := cp.ToABI(); err == nil {
 					// save confirm data
-					if err := ctx.SetStorage(types.SettlementAddress[:], param.ContractAddress[:], data); err == nil {
+					if err := ctx.SetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:], data); err == nil {
 						return &types.PendingKey{
 								Address: block.Address,
 								Hash:    block.GetHash(),
@@ -804,7 +804,7 @@ type RegisterAsset struct {
 	internalContract
 }
 
-func (r *RegisterAsset) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (r *RegisterAsset) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		param, err := cabi.ParseAssertParam(input.GetData())
 		if err != nil {

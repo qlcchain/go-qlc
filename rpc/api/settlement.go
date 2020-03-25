@@ -19,6 +19,8 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -104,7 +106,7 @@ func (s *SettlementAPI) GetSettlementRewardsBlock(send *types.Hash) (*types.Stat
 
 	ctx := vmstore.NewVMContext(s.l)
 
-	if c, ok, err := contract.GetChainContract(types.SettlementAddress, blk.Data); c != nil && ok && err == nil {
+	if c, ok, err := vmcontract.GetChainContract(contractaddress.SettlementAddress, blk.Data); c != nil && ok && err == nil {
 		if r, err := c.DoReceive(ctx, rev, blk); err == nil {
 			if len(r) > 0 {
 				return r[0].Block, nil
@@ -195,7 +197,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       createParam.Previous,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
 				PoVHeight:      povHeader.GetHeight(),
@@ -259,7 +261,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
 				PoVHeight:      povHeader.GetHeight(),
@@ -291,7 +293,7 @@ type UpdateStopParam struct {
 	Address types.Address
 }
 
-func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() error, abi func() ([]byte, error), c contract.Contract) (*types.StateBlock, error) {
+func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() error, abi func() ([]byte, error), c vmcontract.Contract) (*types.StateBlock, error) {
 	if !s.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}
@@ -324,7 +326,7 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
 				PoVHeight:      povHeader.GetHeight(),
@@ -587,7 +589,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 					Oracle:         types.ZeroBalance,
 					Storage:        types.ZeroBalance,
 					Previous:       tm.Header,
-					Link:           types.Hash(types.SettlementAddress),
+					Link:           types.Hash(contractaddress.SettlementAddress),
 					Representative: tm.Representative,
 					Data:           singedData,
 					PoVHeight:      povHeader.GetHeight(),
@@ -652,7 +654,7 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
 				PoVHeight:      povHeader.GetHeight(),
@@ -872,7 +874,7 @@ func (s *SettlementAPI) GetRegisterAssetBlock(param *RegisterAssetParam) (*types
 			Oracle:         types.ZeroBalance,
 			Storage:        types.ZeroBalance,
 			Previous:       tm.Header,
-			Link:           types.Hash(types.SettlementAddress),
+			Link:           types.Hash(contractaddress.SettlementAddress),
 			Representative: tm.Representative,
 			Data:           singedData,
 			PoVHeight:      povHeader.GetHeight(),

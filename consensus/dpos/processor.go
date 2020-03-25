@@ -2,13 +2,13 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/qlcchain/go-qlc/consensus"
 
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -700,10 +700,10 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 			dps.logger.Errorf("add gap publish block to ledger err %s", err)
 		}
 	case process.GapPovHeight:
-		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
-			case contract.SpecVer2:
+			case vmcontract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(dps.ledger)
 				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
 				if err != nil || gapResult != common.ContractRewardGapPov {

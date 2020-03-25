@@ -15,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -123,7 +124,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		Network:        am.CoinNetwork,
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -194,7 +195,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 		Network:        am.CoinNetwork,
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -515,7 +516,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 		Address:        param.Account,
 		Balance:        tm.Balance.Sub(param.Fee),
 		Previous:       tm.Header,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -593,7 +594,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 		Address:        param.Account,
 		Balance:        tm.Balance,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -625,7 +626,7 @@ func (p *PublicKeyDistributionApi) getCSDB(isLatest bool, height uint64) *stated
 
 	if povHdr != nil {
 		gsdb := statedb.NewPovGlobalStateDB(p.l.DBStore(), povHdr.GetStateHash())
-		csdb, _ := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+		csdb, _ := gsdb.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 		return csdb
 	}
 
@@ -842,7 +843,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		Address:        param.Account,
 		Balance:        tm.Balance.Sub(common.OracleCost),
 		Previous:       tm.Header,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -1032,7 +1033,7 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 		Oracle:  types.ZeroBalance,
 		Storage: types.ZeroBalance,
 
-		Link:      types.Hash(types.PubKeyDistributionAddress),
+		Link:      types.Hash(contractaddress.PubKeyDistributionAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().Unix(),
 
@@ -1061,7 +1062,7 @@ func (p *PublicKeyDistributionApi) GetRewardRecvBlock(input *types.StateBlock) (
 	if input.GetType() != types.ContractSend {
 		return nil, errors.New("input block type is not contract send")
 	}
-	if input.GetLink() != types.PubKeyDistributionAddress.ToHash() {
+	if input.GetLink() != contractaddress.PubKeyDistributionAddress.ToHash() {
 		return nil, errors.New("input address is not contract PublicKeyDistribution")
 	}
 
@@ -1239,7 +1240,7 @@ func (p *PublicKeyDistributionApi) GetVerifierHeartBlock(account types.Address, 
 		Address:        account,
 		Balance:        tm.Balance.Sub(common.OracleCost),
 		Previous:       tm.Header,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),

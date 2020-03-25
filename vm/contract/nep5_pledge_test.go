@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
-
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -50,7 +50,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.NEP5PledgeAddress),
+		Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      0,
@@ -103,7 +103,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 	// patch withdraw time
 	pledgeKey := cabi.GetPledgeKey(addr1, param.Beneficial, param.NEP5TxId)
 	var pledgeData []byte
-	if pledgeData, err = ctx.GetStorage(types.NEP5PledgeAddress[:], pledgeKey); err != nil {
+	if pledgeData, err = ctx.GetStorage(contractaddress.NEP5PledgeAddress[:], pledgeKey); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(pledgeData) > 0 {
@@ -116,7 +116,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 				if pledgeData, err = info.ToABI(); err != nil {
 					t.Fatal(err)
 				} else {
-					if err = ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, pledgeData); err != nil {
+					if err = ctx.SetStorage(contractaddress.NEP5PledgeAddress[:], pledgeKey, pledgeData); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -158,7 +158,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 				Oracle:         am.CoinOracle,
 				Storage:        am.CoinStorage,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.NEP5PledgeAddress),
+				Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				PoVHeight:      0,
@@ -231,7 +231,7 @@ func TestNep5Pledge_DoSend(t *testing.T) {
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.NEP5PledgeAddress),
+		Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      0,

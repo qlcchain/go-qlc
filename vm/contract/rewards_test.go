@@ -7,10 +7,10 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
-
-	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -55,7 +55,7 @@ func TestAirdropRewards(t *testing.T) {
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.RewardsAddress),
+				Link:           types.Hash(contractaddress.RewardsAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				PoVHeight:      0,
@@ -141,7 +141,7 @@ func TestConfidantRewards(t *testing.T) {
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.RewardsAddress),
+				Link:           types.Hash(contractaddress.RewardsAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				PoVHeight:      0,

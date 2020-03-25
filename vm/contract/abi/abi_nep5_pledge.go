@@ -18,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -160,7 +161,7 @@ func GetTotalPledgeAmount(ctx *vmstore.VMContext) *big.Int {
 		_ = logger.Sync()
 	}()
 
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
@@ -184,7 +185,7 @@ func GetPledgeBeneficialAmount(ctx *vmstore.VMContext, beneficial types.Address,
 		_ = logger.Sync()
 	}()
 
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == pType {
@@ -210,7 +211,7 @@ func GetPledgeBeneficialTotalAmount(ctx *vmstore.VMContext, beneficial types.Add
 		_ = logger.Sync()
 	}()
 
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
@@ -238,7 +239,7 @@ func GetPledgeInfos(ctx *vmstore.VMContext, addr types.Address) ([]*NEP5PledgeIn
 		_ = logger.Sync()
 	}()
 
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize*2+1):], addr[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				piList = append(piList, pledgeInfo)
@@ -267,7 +268,7 @@ func GetBeneficialInfos(ctx *vmstore.VMContext, addr types.Address) ([]*NEP5Pled
 		_ = logger.Sync()
 	}()
 
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], addr[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				piList = append(piList, pledgeInfo)
@@ -296,7 +297,7 @@ func GetBeneficialPledgeInfos(ctx *vmstore.VMContext, beneficial types.Address, 
 		_ = logger.Sync()
 	}()
 
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == uint8(pType) {
@@ -329,7 +330,7 @@ func SearchBeneficialPledgeInfo(ctx *vmstore.VMContext, param *WithdrawPledgePar
 	}()
 	var result []*PledgeResult
 	now := common.TimeNow().Unix()
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType &&
@@ -357,7 +358,7 @@ func SearchPledgeInfoWithNEP5TxId(ctx *vmstore.VMContext, param *WithdrawPledgeP
 		_ = logger.Sync()
 	}()
 	var result *PledgeResult
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType &&
@@ -385,7 +386,7 @@ func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 	}()
 	result := new(PledgeResult)
 	now := common.TimeNow().Unix()
-	err := ctx.IteratorAll(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.IteratorAll(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType && pledgeInfo.Amount.String() == param.Amount.String() &&
@@ -423,7 +424,7 @@ func SearchBeneficialPledgeInfoIgnoreWithdrawTime(ctx *vmstore.VMContext, param 
 		_ = logger.Sync()
 	}()
 	var result []*PledgeResult
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType && pledgeInfo.Amount.String() == param.Amount.String() {
@@ -445,7 +446,7 @@ func SearchBeneficialPledgeInfoIgnoreWithdrawTime(ctx *vmstore.VMContext, param 
 
 func SearchAllPledgeInfos(ctx *vmstore.VMContext) ([]*NEP5PledgeInfo, error) {
 	var result []*NEP5PledgeInfo
-	err := ctx.Iterator(types.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
+	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
 		if len(key) > 2*types.AddressSize && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				result = append(result, pledgeInfo)

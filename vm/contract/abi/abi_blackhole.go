@@ -13,12 +13,11 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/qlcchain/go-qlc/common/util"
-
-	"github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -154,7 +153,7 @@ func PackSendBlock(ctx *vmstore.VMContext, param *DestroyParam) (*types.StateBlo
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       param.Previous,
-				Link:           types.Hash(types.BlackHoleAddress),
+				Link:           types.Hash(contractaddress.BlackHoleAddress),
 				Representative: tm.Representative,
 				Data:           singedData,
 				Timestamp:      common.TimeNow().Unix(),

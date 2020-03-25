@@ -7,6 +7,7 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -172,7 +173,7 @@ func TestRepApi_GetRewardRecvBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	sendBlock.Link = types.RepAddress.ToHash()
+	sendBlock.Link = contractaddress.RepAddress.ToHash()
 	blk, _ = r.GetRewardRecvBlock(sendBlock)
 	if blk != nil {
 		t.Fatal()
@@ -210,7 +211,7 @@ func TestRepApi_GetRewardRecvBlockBySendHash(t *testing.T) {
 	sendBlock.Data, _ = r.GetRewardData(param)
 	sendBlock.Address = param.Account
 	sendBlock.Type = types.ContractSend
-	sendBlock.Link = types.RepAddress.ToHash()
+	sendBlock.Link = contractaddress.RepAddress.ToHash()
 	l.AddStateBlock(sendBlock)
 
 	blk, _ := r.GetRewardRecvBlockBySendHash(sendBlock.GetHash())
@@ -234,7 +235,7 @@ func TestRepApi_GetRewardHistory(t *testing.T) {
 
 	timeStamp := common.TimeNow().Unix()
 	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, uint64(1440), uint64(100), timeStamp, big.NewInt(200))
-	err := ctx.SetStorage(types.RepAddress.Bytes(), account[:], data)
+	err := ctx.SetStorage(contractaddress.RepAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}

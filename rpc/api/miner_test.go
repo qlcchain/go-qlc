@@ -7,6 +7,7 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -172,7 +173,7 @@ func TestMinerApi_GetRewardRecvBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	sendBlock.Link = types.MinerAddress.ToHash()
+	sendBlock.Link = contractaddress.MinerAddress.ToHash()
 	blk, _ = m.GetRewardRecvBlock(sendBlock)
 	if blk != nil {
 		t.Fatal()
@@ -210,7 +211,7 @@ func TestMinerApi_GetRewardRecvBlockBySendHash(t *testing.T) {
 	sendBlock.Data, _ = m.GetRewardData(param)
 	sendBlock.Address = param.Coinbase
 	sendBlock.Type = types.ContractSend
-	sendBlock.Link = types.MinerAddress.ToHash()
+	sendBlock.Link = contractaddress.MinerAddress.ToHash()
 	l.AddStateBlock(sendBlock)
 
 	blk, _ := m.GetRewardRecvBlockBySendHash(sendBlock.GetHash())
@@ -234,7 +235,7 @@ func TestMinerApi_GetRewardHistory(t *testing.T) {
 
 	timeStamp := common.TimeNow().Unix()
 	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, uint64(1440), uint64(100), timeStamp, big.NewInt(200))
-	err := ctx.SetStorage(types.MinerAddress.Bytes(), account[:], data)
+	err := ctx.SetStorage(contractaddress.MinerAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}

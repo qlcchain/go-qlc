@@ -9,6 +9,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -24,7 +25,7 @@ func addTestNode(t *testing.T, ctx *vmstore.VMContext, pn *abi.PermNode) {
 	var key []byte
 	key = append(key, abi.PermissionDataNode)
 	key = append(key, util.BE_Uint32ToBytes(pn.Index)...)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +44,7 @@ func addTestAdmin(t *testing.T, ctx *vmstore.VMContext, admin *abi.AdminAccount)
 
 	var key []byte
 	key = append(key, abi.PermissionDataAdmin)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 	if err != nil {
 		t.Fatal()
 	}
@@ -154,7 +155,7 @@ func TestPermissionApi_GetAdminUpdateRewardBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	send.Link = types.PermissionAddress.ToHash()
+	send.Link = contractaddress.PermissionAddress.ToHash()
 	blk, _ = p.GetAdminUpdateRewardBlock(send)
 	if blk != nil {
 		t.Fatal()
@@ -188,7 +189,7 @@ func TestPermissionApi_GetAdminUpdateRewardBlockBySendHash(t *testing.T) {
 	p := NewPermissionApi(cfgFile, l)
 	send := mock.StateBlockWithoutWork()
 	send.Type = types.ContractSend
-	send.Link = types.PermissionAddress.ToHash()
+	send.Link = contractaddress.PermissionAddress.ToHash()
 	send.Data, _ = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminUpdate, mock.Address(), "successor")
 	p.cc.Init(nil)
 	p.cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)

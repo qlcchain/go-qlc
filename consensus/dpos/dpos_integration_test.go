@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"encoding/hex"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"testing"
 	"time"
 
@@ -273,14 +274,14 @@ func TestGap(t *testing.T) {
 	n1.ProcessBlockLocal(r1)
 
 	// gap token
-	cs1 := n1.GenerateContractSendBlock(TestAccount, toAcc, types.MintageAddress, abi.MethodNameMintage, s2.GetHash())
+	cs1 := n1.GenerateContractSendBlock(TestAccount, toAcc, contractaddress.MintageAddress, abi.MethodNameMintage, s2.GetHash())
 	n1.ProcessBlockLocal(cs1)
-	cr1 := n1.GenerateContractReceiveBlock(toAcc, types.MintageAddress, abi.MethodNameMintage, cs1)
+	cr1 := n1.GenerateContractReceiveBlock(toAcc, contractaddress.MintageAddress, abi.MethodNameMintage, cs1)
 	n1.ProcessBlockLocal(cr1)
 	time.Sleep(3 * time.Second)
-	cs2 := n1.GenerateContractSendBlock(TestAccount, TestAccount, types.MintageAddress, abi.MethodNameMintageWithdraw, cr1.Token)
+	cs2 := n1.GenerateContractSendBlock(TestAccount, TestAccount, contractaddress.MintageAddress, abi.MethodNameMintageWithdraw, cr1.Token)
 	n1.ProcessBlockLocal(cs2)
-	cr2 := n1.GenerateContractReceiveBlock(TestAccount, types.MintageAddress, abi.MethodNameMintageWithdraw, cs2)
+	cr2 := n1.GenerateContractReceiveBlock(TestAccount, contractaddress.MintageAddress, abi.MethodNameMintageWithdraw, cs2)
 	n1.ProcessBlockLocal(cr2)
 
 	hashes := make([]types.Hash, 0)

@@ -19,6 +19,8 @@ import (
 	"github.com/qlcchain/go-qlc/common/sync"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -105,7 +107,7 @@ func buildContract(l *ledger.Ledger, t *testing.T) {
 			Oracle:         types.ZeroBalance,
 			Storage:        types.ZeroBalance,
 			Previous:       param.Previous,
-			Link:           types.Hash(types.SettlementAddress),
+			Link:           types.Hash(contractaddress.SettlementAddress),
 			Representative: tm.Representative,
 			Data:           abi,
 			Timestamp:      common.TimeNow().Unix(),
@@ -178,7 +180,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 						Oracle:         types.ZeroBalance,
 						Storage:        types.ZeroBalance,
 						Previous:       tm.Header,
-						Link:           types.Hash(types.SettlementAddress),
+						Link:           types.Hash(contractaddress.SettlementAddress),
 						Representative: tm.Representative,
 						Data:           abi,
 						Timestamp:      common.TimeNow().Unix(),
@@ -282,7 +284,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				Timestamp:      common.TimeNow().Unix(),
@@ -344,7 +346,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				Timestamp:      common.TimeNow().Unix(),
@@ -409,7 +411,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				Timestamp:      common.TimeNow().Unix(),
@@ -467,7 +469,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				Timestamp:      common.TimeNow().Unix(),
@@ -533,7 +535,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				Timestamp:      common.TimeNow().Unix(),
@@ -598,7 +600,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				Oracle:         types.ZeroBalance,
 				Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.SettlementAddress),
+				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
 				Data:           abi,
 				Timestamp:      common.TimeNow().Unix(),
@@ -688,7 +690,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			Oracle:         types.ZeroBalance,
 			Storage:        types.ZeroBalance,
 			Previous:       param.Previous,
-			Link:           types.Hash(types.SettlementAddress),
+			Link:           types.Hash(contractaddress.SettlementAddress),
 			Representative: tm.Representative,
 			Data:           abi,
 			Timestamp:      common.TimeNow().Unix(),
@@ -784,7 +786,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 							Oracle:         types.ZeroBalance,
 							Storage:        types.ZeroBalance,
 							Previous:       tm2.Header,
-							Link:           types.Hash(types.SettlementAddress),
+							Link:           types.Hash(contractaddress.SettlementAddress),
 							Representative: tm.Representative,
 							Data:           singedData,
 							Timestamp:      common.TimeNow().Unix(),
@@ -837,7 +839,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											Oracle:         types.ZeroBalance,
 											Storage:        types.ZeroBalance,
 											Previous:       tm.Header,
-											Link:           types.Hash(types.SettlementAddress),
+											Link:           types.Hash(contractaddress.SettlementAddress),
 											Representative: tm.Representative,
 											Data:           abi,
 											Timestamp:      common.TimeNow().Unix(),
@@ -900,7 +902,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											Oracle:         types.ZeroBalance,
 											Storage:        types.ZeroBalance,
 											Previous:       tm2.Header,
-											Link:           types.Hash(types.SettlementAddress),
+											Link:           types.Hash(contractaddress.SettlementAddress),
 											Representative: tm2.Representative,
 											Data:           abi,
 											Timestamp:      common.TimeNow().Unix(),
@@ -973,7 +975,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											Oracle:         types.ZeroBalance,
 											Storage:        types.ZeroBalance,
 											Previous:       tm.Header,
-											Link:           types.Hash(types.SettlementAddress),
+											Link:           types.Hash(contractaddress.SettlementAddress),
 											Representative: tm.Representative,
 											Data:           abi,
 											Timestamp:      common.TimeNow().Unix(),
@@ -1026,7 +1028,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											Oracle:         types.ZeroBalance,
 											Storage:        types.ZeroBalance,
 											Previous:       tm2.Header,
-											Link:           types.Hash(types.SettlementAddress),
+											Link:           types.Hash(contractaddress.SettlementAddress),
 											Representative: tm2.Representative,
 											Data:           abi,
 											Timestamp:      common.TimeNow().Unix(),
@@ -1085,14 +1087,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 func TestCreateContract_GetDescribe(t *testing.T) {
 	tests := []struct {
 		name string
-		want Describe
+		want vmcontract.Describe
 	}{
 		{
 			name: "default",
-			want: Describe{
-				specVer:       SpecVer2,
-				withSignature: true,
-				withPending:   true,
+			want: vmcontract.Describe{
+				SpecVer:   vmcontract.SpecVer2,
+				Signature: true,
+				Pending:   true,
 			},
 		},
 	}
@@ -1165,14 +1167,14 @@ func TestCreateContract_GetRefundData(t *testing.T) {
 func TestProcessCDR_GetDescribe(t *testing.T) {
 	tests := []struct {
 		name string
-		want Describe
+		want vmcontract.Describe
 	}{
 		{
 			name: "default",
-			want: Describe{
-				specVer:       SpecVer2,
-				withSignature: true,
-				withPending:   true,
+			want: vmcontract.Describe{
+				SpecVer:   vmcontract.SpecVer2,
+				Signature: true,
+				Pending:   true,
 			},
 		},
 	}
@@ -1245,14 +1247,14 @@ func TestProcessCDR_GetRefundData(t *testing.T) {
 func TestSignContract_GetDescribe(t *testing.T) {
 	tests := []struct {
 		name string
-		want Describe
+		want vmcontract.Describe
 	}{
 		{
 			name: "",
-			want: Describe{
-				specVer:       SpecVer2,
-				withSignature: true,
-				withPending:   true,
+			want: vmcontract.Describe{
+				SpecVer:   vmcontract.SpecVer2,
+				Signature: true,
+				Pending:   true,
 			},
 		},
 	}
@@ -1614,7 +1616,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 			Oracle:         types.ZeroBalance,
 			Storage:        types.ZeroBalance,
 			Previous:       tm.Header,
-			Link:           types.Hash(types.SettlementAddress),
+			Link:           types.Hash(contractaddress.SettlementAddress),
 			Representative: tm.Representative,
 			Data:           abi,
 			Timestamp:      common.TimeNow().Unix(),

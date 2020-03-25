@@ -11,6 +11,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -191,7 +192,7 @@ func CheckVerifierInfoExist(ctx *vmstore.VMContext, account types.Address, vType
 	key = append(key, PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
 	key = append(key, account[:]...)
-	val, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	val, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], key)
 	if err != nil {
 		return false
 	}
@@ -214,7 +215,7 @@ func CheckVerifierExist(ctx *vmstore.VMContext, account types.Address, vType uin
 	key = append(key, PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
 	key = append(key, account[:]...)
-	val, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	val, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], key)
 	if err != nil {
 		return false
 	}
@@ -233,7 +234,7 @@ func GetVerifierInfoByAccountAndType(ctx *vmstore.VMContext, account types.Addre
 	key = append(key, PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
 	key = append(key, account[:]...)
-	val, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	val, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], key)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +251,7 @@ func GetVerifierInfoByAccountAndType(ctx *vmstore.VMContext, account types.Addre
 func GetAllVerifiers(ctx *vmstore.VMContext) ([]*VerifierRegInfo, error) {
 	vrs := make([]*VerifierRegInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		var vs VerifierStorage
 		err := PublicKeyDistributionABI.UnpackVariable(&vs, VariableNamePKDVerifierInfo, value)
@@ -284,7 +285,7 @@ func GetAllVerifiers(ctx *vmstore.VMContext) ([]*VerifierRegInfo, error) {
 func GetVerifiersByType(ctx *vmstore.VMContext, vType uint32) ([]*VerifierRegInfo, error) {
 	vrs := make([]*VerifierRegInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
 	itKey = append(itKey, util.BE_Uint32ToBytes(vType)...)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		var vs VerifierStorage
@@ -319,7 +320,7 @@ func GetVerifiersByType(ctx *vmstore.VMContext, vType uint32) ([]*VerifierRegInf
 func GetVerifiersByAccount(ctx *vmstore.VMContext, account types.Address) ([]*VerifierRegInfo, error) {
 	vrs := make([]*VerifierRegInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		if !bytes.Equal(key[VerifierAccIndexS:VerifierAccIndexE], account[:]) {
 			return nil
@@ -431,7 +432,7 @@ func OracleInfoCheck(ctx *vmstore.VMContext, account types.Address, ot uint32, i
 func GetAllOracleInfo(ctx *vmstore.VMContext) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		ot := util.BE_BytesToUint32(key[OracleTypeIndexS:OracleTypeIndexE])
 
@@ -479,7 +480,7 @@ func GetAllOracleInfo(ctx *vmstore.VMContext) []*OracleInfo {
 func GetOracleInfoByType(ctx *vmstore.VMContext, ot uint32) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(ot)...)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		hash, err := types.BytesToHash(key[OracleHashIndexS:OracleHashIndexE])
@@ -526,7 +527,7 @@ func GetOracleInfoByType(ctx *vmstore.VMContext, ot uint32) []*OracleInfo {
 func GetOracleInfoByTypeAndID(ctx *vmstore.VMContext, ot uint32, id types.Hash) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(ot)...)
 	itKey = append(itKey, id[:]...)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
@@ -570,7 +571,7 @@ func GetOracleInfoByTypeAndIDAndPk(ctx *vmstore.VMContext, ot uint32, id types.H
 	ois := make([]*OracleInfo, 0)
 
 	kh := common.PublicKeyWithTypeHash(kt, pk)
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(ot)...)
 	itKey = append(itKey, id[:]...)
 	itKey = append(itKey, kh...)
@@ -614,7 +615,7 @@ func GetOracleInfoByTypeAndIDAndPk(ctx *vmstore.VMContext, ot uint32, id types.H
 func GetOracleInfoByAccount(ctx *vmstore.VMContext, account types.Address) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		if !bytes.Equal(account[:], key[OracleAccIndexS:OracleAccIndexE]) {
 			return nil
@@ -661,7 +662,7 @@ func GetOracleInfoByAccount(ctx *vmstore.VMContext, account types.Address) []*Or
 func GetOracleInfoByAccountAndType(ctx *vmstore.VMContext, account types.Address, ot uint32) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(ot)...)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		if !bytes.Equal(account[:], key[OracleAccIndexS:OracleAccIndexE]) {
@@ -723,7 +724,7 @@ func GetOracleInfoByHash(ctx *vmstore.VMContext, hash types.Hash) []*OracleInfo 
 	}
 
 	kh := common.PublicKeyWithTypeHash(pi.KeyType, pi.PubKey)
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(pi.PType)...)
 	itKey = append(itKey, pi.PID[:]...)
 	itKey = append(itKey, kh...)
@@ -769,7 +770,7 @@ func CheckOracleInfoExist(ctx *vmstore.VMContext, account types.Address, ot uint
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
-	_, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	_, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], key)
 	if err != nil {
 		return false
 	}
@@ -897,7 +898,7 @@ func CheckPublishInfoExist(ctx *vmstore.VMContext, account types.Address, pt uin
 	key = append(key, id[:]...)
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
-	data, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	data, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], key)
 	if err != nil {
 		return false
 	}
@@ -920,7 +921,7 @@ func GetPublishInfoByKey(ctx *vmstore.VMContext, pt uint32, pid types.Hash, kt u
 	key = append(key, kh...)
 	key = append(key, blkHash.Bytes()...)
 
-	data, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	data, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], key)
 	if err != nil {
 		return nil
 	}
@@ -937,7 +938,7 @@ func GetPublishInfoByKey(ctx *vmstore.VMContext, pt uint32, pid types.Hash, kt u
 func GetPublishInfoByTypeAndId(ctx *vmstore.VMContext, pt uint32, id types.Hash) []*PublishInfo {
 	pis := make([]*PublishInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
 	itKey = append(itKey, util.BE_Uint32ToBytes(pt)...)
 	itKey = append(itKey, id[:]...)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
@@ -977,7 +978,7 @@ func GetPublishInfoByTypeAndId(ctx *vmstore.VMContext, pt uint32, id types.Hash)
 func GetAllPublishInfo(ctx *vmstore.VMContext) []*PublishInfo {
 	pis := make([]*PublishInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		pt := util.BE_BytesToUint32(key[PublishTypeIndexS:PublishTypeIndexE])
 
@@ -1022,7 +1023,7 @@ func GetAllPublishInfo(ctx *vmstore.VMContext) []*PublishInfo {
 func GetPublishInfoByType(ctx *vmstore.VMContext, pt uint32) []*PublishInfo {
 	pis := make([]*PublishInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
 	itKey = append(itKey, util.BE_Uint32ToBytes(pt)...)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		var info PubKeyInfo
@@ -1066,7 +1067,7 @@ func GetPublishInfoByType(ctx *vmstore.VMContext, pt uint32) []*PublishInfo {
 func GetPublishInfoByAccount(ctx *vmstore.VMContext, account types.Address) []*PublishInfo {
 	pis := make([]*PublishInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		var info PubKeyInfo
 		err := PublicKeyDistributionABI.UnpackVariable(&info, VariableNamePKDPublishInfo, value)
@@ -1113,7 +1114,7 @@ func GetPublishInfoByAccount(ctx *vmstore.VMContext, account types.Address) []*P
 func GetPublishInfoByAccountAndType(ctx *vmstore.VMContext, account types.Address, pt uint32) []*PublishInfo {
 	pis := make([]*PublishInfo, 0)
 
-	itKey := append(types.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
+	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
 	itKey = append(itKey, util.BE_Uint32ToBytes(pt)...)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		var info PubKeyInfo
@@ -1166,7 +1167,7 @@ func GetPublishInfo(ctx *vmstore.VMContext, pt uint32, id types.Hash, kt uint16,
 	key = append(key, id[:]...)
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
-	data, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	data, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], key)
 	if err != nil {
 		return nil
 	}

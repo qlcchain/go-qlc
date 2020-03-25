@@ -9,6 +9,7 @@ package chain
 
 import (
 	"encoding/json"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -73,7 +74,7 @@ func TestReceiveBlock(t *testing.T) {
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis
-		err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data)
+		err := ctx.SetStorage(contractaddress.MintageAddress[:], gb.Token[:], gb.Data)
 		if err != nil {
 			t.Fatal(err)
 		}

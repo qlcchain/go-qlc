@@ -9,6 +9,7 @@ package chain
 
 import (
 	"errors"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 
@@ -71,7 +72,7 @@ func (ls *LedgerService) Init() error {
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis
-		err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data)
+		err := ctx.SetStorage(contractaddress.MintageAddress[:], gb.Token[:], gb.Data)
 		if err != nil {
 			ls.logger.Error(err)
 		}

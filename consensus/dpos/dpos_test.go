@@ -1,6 +1,8 @@
 package dpos
 
 import (
+	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -159,7 +161,7 @@ func (n *Node) startLedgerService() {
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis
-		err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data)
+		err := ctx.SetStorage(contractaddress.MintageAddress[:], gb.Token[:], gb.Data)
 		if err != nil {
 			n.t.Fatal(err)
 		}
@@ -208,6 +210,7 @@ func (n *Node) RunNode(i int) {
 
 	n.ctx = context.NewChainContext(n.cfgPath)
 	n.ctx.Init(func() error {
+		chaincontract.InitChainContract()
 		return nil
 	})
 
@@ -289,7 +292,7 @@ func (n *Node) GenerateChangeBlock(account *types.Account, representative types.
 
 func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Address, method string, param interface{}) *types.StateBlock {
 	switch ca {
-	case types.MintageAddress:
+	case contractaddress.MintageAddress:
 		if method == abi.MethodNameMintage {
 			totalSupply := big.NewInt(1000)
 			decimals := uint8(8)
@@ -324,7 +327,7 @@ func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Addre
 				Address:        from.Address(),
 				Balance:        tm.Balance.Sub(minPledgeAmount),
 				Previous:       tm.Header,
-				Link:           types.Hash(types.MintageAddress),
+				Link:           types.Hash(contractaddress.MintageAddress),
 				Representative: tm.Representative,
 				Data:           data,
 				PoVHeight:      0,
@@ -354,7 +357,7 @@ func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Addre
 				Storage:        types.ZeroBalance,
 				Oracle:         types.ZeroBalance,
 				Previous:       tm.Header,
-				Link:           types.Hash(types.MintageAddress),
+				Link:           types.Hash(contractaddress.MintageAddress),
 				Representative: tm.Representative,
 				Data:           data,
 				PoVHeight:      0,
@@ -376,7 +379,7 @@ func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Addre
 
 func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address, method string, send *types.StateBlock) *types.StateBlock {
 	switch ca {
-	case types.MintageAddress:
+	case contractaddress.MintageAddress:
 		if method == abi.MethodNameMintage {
 			recv := &types.StateBlock{}
 			mintage := &contract.Mintage{}

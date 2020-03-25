@@ -10,6 +10,8 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"math/big"
 	"net/http"
 	_ "net/http/pprof"
@@ -234,6 +236,7 @@ func start() error {
 	chainContext.SetAccounts(accounts)
 	// start all services by chain context
 	err = chainContext.Init(func() error {
+		chaincontract.InitChainContract()
 		return chain.RegisterServices(chainContext)
 	})
 	if err != nil {
@@ -393,7 +396,7 @@ func generateChainTokenGenesisBlock(seedString string, cfg *config.Config) error
 	}
 	send := types.StateBlock{
 		Type:           types.ContractSend,
-		Address:        types.MintageAddress,
+		Address:        contractaddress.MintageAddress,
 		Link:           address.ToHash(),
 		Balance:        types.ZeroBalance,
 		Vote:           types.ZeroBalance,
@@ -468,7 +471,7 @@ func generateGasTokenGenesisBlock(seedString string, cfg *config.Config) error {
 	}
 	send := types.StateBlock{
 		Type:           types.ContractSend,
-		Address:        types.MintageAddress,
+		Address:        contractaddress.MintageAddress,
 		Link:           address.ToHash(),
 		Balance:        types.ZeroBalance,
 		Vote:           types.ZeroBalance,

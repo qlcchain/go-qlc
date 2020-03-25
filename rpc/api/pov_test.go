@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"os"
 	"path/filepath"
 	"testing"
@@ -471,7 +472,7 @@ func TestPovAPI_ManyBlocks(t *testing.T) {
 	_, err = md.api.GetAccountStateByBlockHeight(minerAcc.Address(), latestHdr.GetHeight())
 
 	_, err = md.api.DumpBlockState(latestHdr.GetHash())
-	_, err = md.api.DumpContractState(latestHdr.GetStateHash(), types.PubKeyDistributionAddress)
+	_, err = md.api.DumpContractState(latestHdr.GetStateHash(), contractaddress.PubKeyDistributionAddress)
 
 	_, err = md.api.GetDiffDayStat(0)
 	_, err = md.api.GetDiffDayStatByHeight(latestHdr.GetHeight())

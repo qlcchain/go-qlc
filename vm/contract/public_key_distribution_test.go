@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -759,7 +759,7 @@ func mockPKDRewardAddPovBlock(t *testing.T, l ledger.Store, povHeight uint64, tx
 	povBlk1.Header.BasHdr.Height = povHeight
 
 	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
-	csdb, err := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -813,7 +813,7 @@ func mockPKDRewardAddPovBlock(t *testing.T, l ledger.Store, povHeight uint64, tx
 	/*
 		{
 			gsdb2 := statedb.NewPovGlobalStateDB(l.DBStore(), povBlk1.Header.CbTx.StateHash)
-			csdb2, err := gsdb2.LookupContractStateDB(types.PubKeyDistributionAddress)
+			csdb2, err := gsdb2.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 			if err != nil {
 				t.Fatal(err)
 			}
