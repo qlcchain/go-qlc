@@ -2,27 +2,24 @@ package dpos
 
 import (
 	"context"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/qlcchain/go-qlc/consensus"
-
 	"github.com/AsynkronIT/protoactor-go/actor"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/bluele/gcache"
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"

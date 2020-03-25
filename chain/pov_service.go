@@ -10,13 +10,11 @@ package chain
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/consensus/pov"
-
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/log"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/consensus/pov"
+	"github.com/qlcchain/go-qlc/log"
 )
 
 type PoVService struct {

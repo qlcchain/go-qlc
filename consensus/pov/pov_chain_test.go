@@ -1,17 +1,16 @@
 package pov
 
 import (
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/statedb"
-
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"

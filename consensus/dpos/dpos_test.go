@@ -1,8 +1,6 @@
 package dpos
 
 import (
-	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -17,6 +15,8 @@ import (
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/crypto/random"

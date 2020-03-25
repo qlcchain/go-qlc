@@ -9,7 +9,6 @@ package chain
 
 import (
 	"encoding/json"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -21,12 +20,12 @@ import (
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestAutoReceiveService_Init(t *testing.T) {

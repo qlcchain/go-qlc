@@ -2,25 +2,22 @@ package dpos
 
 import (
 	"context"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/qlcchain/go-qlc/consensus"
-
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const ConfirmChainParallelNum = 10

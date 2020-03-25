@@ -12,12 +12,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/qlcchain/go-qlc/monitor/influxdb"
-
 	ctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/monitor"
+	"github.com/qlcchain/go-qlc/monitor/influxdb"
 )
 
 func NewMetricsService(cfgFile string) *MetricsService {
