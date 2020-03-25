@@ -21,7 +21,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/chain"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"

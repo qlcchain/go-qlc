@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"math/big"
 
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -27,7 +28,7 @@ func (m *MinerReward) GetLastRewardHeight(ctx *vmstore.VMContext, coinbase types
 }
 
 func (m *MinerReward) GetRewardHistory(ctx *vmstore.VMContext, coinbase types.Address) (*cabi.MinerRewardInfo, error) {
-	data, err := ctx.GetStorage(types.MinerAddress[:], coinbase[:])
+	data, err := ctx.GetStorage(contractaddress.MinerAddress[:], coinbase[:])
 	if err == nil {
 		info := new(cabi.MinerRewardInfo)
 		er := cabi.MinerABI.UnpackVariable(info, cabi.VariableNameMinerReward, data)
@@ -153,7 +154,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, param.EndHeight,
 		param.RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
 		new(big.Int).Add(param.RewardAmount, oldInfo.RewardAmount))
-	err = ctx.SetStorage(types.MinerAddress.Bytes(), param.Coinbase[:], data)
+	err = ctx.SetStorage(contractaddress.MinerAddress.Bytes(), param.Coinbase[:], data)
 	if err != nil {
 		return nil, nil, ErrSetStorage
 	}
@@ -182,7 +183,7 @@ func (m *MinerReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, Rewar
 	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, endHeight,
 		RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
 		new(big.Int).Add(RewardAmount, oldInfo.RewardAmount))
-	err = ctx.SetStorage(types.MinerAddress.Bytes(), block.Address[:], data)
+	err = ctx.SetStorage(contractaddress.MinerAddress.Bytes(), block.Address[:], data)
 	if err != nil {
 		return errors.New("save contract data err")
 	}
@@ -190,7 +191,7 @@ func (m *MinerReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, Rewar
 	return nil
 }
 
-func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
+func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	param := new(cabi.MinerRewardParam)
 
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, input.Data)
@@ -242,7 +243,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		block.Previous = types.ZeroHash
 	}
 
-	return []*ContractBlock{
+	return []*vmcontract.ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,

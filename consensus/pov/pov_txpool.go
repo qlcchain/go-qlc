@@ -5,23 +5,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/config"
-
-	"github.com/qlcchain/go-qlc/common/statedb"
-
 	"github.com/AsynkronIT/protoactor-go/actor"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/types"
 )
 
 const (
@@ -305,7 +301,7 @@ func (tp *PovTxPool) getUnconfirmedTxsByFast() (map[types.AddressToken][]*PovTxE
 	// scan all genesis blocks under contract accounts
 	allGenesisBlocks := config.AllGenesisBlocks()
 	for _, block := range allGenesisBlocks {
-		if !types.IsContractAddress(block.GetAddress()) {
+		if !contractaddress.IsContractAddress(block.GetAddress()) {
 			continue
 		}
 
@@ -404,7 +400,7 @@ func (tp *PovTxPool) addTx(txHash types.Hash, txBlock *types.StateBlock) {
 	prevHash := txBlock.GetPrevious()
 	if prevHash.IsZero() {
 		// contract address's blocks are all independent, no previous
-		if types.IsContractAddress(txBlock.GetAddress()) {
+		if contractaddress.IsContractAddress(txBlock.GetAddress()) {
 		} else {
 			// open block should be first
 			childE = accTxList.Front()
@@ -527,7 +523,7 @@ func (tp *PovTxPool) selectPendingTxsByFair(gsdb *statedb.PovGlobalStateDB, limi
 		if accTxList.Len() > 0 {
 			addrTokenNeedScans[addrToken] = struct{}{}
 
-			addrTokenIsCA[addrToken] = types.IsContractAddress(addrToken.Address)
+			addrTokenIsCA[addrToken] = contractaddress.IsContractAddress(addrToken.Address)
 		}
 	}
 

@@ -14,9 +14,8 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func addLedgerBalanceByIshell(parentCmd *ishell.Cmd) {
@@ -26,11 +25,12 @@ func addLedgerBalanceByIshell(parentCmd *ishell.Cmd) {
 		Usage: "address for account",
 		Value: "",
 	}
+	args := []util.Flag{address}
 	c := &ishell.Cmd{
-		Name: "balance",
-		Help: "balance for accounts",
+		Name:                "balance",
+		Help:                "balance for accounts",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{address}
 			if util.HelpText(c, args) {
 				return
 			}

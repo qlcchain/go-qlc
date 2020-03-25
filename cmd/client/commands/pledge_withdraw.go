@@ -13,13 +13,11 @@ import (
 	"fmt"
 	"time"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
@@ -50,12 +48,12 @@ func addPledgeWithdrawCmdByShell(parentCmd *ishell.Cmd) {
 		Must:  true,
 		Usage: "NEP5 TX ID",
 	}
-
+	args := []util.Flag{beneficialAccount, pledgeAccount, amount, pType, nep5TxId}
 	s := &ishell.Cmd{
-		Name: "withdraw",
-		Help: "withdraw token",
+		Name:                "withdraw",
+		Help:                "withdraw token",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{beneficialAccount, pledgeAccount, amount, pType, nep5TxId}
 			if util.HelpText(c, args) {
 				return
 			}

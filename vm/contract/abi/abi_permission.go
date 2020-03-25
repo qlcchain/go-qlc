@@ -5,8 +5,7 @@ import (
 	"strings"
 
 	"github.com/qlcchain/go-qlc/common/util"
-
-	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -62,7 +61,7 @@ func PermissionInit(ctx *vmstore.VMContext) error {
 
 			var key []byte
 			key = append(key, PermissionDataAdmin)
-			err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+			err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 			if err != nil {
 				return errors.New("permission init err")
 			}
@@ -82,7 +81,7 @@ func PermissionInit(ctx *vmstore.VMContext) error {
 func GetPermissionAdmin(ctx *vmstore.VMContext) (*AdminAccount, error) {
 	var key []byte
 	key = append(key, PermissionDataAdmin)
-	data, err := ctx.GetStorage(types.PermissionAddress[:], key)
+	data, err := ctx.GetStorage(contractaddress.PermissionAddress[:], key)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +98,7 @@ func GetPermissionAdmin(ctx *vmstore.VMContext) (*AdminAccount, error) {
 func GetPermissionNodeIndex(ctx *vmstore.VMContext) uint32 {
 	var key []byte
 	key = append(key, PermissionDataNodeIndex)
-	data, err := ctx.GetStorage(types.PermissionAddress[:], key)
+	data, err := ctx.GetStorage(contractaddress.PermissionAddress[:], key)
 	if err != nil {
 		return 0
 	}
@@ -111,7 +110,7 @@ func GetPermissionNode(ctx *vmstore.VMContext, index uint32) (*PermNode, error) 
 	var key []byte
 	key = append(key, PermissionDataNode)
 	key = append(key, util.BE_Uint32ToBytes(index)...)
-	data, err := ctx.GetStorage(types.PermissionAddress[:], key)
+	data, err := ctx.GetStorage(contractaddress.PermissionAddress[:], key)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +128,7 @@ func GetPermissionNode(ctx *vmstore.VMContext, index uint32) (*PermNode, error) 
 func GetAllPermissionNodes(ctx *vmstore.VMContext) ([]*PermNode, error) {
 	nodes := make([]*PermNode, 0)
 
-	itKey := append(types.PermissionAddress[:], PermissionDataNode)
+	itKey := append(contractaddress.PermissionAddress[:], PermissionDataNode)
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
 		// prefix(1) + addr(32) + type(1) + index(4)
 		index := util.BE_BytesToUint32(key[34:])

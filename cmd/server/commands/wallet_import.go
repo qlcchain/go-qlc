@@ -28,11 +28,12 @@ func addImportWalletCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "seed for a wallet",
 		Value: "",
 	}
+	args := []util.Flag{seed, password, cfgPath}
 	s := &ishell.Cmd{
-		Name: "import",
-		Help: "import a wallet",
+		Name:                "import",
+		Help:                "import a wallet",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{seed, password, cfgPath}
 			if util.HelpText(c, args) {
 				return
 			}

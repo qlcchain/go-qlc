@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
@@ -45,12 +44,12 @@ func addPledgePledgeCmdByShell(parentCmd *ishell.Cmd) {
 		Must:  true,
 		Usage: "pledge type",
 	}
-
+	args := []util.Flag{beneficialAccount, beneficialAddress, pledgeAccount, amount, pType}
 	cmd := &ishell.Cmd{
-		Name: "pledge",
-		Help: "pledge token",
+		Name:                "pledge",
+		Help:                "pledge token",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{beneficialAccount, beneficialAddress, pledgeAccount, amount, pType}
 			if util.HelpText(c, args) {
 				return
 			}

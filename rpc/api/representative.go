@@ -10,6 +10,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -205,7 +206,7 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		Oracle:  am.CoinOracle,
 		Storage: am.CoinStorage,
 
-		Link:      types.Hash(types.RepAddress),
+		Link:      types.Hash(contractaddress.RepAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().Unix(),
 
@@ -234,7 +235,7 @@ func (r *RepApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock,
 	if input.GetType() != types.ContractSend {
 		return nil, errors.New("input block type is not contract send")
 	}
-	if input.GetLink() != types.RepAddress.ToHash() {
+	if input.GetLink() != contractaddress.RepAddress.ToHash() {
 		return nil, errors.New("input address is not contract repReward")
 	}
 

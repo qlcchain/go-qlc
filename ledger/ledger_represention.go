@@ -160,6 +160,7 @@ func (l *Ledger) updateRepresentation() error {
 		return err
 	}
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := batch.Drop([]byte{byte(storage.KeyPrefixRepresentation)}); err != nil {
 		return err
 	}

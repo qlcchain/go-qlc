@@ -16,6 +16,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -38,7 +39,7 @@ func TestGetRewardsDetail(t *testing.T) {
 		}
 		key := GetRewardsKey(md.Param.Id[:], md.Param.TxHeader[:], md.Param.RxHeader[:])
 		if data, err := md.Info.ToABI(); err == nil {
-			if err := vmContext.SetStorage(types.RewardsAddress[:], key, data); err != nil {
+			if err := vmContext.SetStorage(contractaddress.RewardsAddress[:], key, data); err != nil {
 				t.Error(err)
 			} else {
 				//t.Log(util.ToIndentString(md))
@@ -96,7 +97,7 @@ func TestGetConfidantDetail(t *testing.T) {
 		}
 		key := GetConfidantKey(md.Param.Beneficial, md.Param.Id[:], md.Param.TxHeader[:], md.Param.RxHeader[:])
 		if data, err := md.Info.ToABI(); err == nil {
-			if err := vmContext.SetStorage(types.RewardsAddress[:], key, data); err != nil {
+			if err := vmContext.SetStorage(contractaddress.RewardsAddress[:], key, data); err != nil {
 				t.Error(err)
 			} else {
 				t.Log(util.ToIndentString(md))

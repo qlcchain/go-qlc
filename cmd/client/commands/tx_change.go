@@ -13,12 +13,10 @@ import (
 	"fmt"
 
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
-
-	rpc "github.com/qlcchain/jsonrpc2"
-
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -35,11 +33,12 @@ func addTxChangeCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "representative address",
 		Value: "",
 	}
+	args := []util.Flag{priKeyFlag, repAddrFlag}
 	c := &ishell.Cmd{
-		Name: "change",
-		Help: "change representative",
+		Name:                "change",
+		Help:                "change representative",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{priKeyFlag, repAddrFlag}
 			if util.HelpText(c, args) {
 				return
 			}

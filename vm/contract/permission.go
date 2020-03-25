@@ -7,12 +7,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
-
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -71,7 +72,7 @@ func (a *AdminUpdate) SetStorage(ctx *vmstore.VMContext, admin *abi.AdminAccount
 
 	var key []byte
 	key = append(key, abi.PermissionDataAdmin)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -79,7 +80,7 @@ func (a *AdminUpdate) SetStorage(ctx *vmstore.VMContext, admin *abi.AdminAccount
 	return nil
 }
 
-func (a *AdminUpdate) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (a *AdminUpdate) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	admin := new(abi.AdminAccount)
 	err := abi.PermissionABI.UnpackMethod(admin, abi.MethodNamePermissionAdminUpdate, input.Data)
 	if err != nil {
@@ -122,7 +123,7 @@ func (a *AdminUpdate) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 		return nil, ErrSetStorage
 	}
 
-	return []*ContractBlock{
+	return []*vmcontract.ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -229,14 +230,14 @@ func (n *NodeAdd) SetStorage(ctx *vmstore.VMContext, pn *abi.PermNode) error {
 	var key []byte
 	key = append(key, abi.PermissionDataNode)
 	key = append(key, util.BE_Uint32ToBytes(index)...)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
 
 	key = key[0:0]
 	key = append(key, abi.PermissionDataNodeIndex)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, util.BE_Uint32ToBytes(index+1))
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, util.BE_Uint32ToBytes(index+1))
 	if err != nil {
 		return err
 	}
@@ -350,7 +351,7 @@ func (n *NodeUpdate) SetStorage(ctx *vmstore.VMContext, pn *abi.PermNode) error 
 	var key []byte
 	key = append(key, abi.PermissionDataNode)
 	key = append(key, util.BE_Uint32ToBytes(pn.Index)...)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -434,7 +435,7 @@ func (n *NodeRemove) SetStorage(ctx *vmstore.VMContext, pn *abi.PermNode) error 
 	var key []byte
 	key = append(key, abi.PermissionDataNode)
 	key = append(key, util.BE_Uint32ToBytes(pn.Index)...)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 	if err != nil {
 		return err
 	}

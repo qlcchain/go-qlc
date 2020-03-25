@@ -15,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
@@ -51,7 +52,7 @@ func TestMintage(t *testing.T) {
 			Address:        a,
 			Balance:        tm.Balance.Sub(types.Balance{Int: MinPledgeAmount}),
 			Previous:       tm.Header,
-			Link:           types.Hash(types.MintageAddress),
+			Link:           types.Hash(contractaddress.MintageAddress),
 			Representative: tm.Representative,
 			Data:           data,
 			PoVHeight:      0,
@@ -104,7 +105,7 @@ func TestMintage(t *testing.T) {
 			Storage:        types.ZeroBalance,
 			Oracle:         types.ZeroBalance,
 			Previous:       tm.Header,
-			Link:           types.Hash(types.MintageAddress),
+			Link:           types.Hash(contractaddress.MintageAddress),
 			Representative: tm.Representative,
 			Data:           data,
 			PoVHeight:      0,
@@ -113,7 +114,7 @@ func TestMintage(t *testing.T) {
 		wm := WithdrawMintage{}
 
 		// patch withdraw time
-		if tokenInfoData, err := ctx.GetStorage(types.MintageAddress[:], tokenID[:]); err != nil {
+		if tokenInfoData, err := ctx.GetStorage(contractaddress.MintageAddress[:], tokenID[:]); err != nil {
 			t.Fatal(err)
 		} else {
 			tokenInfo := new(types.TokenInfo)
@@ -138,7 +139,7 @@ func TestMintage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := ctx.SetStorage(types.MintageAddress[:], tokenID[:], newTokenInfo); err != nil {
+			if err := ctx.SetStorage(contractaddress.MintageAddress[:], tokenID[:], newTokenInfo); err != nil {
 				t.Fatal(err)
 			}
 

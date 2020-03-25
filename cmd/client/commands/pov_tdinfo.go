@@ -23,12 +23,13 @@ func addPovTdInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "height of pov block",
 		Value: -1,
 	}
+	args := []util.Flag{hashFlag, heightFlag}
 
 	cmd := &ishell.Cmd{
-		Name: "getTdInfo",
-		Help: "get total difficulty (work sum) info",
+		Name:                "getTdInfo",
+		Help:                "get total difficulty (work sum) info",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{hashFlag, heightFlag}
 			if util.HelpText(c, args) {
 				return
 			}

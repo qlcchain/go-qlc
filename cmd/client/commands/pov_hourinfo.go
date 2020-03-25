@@ -23,12 +23,12 @@ func addPovLastNHourInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "hour span, [2 ~ 24]",
 		Value: 0,
 	}
-
+	args := []util.Flag{endHeightFlag, hourSpanFlag}
 	cmd := &ishell.Cmd{
-		Name: "getLastNHourInfo",
-		Help: "get last N hour info",
+		Name:                "getLastNHourInfo",
+		Help:                "get last N hour info",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{endHeightFlag, hourSpanFlag}
 			if util.HelpText(c, args) {
 				return
 			}

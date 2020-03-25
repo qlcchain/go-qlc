@@ -193,10 +193,10 @@ func (lv *LedgerVerifier) BlockCacheProcess(block *types.StateBlock) error {
 	if err != nil {
 		return err
 	}
-	lv.l.EB.Publish(topic.EventAddBlockCache, block)
+	lv.l.EventBus().Publish(topic.EventAddBlockCache, block)
 	lv.logger.Debug("broadcast block")
-	lv.l.EB.Publish(topic.EventBroadcast, &topic.EventBroadcastMsg{Type: topic.PublishReq, Message: block})
-	lv.l.EB.Publish(topic.EventGenerateBlock, block)
+	lv.l.EventBus().Publish(topic.EventBroadcast, &topic.EventBroadcastMsg{Type: topic.PublishReq, Message: block})
+	lv.l.EventBus().Publish(topic.EventGenerateBlock, block)
 	return nil
 }
 

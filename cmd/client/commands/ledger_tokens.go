@@ -10,13 +10,12 @@ package commands
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func addLedgerTokensByIshell(parentCmd *ishell.Cmd) {

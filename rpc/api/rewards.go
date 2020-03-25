@@ -18,6 +18,8 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -251,7 +253,7 @@ func (r *RewardsAPI) generateSend(param *sendParam, methodName string) (*types.S
 			Oracle:         types.ZeroBalance,
 			Storage:        types.ZeroBalance,
 			Previous:       param.tm.Header,
-			Link:           types.Hash(types.RewardsAddress),
+			Link:           types.Hash(contractaddress.RewardsAddress),
 			Representative: param.tm.Representative,
 			Data:           singedData,
 			PoVHeight:      povHeader.GetHeight(),
@@ -277,7 +279,7 @@ func (r *RewardsAPI) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 
 	rev := &types.StateBlock{Timestamp: common.TimeNow().Unix()}
 
-	var result []*contract.ContractBlock
+	var result []*vmcontract.ContractBlock
 
 	vmContext := vmstore.NewVMContext(r.ledger)
 	if r.IsAirdropRewards(blk.Data) {
@@ -329,7 +331,7 @@ func (r *RewardsAPI) GetConfidantRewordsDetail(confidant types.Address) (map[str
 }
 
 func checkContractMethod(data []byte) (string, error) {
-	if name, b, err := contract.GetChainContractName(types.RewardsAddress, data); b {
+	if name, b, err := vmcontract.GetChainContractName(contractaddress.RewardsAddress, data); b {
 		return name, nil
 	} else {
 		return "", err

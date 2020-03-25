@@ -3,6 +3,7 @@ package mock
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"math"
 	"math/big"
 	"sync"
@@ -67,7 +68,7 @@ func doGeneratePovBlock(prevBlock *types.PovBlock, txNum uint32, fakePow bool) (
 	block.Header.CbTx.StateHash = prevBlock.GetStateHash()
 	block.Header.CbTx.TxOuts[0].Address = cb.Address()
 	block.Header.CbTx.TxOuts[0].Value = types.NewBalance(int64(common.PovMinerRewardPerBlock * uint64(common.PovMinerRewardRatioMiner) / uint64(100)))
-	block.Header.CbTx.TxOuts[1].Address = types.RepAddress
+	block.Header.CbTx.TxOuts[1].Address = contractaddress.RepAddress
 	block.Header.CbTx.TxOuts[1].Value = types.NewBalance(int64(common.PovMinerRewardPerBlock * uint64(common.PovMinerRewardRatioRep) / uint64(100)))
 	block.Header.CbTx.Hash = block.Header.CbTx.ComputeHash()
 

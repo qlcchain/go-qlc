@@ -17,9 +17,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
-	"github.com/qlcchain/go-qlc/vm/contract"
 )
 
 type ContractApi struct {
@@ -31,7 +32,7 @@ func NewContractApi() *ContractApi {
 }
 
 func (c *ContractApi) GetAbiByContractAddress(address types.Address) (string, error) {
-	return contract.GetAbiByContractAddress(address)
+	return vmcontract.GetAbiByContractAddress(address)
 }
 
 func (c *ContractApi) PackContractData(abiStr string, methodName string, params []string) ([]byte, error) {
@@ -51,7 +52,7 @@ func (c *ContractApi) PackContractData(abiStr string, methodName string, params 
 }
 
 func (c *ContractApi) ContractAddressList() []types.Address {
-	return types.ChainContractAddressList
+	return contractaddress.ChainContractAddressList
 }
 
 func convert(params []string, arguments abi.Arguments) ([]interface{}, error) {

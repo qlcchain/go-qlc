@@ -852,7 +852,7 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 		lv.mutex.Unlock()
 		lv.lockStatus.Store(idle)
 	}()
-	ledger := l.ledger.(*ledger.Ledger)
+	ledger := l.ledger
 	verifier := process.NewLedgerVerifier(ledger)
 	flag, err := verifier.BlockCacheCheck(block)
 	if err != nil {

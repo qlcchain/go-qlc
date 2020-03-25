@@ -17,6 +17,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -112,7 +113,7 @@ func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		Address:        param.SelfAddr,
 		Balance:        tm.Balance.Sub(minPledgeAmount),
 		Previous:       tm.Header,
-		Link:           types.Hash(types.MintageAddress),
+		Link:           types.Hash(contractaddress.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -202,7 +203,7 @@ func (m *MintageAPI) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		Storage:        types.ZeroBalance,
 		Oracle:         types.ZeroBalance,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.MintageAddress),
+		Link:           types.Hash(contractaddress.MintageAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),

@@ -16,7 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
@@ -50,7 +50,7 @@ func TestGetTokenById(t *testing.T) {
 		a, nep5TxId); err != nil {
 		t.Fatal(err)
 	} else {
-		if err := ctx.SetStorage(types.MintageAddress[:], []byte(nep5TxId), data); err != nil {
+		if err := ctx.SetStorage(contractaddress.MintageAddress[:], []byte(nep5TxId), data); err != nil {
 			t.Fatal(err)
 		}
 
@@ -60,7 +60,7 @@ func TestGetTokenById(t *testing.T) {
 			t.Log(info)
 		}
 		gb := config.GenesisBlock()
-		if err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data); err != nil {
+		if err := ctx.SetStorage(contractaddress.MintageAddress[:], gb.Token[:], gb.Data); err != nil {
 			t.Fatal(err)
 		}
 	}

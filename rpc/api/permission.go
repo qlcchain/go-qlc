@@ -10,6 +10,7 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -122,7 +123,7 @@ func (p *PermissionApi) GetAdminUpdateSendBlock(param *AdminUpdateParam) (*types
 		Network:        am.CoinNetwork,
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
-		Link:           types.Hash(types.PermissionAddress),
+		Link:           types.Hash(contractaddress.PermissionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -152,7 +153,7 @@ func (p *PermissionApi) GetAdminUpdateRewardBlock(input *types.StateBlock) (*typ
 		return nil, errors.New("input block type is not contract send")
 	}
 
-	if input.GetLink() != types.PermissionAddress.ToHash() {
+	if input.GetLink() != contractaddress.PermissionAddress.ToHash() {
 		return nil, errors.New("input address is not contract permission")
 	}
 
@@ -264,7 +265,7 @@ func (p *PermissionApi) GetNodeAddBlock(param *NodeParam) (*types.StateBlock, er
 		Network:        am.CoinNetwork,
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
-		Link:           types.Hash(types.PermissionAddress),
+		Link:           types.Hash(contractaddress.PermissionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -345,7 +346,7 @@ func (p *PermissionApi) GetNodeUpdateBlock(param *NodeParam) (*types.StateBlock,
 		Network:        am.CoinNetwork,
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
-		Link:           types.Hash(types.PermissionAddress),
+		Link:           types.Hash(contractaddress.PermissionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -423,7 +424,7 @@ func (p *PermissionApi) GetNodeRemoveBlock(param *NodeParam) (*types.StateBlock,
 		Network:        am.CoinNetwork,
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
-		Link:           types.Hash(types.PermissionAddress),
+		Link:           types.Hash(contractaddress.PermissionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),

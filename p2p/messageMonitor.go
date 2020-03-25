@@ -55,13 +55,13 @@ type MessageService struct {
 	confirmAckMessageCh chan *Message
 	rspMessageCh        chan *Message
 	povMessageCh        chan *Message
-	ledger              *ledger.Ledger
+	ledger              ledger.Store
 	syncService         *ServiceSync
 	pullRspMap          *sync.Map
 }
 
 // NewService return new Service.
-func NewMessageService(netService *QlcService, ledger *ledger.Ledger) *MessageService {
+func NewMessageService(netService *QlcService, ledger ledger.Store) *MessageService {
 	ctx, cancel := context.WithCancel(context.Background())
 	ms := &MessageService{
 		ctx:                 ctx,

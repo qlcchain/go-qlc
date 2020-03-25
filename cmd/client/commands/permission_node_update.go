@@ -44,11 +44,12 @@ func addPermissionNodeUpdateCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "node comment",
 		Value: "",
 	}
+	args := []util.Flag{admin, index, kind, node, comment}
 	c := &ishell.Cmd{
-		Name: "nodeUpdate",
-		Help: "permission update node",
+		Name:                "nodeUpdate",
+		Help:                "permission update node",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{admin, index, kind, node, comment}
 			if util.HelpText(c, args) {
 				return
 			}

@@ -19,12 +19,12 @@ func addDebugUncheckAnalysisCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "block hash",
 		Value: "",
 	}
-
+	args := []util.Flag{hash}
 	cmd := &ishell.Cmd{
-		Name: "uncheckAnalysis",
-		Help: "analyse unchecked blocks",
+		Name:                "uncheckAnalysis",
+		Help:                "analyse unchecked blocks",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{hash}
 			if util.HelpText(c, args) {
 				return
 			}

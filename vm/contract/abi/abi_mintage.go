@@ -14,10 +14,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -101,7 +101,7 @@ func ListTokens(ctx *vmstore.VMContext) ([]*types.TokenInfo, error) {
 		logger.Sync()
 	}()
 	var infos []*types.TokenInfo
-	if err := ctx.Iterator(types.MintageAddress[:], func(key []byte, value []byte) error {
+	if err := ctx.Iterator(contractaddress.MintageAddress[:], func(key []byte, value []byte) error {
 		if len(value) > 0 {
 			tokenId, _ := types.BytesToHash(key[(types.AddressSize + 1):])
 			if config.IsGenesisToken(tokenId) {

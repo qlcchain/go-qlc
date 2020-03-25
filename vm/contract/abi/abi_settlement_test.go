@@ -18,10 +18,10 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/crypto/random"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/mock"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 var (
@@ -5230,7 +5230,7 @@ func TestGetContractsByAddress(t *testing.T) {
 		contracts = append(contracts, param)
 		a, _ := param.Address()
 		abi, _ := param.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -5238,7 +5238,7 @@ func TestGetContractsByAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//if err := ctx.Iterator(types.SettlementAddress[:], func(key []byte, value []byte) error {
+	//if err := ctx.Iterator(contractaddress.SettlementAddress[:], func(key []byte, value []byte) error {
 	//	t.Log(hex.EncodeToString(key), " >>> ", hex.EncodeToString(value))
 	//	return nil
 	//}); err != nil {
@@ -5423,7 +5423,7 @@ func TestGetAllSettlementContract(t *testing.T) {
 		param := buildContractParam()
 		a, _ := param.Address()
 		abi, _ := param.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -5812,7 +5812,7 @@ func TestGetContracts(t *testing.T) {
 	for _, d := range data {
 		a, _ := d.Address()
 		abi, _ := d.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		} else {
 			//t.Log(hex.EncodeToString(abi))
@@ -6835,7 +6835,7 @@ func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
 	for _, d := range data {
 		a, _ := d.Address()
 		abi, _ := d.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -6900,7 +6900,7 @@ func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
 	for _, d := range data {
 		a, _ := d.Address()
 		abi, _ := d.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -6967,7 +6967,7 @@ func TestGetContractsAddressByPartyANextStop(t *testing.T) {
 	for _, d := range data {
 		a, _ := d.Address()
 		abi, _ := d.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -7026,7 +7026,7 @@ func TestGetContractsAddressByPartyBPreStop(t *testing.T) {
 	for _, d := range data {
 		a, _ := d.Address()
 		abi, _ := d.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -7110,11 +7110,11 @@ func TestGetSettlementContract(t *testing.T) {
 		contracts = append(contracts, param)
 		a, _ := param.Address()
 		abi, _ := param.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 
-		//if storage, err := ctx.GetStorage(types.SettlementAddress[:], a[:]); err == nil {
+		//if storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], a[:]); err == nil {
 		//	if !bytes.Equal(storage, abi) {
 		//		t.Fatalf("invalid saved contract, exp: %v, act: %v", abi, storage)
 		//	} else {
@@ -8442,7 +8442,7 @@ func TestGetSummaryReport(t *testing.T) {
 
 	contractAddr, _ := param.Address()
 	abi, _ := param.ToABI()
-	if err := ctx.SetStorage(types.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
+	if err := ctx.SetStorage(contractaddress.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
 		t.Fatal(err)
 	}
 
@@ -8547,7 +8547,7 @@ func TestGetStopNames(t *testing.T) {
 	for _, c := range contracts {
 		contractAddr, _ := c.Address()
 		abi, _ := c.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -8745,7 +8745,7 @@ func TestGenerateMultiPartyInvoice(t *testing.T) {
 	for _, c := range contracts {
 		contractAddr, _ := c.Address()
 		abi, _ := c.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -9115,7 +9115,7 @@ func TestGetContractsByStatus(t *testing.T) {
 		d.Status = ContractStatusActivated
 		a, _ := d.Address()
 		abi, _ := d.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		} else {
 			//t.Log(hex.EncodeToString(abi))
@@ -9152,7 +9152,7 @@ func TestGetExpiredContracts(t *testing.T) {
 		d.EndDate = time.Now().AddDate(0, 0, -1).Unix()
 		a, _ := d.Address()
 		abi, _ := d.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], a[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], a[:], abi[:]); err != nil {
 			t.Fatal(err)
 		} else {
 			//t.Log(hex.EncodeToString(abi))
@@ -9219,7 +9219,7 @@ func Test_verifyMultiPartyAddress(t *testing.T) {
 	for _, c := range contracts {
 		contractAddr, _ := c.Address()
 		abi, _ := c.ToABI()
-		if err := ctx.SetStorage(types.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
+		if err := ctx.SetStorage(contractaddress.SettlementAddress[:], contractAddr[:], abi[:]); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -15,21 +15,16 @@ import (
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
-
-	"github.com/qlcchain/go-qlc/common/event"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
-	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/p2p"
-
-	ctx "github.com/qlcchain/go-qlc/chain/context"
-
 	"go.uber.org/zap"
 
+	ctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/p2p"
 )
 
 const (

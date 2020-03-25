@@ -32,11 +32,12 @@ func addTxBatchSendByShell(parentCmd *ishell.Cmd) {
 		Usage: "send amount",
 		Value: "",
 	}
+	args := []util.Flag{from, to, token, amount}
 	c := &ishell.Cmd{
-		Name: "batchsend",
-		Help: "batch send transaction",
+		Name:                "batchsend",
+		Help:                "batch send transaction",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{from, to, token, amount}
 			if util.HelpText(c, args) {
 				return
 			}

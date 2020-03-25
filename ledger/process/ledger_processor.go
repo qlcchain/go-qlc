@@ -18,15 +18,15 @@ import (
 	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type LedgerVerifier struct {
-	l               *ledger.Ledger
+	l               ledger.Store
 	blockCheck      map[types.BlockType]blockCheck
 	cacheBlockCheck map[types.BlockType]blockCheck
 	//syncBlockCheck  map[types.BlockType]blockCheck
@@ -34,7 +34,7 @@ type LedgerVerifier struct {
 	logger        *zap.SugaredLogger
 }
 
-func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
+func NewLedgerVerifier(l ledger.Store) *LedgerVerifier {
 	return &LedgerVerifier{
 		l:               l,
 		blockCheck:      newBlockCheck(),
@@ -67,7 +67,8 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 		}
 		if r != Progress {
 			if r == UnReceivable {
-				if _, ok := lv.l.VerifiedData[block.GetHash()]; ok {
+				vd := lv.l.GetVerifiedData()
+				if _, ok := vd[block.GetHash()]; ok {
 					return Progress, nil
 				}
 			}
@@ -268,7 +269,7 @@ func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 		return err
 	}
 	lv.logger.Debug("publish addRelation,", block.GetHash())
-	lv.l.EB.Publish(topic.EventAddRelation, block)
+	lv.l.EventBus().Publish(topic.EventAddRelation, block)
 	return nil
 }
 
@@ -329,15 +330,15 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 		lv.logger.Debug("delete pending, ", pendingKey)
 		return lv.l.DeletePending(&pendingKey, cache)
 	case types.ContractSend:
-		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
-			case contract.SpecVer1:
+			case vmcontract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
 				}
-			case contract.SpecVer2:
+			case vmcontract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
@@ -489,7 +490,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				return fmt.Errorf("get contract reward block: %s", err)
 			}
 			address := types.Address(input.GetLink())
-			c, ok, err := contract.GetChainContract(address, input.Data)
+			c, ok, err := vmcontract.GetChainContract(address, input.Data)
 			if !ok || err != nil {
 				return fmt.Errorf("invaild contract %s", err)
 			}
@@ -515,11 +516,11 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			}
 			return errors.New("invalid contract data")
 		case types.ContractSend:
-			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data)
+			c, ok, err := vmcontract.GetChainContract(types.Address(block.Link), block.Data)
 			if ok && err == nil {
 				d := c.GetDescribe()
 				switch d.GetVersion() {
-				case contract.SpecVer2:
+				case vmcontract.SpecVer2:
 					vmCtx := vmstore.NewVMContext(lv.l)
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
 						if err := vmCtx.SaveStorage(cache); err != nil {

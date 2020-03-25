@@ -10,13 +10,11 @@ package commands
 import (
 	"fmt"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -39,11 +37,12 @@ func addWalletChangePasswordCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "new password for wallet",
 		Value: "",
 	}
+	args := []util.Flag{account, pwd, newPwd}
 	c := &ishell.Cmd{
-		Name: "changepassword",
-		Help: "change wallet password",
+		Name:                "changepassword",
+		Help:                "change wallet password",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, pwd, newPwd}
 			if util.HelpText(c, args) {
 				return
 			}

@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/statedb"
-
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -362,7 +362,7 @@ func TestPovChain_TrieStateDetail(t *testing.T) {
 
 	// DPKI Oracle Method
 	povTxs[1].Block.Type = types.ContractSend
-	copy(povTxs[1].Block.Link[:], types.PubKeyDistributionAddress[:])
+	copy(povTxs[1].Block.Link[:], contractaddress.PubKeyDistributionAddress[:])
 	povTxs[1].Block.Data = []byte{32, 106, 90, 35}
 
 	var oldAs *types.PovAccountState

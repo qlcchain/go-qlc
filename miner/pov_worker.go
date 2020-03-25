@@ -3,6 +3,7 @@ package miner
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"sync"
 	"time"
 
@@ -409,7 +410,7 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 	minerTxOut.Value = minerRwd
 
 	repTxOut := cbtx.GetRepTxOut()
-	repTxOut.Address = types.MinerAddress
+	repTxOut.Address = contractaddress.MinerAddress
 	repTxOut.Value = repRwd
 
 	cbTxHash := cbtx.ComputeHash()

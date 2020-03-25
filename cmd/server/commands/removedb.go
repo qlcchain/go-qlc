@@ -10,13 +10,11 @@ package commands
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/chain"
-
-	"github.com/qlcchain/go-qlc/chain/context"
-
 	"github.com/abiosoft/ishell"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/chain"
+	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 )
 
@@ -28,12 +26,12 @@ func removeDB() {
 			Usage: "data type, etc all/pov",
 			Value: "all",
 		}
-
+		args := []cmdutil.Flag{dataType}
 		cmdRm := &ishell.Cmd{
-			Name: "removedb",
-			Help: "remove database",
+			Name:                "removedb",
+			Help:                "remove database",
+			CompleterWithPrefix: cmdutil.OptsCompleter(args),
 			Func: func(c *ishell.Context) {
-				args := []cmdutil.Flag{dataType}
 				if cmdutil.HelpText(c, args) {
 					return
 				}

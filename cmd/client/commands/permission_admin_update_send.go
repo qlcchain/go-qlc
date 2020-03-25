@@ -32,11 +32,12 @@ func addPermissionAdminUpdateSendCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "admin comment",
 		Value: "",
 	}
+	args := []util.Flag{account, successor, comment}
 	c := &ishell.Cmd{
-		Name: "adminUpdateSend",
-		Help: "update admin comment or hand over admin",
+		Name:                "adminUpdateSend",
+		Help:                "update admin comment or hand over admin",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, successor, comment}
 			if util.HelpText(c, args) {
 				return
 			}

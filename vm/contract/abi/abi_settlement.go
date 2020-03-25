@@ -22,6 +22,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -150,8 +151,8 @@ var (
 	SettlementABI, _ = abi.JSONToABIContract(strings.NewReader(JsonSettlement))
 	keySize          = types.AddressSize*2 + 1
 	assetKeySize     = keySize + 1
-	assetKeyPrefix   = append(types.SettlementAddress[:], AssetFlag)
-	mappingPrefix    = append(types.SettlementAddress[:], AddressMappingFlag)
+	assetKeyPrefix   = append(contractaddress.SettlementAddress[:], AssetFlag)
+	mappingPrefix    = append(contractaddress.SettlementAddress[:], AddressMappingFlag)
 )
 
 type ABIer interface {
@@ -1068,7 +1069,7 @@ func GetSettlementContract(ctx *vmstore.VMContext, addr *types.Address) (*Contra
 		_ = logger.Sync()
 	}()
 
-	if storage, err := ctx.GetStorage(types.SettlementAddress[:], addr[:]); err != nil {
+	if storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], addr[:]); err != nil {
 		return nil, err
 	} else {
 		cp := &ContractParam{}
@@ -1895,7 +1896,7 @@ func queryContractParam(ctx *vmstore.VMContext, name string, fn func(cp *Contrac
 
 	var result []*ContractParam
 
-	if err := ctx.IteratorAll(types.SettlementAddress[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(contractaddress.SettlementAddress[:], func(key []byte, value []byte) error {
 		if len(key) == keySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {
@@ -1928,7 +1929,7 @@ func queryContractByAddressAndStopName(ctx *vmstore.VMContext, name string, fn f
 
 	var result *ContractParam
 
-	if err := ctx.IteratorAll(types.SettlementAddress[:], func(key []byte, value []byte) error {
+	if err := ctx.IteratorAll(contractaddress.SettlementAddress[:], func(key []byte, value []byte) error {
 		if len(key) == keySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {

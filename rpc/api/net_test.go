@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -17,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 type peersCount struct {

@@ -25,11 +25,12 @@ func addPermissionAdminUpdateRewardCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "send block hash",
 		Value: "",
 	}
+	args := []util.Flag{account, hash}
 	c := &ishell.Cmd{
-		Name: "adminUpdateReward",
-		Help: "update admin comment or hand over admin",
+		Name:                "adminUpdateReward",
+		Help:                "update admin comment or hand over admin",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, hash}
 			if util.HelpText(c, args) {
 				return
 			}

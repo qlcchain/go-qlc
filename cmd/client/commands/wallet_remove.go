@@ -10,12 +10,11 @@ package commands
 import (
 	"fmt"
 
+	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
+	"github.com/spf13/cobra"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
-
-	"github.com/abiosoft/ishell"
-	"github.com/spf13/cobra"
 )
 
 func addWalletRemoveCmdByShell(parentCmd *ishell.Cmd) {
@@ -25,11 +24,12 @@ func addWalletRemoveCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "account for wallet",
 		Value: "",
 	}
+	args := []util.Flag{account}
 	c := &ishell.Cmd{
-		Name: "remove",
-		Help: "remove a wallet",
+		Name:                "remove",
+		Help:                "remove a wallet",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account}
 			if util.HelpText(c, args) {
 				return
 			}

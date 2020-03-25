@@ -29,7 +29,7 @@ const (
 // Service manage sync tasks
 type ServiceSync struct {
 	netService *QlcService
-	qlcLedger  *ledger.Ledger
+	qlcLedger  ledger.Store
 	frontiers  []*types.Frontier
 	quitCh     chan bool
 	logger     *zap.SugaredLogger
@@ -48,7 +48,7 @@ type ServiceSync struct {
 }
 
 // NewService return new Service.
-func NewSyncService(netService *QlcService, ledger *ledger.Ledger) *ServiceSync {
+func NewSyncService(netService *QlcService, ledger ledger.Store) *ServiceSync {
 	ss := &ServiceSync{
 		netService:         netService,
 		qlcLedger:          ledger,
@@ -327,7 +327,7 @@ func (ss *ServiceSync) processFrontiers(fsRemotes []*types.Frontier, peerID stri
 	return topic.SyncDone
 }
 
-func (ss *ServiceSync) getLocalFrontier(ledger *ledger.Ledger) ([]*types.Frontier, error) {
+func (ss *ServiceSync) getLocalFrontier(ledger ledger.Store) ([]*types.Frontier, error) {
 	frontiers, err := ledger.GetFrontiers()
 	if err != nil {
 		return nil, err

@@ -128,7 +128,7 @@ func (l *Ledger) AddPovBlock(blk *types.PovBlock, td *types.PovTD, batch ...stor
 
 func (l *Ledger) DeletePovBlock(blk *types.PovBlock) error {
 	batch := l.store.Batch(true)
-
+	defer batch.Discard()
 	if err := l.deletePovHeader(blk.GetHeight(), blk.GetHash(), batch); err != nil {
 		return err
 	}
@@ -170,6 +170,7 @@ func (l *Ledger) addPovHeader(header *types.PovHeader, batch storage.Batch) erro
 
 func (l *Ledger) AddPovHeader(header *types.PovHeader) error {
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := l.addPovHeader(header, batch); err != nil {
 		return err
 	}
@@ -187,6 +188,7 @@ func (l *Ledger) deletePovHeader(height uint64, hash types.Hash, txn storage.Bat
 
 func (l *Ledger) DeletePovHeader(height uint64, hash types.Hash) error {
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := l.deletePovHeader(height, hash, batch); err != nil {
 		l.logger.Error(err)
 		return err
@@ -255,6 +257,7 @@ func (l *Ledger) addPovBody(height uint64, hash types.Hash, body *types.PovBody,
 
 func (l *Ledger) AddPovBody(height uint64, hash types.Hash, body *types.PovBody) error {
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := l.addPovBody(height, hash, body, batch); err != nil {
 		l.logger.Error(err)
 		return err
@@ -273,6 +276,7 @@ func (l *Ledger) deletePovBody(height uint64, hash types.Hash, batch storage.Bat
 
 func (l *Ledger) DeletePovBody(height uint64, hash types.Hash) error {
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := l.deletePovBody(height, hash, batch); err != nil {
 		return err
 	}
@@ -338,6 +342,7 @@ func (l *Ledger) addPovHeight(hash types.Hash, height uint64, txn storage.Batch)
 
 func (l *Ledger) AddPovHeight(hash types.Hash, height uint64) error {
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := l.addPovHeight(hash, height, batch); err != nil {
 		return err
 	}
@@ -355,6 +360,7 @@ func (l *Ledger) deletePovHeight(hash types.Hash, batch storage.Batch) error {
 
 func (l *Ledger) DeletePovHeight(hash types.Hash) error {
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := l.deletePovHeight(hash, batch); err != nil {
 		return err
 	}
@@ -420,6 +426,7 @@ func (l *Ledger) addPovTD(hash types.Hash, height uint64, td *types.PovTD, txn s
 
 func (l *Ledger) AddPovTD(hash types.Hash, height uint64, td *types.PovTD) error {
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := l.addPovTD(hash, height, td, batch); err != nil {
 		return err
 	}
@@ -437,6 +444,7 @@ func (l *Ledger) deletePovTD(hash types.Hash, height uint64, batch storage.Batch
 
 func (l *Ledger) DeletePovTD(hash types.Hash, height uint64) error {
 	batch := l.store.Batch(true)
+	defer batch.Discard()
 	if err := l.deletePovTD(hash, height, batch); err != nil {
 		return err
 	}
@@ -601,6 +609,7 @@ func (l *Ledger) getBatch(update bool, batch ...storage.Batch) (storage.Batch, b
 // releaseTxn commit change and close txn
 func (l *Ledger) releaseBatch(batch storage.Batch, flag bool) {
 	if flag {
+		defer batch.Discard()
 		err := l.store.PutBatch(batch)
 		if err != nil {
 			l.logger.Error(err)
@@ -1236,7 +1245,7 @@ func (l *Ledger) HasPovBlock(height uint64, hash types.Hash, batch ...storage.Ba
 
 func (l *Ledger) DropAllPovBlocks() error {
 	batch := l.store.Batch(true)
-
+	defer batch.Discard()
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPovHeader)
 	_ = batch.Drop(prefix)
 

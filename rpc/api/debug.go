@@ -16,6 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus/dpos"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -361,7 +362,7 @@ func (l *DebugApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 func (l *DebugApi) ContractCount() (map[string]int64, error) {
 	r := make(map[string]int64)
 	ctx := vmstore.NewVMContext(l.ledger)
-	for _, addr := range types.ChainContractAddressList {
+	for _, addr := range contractaddress.ChainContractAddressList {
 		var n int64 = 0
 		if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
 			n++

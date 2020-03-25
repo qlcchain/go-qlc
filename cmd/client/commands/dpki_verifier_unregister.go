@@ -26,11 +26,12 @@ func addVerifierUnRegisterCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "verifier type(email/weChat)",
 		Value: "",
 	}
+	args := []util.Flag{account, vType}
 	c := &ishell.Cmd{
-		Name: "unregister",
-		Help: "unregister verifier",
+		Name:                "unregister",
+		Help:                "unregister verifier",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, vType}
 			if util.HelpText(c, args) {
 				return
 			}

@@ -4,12 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/abi"
-
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -22,7 +21,7 @@ func addTestNode(t *testing.T, ctx *vmstore.VMContext, pn *PermNode) {
 	var key []byte
 	key = append(key, PermissionDataNode)
 	key = append(key, util.BE_Uint32ToBytes(pn.Index)...)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +40,7 @@ func addTestAdmin(t *testing.T, ctx *vmstore.VMContext, admin *AdminAccount) {
 
 	var key []byte
 	key = append(key, PermissionDataAdmin)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
 	if err != nil {
 		t.Fatal()
 	}
@@ -106,7 +105,7 @@ func TestGetPermissionNodeIndex(t *testing.T) {
 
 	var key []byte
 	key = append(key, PermissionDataNodeIndex)
-	err := ctx.SetStorage(types.PermissionAddress[:], key, util.BE_Uint32ToBytes(10))
+	err := ctx.SetStorage(contractaddress.PermissionAddress[:], key, util.BE_Uint32ToBytes(10))
 	if err != nil {
 		t.Fatal(err)
 	}

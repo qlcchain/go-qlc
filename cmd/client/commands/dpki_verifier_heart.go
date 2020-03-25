@@ -25,11 +25,12 @@ func addVerifierHeartCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "verifier type(email/weChat)",
 		Value: "",
 	}
+	args := []util.Flag{account, vType}
 	c := &ishell.Cmd{
-		Name: "heart",
-		Help: "verifier heart",
+		Name:                "heart",
+		Help:                "verifier heart",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, vType}
 			if util.HelpText(c, args) {
 				return
 			}

@@ -1143,7 +1143,7 @@ func (bc *PovBlockChain) batchUpdateTxLookupInSync(forkBlock *types.PovBlock) er
 			err := bc.getLedger().AddPovTxLookupInBatch(txPov.Hash, txLookup, batch)
 			if err != nil {
 				bc.logger.Errorf("failed add TxLookup %s in block %s", txPov.Hash, block.GetHash())
-				batch.Cancel()
+				batch.Discard()
 				return err
 			}
 		}
