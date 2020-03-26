@@ -1,6 +1,8 @@
 package privacy
 
 import (
+	"encoding/hex"
+
 	"go.uber.org/zap"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -75,17 +77,26 @@ func (c *Controller) Stop() error {
 }
 
 func (c *Controller) onEventPrivacySendReqMsg(msg *topic.EventPrivacySendReqMsg) {
-	c.logger.Infof("PrivacySendReq Event, PrivateFrom:%s", msg.PrivateFrom)
+	c.logger.Debugf("PrivacySendReq Event, PrivateFrom:%s", msg.PrivateFrom)
 
 	rspMsg := &topic.EventPrivacySendRspMsg{ReqData: msg.ReqData}
 	rspMsg.EnclaveKey, rspMsg.Err = c.ptm.Send(msg.RawPayload, msg.PrivateFrom, msg.PrivateFor)
+
 	msg.RspChan <- rspMsg
 }
 
 func (c *Controller) onEventPrivacyRecvReqMsg(msg *topic.EventPrivacyRecvReqMsg) {
-	c.logger.Infof("PrivacyRecvReq Event, EnclaveKey:%s", msg.EnclaveKey)
+	c.logger.Debugf("PrivacyRecvReq Event, EnclaveKey:%s", formatBytesPrefix(msg.EnclaveKey))
 
 	rspMsg := &topic.EventPrivacyRecvRspMsg{ReqData: msg.ReqData}
 	rspMsg.RawPayload, rspMsg.Err = c.ptm.Receive(msg.EnclaveKey)
+
 	msg.RspChan <- rspMsg
+}
+
+func formatBytesPrefix(data []byte) string {
+	if len(data) > 8 {
+		return hex.EncodeToString(data[0:8])
+	}
+	return hex.EncodeToString(data[0:])
 }

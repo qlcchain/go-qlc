@@ -29,7 +29,9 @@ type PTM struct {
 }
 
 var (
-	errPtmNodeNotRunning = errors.New("PTM node not running")
+	ErrPtmNodeNotRunning = errors.New("ptm node not running")
+	ErrPtmAPIFailed      = errors.New("ptm api failed")
+	ErrPtmNotRecipient   = errors.New("you are not recipient")
 )
 
 func NewPTM(cfg *config.Config) *PTM {
@@ -62,51 +64,60 @@ func (m *PTM) Stop() error {
 
 func (m *PTM) Send(data []byte, from string, to []string) (out []byte, err error) {
 	if m.status.Load() != ptmNodeRunning {
-		return nil, errPtmNodeNotRunning
+		return nil, ErrPtmNodeNotRunning
 	}
+
 	out, err = m.client.SendPayload(data, from, to)
 	if err != nil {
 		return nil, err
 	}
-	m.cache.Set(string(out), data)
-	return out, nil
-}
 
-func (m *PTM) SendSignedTx(data []byte, to []string) (out []byte, err error) {
-	if m.status.Load() != ptmNodeRunning {
-		return nil, errPtmNodeNotRunning
-	}
-	out, err = m.client.SendSignedPayload(data, to)
-	if err != nil {
-		return nil, err
-	}
+	_ = m.cache.Set(string(out), data)
 	return out, nil
 }
 
 func (m *PTM) Receive(data []byte) ([]byte, error) {
-	if m.status.Load() != ptmNodeRunning {
-		return nil, errPtmNodeNotRunning
-	}
 	if len(data) == 0 {
 		return data, nil
 	}
+
+	if m.status.Load() != ptmNodeRunning {
+		return nil, ErrPtmNodeNotRunning
+	}
+
+	dataStr := string(data)
+	x, err := m.cache.Get(dataStr)
+	if err == nil {
+		if x == nil {
+			return nil, nil
+		}
+		return x.([]byte), nil
+	}
+
 	// Ignore this error since not being a recipient of
 	// a payload isn't an error.
 	// TODO: Return an error if it's anything OTHER than
 	// 'you are not a recipient.'
-	dataStr := string(data)
-	x, err := m.cache.Get(dataStr)
+
+	pl, err := m.client.ReceivePayload(data)
 	if err != nil {
-		return x.([]byte), nil
+		m.logger.Infof("failed to recv payload, %s", err)
+		return nil, ErrPtmAPIFailed
 	}
-	pl, _ := m.client.ReceivePayload(data)
-	m.cache.Set(dataStr, pl)
+	if len(pl) == 0 {
+		pl = nil
+	}
+
+	_ = m.cache.Set(dataStr, pl)
+
 	return pl, nil
 }
 
 func (m *PTM) mainLoop() {
-	upChkTicker := time.NewTicker(time.Second)
+	upChkTicker := time.NewTicker(time.Minute)
 	defer upChkTicker.Stop()
+
+	m.onUpCheckTicker()
 
 	for {
 		select {

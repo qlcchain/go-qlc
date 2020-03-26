@@ -131,11 +131,16 @@ func (c *Client) ReceivePayload(key []byte) ([]byte, error) {
 	if res != nil {
 		defer res.Body.Close()
 	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("Non-200 status code: %+v", res)
+		if res.StatusCode == 404 {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("non-200 status code: %d(%s)", res.StatusCode, res.Status)
 	}
 
 	return ioutil.ReadAll(res.Body)
