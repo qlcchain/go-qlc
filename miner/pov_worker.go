@@ -3,9 +3,10 @@ package miner
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 
 	"github.com/qlcchain/go-qlc/common/statedb"
 

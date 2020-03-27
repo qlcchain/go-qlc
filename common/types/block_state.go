@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BlockFlagNonSync uint64 = 1 << iota
+	BlockFlagSync uint64 = 1 << iota
 )
 
 //go:generate msgp
@@ -216,7 +216,11 @@ func (b *StateBlock) Clone() *StateBlock {
 }
 
 func (b *StateBlock) IsFromSync() bool {
-	return b.Flag&BlockFlagNonSync == 0
+	return b.Flag&BlockFlagSync == BlockFlagSync
+}
+
+func (b *StateBlock) SetFromSync() {
+	b.Flag |= BlockFlagSync
 }
 
 type StateBlockList []*StateBlock

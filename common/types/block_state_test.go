@@ -119,7 +119,7 @@ func TestStateBlock_Clone(t *testing.T) {
 	}
 
 	t.Log(b.Balance)
-	b.Flag = BlockFlagNonSync
+	b.Flag |= BlockFlagSync
 	b1 := b.Clone()
 
 	if reflect.DeepEqual(b, b1) {
@@ -227,6 +227,8 @@ func TestStateBlock_IsValid(t *testing.T) {
 	if b.IsContractBlock() {
 		t.Fatal()
 	}
+
+	b.SetFromSync()
 	if !b.IsFromSync() {
 		t.Fatal()
 	}

@@ -9,8 +9,9 @@ package config
 
 import (
 	"errors"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 
 	"github.com/qlcchain/go-qlc/common/types"
 

@@ -4,7 +4,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/common/types"
+
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/abi"
@@ -13,127 +15,179 @@ import (
 
 const (
 	JsonPermission = `[
-		{"type":"function","name":"PermissionAdminUpdate","inputs":[
-			{"name":"successor","type":"address"},
+		{"type":"function","name":"PermissionAdminHandOver","inputs":[
+			{"name":"account","type":"address"},
 			{"name":"comment","type":"string"}
 		]},
 		{"type":"function","name":"PermissionNodeUpdate","inputs":[
-			{"name":"id","type":"string"},
-			{"name":"ip","type":"string"},
+			{"name":"nodeId","type":"string"},
+			{"name":"nodeUrl","type":"string"},
 			{"name":"comment","type":"string"}
 		]}
 	]`
 
-	MethodNamePermissionAdminUpdate = "PermissionAdminUpdate"
-	MethodNamePermissionNodeUpdate  = "PermissionNodeUpdate"
+	MethodNamePermissionAdminHandOver = "PermissionAdminHandOver"
+	MethodNamePermissionNodeUpdate    = "PermissionNodeUpdate"
 )
 
 var (
 	PermissionABI, _ = abi.JSONToABIContract(strings.NewReader(JsonPermission))
 )
 
-func PermissionInit(ctx *vmstore.VMContext) error {
-	_, err := GetPermissionAdmin(ctx)
+func PermissionIsAdmin(ctx *vmstore.VMContext, addr types.Address) bool {
+	povHdr, err := ctx.Ledger.GetLatestPovHeader()
 	if err != nil {
-		if err == vmstore.ErrStorageNotFound {
-			adm := &AdminAccount{
-				Addr:    cfg.GenesisAddress(),
-				Comment: "Initial Admin",
-				Status:  PermissionAdminStatusActive,
+		return false
+	}
+
+	gsdb := statedb.NewPovGlobalStateDB(ctx.Ledger.DBStore(), povHdr.GetStateHash())
+	csdb, _ := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
+
+	// if there is no admin, genesis is admin
+	if addr == cfg.GenesisAddress() {
+		itor := csdb.NewCurTireIterator(statedb.PovCreateContractLocalStateKey(PermissionDataAdmin, nil))
+
+		for _, val, ok := itor.Next(); ok; _, val, ok = itor.Next() {
+			admin := new(AdminAccount)
+			_, err = admin.UnmarshalMsg(val)
+			if err != nil {
+				continue
 			}
 
-			data, err := adm.MarshalMsg(nil)
-			if err != nil {
-				return errors.New("permission init err")
+			if admin.Valid {
+				return false
 			}
+		}
 
-			var key []byte
-			key = append(key, PermissionDataAdmin)
-			err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
-			if err != nil {
-				return errors.New("permission init err")
-			}
+		return true
+	} else {
+		trieKey := statedb.PovCreateContractLocalStateKey(PermissionDataAdmin, addr.Bytes())
 
-			err = ctx.SaveStorage()
-			if err != nil {
-				return errors.New("permission init err")
-			}
-		} else {
-			return err
+		valBytes, err := csdb.GetValue(trieKey)
+		if err != nil || len(valBytes) == 0 {
+			return false
+		}
+
+		admin := new(AdminAccount)
+		_, err = admin.UnmarshalMsg(valBytes)
+		if err != nil {
+			return false
+		}
+
+		return admin.Valid
+	}
+}
+
+func PermissionGetAdmin(ctx *vmstore.VMContext) ([]*AdminAccount, error) {
+	admins := make([]*AdminAccount, 0)
+
+	povHdr, err := ctx.Ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	gsdb := statedb.NewPovGlobalStateDB(ctx.Ledger.DBStore(), povHdr.GetStateHash())
+	csdb, _ := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
+	itor := csdb.NewCurTireIterator(statedb.PovCreateContractLocalStateKey(PermissionDataAdmin, nil))
+
+	for key, val, ok := itor.Next(); ok; key, val, ok = itor.Next() {
+		admin := new(AdminAccount)
+		_, err = admin.UnmarshalMsg(val)
+		if err != nil {
+			return nil, err
+		}
+
+		addr, err := types.BytesToAddress(key[2:])
+		if err != nil {
+			return nil, err
+		}
+
+		if admin.Valid {
+			admin.Account = addr
+			admins = append(admins, admin)
 		}
 	}
 
-	return nil
+	if len(admins) == 0 {
+		genesisAdmin := &AdminAccount{
+			Account: cfg.GenesisAddress(),
+			Comment: "Initial admin",
+		}
+		admins = append(admins, genesisAdmin)
+	}
+
+	return admins, err
 }
 
-func GetPermissionAdmin(ctx *vmstore.VMContext) (*AdminAccount, error) {
-	var key []byte
-	key = append(key, PermissionDataAdmin)
-	data, err := ctx.GetStorage(contractaddress.PermissionAddress[:], key)
+func PermissionUpdateNode(csdb *statedb.PovContractStateDB, id, url, comment string) error {
+	trieKey := statedb.PovCreateContractLocalStateKey(PermissionDataNode, []byte(id))
+
+	node := new(PermNode)
+	node.NodeUrl = url
+	node.Comment = comment
+	node.Valid = true
+	data, err := node.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	return csdb.SetValue(trieKey, data)
+}
+
+func PermissionGetNode(ctx *vmstore.VMContext, id string) (*PermNode, error) {
+	trieKey := statedb.PovCreateContractLocalStateKey(PermissionDataNode, []byte(id))
+
+	povHdr, err := ctx.Ledger.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
 
-	admin := new(AdminAccount)
-	_, err = admin.UnmarshalMsg(data)
-	if err != nil {
-		return nil, err
-	}
+	gsdb := statedb.NewPovGlobalStateDB(ctx.Ledger.DBStore(), povHdr.GetStateHash())
+	csdb, _ := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
 
-	return admin, nil
-}
-
-func GetPermissionNodeIndex(ctx *vmstore.VMContext) uint32 {
-	var key []byte
-	key = append(key, PermissionDataNodeIndex)
-	data, err := ctx.GetStorage(contractaddress.PermissionAddress[:], key)
-	if err != nil {
-		return 0
-	}
-
-	return util.BE_BytesToUint32(data)
-}
-
-func GetPermissionNode(ctx *vmstore.VMContext, index uint32) (*PermNode, error) {
-	var key []byte
-	key = append(key, PermissionDataNode)
-	key = append(key, util.BE_Uint32ToBytes(index)...)
-	data, err := ctx.GetStorage(contractaddress.PermissionAddress[:], key)
-	if err != nil {
-		return nil, err
+	valBytes, err := csdb.GetValue(trieKey)
+	if err != nil || len(valBytes) == 0 {
+		return nil, errors.New("get node err")
 	}
 
 	pn := new(PermNode)
-	_, err = pn.UnmarshalMsg(data)
+	_, err = pn.UnmarshalMsg(valBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	pn.Index = index
-	return pn, nil
+	if pn.Valid {
+		pn.NodeId = id
+		return pn, nil
+	} else {
+		return nil, errors.New("node is removed")
+	}
 }
 
-func GetAllPermissionNodes(ctx *vmstore.VMContext) ([]*PermNode, error) {
+func PermissionGetAllNodes(ctx *vmstore.VMContext) ([]*PermNode, error) {
 	nodes := make([]*PermNode, 0)
 
-	itKey := append(contractaddress.PermissionAddress[:], PermissionDataNode)
-	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
-		// prefix(1) + addr(32) + type(1) + index(4)
-		index := util.BE_BytesToUint32(key[34:])
+	povHdr, err := ctx.Ledger.GetLatestPovHeader()
+	if err != nil {
+		return nil, err
+	}
 
+	gsdb := statedb.NewPovGlobalStateDB(ctx.Ledger.DBStore(), povHdr.GetStateHash())
+	csdb, _ := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
+	itor := csdb.NewCurTireIterator(statedb.PovCreateContractLocalStateKey(PermissionDataNode, nil))
+
+	for key, val, ok := itor.Next(); ok; key, val, ok = itor.Next() {
 		pn := new(PermNode)
-		_, err := pn.UnmarshalMsg(value)
+		_, err = pn.UnmarshalMsg(val)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if pn.Valid {
-			pn.Index = index
+			pn.NodeId = string(key[2:])
 			nodes = append(nodes, pn)
 		}
+	}
 
-		return nil
-	})
-
-	return nodes, err
+	return nodes, nil
 }
