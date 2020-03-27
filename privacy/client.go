@@ -9,35 +9,47 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
-
-	"github.com/tv42/httpunix"
 )
 
-func unixTransport(socketPath string) *httpunix.Transport {
-	t := &httpunix.Transport{
-		DialTimeout:           1 * time.Second,
-		RequestTimeout:        5 * time.Second,
-		ResponseHeaderTimeout: 5 * time.Second,
-	}
-	t.RegisterLocation("c", socketPath)
-	return t
-}
-
-func unixClient(socketPath string) *http.Client {
-	return &http.Client{
-		Transport: unixTransport(socketPath),
-	}
-}
-
 type Client struct {
+	scheme     string // http+unix, http
+	rootPath   string
 	httpClient *http.Client
 }
 
-func NewClient(socketPath string) *Client {
-	return &Client{
-		httpClient: unixClient(socketPath),
+func NewClient(ptmNode string) *Client {
+	ptmNode = strings.TrimSpace(ptmNode)
+	ptmNode = strings.TrimRight(ptmNode, "/")
+
+	parts := strings.Split(ptmNode, ":")
+	if len(parts) < 2 {
+		return nil
 	}
+	scheme := parts[0]
+	if scheme == "unix" {
+		scheme = "http+unix"
+	}
+	rootPath := ptmNode[len(parts[0])+1:]
+
+	c := &Client{scheme: scheme, rootPath: rootPath}
+	c.httpClient = &http.Client{}
+
+	if c.scheme == "http+unix" {
+		c.httpClient.Transport = newUnixTransport("c", c.rootPath)
+	} else if c.scheme == "http" {
+		c.httpClient.Transport = newHttpTransport()
+	} else {
+		return nil
+	}
+
+	return c
+}
+
+func (c *Client) formatPath(path string) string {
+	if c.scheme == "http+unix" {
+		return c.scheme + "://c" + path
+	}
+	return c.scheme + ":" + c.rootPath + path
 }
 
 func (c *Client) doJson(path string, apiReq interface{}) (*http.Response, error) {
@@ -46,7 +58,7 @@ func (c *Client) doJson(path string, apiReq interface{}) (*http.Response, error)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", "http+unix://c/"+path, buf)
+	req, err := http.NewRequest("POST", c.formatPath(path), buf)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +71,7 @@ func (c *Client) doJson(path string, apiReq interface{}) (*http.Response, error)
 }
 
 func (c *Client) Upcheck() (bool, error) {
-	res, err := c.httpClient.Get("http+unix://c/upcheck")
+	res, err := c.httpClient.Get(c.formatPath("/upcheck"))
 	if err != nil {
 		return false, err
 	}
@@ -72,7 +84,7 @@ func (c *Client) Upcheck() (bool, error) {
 
 func (c *Client) SendPayload(pl []byte, b64From string, b64To []string) ([]byte, error) {
 	buf := bytes.NewBuffer(pl)
-	req, err := http.NewRequest("POST", "http+unix://c/sendraw", buf)
+	req, err := http.NewRequest("POST", c.formatPath("/sendraw"), buf)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +110,7 @@ func (c *Client) SendPayload(pl []byte, b64From string, b64To []string) ([]byte,
 
 func (c *Client) SendSignedPayload(signedPayload []byte, b64To []string) ([]byte, error) {
 	buf := bytes.NewBuffer(signedPayload)
-	req, err := http.NewRequest("POST", "http+unix://c/sendsignedtx", buf)
+	req, err := http.NewRequest("POST", c.formatPath("/sendsignedtx"), buf)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +133,7 @@ func (c *Client) SendSignedPayload(signedPayload []byte, b64To []string) ([]byte
 }
 
 func (c *Client) ReceivePayload(key []byte) ([]byte, error) {
-	req, err := http.NewRequest("GET", "http+unix://c/receiveraw", nil)
+	req, err := http.NewRequest("GET", c.formatPath("/receiveraw"), nil)
 	if err != nil {
 		return nil, err
 	}

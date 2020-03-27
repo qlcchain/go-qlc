@@ -43,11 +43,16 @@ func NewPTM(cfg *config.Config) *PTM {
 func (m *PTM) Init() error {
 	m.cache = gcache.New(10000).LRU().Expiration(5 * time.Minute).Build()
 	m.logger = log.NewLogger("privacy_ptm")
+
+	m.client = NewClient(m.cfg.Privacy.PtmNode)
+	if m.client == nil {
+		return errors.New("invalid ptm node")
+	}
+
 	return nil
 }
 
 func (m *PTM) Start() error {
-	m.client = NewClient(m.cfg.Privacy.PtmNode)
 	m.quitCh = make(chan struct{})
 
 	m.logger.Info("ptm node at ", m.cfg.Privacy.PtmNode)
