@@ -3,11 +3,12 @@ package mock
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"math"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/merkle"

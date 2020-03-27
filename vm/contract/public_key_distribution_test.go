@@ -253,12 +253,13 @@ func TestOracle(t *testing.T) {
 	pk := make([]byte, ed25519.PublicKeySize)
 	random.Bytes(pk)
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
+	blk.SetFromSync()
 	_, _, err = o.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
-	blk.Flag = types.BlockFlagNonSync
+	blk.Flag = 0
 	_, _, err = o.ProcessSend(ctx, blk)
 	if err != ErrNotEnoughPledge {
 		t.Fatal(err)
@@ -368,13 +369,13 @@ func TestVerifierHeart(t *testing.T) {
 
 	ht := []uint32{common.OracleTypeInvalid, common.OracleTypeWeChat}
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, ht)
-	blk.Flag &= ^types.BlockFlagNonSync
+	blk.SetFromSync()
 	_, _, err = vh.ProcessSend(ctx, blk)
 	if err != ErrCalcAmount {
 		t.Fatal(err)
 	}
 
-	blk.Flag |= types.BlockFlagNonSync
+	blk.Flag = 0
 	_, _, err = vh.ProcessSend(ctx, blk)
 	if err != ErrNotEnoughPledge {
 		t.Fatal(err)

@@ -410,9 +410,8 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
 
 	if bs.BlockFrom == types.Synchronized {
+		bs.Block.SetFromSync()
 		p.dps.updateLastProcessSyncTime()
-	} else {
-		bs.Block.Flag = types.BlockFlagNonSync
 	}
 
 	result, err = dps.lv.BlockCheck(bs.Block)
@@ -636,9 +635,8 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 		dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: bs.Block})
 	}
 
-	if bs.BlockFrom != types.Synchronized {
-		bs.Block.Flag = types.BlockFlagNonSync
-	} else {
+	if bs.BlockFrom == types.Synchronized {
+		bs.Block.SetFromSync()
 		p.dps.updateLastProcessSyncTime()
 	}
 

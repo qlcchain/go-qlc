@@ -4,9 +4,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/ledger"
+
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
@@ -14,40 +16,56 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-func addTestAdmin(t *testing.T, ctx *vmstore.VMContext, admin *abi.AdminAccount) {
+func addTestAdmin(t *testing.T, l *ledger.Ledger, admin *abi.AdminAccount, povHeight uint64) {
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.BasHdr.Height = povHeight
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	trieKey := statedb.PovCreateContractLocalStateKey(abi.PermissionDataAdmin, admin.Account.Bytes())
+
 	data, err := admin.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var key []byte
-	key = append(key, abi.PermissionDataAdmin)
-	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
-	if err != nil {
-		t.Fatal()
-	}
-
-	err = ctx.SaveStorage()
-	if err != nil {
-		t.Fatal()
-	}
-}
-
-func addTestNode(t *testing.T, ctx *vmstore.VMContext, pn *abi.PermNode) {
-	data, err := pn.MarshalMsg(nil)
+	err = csdb.SetValue(trieKey, data)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var key []byte
-	key = append(key, abi.PermissionDataNode)
-	key = append(key, util.BE_Uint32ToBytes(pn.Index)...)
-	err = ctx.SetStorage(contractaddress.PermissionAddress[:], key, data)
+	err = gsdb.CommitToTrie()
+	if err != nil {
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = ctx.SaveStorage()
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +80,7 @@ func TestAdminUpdate_ProcessSend(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	blk := mock.StateBlockWithoutWork()
-	a := new(AdminUpdate)
+	a := new(AdminHandOver)
 
 	blk.Token = mock.Hash()
 	_, _, err := a.ProcessSend(ctx, blk)
@@ -78,85 +96,39 @@ func TestAdminUpdate_ProcessSend(t *testing.T) {
 
 	newAdminAddr := mock.Address()
 	newAdminComment := strings.Repeat("x", abi.PermissionCommentMaxLen+1)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminUpdate, newAdminAddr, newAdminComment)
+	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminHandOver, newAdminAddr, newAdminComment)
 	_, _, err = a.ProcessSend(ctx, blk)
 	if err != ErrInvalidLen {
 		t.Fatal(err)
 	}
 
 	newAdminComment = strings.Repeat("x", abi.PermissionCommentMaxLen)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminUpdate, newAdminAddr, newAdminComment)
+	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminHandOver, newAdminAddr, newAdminComment)
+	blk.SetFromSync()
 	_, _, err = a.ProcessSend(ctx, blk)
-	if err != ErrGetAdmin {
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk.Flag = 0
+	_, _, err = a.ProcessSend(ctx, blk)
+	if err != ErrInvalidAdmin {
 		t.Fatal(err)
 	}
 
 	admin := &abi.AdminAccount{
-		Addr:    mock.Address(),
-		Comment: "old Admin",
-		Status:  abi.PermissionAdminStatusHandOver,
+		Account: blk.Address,
+		Comment: "right admin",
+		Valid:   true,
 	}
-	addTestAdmin(t, ctx, admin)
-	_, _, err = a.ProcessSend(ctx, blk)
-	if err != ErrInvalidAdmin {
-		t.Fatal(err)
-	}
-
-	blk.Address = admin.Addr
-	_, _, err = a.ProcessSend(ctx, blk)
-	if err != ErrInvalidAdmin {
-		t.Fatal(err)
-	}
-
-	admin.Status = abi.PermissionAdminStatusActive
-	addTestAdmin(t, ctx, admin)
+	addTestAdmin(t, l, admin, 10)
 	_, _, err = a.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestAdminUpdate_DoReceive(t *testing.T) {
-	clear, l := getTestLedger()
-	if l == nil {
-		t.Fatal()
-	}
-	defer clear()
-
-	ctx := vmstore.NewVMContext(l)
-	send := mock.StateBlockWithoutWork()
-	recv := mock.StateBlockWithoutWork()
-	a := new(AdminUpdate)
-
-	_, err := a.DoReceive(ctx, recv, send)
-	if err != ErrUnpackMethod {
-		t.Fatal()
-	}
-
-	adminAddr := mock.Address()
-	adminComment := "new Admin"
-	send.Data, _ = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminUpdate, adminAddr, adminComment)
-	_, err = a.DoReceive(ctx, recv, send)
-	if err != nil {
-		t.Fatal()
-	}
-
-	am := mock.AccountMeta(adminAddr)
-	l.AddAccountMeta(am, l.Cache().GetCache())
-	_, err = a.DoReceive(ctx, recv, send)
-	if err != nil {
-		t.Fatal()
-	}
-
-	am.Tokens[0].Type = cfg.ChainToken()
-	l.UpdateAccountMeta(am, l.Cache().GetCache())
-	_, err = a.DoReceive(ctx, recv, send)
-	if err != nil {
-		t.Fatal()
-	}
-}
-
-func TestAdminUpdate_GetTargetReceiver(t *testing.T) {
+func TestAdminHandOver_DoSendOnPov(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
@@ -165,122 +137,51 @@ func TestAdminUpdate_GetTargetReceiver(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	blk := mock.StateBlockWithoutWork()
-	a := new(AdminUpdate)
+	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
+	a := new(AdminHandOver)
 
-	r, _ := a.GetTargetReceiver(ctx, blk)
-	if r != types.ZeroAddress {
+	err := a.DoSendOnPov(ctx, csdb, 10, blk)
+	if err == nil {
 		t.Fatal()
 	}
 
 	adminAddr := mock.Address()
 	adminComment := strings.Repeat("x", abi.PermissionCommentMaxLen)
-	blk.Data, _ = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminUpdate, adminAddr, adminComment)
-	r, _ = a.GetTargetReceiver(ctx, blk)
-	if r != adminAddr {
-		t.Fatal()
-	}
-}
-
-func TestNodeAdd_ProcessSend(t *testing.T) {
-	clear, l := getTestLedger()
-	if l == nil {
-		t.Fatal()
-	}
-	defer clear()
-
-	ctx := vmstore.NewVMContext(l)
-	blk := mock.StateBlockWithoutWork()
-	n := new(NodeAdd)
-
-	blk.Token = mock.Hash()
-	_, _, err := n.ProcessSend(ctx, blk)
-	if err != ErrToken {
-		t.Fatal(err)
-	}
-
-	blk.Token = cfg.ChainToken()
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrUnpackMethod {
-		t.Fatal(err)
-	}
-
-	kind := abi.PermissionNodeKindInvalid
-	node := ""
-	comment := ""
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeAdd, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	kind = abi.PermissionNodeKindIPPort
-	node = ""
-	comment = ""
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeAdd, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	kind = abi.PermissionNodeKindIPPort
-	node = "1:9999999"
-	comment = strings.Repeat("x", abi.PermissionCommentMaxLen+1)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeAdd, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	kind = abi.PermissionNodeKindIPPort
-	node = "1.1.1.1:9999999"
-	comment = strings.Repeat("x", abi.PermissionCommentMaxLen+1)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeAdd, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	kind = abi.PermissionNodeKindIPPort
-	node = "1.1.1.1:9999"
-	comment = strings.Repeat("x", abi.PermissionCommentMaxLen+1)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeAdd, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	kind = abi.PermissionNodeKindPeerID
-	node = strings.Repeat("x", 46+1)
-	comment = ""
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeAdd, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	kind = abi.PermissionNodeKindPeerID
-	node = strings.Repeat("x", 46)
-	comment = ""
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeAdd, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrGetAdmin {
-		t.Fatal(err)
-	}
-
-	abi.PermissionInit(ctx)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrInvalidAdmin {
-		t.Fatal(err)
-	}
-
+	blk.Data, _ = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminHandOver, adminAddr, adminComment)
 	blk.Address = cfg.GenesisAddress()
-	_, _, err = n.ProcessSend(ctx, blk)
+	err = a.DoSendOnPov(ctx, csdb, 10, blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	eb := event.GetEventBus("test")
-	err = n.EventNotify(eb, ctx, blk)
+	adminAddr = cfg.GenesisAddress()
+	blk.Data, _ = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminHandOver, adminAddr, adminComment)
+	blk.Address = cfg.GenesisAddress()
+	err = a.DoSendOnPov(ctx, csdb, 10, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk.Address = mock.Address()
+	err = a.DoSendOnPov(ctx, csdb, 10, blk)
+	if err == nil {
+		t.Fatal()
+	}
+
+	admin := &abi.AdminAccount{
+		Account: blk.Address,
+		Comment: adminComment,
+		Valid:   true,
+	}
+	addTestAdmin(t, l, admin, 10)
+
+	ph, err := l.GetLatestPovHeader()
+	if err != nil {
+		t.Fatal()
+	}
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), ph.GetStateHash())
+	csdb, err = gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
+	err = a.DoSendOnPov(ctx, csdb, 10, blk)
 	if err != nil {
 		t.Fatal()
 	}
@@ -309,90 +210,57 @@ func TestNodeUpdate_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	index := uint32(10)
-	kind := abi.PermissionNodeKindInvalid
-	node := ""
-	comment := ""
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, index, kind, node, comment)
+	nodeId := "n1"
+	nodeUrl := "123:1:2"
+	comment := strings.Repeat("x", abi.PermissionCommentMaxLen+1)
+	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, nodeId, nodeUrl, comment)
 	_, _, err = n.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
-	tn := &abi.PermNode{
-		Index:   index,
-		Kind:    abi.PermissionNodeKindPeerID,
-		Node:    "QmVLbouTEb9LGQJ56KvQCyoPXqDeqwYSE6j1YSyfLeHgN3",
-		Comment: "test node",
-		Valid:   true,
-	}
-	addTestNode(t, ctx, tn)
+	nodeUrl = "123"
+	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, nodeId, nodeUrl, comment)
 	_, _, err = n.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
-	kind = abi.PermissionNodeKindIPPort
-	node = ""
-	comment = ""
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, index, kind, node, comment)
+	nodeUrl = "1.1.1.1:8000000"
+	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, nodeId, nodeUrl, comment)
 	_, _, err = n.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
-	kind = abi.PermissionNodeKindIPPort
-	node = "1:999999"
-	comment = strings.Repeat("x", abi.PermissionCommentMaxLen+1)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, index, kind, node, comment)
+	nodeUrl = "1.1.1.1:8000"
+	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, nodeId, nodeUrl, comment)
 	_, _, err = n.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
-	kind = abi.PermissionNodeKindIPPort
-	node = "1.1.1.1:999999"
-	comment = strings.Repeat("x", abi.PermissionCommentMaxLen+1)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, index, kind, node, comment)
+	comment = strings.Repeat("x", abi.PermissionCommentMaxLen)
+	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, nodeId, nodeUrl, comment)
+	blk.SetFromSync()
 	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	kind = abi.PermissionNodeKindIPPort
-	node = "1.1.1.1:9999"
-	comment = strings.Repeat("x", abi.PermissionCommentMaxLen+1)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, index, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	kind = abi.PermissionNodeKindPeerID
-	node = strings.Repeat("x", 46+1)
-	comment = ""
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, index, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	kind = abi.PermissionNodeKindPeerID
-	node = strings.Repeat("x", 46)
-	comment = ""
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, index, kind, node, comment)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrGetAdmin {
-		t.Fatal(err)
-	}
-
-	abi.PermissionInit(ctx)
+	blk.Flag = 0
 	_, _, err = n.ProcessSend(ctx, blk)
 	if err != ErrInvalidAdmin {
 		t.Fatal(err)
 	}
 
-	blk.Address = cfg.GenesisAddress()
+	admin := &abi.AdminAccount{
+		Account: blk.Address,
+		Comment: "a1",
+		Valid:   true,
+	}
+	addTestAdmin(t, l, admin, 10)
+
 	_, _, err = n.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
@@ -403,9 +271,15 @@ func TestNodeUpdate_ProcessSend(t *testing.T) {
 	if err != nil {
 		t.Fatal()
 	}
+
+	blk.Data = []byte{}
+	err = n.EventNotify(eb, ctx, blk)
+	if err == nil {
+		t.Fatal()
+	}
 }
 
-func TestNodeRemove_ProcessSend(t *testing.T) {
+func TestNodeUpdate_DoSendOnPov(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
 		t.Fatal()
@@ -414,54 +288,16 @@ func TestNodeRemove_ProcessSend(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l)
 	blk := mock.StateBlockWithoutWork()
-	n := new(NodeRemove)
+	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
+	n := new(NodeUpdate)
 
-	blk.Token = mock.Hash()
-	_, _, err := n.ProcessSend(ctx, blk)
-	if err != ErrToken {
-		t.Fatal(err)
+	err := n.DoSendOnPov(ctx, csdb, 10, blk)
+	if err == nil {
+		t.Fatal()
 	}
 
-	blk.Token = cfg.ChainToken()
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrUnpackMethod {
-		t.Fatal(err)
-	}
-
-	index := uint32(10)
-	blk.Data, err = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeRemove, index)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrCheckParam {
-		t.Fatal(err)
-	}
-
-	tn := &abi.PermNode{
-		Index:   index,
-		Kind:    abi.PermissionNodeKindPeerID,
-		Node:    "QmVLbouTEb9LGQJ56KvQCyoPXqDeqwYSE6j1YSyfLeHgN3",
-		Comment: "test node",
-		Valid:   true,
-	}
-	addTestNode(t, ctx, tn)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrGetAdmin {
-		t.Fatal(err)
-	}
-
-	abi.PermissionInit(ctx)
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != ErrInvalidAdmin {
-		t.Fatal(err)
-	}
-
-	blk.Address = cfg.GenesisAddress()
-	_, _, err = n.ProcessSend(ctx, blk)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	eb := event.GetEventBus("test")
-	err = n.EventNotify(eb, ctx, blk)
+	blk.Data, _ = abi.PermissionABI.PackMethod(abi.MethodNamePermissionNodeUpdate, "n1", "", "")
+	err = n.DoSendOnPov(ctx, csdb, 10, blk)
 	if err != nil {
 		t.Fatal()
 	}

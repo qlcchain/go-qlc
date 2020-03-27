@@ -99,14 +99,11 @@ func PublicKeyWithTypeHash(t uint16, k []byte) []byte {
 }
 
 const (
-	PermissionEventNodeAdd uint8 = iota
-	PermissionEventNodeUpdate
-	PermissionEventNodeRemove
+	PermissionEventNodeUpdate uint8 = iota
 )
 
 type PermissionEvent struct {
 	EventType uint8
-	NodeKind  uint8
-	NodeAddr  string
-	NodeIndex uint32
+	NodeId    string
+	NodeUrl   string
 }

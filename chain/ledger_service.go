@@ -20,7 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -95,12 +94,6 @@ func (ls *LedgerService) Init() error {
 		}
 	}
 	_ = ctx.SaveStorage()
-
-	err := abi.PermissionInit(ctx)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

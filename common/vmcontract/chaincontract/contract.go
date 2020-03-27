@@ -234,22 +234,13 @@ func InitChainContract() {
 
 	pa := vmcontract.NewChainContract(
 		map[string]vmcontract.Contract{
-			cabi.MethodNamePermissionAdminUpdate: &contract.AdminUpdate{
+			cabi.MethodNamePermissionAdminHandOver: &contract.AdminHandOver{
 				BaseContract: contract.BaseContract{
 					Describe: vmcontract.Describe{
 						SpecVer:   vmcontract.SpecVer2,
 						Signature: true,
 						Work:      true,
-						Pending:   true,
-					},
-				},
-			},
-			cabi.MethodNamePermissionNodeAdd: &contract.NodeAdd{
-				BaseContract: contract.BaseContract{
-					Describe: vmcontract.Describe{
-						SpecVer:   vmcontract.SpecVer2,
-						Signature: true,
-						Work:      true,
+						PovState:  true,
 					},
 				},
 			},
@@ -259,15 +250,7 @@ func InitChainContract() {
 						SpecVer:   vmcontract.SpecVer2,
 						Signature: true,
 						Work:      true,
-					},
-				},
-			},
-			cabi.MethodNamePermissionNodeRemove: &contract.NodeRemove{
-				BaseContract: contract.BaseContract{
-					Describe: vmcontract.Describe{
-						SpecVer:   vmcontract.SpecVer2,
-						Signature: true,
-						Work:      true,
+						PovState:  true,
 					},
 				},
 			},
