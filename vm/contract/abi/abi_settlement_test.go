@@ -8271,12 +8271,13 @@ func TestCDRStatus_State(t *testing.T) {
 		args    args
 		want    string
 		want1   bool
+		want2   bool
 		wantErr bool
 	}{
 		{
 			name: "ok",
 			fields: fields{
-				Params: map[string][]CDRParam{addr1.String(): {cdrParam}},
+				Params: map[string][]CDRParam{addr1.String(): {cdrParam}, addr2.String(): {cdrParam}},
 				Status: SettlementStatusSuccess,
 			},
 			args: args{
@@ -8284,6 +8285,7 @@ func TestCDRStatus_State(t *testing.T) {
 			},
 			want:    "PCCWG",
 			want1:   true,
+			want2:   true,
 			wantErr: false,
 		}, {
 			name: "f1",
@@ -8296,6 +8298,7 @@ func TestCDRStatus_State(t *testing.T) {
 			},
 			want:    "",
 			want1:   false,
+			want2:   false,
 			wantErr: true,
 		}, {
 			name: "f2",
@@ -8308,18 +8311,20 @@ func TestCDRStatus_State(t *testing.T) {
 			},
 			want:    "",
 			want1:   false,
+			want2:   false,
 			wantErr: true,
 		}, {
 			name: "f3",
 			fields: fields{
 				Params: map[string][]CDRParam{addr1.String(): {cdrParam, cdrParam}},
-				Status: SettlementStatusSuccess,
+				Status: SettlementStatusStage1,
 			},
 			args: args{
 				addr: &addr1,
 			},
 			want:    "PCCWG",
 			want1:   false,
+			want2:   false,
 			wantErr: false,
 		}, {
 			name: "f4",
@@ -8332,6 +8337,20 @@ func TestCDRStatus_State(t *testing.T) {
 			},
 			want:    "",
 			want1:   false,
+			want2:   false,
+			wantErr: false,
+		}, {
+			name: "f5",
+			fields: fields{
+				Params: map[string][]CDRParam{addr1.String(): {}, addr2.String(): {}},
+				Status: SettlementStatusSuccess,
+			},
+			args: args{
+				addr: &addr1,
+			},
+			want:    "",
+			want1:   true,
+			want2:   false,
 			wantErr: false,
 		},
 	}
@@ -8341,7 +8360,7 @@ func TestCDRStatus_State(t *testing.T) {
 				Params: tt.fields.Params,
 				Status: tt.fields.Status,
 			}
-			got, got1, err := z.State(tt.args.addr)
+			got, got1, got2, err := z.State(tt.args.addr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("State() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -8351,6 +8370,9 @@ func TestCDRStatus_State(t *testing.T) {
 			}
 			if got1 != tt.want1 {
 				t.Errorf("State() got1 = %v, want %v", got1, tt.want1)
+			}
+			if got2 != tt.want2 {
+				t.Errorf("State() got2 = %v, want %v", got2, tt.want2)
 			}
 		})
 	}

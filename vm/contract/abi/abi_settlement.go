@@ -708,18 +708,19 @@ func (z *CDRStatus) ToHash() (types.Hash, error) {
 	return types.ZeroHash, errors.New("no cdr record")
 }
 
-func (z *CDRStatus) State(addr *types.Address) (string, bool, error) {
+func (z *CDRStatus) State(addr *types.Address) (sender string, isMatching, state bool, err error) {
+	isMatching = len(z.Params) == 2
 	if params, ok := z.Params[addr.String()]; ok {
 		switch size := len(params); {
 		case size == 1:
-			return params[0].Sender, params[0].Status(), nil
+			return params[0].Sender, isMatching, params[0].Status(), nil
 		case size > 1: //upload multi-times or normalize time error
-			return params[0].Sender, false, nil
+			return params[0].Sender, isMatching, false, nil
 		default:
-			return "", false, nil
+			return "", isMatching, false, nil
 		}
 	} else {
-		return "", false, fmt.Errorf("can not find data of %s", addr.String())
+		return "", isMatching, false, fmt.Errorf("can not find data of %s", addr.String())
 	}
 }
 
@@ -1272,13 +1273,13 @@ func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end in
 
 	for _, status := range records {
 		//party A
-		if s1, b1, err := status.State(&partyA); err == nil {
-			result.UpdateState(s1, "partyA", status.Status == SettlementStatusSuccess, b1)
+		if s1, isMatching, b1, err := status.State(&partyA); err == nil {
+			result.UpdateState(s1, "partyA", isMatching, b1)
 		}
 
 		//party B
-		if s2, b2, err := status.State(&partyB); err == nil {
-			result.UpdateState(s2, "partyB", status.Status == SettlementStatusSuccess, b2)
+		if s2, isMatching2, b2, err := status.State(&partyB); err == nil {
+			result.UpdateState(s2, "partyB", isMatching2, b2)
 		}
 	}
 
@@ -1546,13 +1547,13 @@ func GetMultiPartySummaryReport(ctx *vmstore.VMContext, firstAddr, secondAddr *t
 
 	for _, record := range records {
 		// party A
-		if s1, b1, err := record.State(&partyA); err == nil {
-			result.UpdateState(s1, "partyA", record.Status == SettlementStatusSuccess, b1)
+		if s1, isMatching1, b1, err := record.State(&partyA); err == nil {
+			result.UpdateState(s1, "partyA", isMatching1, b1)
 		}
 
 		// party B
-		if s2, b2, err := record.State(&partyB); err == nil {
-			result.UpdateState(s2, "partyB", record.Status == SettlementStatusSuccess, b2)
+		if s2, isMatching2, b2, err := record.State(&partyB); err == nil {
+			result.UpdateState(s2, "partyB", isMatching2, b2)
 		}
 
 		hash, err := record.ToHash()
@@ -1567,8 +1568,8 @@ func GetMultiPartySummaryReport(ctx *vmstore.VMContext, firstAddr, secondAddr *t
 			continue
 		}
 
-		if s3, b3, err := stat2.State(&partyC); err == nil {
-			result.UpdateState(s3, "partyC", stat2.Status == SettlementStatusSuccess, b3)
+		if s3, isMatching3, b3, err := stat2.State(&partyC); err == nil {
+			result.UpdateState(s3, "partyC", isMatching3, b3)
 		}
 	}
 
