@@ -482,18 +482,17 @@ func TestSettlementAPI_Integration(t *testing.T) {
 
 			// pccw upload CDR
 			cdr1 := &cabi.CDRParam{
-				ContractAddress: types.ZeroAddress,
-				Index:           1111,
-				SmsDt:           time.Now().Unix(),
-				Sender:          "WeChat",
-				Destination:     "85257***343",
-				SendingStatus:   cabi.SendingStatusSent,
-				DlrStatus:       cabi.DLRStatusDelivered,
-				PreStop:         "",
-				NextStop:        "HKTCSL",
+				Index:         1111,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "WeChat",
+				Destination:   "85257***343",
+				SendingStatus: cabi.SendingStatusSent,
+				DlrStatus:     cabi.DLRStatusDelivered,
+				PreStop:       "",
+				NextStop:      "HKTCSL",
 			}
 
-			if blk, err := api.GetProcessCDRBlock(&pccwAddr, cdr1); err != nil {
+			if blk, err := api.GetProcessCDRBlock(&pccwAddr, []*cabi.CDRParam{cdr1}); err != nil {
 				t.Fatal(err)
 			} else {
 				blk.Signature = account1.Sign(txHash)
@@ -504,17 +503,16 @@ func TestSettlementAPI_Integration(t *testing.T) {
 
 			// CSL upload CDR
 			cdr2 := &cabi.CDRParam{
-				ContractAddress: types.ZeroAddress,
-				Index:           1111,
-				SmsDt:           time.Now().Unix(),
-				Sender:          "WeChat",
-				Destination:     "85257***343",
-				SendingStatus:   cabi.SendingStatusSent,
-				DlrStatus:       cabi.DLRStatusDelivered,
-				PreStop:         "PCCWG",
-				NextStop:        "",
+				Index:         1111,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "WeChat",
+				Destination:   "85257***343",
+				SendingStatus: cabi.SendingStatusSent,
+				DlrStatus:     cabi.DLRStatusDelivered,
+				PreStop:       "PCCWG",
+				NextStop:      "",
 			}
-			if blk, err := api.GetProcessCDRBlock(&cslAddr, cdr2); err != nil {
+			if blk, err := api.GetProcessCDRBlock(&cslAddr, []*cabi.CDRParam{cdr2}); err != nil {
 				t.Fatal(err)
 			} else {
 				blk.Signature = account2.Sign(txHash)
@@ -874,14 +872,13 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 	cdrCount := 10
 	for i := 0; i < cdrCount; i++ {
 		template := cabi.CDRParam{
-			ContractAddress: types.ZeroAddress,
-			Index:           1111,
-			SmsDt:           time.Now().Unix(),
-			Destination:     "85257***343",
-			SendingStatus:   cabi.SendingStatusSent,
-			DlrStatus:       cabi.DLRStatusDelivered,
-			PreStop:         "",
-			NextStop:        "",
+			Index:         1111,
+			SmsDt:         time.Now().Unix(),
+			Destination:   "85257***343",
+			SendingStatus: cabi.SendingStatusSent,
+			DlrStatus:     cabi.DLRStatusDelivered,
+			PreStop:       "",
+			NextStop:      "",
 		}
 
 		if i%2 == 1 {
@@ -895,7 +892,7 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		cdr1 := template
 		cdr1.NextStop = "A2P_PCCWG"
 
-		if blk, err := api.GetProcessCDRBlock(&montAddr, &cdr1); err != nil {
+		if blk, err := api.GetProcessCDRBlock(&montAddr, []*cabi.CDRParam{&cdr1}); err != nil {
 			t.Fatal(err)
 		} else {
 			blk.Signature = account1.Sign(blk.GetHash())
@@ -907,7 +904,7 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		cdr2 := template
 		cdr2.PreStop = "MONTNETS"
 
-		if blk, err := api.GetProcessCDRBlock(&pccwAddr, &cdr2); err != nil {
+		if blk, err := api.GetProcessCDRBlock(&pccwAddr, []*cabi.CDRParam{&cdr2}); err != nil {
 			t.Fatal(err)
 		} else {
 			blk.Signature = account2.Sign(blk.GetHash())
@@ -919,7 +916,7 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		cdr3 := template
 		cdr3.NextStop = "CSL Hong Kong @ 3397"
 
-		if blk, err := api.GetProcessCDRBlock(&pccwAddr, &cdr3); err != nil {
+		if blk, err := api.GetProcessCDRBlock(&pccwAddr, []*cabi.CDRParam{&cdr3}); err != nil {
 			t.Fatal(err)
 		} else {
 			blk.Signature = account2.Sign(blk.GetHash())
@@ -930,7 +927,7 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		cdr4 := template
 		cdr4.PreStop = "A2P_PCCWG"
 
-		if blk, err := api.GetProcessCDRBlock(&cslAddr, &cdr4); err != nil {
+		if blk, err := api.GetProcessCDRBlock(&cslAddr, []*cabi.CDRParam{&cdr4}); err != nil {
 			t.Fatal(err)
 		} else {
 			blk.Signature = account3.Sign(blk.GetHash())

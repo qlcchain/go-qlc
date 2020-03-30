@@ -544,20 +544,26 @@ func (s *SettlementAPI) GetContractAddressByPartyBPreStop(addr *types.Address, s
 
 // GetProcessCDRBlock save CDR data for the settlement
 // @param addr user qlc address
-// @param param CDR params to be processed
+// @param params array of CDR params to be processed, all CDR params should belong to the same settlement contract
 // @return contract send block without signature
-func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRParam) (*types.StateBlock, error) {
+func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, params []*cabi.CDRParam) (*types.StateBlock, error) {
 	if !s.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}
 
-	if err := param.Verify(); err != nil {
-		return nil, err
+	if len(params) == 0 {
+		return nil, errors.New("empty CDR params")
+	}
+
+	for i, param := range params {
+		if err := param.Verify(); err != nil {
+			return nil, fmt.Errorf("%d, err: %v", i, err)
+		}
 	}
 
 	ctx := vmstore.NewVMContext(s.l)
 
-	if c, err := cabi.FindSettlementContract(ctx, addr, param); err != nil {
+	if c, err := cabi.FindSettlementContract(ctx, addr, params[0]); err != nil {
 		return nil, err
 	} else {
 		if tm, err := ctx.Ledger.GetTokenMeta(*addr, config.GasToken()); err != nil {
@@ -567,14 +573,18 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, param *cabi.CDRP
 			if err != nil {
 				return nil, err
 			}
-			param.ContractAddress = address
+
+			paramList := cabi.CDRParamList{
+				ContractAddress: address,
+				Params:          params,
+			}
 
 			if !c.IsAvailable() {
 				return nil, fmt.Errorf("contract %s is invalid, please check contract status and start/end date",
 					address.String())
 			}
 
-			if singedData, err := param.ToABI(); err == nil {
+			if singedData, err := paramList.ToABI(); err == nil {
 				povHeader, err := s.l.GetLatestPovHeader()
 				if err != nil {
 					return nil, fmt.Errorf("get pov header error: %s", err)

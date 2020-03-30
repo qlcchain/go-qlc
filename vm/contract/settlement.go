@@ -20,7 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/sync"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -97,7 +96,7 @@ func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlo
 		if err != nil {
 			return err
 		}
-		if b, err := ctx.GetStorage(contractaddress.SettlementAddress[:], address[:]); err == nil && len(b) > 0 {
+		if b, err := cabi.GetContractParam(ctx, &address); err == nil && len(b) > 0 {
 			if _, err := cabi.ParseContractParam(b); err != nil {
 				return err
 			}
@@ -141,7 +140,7 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 		if err != nil {
 			return nil, nil, err
 		}
-		storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], address[:])
+		storage, err := cabi.GetContractParam(ctx, &address)
 		if err != nil && err != vmstore.ErrStorageNotFound {
 			return nil, nil, err
 		}
@@ -157,7 +156,7 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 			}
 		} else {
 			if data, err := param.ToContractParam().ToABI(); err == nil {
-				if err := ctx.SetStorage(contractaddress.SettlementAddress[:], address[:], data); err != nil {
+				if err := cabi.SaveContractParam(ctx, &address, data); err != nil {
 					return nil, nil, err
 				}
 			} else {
@@ -190,7 +189,7 @@ func (s *SignContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock
 		if err != nil {
 			return err
 		}
-		if b, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+		if b, err := cabi.GetContractParam(ctx, &param.ContractAddress); err == nil && len(b) > 0 {
 			if _, err := cabi.ParseContractParam(b); err != nil {
 				return err
 			}
@@ -213,7 +212,7 @@ func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 		return nil, nil, err
 	}
 
-	if storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err != nil {
+	if storage, err := cabi.GetContractParam(ctx, &param.ContractAddress); err != nil {
 		return nil, nil, err
 	} else {
 		if len(storage) > 0 {
@@ -228,7 +227,7 @@ func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 
 				if data, err := cp.ToABI(); err == nil {
 					// save confirm data
-					if err := ctx.SetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:], data); err == nil {
+					if err := cabi.SaveContractParam(ctx, &param.ContractAddress, data); err == nil {
 						return &types.PendingKey{
 								Address: block.Address,
 								Hash:    block.GetHash(),
@@ -258,98 +257,40 @@ type ProcessCDR struct {
 
 func (p *ProcessCDR) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
-		param := new(cabi.CDRParam)
-		err := param.FromABI(data)
+		paramList := new(cabi.CDRParamList)
+		err := paramList.FromABI(data)
 		if err != nil {
 			return err
 		}
 		// verify block data
-		if err := param.Verify(); err != nil {
+		if err := paramList.Verify(); err != nil {
 			return err
+		}
+
+		for _, param := range paramList.Params {
+			if err := param.Verify(); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
 }
 
 func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(cabi.CDRParam)
-	err := param.FromABI(block.Data)
-	if err != nil {
-		return nil, nil, err
-	}
-	// verify block data
-	if err := param.Verify(); err != nil {
-		return nil, nil, err
-	}
-
-	contractAddress := param.ContractAddress
-	if contractAddress.IsZero() {
-		return nil, nil, errors.New("invalid contract address")
-	}
-
-	h, err := param.ToHash()
+	paramList := new(cabi.CDRParamList)
+	err := paramList.FromABI(block.Data)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// lock by CDR param
-	mutex, err := lockerCache.Get(h[:])
-	if err != nil {
+	if err := paramList.Verify(); err != nil {
 		return nil, nil, err
 	}
-	mutex.Lock()
-	defer mutex.Unlock()
+	contractAddress := paramList.ContractAddress
 
-	contract, err := cabi.GetSettlementContract(ctx, &contractAddress)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// verify sms date and uploading date
-	if block.Timestamp <= 0 || block.Timestamp < contract.StartDate || block.Timestamp > contract.EndDate {
-		return nil, nil, fmt.Errorf("invalid uploading date, should be in [%s, %s], got %s",
-			timeString(contract.StartDate), timeString(contract.EndDate), timeString(block.Timestamp))
-	}
-
-	if param.SmsDt <= 0 || param.SmsDt < contract.StartDate || param.SmsDt > contract.EndDate {
-		return nil, nil, fmt.Errorf("invalid SMS date, should be in [%s, %s], got %s",
-			timeString(contract.StartDate), timeString(contract.EndDate), timeString(param.SmsDt))
-	}
-
-	if !(contract.PartyA.Address == block.Address || contract.PartyB.Address == block.Address) {
-		return nil, nil, fmt.Errorf("%s can not upload CDR data to contract %s", block.Address.String(), contractAddress.String())
-	}
-
-	if storage, err := ctx.GetStorage(contractAddress[:], h[:]); err != nil {
-		if err != vmstore.ErrStorageNotFound {
+	for _, param := range paramList.Params {
+		if err := p.save(ctx, block, &contractAddress, param); err != nil {
 			return nil, nil, err
-		} else {
-			// 1st upload data
-			state := &cabi.CDRStatus{
-				Params: map[string][]cabi.CDRParam{block.Address.String(): {*param}},
-				Status: cabi.SettlementStatusStage1,
-			}
-
-			if err := cabi.SaveCDRStatus(ctx, &contractAddress, &h, state); err != nil {
-				return nil, nil, err
-			}
-		}
-	} else {
-		if state, err := cabi.ParseCDRStatus(storage); err != nil {
-			return nil, nil, err
-		} else {
-			sr := cabi.SettlementCDR{
-				CDRParam: *param,
-				From:     block.Address,
-			}
-			// update contract status
-			if err := state.DoSettlement(sr); err != nil {
-				return nil, nil, err
-			} else {
-				if err := cabi.SaveCDRStatus(ctx, &contractAddress, &h, state); err != nil {
-					return nil, nil, err
-				}
-			}
 		}
 	}
 
@@ -361,6 +302,81 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 			Amount: types.ZeroBalance,
 			Type:   block.Token,
 		}, nil
+}
+
+func (p *ProcessCDR) save(ctx *vmstore.VMContext, block *types.StateBlock, contractAddress *types.Address, param *cabi.CDRParam) error {
+	// verify block data
+	if err := param.Verify(); err != nil {
+		return err
+	}
+
+	h, err := param.ToHash()
+	if err != nil {
+		return err
+	}
+
+	// lock by CDR param
+	mutex, err := lockerCache.Get(h[:])
+	if err != nil {
+		return err
+	}
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	contract, err := cabi.GetSettlementContract(ctx, contractAddress)
+	if err != nil {
+		return err
+	}
+
+	// verify sms date and uploading date
+	if block.Timestamp <= 0 || block.Timestamp < contract.StartDate || block.Timestamp > contract.EndDate {
+		return fmt.Errorf("invalid uploading date, should be in [%s, %s], got %s",
+			timeString(contract.StartDate), timeString(contract.EndDate), timeString(block.Timestamp))
+	}
+
+	if param.SmsDt <= 0 || param.SmsDt < contract.StartDate || param.SmsDt > contract.EndDate {
+		return fmt.Errorf("invalid SMS date, should be in [%s, %s], got %s",
+			timeString(contract.StartDate), timeString(contract.EndDate), timeString(param.SmsDt))
+	}
+
+	if !(contract.PartyA.Address == block.Address || contract.PartyB.Address == block.Address) {
+		return fmt.Errorf("%s can not upload CDR data to contract %s", block.Address.String(), contractAddress.String())
+	}
+
+	if storage, err := ctx.GetStorage(contractAddress[:], h[:]); err != nil {
+		if err != vmstore.ErrStorageNotFound {
+			return err
+		} else {
+			// 1st upload data
+			state := &cabi.CDRStatus{
+				Params: map[string][]cabi.CDRParam{block.Address.String(): {*param}},
+				Status: cabi.SettlementStatusStage1,
+			}
+
+			if err := cabi.SaveCDRStatus(ctx, contractAddress, &h, state); err != nil {
+				return err
+			}
+		}
+	} else {
+		if state, err := cabi.ParseCDRStatus(storage); err != nil {
+			return err
+		} else {
+			sr := cabi.SettlementCDR{
+				CDRParam: *param,
+				From:     block.Address,
+			}
+			// update contract status
+			if err := state.DoSettlement(sr); err != nil {
+				return err
+			} else {
+				if err := cabi.SaveCDRStatus(ctx, contractAddress, &h, state); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 type AddPreStop struct {
@@ -660,7 +676,7 @@ func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, 
 
 	// make sure that the same block only process once
 	//address := types.Address(block.Link)
-	storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], address[:])
+	storage, err := cabi.GetContractParam(ctx, &address)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -682,7 +698,7 @@ func handleSend(ctx *vmstore.VMContext, block *types.StateBlock, isPartyA bool, 
 			}
 
 			if data, err := param.ToABI(); err == nil {
-				if err := ctx.SetStorage(contractaddress.SettlementAddress[:], address[:], data); err != nil {
+				if err := cabi.SaveContractParam(ctx, &address, data); err != nil {
 					return nil, nil, err
 				}
 			} else {
@@ -716,7 +732,7 @@ func (t *TerminateContract) GetTargetReceiver(ctx *vmstore.VMContext, blk *types
 		return types.ZeroAddress, err
 	}
 
-	if b, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+	if b, err := cabi.GetContractParam(ctx, &param.ContractAddress); err == nil && len(b) > 0 {
 		if cp, err := cabi.ParseContractParam(b); err != nil {
 			return types.ZeroAddress, err
 		} else {
@@ -739,7 +755,7 @@ func (t *TerminateContract) DoReceive(ctx *vmstore.VMContext, block *types.State
 		if err != nil {
 			return err
 		}
-		if b, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err == nil && len(b) > 0 {
+		if b, err := cabi.GetContractParam(ctx, &param.ContractAddress); err == nil && len(b) > 0 {
 			if _, err := cabi.ParseContractParam(b); err != nil {
 				return err
 			}
@@ -762,7 +778,7 @@ func (t *TerminateContract) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 		return nil, nil, err
 	}
 
-	if storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:]); err != nil {
+	if storage, err := cabi.GetContractParam(ctx, &param.ContractAddress); err != nil {
 		return nil, nil, err
 	} else {
 		if len(storage) > 0 {
@@ -778,7 +794,7 @@ func (t *TerminateContract) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 
 				if data, err := cp.ToABI(); err == nil {
 					// save confirm data
-					if err := ctx.SetStorage(contractaddress.SettlementAddress[:], param.ContractAddress[:], data); err == nil {
+					if err := cabi.SaveContractParam(ctx, &param.ContractAddress, data); err == nil {
 						return &types.PendingKey{
 								Address: block.Address,
 								Hash:    block.GetHash(),
