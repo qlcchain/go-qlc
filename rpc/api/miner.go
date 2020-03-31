@@ -94,7 +94,7 @@ func (m *MinerApi) GetAvailRewardInfo(coinbase types.Address) (*MinerAvailReward
 	}
 	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
 
-	vmContext := vmstore.NewVMContext(m.ledger)
+	vmContext := vmstore.NewVMContext(m.ledger, &contractaddress.MinerAddress)
 	lastRewardHeight, err := m.reward.GetLastRewardHeight(vmContext, coinbase)
 	if err != nil {
 		return nil, err
@@ -196,8 +196,8 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		PoVHeight: latestPovHeader.GetHeight(),
 	}
 
-	vmContext := vmstore.NewVMContext(m.ledger)
-	_, _, err = m.reward.ProcessSend(vmContext, send)
+	vmContext := vmstore.NewVMContext(m.ledger, &contractaddress.MinerAddress)
+	err = m.reward.SetStorage(vmContext, param.EndHeight, param.RewardAmount, param.RewardBlocks, send)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 
 	reward := &types.StateBlock{}
 
-	vmContext := vmstore.NewVMContext(m.ledger)
+	vmContext := vmstore.NewVMContext(m.ledger, &contractaddress.MinerAddress)
 	blocks, err := m.reward.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
@@ -251,7 +251,7 @@ func (m *MinerApi) GetRewardRecvBlockBySendHash(sendHash types.Hash) (*types.Sta
 
 func (m *MinerApi) GetRewardHistory(coinbase types.Address) (*MinerHistoryRewardInfo, error) {
 	history := new(MinerHistoryRewardInfo)
-	vmContext := vmstore.NewVMContext(m.ledger)
+	vmContext := vmstore.NewVMContext(m.ledger, &contractaddress.MinerAddress)
 	info, err := m.reward.GetRewardHistory(vmContext, coinbase)
 	if err != nil {
 		return nil, err

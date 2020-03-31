@@ -64,7 +64,7 @@ func (ls *LedgerService) Init() error {
 			}
 		}
 	}
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MintageAddress)
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis

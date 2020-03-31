@@ -26,7 +26,7 @@ func TestGetRewardsDetail(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	vmContext := vmstore.NewVMContext(l)
+	vmContext := vmstore.NewVMContext(l, &contractaddress.RewardsAddress)
 
 	data := mockRewards(4, Rewards)
 
@@ -84,7 +84,7 @@ func TestGetConfidantDetail(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	vmContext := vmstore.NewVMContext(l)
+	vmContext := vmstore.NewVMContext(l, &contractaddress.RewardsAddress)
 
 	data := mockRewards(4, Confidant)
 

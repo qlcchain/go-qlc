@@ -11,6 +11,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -44,7 +46,7 @@ func TestDestroyParam_Signature(t *testing.T) {
 func TestPackSendBlock(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.BlackHoleAddress)
 	a1 := account1.Address()
 
 	if tm, err := l.GetTokenMeta(a1, config.GasToken()); err != nil {
@@ -71,7 +73,7 @@ func TestPackSendBlock(t *testing.T) {
 func TestGetTotalDestroyInfo(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.BlackHoleAddress)
 
 	a := mock.Address()
 	h := mock.Hash()
@@ -106,7 +108,7 @@ func TestGetTotalDestroyInfo(t *testing.T) {
 func TestGetDestroyInfoDetail(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.BlackHoleAddress)
 
 	a := mock.Address()
 	h := mock.Hash()

@@ -25,6 +25,7 @@ func NewVMCache(trie *trie.Trie) *VMCache {
 		storage:   make(map[string][]byte),
 		trie:      trie.Clone(),
 		trieDirty: false,
+		logList:   types.VmLogs{Logs: make([]*types.VmLog, 0)},
 	}
 }
 
@@ -64,9 +65,6 @@ func (cache *VMCache) RemoveStorage(key []byte) {
 }
 
 func (cache *VMCache) AppendLog(log *types.VmLog) {
-	if cache.logList.Logs == nil {
-		cache.logList.Logs = make([]*types.VmLog, 0)
-	}
 	cache.logList.Logs = append(cache.logList.Logs, log)
 }
 

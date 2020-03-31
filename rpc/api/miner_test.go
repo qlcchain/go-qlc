@@ -242,7 +242,7 @@ func TestMinerApi_GetRewardHistory(t *testing.T) {
 	cc := chainctx.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 	m := NewMinerApi(cfg, l)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	account := mock.Address()
 
 	timeStamp := common.TimeNow().Unix()

@@ -198,6 +198,16 @@ func (b *StateBlock) GetTimestamp() int64 {
 	return b.Timestamp
 }
 
+func (b *StateBlock) ContractAddress() *Address {
+	if b.IsSendBlock() {
+		addr := Address(b.Link)
+		return &addr
+	} else if b.IsReceiveBlock() {
+		return &b.Address
+	}
+	return nil
+}
+
 func (b *StateBlock) TotalBalance() Balance {
 	balance := b.Balance
 	if b.Vote.Int != nil {

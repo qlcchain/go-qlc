@@ -36,7 +36,7 @@ func TestGetTokenById(t *testing.T) {
 		teardownTestCase(t)
 	}()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MintageAddress)
 
 	a := mock.Address()
 	h := mock.Hash()

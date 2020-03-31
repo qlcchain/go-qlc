@@ -344,7 +344,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
 				}
 			case vmcontract.SpecVer2:
-				vmCtx := vmstore.NewVMContext(lv.l)
+				vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
@@ -520,7 +520,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				return fmt.Errorf("invaild contract %s", err)
 			}
 			clone := block.Clone()
-			vmCtx := vmstore.NewVMContext(lv.l)
+			vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 			g, err := c.DoReceive(vmCtx, clone, input)
 			if err != nil {
 				return fmt.Errorf("updateContract DoReceive error: %s ", err)
@@ -551,7 +551,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				d := c.GetDescribe()
 				switch d.GetVersion() {
 				case vmcontract.SpecVer2:
-					vmCtx := vmstore.NewVMContext(lv.l)
+					vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
 						if err := vmCtx.SaveStorage(cache); err != nil {
 							return fmt.Errorf("send block save storage error: %s", err)

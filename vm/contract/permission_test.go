@@ -77,7 +77,7 @@ func TestAdminUpdate_ProcessSend(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	blk := mock.StateBlockWithoutWork()
 	a := new(AdminHandOver)
 
@@ -134,7 +134,7 @@ func TestAdminHandOver_DoSendOnPov(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	blk := mock.StateBlockWithoutWork()
 	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
 	a := new(AdminHandOver)
@@ -193,7 +193,7 @@ func TestNodeUpdate_ProcessSend(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	blk := mock.StateBlockWithoutWork()
 	n := new(NodeUpdate)
 
@@ -273,7 +273,7 @@ func TestNodeUpdate_DoSendOnPov(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	blk := mock.StateBlockWithoutWork()
 	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
 	n := new(NodeUpdate)

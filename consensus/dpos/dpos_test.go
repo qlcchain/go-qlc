@@ -157,7 +157,7 @@ func (n *Node) startLedgerService() {
 		}
 	}
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MintageAddress)
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis
@@ -255,7 +255,7 @@ func (n *Node) GenerateSendBlock(from *types.Account, to types.Address, amount t
 		tokenName = "QLC"
 	}
 
-	vmContext := vmstore.NewVMContext(n.ledger)
+	vmContext := vmstore.NewVMContext(n.ledger, &contractaddress.MintageAddress)
 	info, err := abi.GetTokenByName(vmContext, tokenName)
 	if err != nil {
 		n.t.Fatal(err)
@@ -383,7 +383,7 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 		if method == abi.MethodNameMintage {
 			recv := &types.StateBlock{}
 			mintage := &contract.Mintage{}
-			vmContext := vmstore.NewVMContext(n.ledger)
+			vmContext := vmstore.NewVMContext(n.ledger, &contractaddress.MintageAddress)
 			contract.SetMinMintageTime(0, 0, 0, 0, 0, 1)
 
 			blocks, err := mintage.DoReceive(vmContext, recv, send)
@@ -404,7 +404,7 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 		} else if method == abi.MethodNameMintageWithdraw {
 			recv := &types.StateBlock{}
 			withdraw := &contract.WithdrawMintage{}
-			vmContext := vmstore.NewVMContext(n.ledger)
+			vmContext := vmstore.NewVMContext(n.ledger, &contractaddress.MintageAddress)
 			blocks, err := withdraw.DoReceive(vmContext, recv, send)
 			if err != nil {
 				n.t.Fatal(err)

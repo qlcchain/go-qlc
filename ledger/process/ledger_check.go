@@ -626,8 +626,7 @@ func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) 
 		address := types.Address(input.GetLink())
 		if c, ok, err := vmcontract.GetChainContract(address, input.GetPayload()); ok && err == nil {
 			clone := block.Clone()
-			//TODO:verify extra hash and commit to db
-			vmCtx := vmstore.NewVMContext(lv.l)
+			vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 			if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
 				if len(g) > 0 {
 					amount, err := lv.l.CalculateAmount(block)
@@ -689,8 +688,7 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 		address := types.Address(input.GetLink())
 		if c, ok, err := vmcontract.GetChainContract(address, input.GetPayload()); ok && err == nil {
 			clone := block.Clone()
-			//TODO:verify extra hash and commit to db
-			vmCtx := vmstore.NewVMContext(lv.l)
+			vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 			if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
 				if len(g) > 0 {
 					amount, err := lv.l.CalculateAmount(block)
@@ -743,7 +741,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	// verify data
 	if c, ok, err := vmcontract.GetChainContract(address, block.GetPayload()); ok && err == nil {
 		clone := block.Clone()
-		vmCtx := vmstore.NewVMContext(lv.l)
+		vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 		d := c.GetDescribe()
 		switch d.GetVersion() {
 		case vmcontract.SpecVer1:

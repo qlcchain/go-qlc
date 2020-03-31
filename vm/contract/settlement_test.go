@@ -69,7 +69,7 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 	a1 = account1.Address()
 	a2 = account2.Address()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	if _, err = l.GetAccountMeta(a1); err != nil {
 		return
@@ -159,7 +159,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 	a1 := account1.Address()
 	a2 := account2.Address()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
 		t.Fatal(err)
@@ -259,7 +259,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 	}
 	a1 := account1.Address()
 	a2 := account2.Address()
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
 		t.Fatal(err)
@@ -672,7 +672,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 		t.Log(util.ToIndentString(am))
 	}
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 	if err != nil {
@@ -1600,7 +1600,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	a1 := account1.Address()
 	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())

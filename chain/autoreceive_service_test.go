@@ -67,7 +67,7 @@ func TestReceiveBlock(t *testing.T) {
 
 	l := ledger.NewLedger(cm.ConfigFile)
 	verifier := process.NewLedgerVerifier(l)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MintageAddress)
 	genesisInfos := config.GenesisInfos()
 
 	for _, v := range genesisInfos {

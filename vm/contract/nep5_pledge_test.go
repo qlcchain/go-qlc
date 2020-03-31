@@ -18,7 +18,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 
 	addr1 := account1.Address()
 	addr2 := account2.Address()
@@ -199,7 +199,7 @@ func TestNep5Pledge_DoSend(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 
 	addr1 := account1.Address()
 	addr2 := account2.Address()

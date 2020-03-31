@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -23,7 +25,7 @@ type UtilAPI struct {
 }
 
 func NewUtilAPI(l ledger.Store) *UtilAPI {
-	return &UtilAPI{ctx: vmstore.NewVMContext(l), logger: log.NewLogger("api_util")}
+	return &UtilAPI{ctx: vmstore.NewVMContext(l, &contractaddress.MintageAddress), logger: log.NewLogger("api_util")}
 }
 
 func (u *UtilAPI) Decrypt(cryptograph string, passphrase string) (string, error) {

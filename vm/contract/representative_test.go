@@ -21,7 +21,7 @@ func TestRepReward_GetLastRewardHeight(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	account := mock.Address()
 	h, err := r.GetLastRewardHeight(ctx, account)
 	if h != 0 {
@@ -53,7 +53,7 @@ func TestRepReward_GetRewardHistory(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	account := mock.Address()
 	ri, err := r.GetRewardHistory(ctx, account)
 	if ri != nil || err == nil {
@@ -86,7 +86,7 @@ func TestRepReward_GetNodeRewardHeight(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	h, err := r.GetNodeRewardHeight(ctx)
 	if h != 0 {
 		t.Fatal()
@@ -137,7 +137,7 @@ func TestRepReward_GetAvailRewardInfo(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	account := mock.Address()
 	lastHeight := uint64(0)
 	nodeHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay)
@@ -173,7 +173,7 @@ func TestRepReward_ProcessSend(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	blk := mock.StateBlock()
 	blk.Address = types.ZeroAddress
 	blk.Token = types.ZeroHash
@@ -294,7 +294,7 @@ func TestRepReward_SetStorage(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	blk := mock.StateBlock()
 	blk.Address = mock.Address()
 	blk.Timestamp = common.TimeNow().Unix()
@@ -319,7 +319,7 @@ func TestRepReward_DoReceive(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	sendBlk := mock.StateBlock()
 	recvBlk := mock.StateBlock()
 	blks, err := r.DoReceive(ctx, recvBlk, sendBlk)
@@ -418,7 +418,7 @@ func TestRepReward_DoGap(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	blk := mock.StateBlock()
 	gap, _, _ := r.DoGap(ctx, blk)
 	if gap != common.ContractNoGap {
@@ -467,7 +467,7 @@ func TestRepReward_checkParamExistInOldRewardInfos(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	blk := mock.StateBlock()
 	account := mock.Address()
 
@@ -507,7 +507,7 @@ func TestRepReward_calcRewardBlocksByDayStats(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	account := mock.Address()
 
 	startHeight := common.PovMinerRewardHeightStart + 1
@@ -571,7 +571,7 @@ func TestRepReward_GetTargetReceiver(t *testing.T) {
 	defer clear()
 
 	r := new(RepReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 
 	blk := mock.StateBlock()
 	account := mock.Address()

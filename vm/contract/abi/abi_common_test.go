@@ -27,7 +27,7 @@ func TestPovGetNodeRewardHeightByDay(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, nil)
 	_, err := PovGetNodeRewardHeightByDay(ctx)
 	if err == nil {
 		t.Fatal()

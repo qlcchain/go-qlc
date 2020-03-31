@@ -285,14 +285,13 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 		return err
 	}
 
+	vmCtx := vmstore.NewVMContextWithBlock(bc.ledger, txBlock)
 	if txBlock.GetType() == types.ContractSend {
-		vmCtx := vmstore.NewVMContext(bc.ledger)
 		err = cf.DoSendOnPov(vmCtx, csdb, height, txBlock)
 		if err != nil {
 			return err
 		}
 	} else if txBlock.GetType() == types.ContractReward {
-		vmCtx := vmstore.NewVMContext(bc.ledger)
 		err = cf.DoReceiveOnPov(vmCtx, csdb, height, txBlock, sendBlk)
 		if err != nil {
 			return err

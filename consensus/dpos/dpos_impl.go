@@ -770,8 +770,8 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 
 		dstAddr := types.ZeroAddress
 
-		if c, ok, err := vmcontract.GetChainContract(types.Address(blk.GetLink()), blk.GetPayload()); ok && err == nil {
-			ctx := vmstore.NewVMContext(dps.ledger)
+		if c, ok, err := vmcontract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+			ctx := vmstore.NewVMContextWithBlock(dps.ledger, blk)
 			dstAddr, err = c.GetTargetReceiver(ctx, blk)
 			if err != nil {
 				dps.logger.Error(err)

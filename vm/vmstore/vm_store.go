@@ -8,6 +8,7 @@
 package vmstore
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -47,18 +48,58 @@ var (
 )
 
 type VMContext struct {
-	Ledger ledger.Store
-	logger *zap.SugaredLogger
-	Cache  *VMCache
+	Ledger       ledger.Store
+	logger       *zap.SugaredLogger
+	contractAddr *types.Address
+	accountAddr  types.Address
+	trie         *trie.Trie
+	Cache        *VMCache
 }
 
-func NewVMContext(l ledger.Store) *VMContext {
+func NewVMContext(l ledger.Store, contractAddr *types.Address) *VMContext {
 	t := trie.NewTrie(l.DBStore(), nil, trie.NewSimpleTrieNodePool())
 	return &VMContext{
-		Ledger: l,
-		logger: log.NewLogger("vm_context"),
-		Cache:  NewVMCache(t),
+		Ledger:       l,
+		logger:       log.NewLogger("vm_context"),
+		Cache:        NewVMCache(t),
+		trie:         t,
+		contractAddr: contractAddr,
 	}
+}
+
+// WithUserAddress load latest storage trie from the specified address
+func (v *VMContext) WithUserAddress(address types.Address) *VMContext {
+	v.accountAddr = address
+	if value, err := v.Ledger.GetContractValue(&types.ContractKey{
+		ContractAddress: *v.contractAddr,
+		AccountAddress:  address,
+		Suffix:          ledger.LatestSuffix,
+	}); err == nil && value.Root != nil {
+		v.logger.Debugf("load trie by %s", value.Root.String())
+		v.trie = trie.NewTrie(v.Ledger.DBStore(), value.Root, trie.NewSimpleTrieNodePool())
+	}
+	v.Cache = NewVMCache(v.trie)
+	return v
+}
+
+// WithBlock Load storage trie from the specified user address and block hash
+func NewVMContextWithBlock(l ledger.Store, block *types.StateBlock) *VMContext {
+	v := NewVMContext(l, block.ContractAddress())
+
+	t := trie.NewTrie(v.Ledger.DBStore(), nil, trie.NewSimpleTrieNodePool())
+	h := block.GetHash()
+	v.accountAddr = *block.ContractAddress()
+
+	if value, err := v.Ledger.GetContractValue(&types.ContractKey{
+		ContractAddress: *v.contractAddr,
+		AccountAddress:  v.accountAddr,
+		Hash:            h,
+	}); err == nil && value.Root != nil {
+		v.logger.Debugf("load trie by %s", value.Root.String())
+		t = trie.NewTrie(v.Ledger.DBStore(), value.Root, trie.NewSimpleTrieNodePool())
+	}
+	v.Cache = NewVMCache(t)
+	return v
 }
 
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
@@ -75,7 +116,6 @@ func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {
 
 func getStorageKey(prefix, key []byte) []byte {
 	var storageKey []byte
-	storageKey = append(storageKey, []byte{byte(storage.KeyPrefixTrieVMStorage)}...)
 	storageKey = append(storageKey, prefix...)
 	storageKey = append(storageKey, key...)
 	return storageKey
@@ -125,43 +165,39 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 	return nil
 }
 
-func (v *VMContext) IteratorAll(prefix []byte, fn func(key []byte, value []byte) error) error {
-	pre := make([]byte, 0)
-	pre = append(pre, byte(storage.KeyPrefixTrieVMStorage))
-	pre = append(pre, prefix...)
-	err := v.Ledger.Iterator(pre, nil, func(key []byte, val []byte) error {
-		err := fn(key, val)
-		if err != nil {
-			v.logger.Error(err)
-		}
-		return nil
-	})
+//func (v *VMContext) IteratorAll(prefix []byte, fn func(key []byte, value []byte) error) error {
+//	pre := getStorageKey(prefix, nil)
+//	err := v.Ledger.Iterator(pre, nil, func(key []byte, val []byte) error {
+//		err := fn(key, val)
+//		if err != nil {
+//			v.logger.Error(err)
+//		}
+//		return nil
+//	})
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
-	pre := make([]byte, 0)
-	pre = append(pre, byte(storage.KeyPrefixTrieVMStorage))
-	pre = append(pre, prefix...)
-	err := v.Ledger.DBStore().Iterator(pre, nil, func(key []byte, val []byte) error {
-		err := fn(key, val)
-		if err != nil {
-			v.logger.Error(err)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
+//	pre := getStorageKey(prefix, nil)
+//	err := v.Ledger.DBStore().Iterator(pre, nil, func(key []byte, val []byte) error {
+//		err := fn(key, val)
+//		if err != nil {
+//			v.logger.Error(err)
+//		}
+//		return nil
+//	})
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 func (v *VMContext) SaveStorage(batch ...storage.Batch) error {
 	for k, val := range v.Cache.storage {
@@ -240,4 +276,71 @@ func (v *VMContext) remove(key []byte, batch ...storage.Batch) (err error) {
 		}()
 	}
 	return b.Delete(key)
+}
+
+func (v *VMContext) iteratorContractValue(predicate func(key *types.ContractKey) bool,
+	callback func(key *types.ContractKey, value *types.ContractValue) error) error {
+	return v.Ledger.IteratorContractStorage(v.contractAddr[:], func(key *types.ContractKey, value *types.ContractValue) error {
+		if predicate(key) {
+			return callback(key, value)
+		}
+		return nil
+	})
+}
+
+func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
+	return v.iteratorContractValue(func(key *types.ContractKey) bool {
+		// get all account latest records
+		return len(key.Suffix) > 0 && bytes.EqualFold(key.Suffix, ledger.LatestSuffix)
+	}, func(key *types.ContractKey, value *types.ContractValue) error {
+		if !value.BlockHash.IsZero() {
+			// get latest trie root by account
+			if val, err := v.Ledger.GetContractValue(&types.ContractKey{
+				ContractAddress: key.ContractAddress,
+				AccountAddress:  key.AccountAddress,
+				Hash:            value.BlockHash,
+			}); err == nil {
+				if val.Root != nil && !val.Root.IsZero() {
+					t := trie.NewTrie(v.Ledger.DBStore(), value.Root, trie.NewSimpleTrieNodePool())
+					iterator := t.NewIterator(prefix)
+					for {
+						if key, value, ok := iterator.Next(); !ok {
+							break
+						} else {
+							if err := fn(key, value); err != nil {
+								return err
+							}
+						}
+					}
+				} else {
+					v.logger.Debugf("%: %s latest trie root is empty", key.ContractAddress, key.AccountAddress)
+				}
+			} else {
+				v.logger.Error(err)
+			}
+		}
+		return nil
+	})
+}
+
+func (v *VMContext) SaveBlockData(block *types.StateBlock, c ...storage.Cache) error {
+	if err := v.SaveTrie(); err != nil {
+		return err
+	}
+	trieRoot := v.Cache.Trie().Root.Hash()
+	return v.Ledger.UpdateContractValueByBlock(block, trieRoot, c...)
+}
+
+func (v *VMContext) DeleteBlockData(block *types.StateBlock, c ...storage.Cache) error {
+	if err := v.RemoveTrie(); err != nil {
+		return err
+	}
+	return v.Ledger.DeleteContractValueByBlock(block, c...)
+}
+
+func (v *VMContext) RemoveTrie(batch ...storage.Batch) error {
+	if v.trie != nil {
+		return v.trie.Remove(batch...)
+	}
+	return nil
 }

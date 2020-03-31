@@ -86,6 +86,8 @@ const (
 	KeyPrefixTrieVMStorage = 100 // vm_store.go, idPrefixStorage
 	KeyPrefixTrie          = 101 // 101 is used for trie intermediate node, trie.go, idPrefixTrie
 	KeyPrefixTriePovState  = 102
+	KeyPrefixContractValue = 103 // idPrefixContractValue ledger.go
+	KeyPrefixStorageTrie   = 104
 
 	KeyPrefixGenericType = 255
 )

@@ -721,7 +721,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 			d := c.GetDescribe()
 			switch d.GetVersion() {
 			case vmcontract.SpecVer2:
-				vmCtx := vmstore.NewVMContext(dps.ledger)
+				vmCtx := vmstore.NewVMContextWithBlock(dps.ledger, bs.Block)
 				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
 				if err != nil || gapResult != common.ContractRewardGapPov {
 					dps.logger.Errorf("add gap pov block to ledger err %s", err)

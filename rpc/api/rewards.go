@@ -281,7 +281,7 @@ func (r *RewardsAPI) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 
 	var result []*vmcontract.ContractBlock
 
-	vmContext := vmstore.NewVMContext(r.ledger)
+	vmContext := vmstore.NewVMContext(r.ledger, &contractaddress.RewardsAddress)
 	if r.IsAirdropRewards(blk.Data) {
 		result, err = r.rewards.DoReceive(vmContext, rev, blk)
 	} else {
@@ -315,19 +315,19 @@ func (r *RewardsAPI) IsAirdropRewards(data []byte) bool {
 }
 
 func (r *RewardsAPI) GetTotalRewards(txId string) (*big.Int, error) {
-	return cabi.GetTotalRewards(vmstore.NewVMContext(r.ledger), txId)
+	return cabi.GetTotalRewards(vmstore.NewVMContext(r.ledger, &contractaddress.RewardsAddress), txId)
 }
 
 func (r *RewardsAPI) GetRewardsDetail(txId string) ([]*cabi.RewardsInfo, error) {
-	return cabi.GetRewardsDetail(vmstore.NewVMContext(r.ledger), txId)
+	return cabi.GetRewardsDetail(vmstore.NewVMContext(r.ledger, &contractaddress.RewardsAddress), txId)
 }
 
 func (r *RewardsAPI) GetConfidantRewards(confidant types.Address) (map[string]*big.Int, error) {
-	return cabi.GetConfidantRewords(vmstore.NewVMContext(r.ledger), confidant)
+	return cabi.GetConfidantRewords(vmstore.NewVMContext(r.ledger, &contractaddress.RewardsAddress), confidant)
 }
 
 func (r *RewardsAPI) GetConfidantRewordsDetail(confidant types.Address) (map[string][]*cabi.RewardsInfo, error) {
-	return cabi.GetConfidantRewordsDetail(vmstore.NewVMContext(r.ledger), confidant)
+	return cabi.GetConfidantRewordsDetail(vmstore.NewVMContext(r.ledger, &contractaddress.RewardsAddress), confidant)
 }
 
 func checkContractMethod(data []byte) (string, error) {

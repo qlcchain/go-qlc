@@ -24,4 +24,5 @@ type Store interface {
 	CacheStore
 	LedgerStore
 	PrivacyStore
+	contractValueStore
 }

@@ -242,7 +242,7 @@ func TestRepApi_GetRewardHistory(t *testing.T) {
 	cc := chainctx.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 	r := NewRepApi(cfg, l)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RepAddress)
 	account := mock.Address()
 
 	timeStamp := common.TimeNow().Unix()

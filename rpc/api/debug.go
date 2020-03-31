@@ -224,7 +224,7 @@ type APIPendingInfo struct {
 }
 
 func (l *DebugApi) AccountPending(address types.Address, hash types.Hash) (*APIPendingInfo, error) {
-	vmContext := vmstore.NewVMContext(l.ledger)
+	vmContext := vmstore.NewVMContext(l.ledger, &contractaddress.MintageAddress)
 	ap := new(APIPendingInfo)
 	key := &types.PendingKey{
 		Address: address,
@@ -256,7 +256,7 @@ func (l *DebugApi) AccountPending(address types.Address, hash types.Hash) (*APIP
 
 func (l *DebugApi) PendingsAmount() (map[types.Address]map[string]types.Balance, error) {
 	abs := make(map[types.Address]map[string]types.Balance, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
+	vmContext := vmstore.NewVMContext(l.ledger, &contractaddress.MintageAddress)
 	err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
 		token, err := abi.GetTokenById(vmContext, pendingInfo.Type)
 		if err != nil {
@@ -361,10 +361,10 @@ func (l *DebugApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 
 func (l *DebugApi) ContractCount() (map[string]int64, error) {
 	r := make(map[string]int64)
-	ctx := vmstore.NewVMContext(l.ledger)
 	for _, addr := range contractaddress.ChainContractAddressList {
 		var n int64 = 0
-		if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+		ctx := vmstore.NewVMContext(l.ledger, &addr)
+		if err := ctx.Iterator(nil, func(key []byte, value []byte) error {
 			n++
 			return nil
 		}); err != nil {

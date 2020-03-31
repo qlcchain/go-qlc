@@ -48,7 +48,7 @@ func NewPublicKeyDistributionApi(cfgFile string, l ledger.Store) *PublicKeyDistr
 		pu:     &contract.Publish{},
 		up:     &contract.UnPublish{},
 		or:     &contract.Oracle{},
-		ctx:    vmstore.NewVMContext(l),
+		ctx:    vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress),
 	}
 	return api
 }
@@ -131,7 +131,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.vr.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.vu.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -523,7 +523,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.pu.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -601,7 +601,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.up.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -850,7 +850,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.or.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -1040,7 +1040,7 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 		PoVHeight: latestPovHeader.GetHeight(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.reward.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -1068,7 +1068,7 @@ func (p *PublicKeyDistributionApi) GetRewardRecvBlock(input *types.StateBlock) (
 
 	reward := &types.StateBlock{}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	blocks, err := p.reward.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
@@ -1102,7 +1102,7 @@ type PKDHistoryRewardInfo struct {
 
 func (p *PublicKeyDistributionApi) GetRewardHistory(account types.Address) (*PKDHistoryRewardInfo, error) {
 	history := new(PKDHistoryRewardInfo)
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	info, err := p.reward.GetRewardInfo(vmContext, account)
 	if err != nil {
 		return nil, err
@@ -1138,7 +1138,7 @@ func (p *PublicKeyDistributionApi) GetAvailRewardInfo(account types.Address) (*P
 	}
 	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 
 	lastRwdInfo, _ := p.GetRewardHistory(account)
 	if lastRwdInfo != nil {

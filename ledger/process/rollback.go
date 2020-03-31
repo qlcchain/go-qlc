@@ -1,7 +1,6 @@
 package process
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/trie"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -709,7 +707,7 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 					}
 				}
 			case vmcontract.SpecVer2:
-				vmCtx := vmstore.NewVMContext(lv.l)
+				vmCtx := vmstore.NewVMContextWithBlock(lv.l, blockLink)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, blockLink); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
@@ -756,7 +754,7 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 					return lv.l.DeletePending(pendingKey, cache)
 				}
 			case vmcontract.SpecVer2:
-				vmCtx := vmstore.NewVMContext(lv.l)
+				vmCtx := vmstore.NewVMContextWithBlock(lv.l, blockCur)
 				if pendingKey, _, err := c.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
 					return lv.l.DeletePending(pendingKey, cache)
@@ -779,64 +777,68 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 }
 
 func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *ledger.Cache) error {
-	extra := block.GetExtra()
-	if !extra.IsZero() {
-		lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
-		t := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
-		iterator := t.NewIterator(nil)
-		vmContext := vmstore.NewVMContext(lv.l)
-		for {
-			if key, value, ok := iterator.Next(); !ok {
-				break
-			} else {
-				if contractData, err := vmContext.GetStorageByKey(key); err == nil {
-					if !bytes.Equal(contractData, value) {
-						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
-					}
-					// TODO: move contract data to a new table
-					lv.logger.Warnf("rollback contract data, remove storage key: %v", key)
-					if err := vmContext.RemoveStorageByKey(key, cache); err == nil {
-						if err := t.Remove(cache); err != nil {
-							return fmt.Errorf("trie remove: %s", err)
-						}
-					} else {
-						return fmt.Errorf("storage remove: %s", err)
-					}
-				} else {
-					return fmt.Errorf("get storage by key: %s", err)
-				}
-			}
-		}
-		if contractaddress.IsRewardContractAddress(types.Address(block.GetLink())) {
-			preHash := block.GetPrevious()
-			for {
-				if preHash.IsZero() {
-					break
-				}
-				preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
-				if err != nil {
-					return fmt.Errorf("contract block previous not found (%s)", block.GetHash())
-				}
-				if preBlock.GetType() == block.GetType() && preBlock.GetLink() == block.GetLink() {
-					ex := preBlock.GetExtra()
-					tr := trie.NewTrie(lv.l.DBStore(), &ex, trie.NewSimpleTrieNodePool())
-					iter := tr.NewIterator(nil)
-					for {
-						if key, value, ok := iter.Next(); !ok {
-							break
-						} else {
-							if err := cache.Put(key, value); err != nil {
-								lv.logger.Errorf("set storage error: %s", err)
-							}
-						}
-					}
-					break
-				}
-				preHash = preBlock.GetPrevious()
-			}
-		}
-	}
-	return nil
+	lv.logger.Warnf("rollback contract data, block:%s", block.GetHash().String())
+	vmContext := vmstore.NewVMContextWithBlock(lv.l, block)
+	return vmContext.DeleteBlockData(block, cache)
+	//
+	//extra := block.GetExtra()
+	//if !extra.IsZero() {
+	//	lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
+	//	t := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
+	//	iterator := t.NewIterator(nil)
+	//	vmContext := vmstore.NewVMContextWithBlock(lv.l, block)
+	//	for {
+	//		if key, value, ok := iterator.Next(); !ok {
+	//			break
+	//		} else {
+	//			if contractData, err := vmContext.GetStorageByKey(key); err == nil {
+	//				if !bytes.Equal(contractData, value) {
+	//					return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
+	//				}
+	//				// TODO: move contract data to a new table
+	//				lv.logger.Warnf("rollback contract data, remove storage key: %v", key)
+	//				if err := vmContext.RemoveStorageByKey(key, cache); err == nil {
+	//					if err := t.Remove(cache); err != nil {
+	//						return fmt.Errorf("trie remove: %s", err)
+	//					}
+	//				} else {
+	//					return fmt.Errorf("storage remove: %s", err)
+	//				}
+	//			} else {
+	//				return fmt.Errorf("get storage by key: %s", err)
+	//			}
+	//		}
+	//	}
+	//	if contractaddress.IsRewardContractAddress(types.Address(block.GetLink())) {
+	//		preHash := block.GetPrevious()
+	//		for {
+	//			if preHash.IsZero() {
+	//				break
+	//			}
+	//			preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
+	//			if err != nil {
+	//				return fmt.Errorf("contract block previous not found (%s)", block.GetHash())
+	//			}
+	//			if preBlock.GetType() == block.GetType() && preBlock.GetLink() == block.GetLink() {
+	//				ex := preBlock.GetExtra()
+	//				tr := trie.NewTrie(lv.l.DBStore(), &ex, trie.NewSimpleTrieNodePool())
+	//				iter := tr.NewIterator(nil)
+	//				for {
+	//					if key, value, ok := iter.Next(); !ok {
+	//						break
+	//					} else {
+	//						if err := cache.Put(key, value); err != nil {
+	//							lv.logger.Errorf("set storage error: %s", err)
+	//						}
+	//					}
+	//				}
+	//				break
+	//			}
+	//			preHash = preBlock.GetPrevious()
+	//		}
+	//	}
+	//}
+	//return nil
 }
 
 func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {

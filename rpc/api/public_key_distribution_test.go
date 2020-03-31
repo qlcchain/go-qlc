@@ -322,7 +322,7 @@ func TestPublicKeyDistributionApi_GetVerifierUnregisterBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	addTestVerifierInfo(t, ctx, param.Account, common.OracleTypeEmail, "123@test.com", vk[:])
 	_, err = pkd.GetVerifierUnregisterBlock(param)
 	if err == nil {
@@ -362,7 +362,7 @@ func TestPublicKeyDistributionApi_GetAllVerifiers(t *testing.T) {
 
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 	vk := mock.Hash()
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	_, err := pkd.GetAllVerifiers()
 	if err != nil {
@@ -385,7 +385,7 @@ func TestPublicKeyDistributionApi_GetVerifiersByType(t *testing.T) {
 
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 	vk := mock.Hash()
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	addTestVerifierInfo(t, ctx, account, common.OracleTypeEmail, "123@test.com", vk[:])
 	_, err := pkd.GetVerifiersByType("wechat")
@@ -413,7 +413,7 @@ func TestPublicKeyDistributionApi_GetActiveVerifiers(t *testing.T) {
 
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 	vk := mock.Hash()
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vs, _ := pkd.GetActiveVerifiers("invalid")
 	if len(vs) != 0 {
@@ -466,7 +466,7 @@ func TestPublicKeyDistributionApi_GetVerifiersByAccount(t *testing.T) {
 
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 	vk := mock.Hash()
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 
 	addTestVerifierInfo(t, ctx, account, common.OracleTypeEmail, "test@123.com", vk[:])
@@ -588,7 +588,7 @@ func TestPublicKeyDistributionApi_GetPublishBlock(t *testing.T) {
 	}
 
 	vk := mock.Hash()
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	for _, v := range param.Verifiers {
 		addTestVerifierInfo(t, ctx, v, common.OracleTypeEmail, "123@test.com", vk[:])
 	}
@@ -616,7 +616,7 @@ func TestPublicKeyDistributionApi_GetUnPublishBlock(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 	param := new(UnPublishParam)
 	param.Hash = "123"
@@ -692,7 +692,7 @@ func TestPublicKeyDistributionApi_GetPubKeyByTypeAndID(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 
 	pType := "email"
@@ -725,7 +725,7 @@ func TestPublicKeyDistributionApi_GetRecommendPubKey(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 
 	pType := "email"
@@ -763,7 +763,7 @@ func TestPublicKeyDistributionApi_GetPublishInfosByType(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 
 	pType := "email"
@@ -801,7 +801,7 @@ func TestPublicKeyDistributionApi_GetPublishInfosByAccountAndType(t *testing.T) 
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 	account := mock.Address()
 
@@ -848,7 +848,7 @@ func TestPublicKeyDistributionApi_GetOracleBlock(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 	param := new(OracleParam)
 	param.Account = mock.Address()
@@ -943,7 +943,7 @@ func TestPublicKeyDistributionApi_GetOracleInfosByType(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 
 	account := mock.Address()
@@ -978,7 +978,7 @@ func TestPublicKeyDistributionApi_GetOracleInfosByTypeAndID(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 
 	account := mock.Address()
@@ -1009,7 +1009,7 @@ func TestPublicKeyDistributionApi_GetOracleInfosByAccountAndType(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 
 	account := mock.Address()
@@ -1045,7 +1045,7 @@ func TestPublicKeyDistributionApi_GetOracleInfosByHash(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 
 	account := mock.Address()
@@ -1087,7 +1087,7 @@ func TestPublicKeyDistributionApi_GetVerifierHeartBlock(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pkd := NewPublicKeyDistributionApi(cfgFile, l)
 
 	var vt []string

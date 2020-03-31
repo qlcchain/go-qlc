@@ -35,7 +35,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
 	cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
 
-	v := NewVMContext(l)
+	v := NewVMContext(l, nil)
 
 	return func(t *testing.T) {
 		//err := v.db.Erase()

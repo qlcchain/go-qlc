@@ -120,7 +120,7 @@ func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(m.l)
+	vmContext := vmstore.NewVMContext(m.l, &contractaddress.MintageAddress)
 	err = m.mintage.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (m *MintageAPI) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 	}
 
 	reward := &types.StateBlock{}
-	vmContext := vmstore.NewVMContext(m.l)
+	vmContext := vmstore.NewVMContext(m.l, &contractaddress.MintageAddress)
 	blocks, err := m.mintage.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
@@ -209,7 +209,7 @@ func (m *MintageAPI) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		PoVHeight:      povHeader.GetHeight(),
 		Timestamp:      common.TimeNow().Unix(),
 	}
-	vmContext := vmstore.NewVMContext(m.l)
+	vmContext := vmstore.NewVMContext(m.l, &contractaddress.MintageAddress)
 	err = m.withdraw.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -226,7 +226,7 @@ func (m *MintageAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 		return nil, chainctx.ErrPoVNotFinish
 	}
 	reward := &types.StateBlock{}
-	vmContext := vmstore.NewVMContext(m.l)
+	vmContext := vmstore.NewVMContext(m.l, &contractaddress.MintageAddress)
 	blocks, err := m.withdraw.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err

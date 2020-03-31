@@ -27,7 +27,7 @@ func TestVerifierRegister(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	vr := new(VerifierRegister)
 	blk := mock.StateBlock()
 
@@ -73,7 +73,7 @@ func TestVerifierUnregister(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	vu := new(VerifierUnregister)
 	blk := mock.StateBlock()
 
@@ -113,7 +113,7 @@ func TestPublish(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	p := new(Publish)
 	blk := mock.StateBlock()
 
@@ -179,7 +179,7 @@ func TestUnPublish(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	up := new(UnPublish)
 	blk := mock.StateBlock()
 
@@ -228,7 +228,7 @@ func TestOracle(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	o := new(Oracle)
 	blk := mock.StateBlock()
 
@@ -310,7 +310,7 @@ func TestOracle_DoGap(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	o := new(Oracle)
 	blk := mock.StateBlock()
 
@@ -350,7 +350,7 @@ func TestVerifierHeart(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	vh := new(VerifierHeart)
 	blk := mock.StateBlock()
 
@@ -422,7 +422,7 @@ func TestVerifierHeart_DoSendOnPov(t *testing.T) {
 
 	cs := types.NewPovContractState()
 	csdb := statedb.NewPovContractStateDB(l.DBStore(), cs)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	vh := new(VerifierHeart)
 	blk := mock.StateBlock()
 	var err error
@@ -454,7 +454,7 @@ func TestPublish_DoSendOnPov(t *testing.T) {
 	defer clear()
 
 	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	p := new(Publish)
 	blk := mock.StateBlockWithoutWork()
 	var err error
@@ -504,7 +504,7 @@ func TestOracle_DoSendOnPov(t *testing.T) {
 	defer clear()
 
 	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	o := new(Oracle)
 	blk1 := mock.StateBlockWithoutWork()
 	var err error
@@ -641,7 +641,7 @@ func TestPKDReward_DoGap(t *testing.T) {
 
 	r := new(PKDReward)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 
 	blk := mock.StateBlockWithoutWork()
 
@@ -698,7 +698,7 @@ func TestPKDReward_ProcessSend(t *testing.T) {
 
 	r := new(PKDReward)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 
 	sendBlk := mock.StateBlockWithoutWork()
 	sendBlk.Token = cfg.GasToken()
@@ -836,7 +836,7 @@ func TestPKDReward_GetTargetReceiver(t *testing.T) {
 	defer clear()
 
 	r := new(PKDReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 
 	sendBlk := mock.StateBlockWithoutWork()
 	sendBlk.Token = cfg.GasToken()

@@ -31,7 +31,7 @@ func NewPermissionApi(cfgFile string, l ledger.Store) *PermissionApi {
 		l:      l,
 		logger: log.NewLogger("api permission"),
 		cc:     chainctx.NewChainContext(cfgFile),
-		ctx:    vmstore.NewVMContext(l),
+		ctx:    vmstore.NewVMContext(l, &contractaddress.PermissionAddress),
 		au:     &contract.AdminHandOver{},
 		nu:     &contract.NodeUpdate{},
 	}
