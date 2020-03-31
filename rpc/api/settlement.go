@@ -8,6 +8,7 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"sort"
@@ -687,27 +688,46 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 	}
 }
 
+type CDRStatus struct {
+	Address *types.Address `json:"contractAddress"`
+	*cabi.CDRStatus
+}
+
 // GetCDRStatus get CDRstatus by settlement smart contract address and CDR hash
 // @param addr settlement smart contract address
 // @param hash CDR data hash
-func (s *SettlementAPI) GetCDRStatus(addr *types.Address, hash types.Hash) (*cabi.CDRStatus, error) {
+func (s *SettlementAPI) GetCDRStatus(addr *types.Address, hash types.Hash) (*CDRStatus, error) {
 	ctx := vmstore.NewVMContext(s.l)
-	return cabi.GetCDRStatus(ctx, addr, hash)
+	if cdr, err := cabi.GetCDRStatus(ctx, addr, hash); err != nil {
+		return nil, err
+	} else {
+		return &CDRStatus{
+			Address:   addr,
+			CDRStatus: cdr,
+		}, nil
+	}
 }
 
 // GetCDRStatus get CDRstatus by settlement smart contract address and CDR data
 // @param addr settlement smart contract address
 // @param index,sender,destination CDR data
-func (s *SettlementAPI) GetCDRStatusByCdrData(addr *types.Address, index uint64, sender, destination string) (*cabi.CDRStatus, error) {
+func (s *SettlementAPI) GetCDRStatusByCdrData(addr *types.Address, index uint64, sender, destination string) (*CDRStatus, error) {
 	hash, err := types.HashBytes(util.BE_Uint64ToBytes(index), []byte(sender), []byte(destination))
 	if err != nil {
 		return nil, err
 	}
 	ctx := vmstore.NewVMContext(s.l)
-	return cabi.GetCDRStatus(ctx, addr, hash)
+	if cdr, err := cabi.GetCDRStatus(ctx, addr, hash); err != nil {
+		return nil, err
+	} else {
+		return &CDRStatus{
+			Address:   addr,
+			CDRStatus: cdr,
+		}, nil
+	}
 }
 
-func (s *SettlementAPI) GetCDRStatusByDate(addr *types.Address, start, end int64, count int, offset *int) ([]*cabi.CDRStatus, error) {
+func (s *SettlementAPI) GetCDRStatusByDate(addr *types.Address, start, end int64, count int, offset *int) ([]*CDRStatus, error) {
 	ctx := vmstore.NewVMContext(s.l)
 	if status, err := cabi.GetCDRStatusByDate(ctx, addr, start, end); err != nil {
 		return nil, err
@@ -722,7 +742,14 @@ func (s *SettlementAPI) GetCDRStatusByDate(addr *types.Address, start, end int64
 		if err != nil {
 			return nil, err
 		}
-		return status[start:end], nil
+		var result []*CDRStatus
+		for _, cdr := range status[start:end] {
+			result = append(result, &CDRStatus{
+				Address:   addr,
+				CDRStatus: cdr,
+			})
+		}
+		return result, nil
 	}
 }
 
@@ -730,7 +757,7 @@ func (s *SettlementAPI) GetCDRStatusByDate(addr *types.Address, start, end int64
 // @param addr settlement smart contract
 // @param count max settlement contract records size
 // @param offset offset of all settlement contract records(optional)
-func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *int) ([]*cabi.CDRStatus, error) {
+func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *int) ([]*CDRStatus, error) {
 	ctx := vmstore.NewVMContext(s.l)
 
 	if status, err := cabi.GetAllCDRStatus(ctx, addr); err != nil {
@@ -746,7 +773,74 @@ func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *
 		if err != nil {
 			return nil, err
 		}
-		return status[start:end], nil
+		var result []*CDRStatus
+		for _, cdr := range status[start:end] {
+			result = append(result, &CDRStatus{
+				Address:   addr,
+				CDRStatus: cdr,
+			})
+		}
+		return result, nil
+	}
+}
+
+// GetAllCDRStatus get all cdr status of the specific settlement smart contract
+// @param addr settlement smart contract
+// @param count max settlement contract records size
+// @param offset offset of all settlement contract records(optional)
+func (s *SettlementAPI) GetMultiPartyCDRStatus(firstAddr, secondAddr *types.Address, count int, offset *int) ([]*CDRStatus, error) {
+	ctx := vmstore.NewVMContext(s.l)
+
+	if records, err := cabi.GetMultiPartyCDRStatus(ctx, firstAddr, secondAddr); err != nil {
+		return nil, err
+	} else {
+		var result []*CDRStatus
+
+		for k, v := range records {
+			addr := k
+			size := len(v)
+			if size > 1 {
+				sort.Slice(v, func(i, j int) bool {
+					return sortCDRFun(v[i], v[j])
+				})
+			}
+			start, end, err := calculateRange(size, count, offset)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, cdr := range v[start:end] {
+				result = append(result, &CDRStatus{
+					Address:   &addr,
+					CDRStatus: cdr,
+				})
+			}
+		}
+
+		if len(result) > 1 {
+			sort.Slice(result, func(i, j int) bool {
+				return sortCDRStatusFun(result[i], result[j])
+			})
+		}
+
+		return result, nil
+	}
+}
+
+func sortCDRStatusFun(cdr1, cdr2 *CDRStatus) bool {
+	dt1, _, _, err := cdr1.ExtractID()
+	if err != nil {
+		return false
+	}
+	dt2, _, _, err := cdr2.ExtractID()
+	if err != nil {
+		return false
+	}
+
+	if dt1 != dt2 {
+		return dt1 < dt2
+	} else {
+		return bytes.Compare(cdr1.Address[:], cdr2.Address[:]) < 0
 	}
 }
 

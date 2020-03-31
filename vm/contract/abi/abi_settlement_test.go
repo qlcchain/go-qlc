@@ -8,7 +8,6 @@
 package abi
 
 import (
-	"encoding/json"
 	"math/big"
 	"reflect"
 	"sort"
@@ -34,21 +33,23 @@ var (
 			Name:    "HKTCSL",
 		},
 		Previous: mock.Hash(),
-		Services: []ContractService{{
-			ServiceId:   mock.Hash().String(),
-			Mcc:         1,
-			Mnc:         2,
-			TotalAmount: 100,
-			UnitPrice:   2,
-			Currency:    "USD",
-		}, {
-			ServiceId:   mock.Hash().String(),
-			Mcc:         22,
-			Mnc:         1,
-			TotalAmount: 300,
-			UnitPrice:   4,
-			Currency:    "USD",
-		}},
+		Services: []ContractService{
+			{
+				ServiceId:   mock.Hash().String(),
+				Mcc:         1,
+				Mnc:         2,
+				TotalAmount: 100,
+				UnitPrice:   2,
+				Currency:    "USD",
+			}, {
+				ServiceId:   mock.Hash().String(),
+				Mcc:         22,
+				Mnc:         1,
+				TotalAmount: 300,
+				UnitPrice:   4,
+				Currency:    "USD",
+			},
+		},
 		SignDate:  time.Now().AddDate(0, 0, -5).Unix(),
 		StartDate: time.Now().AddDate(0, 0, -2).Unix(),
 		EndDate:   time.Now().AddDate(1, 0, 2).Unix(),
@@ -115,95 +116,6 @@ var (
 		EndDate:   time.Now().AddDate(1, 0, 1).Unix(),
 		Status:    AssetStatusActivated,
 	}
-
-	cdrs = `[
-  {
-    "params": [
-      {
-        "contractAddress": "qlc_3671s4ij7nmpm1r39ag395zcqfr8qhoincn8fygorknquuq47bg8bj36sw4k",
-        "index": 39457880,
-        "smsDt": 1578315202,
-        "sender": "WeChat",
-        "customer":"Tencent",
-        "destination": "85251***214",
-        "sendingStatus": "Sent",
-        "dlrStatus": "Delivered",
-        "preStop": "A2P_PCCWG",
-        "nextStop": "",
-        "from": "qlc_3exbms47d63ywggnhb9iko9twphsnsx563qf6faufp33167o5dqfoawa8gtj"
-      }
-    ],
-    "status": "stage1"
-  },
-  {
-    "params": [
-      {
-        "contractAddress": "qlc_3671s4ij7nmpm1r39ag395zcqfr8qhoincn8fygorknquuq47bg8bj36sw4k",
-        "index": 39457913,
-        "smsDt": 1578316536,
-        "sender": "WeChat",
-        "customer":"Tencent",
-        "destination": "85265***827",
-        "sendingStatus": "Sent",
-        "dlrStatus": "Delivered",
-        "preStop": "A2P_PCCWG",
-        "nextStop": "",
-        "from": "qlc_3exbms47d63ywggnhb9iko9twphsnsx563qf6faufp33167o5dqfoawa8gtj"
-      }
-    ],
-    "status": "stage1"
-  },
-  {
-    "params": [
-      {
-        "contractAddress": "qlc_3671s4ij7nmpm1r39ag395zcqfr8qhoincn8fygorknquuq47bg8bj36sw4k",
-        "index": 39457914,
-        "smsDt": 1578316560,
-        "sender": "WeChat",
-        "customer":"Tencent",
-        "destination": "85251***906",
-        "sendingStatus": "Sent",
-        "dlrStatus": "Delivered",
-        "preStop": "A2P_PCCWG",
-        "nextStop": "",
-        "from": "qlc_3exbms47d63ywggnhb9iko9twphsnsx563qf6faufp33167o5dqfoawa8gtj"
-      }
-    ],
-    "status": "stage1"
-  },
-  {
-    "params": [
-      {
-        "contractAddress": "qlc_3671s4ij7nmpm1r39ag395zcqfr8qhoincn8fygorknquuq47bg8bj36sw4k",
-        "index": 39457828,
-        "smsDt": 1578313123,
-        "sender": "WeChat",
-        "customer":"Tencent",
-        "destination": "85263***704",
-        "sendingStatus": "Sent",
-        "dlrStatus": "Delivered",
-        "preStop": "A2P_PCCWG",
-        "nextStop": "",
-        "from": "qlc_3exbms47d63ywggnhb9iko9twphsnsx563qf6faufp33167o5dqfoawa8gtj"
-      },
-      {
-        "contractAddress": "qlc_3671s4ij7nmpm1r39ag395zcqfr8qhoincn8fygorknquuq47bg8bj36sw4k",
-        "index": 39457828,
-        "smsDt": 1578313122,
-        "sender": "WeChat",
-        "customer":"Tencent",
-        "destination": "85263***704",
-        "sendingStatus": "Sent",
-        "dlrStatus": "Delivered",
-        "preStop": "",
-        "nextStop": "CSL Hong Kong @ 3397",
-        "from": "qlc_3giz1uwgsmq46xzspo9mbutade6foqh5fuja4m9rwfiuyzp4x8zu5hkorq4z"
-      }
-    ],
-    "status": "success"
-  }
-]
-`
 )
 
 func buildContractParam() (param *ContractParam) {
@@ -1718,6 +1630,28 @@ func TestCreateContractParam_Verify(t *testing.T) {
 			},
 			want:    false,
 			wantErr: true,
+		}, {
+			name: "f11",
+			fields: fields{
+				PartyA:   cp.PartyA,
+				PartyB:   cp.PartyB,
+				Previous: cp.Previous,
+				Services: []ContractService{
+					{
+						ServiceId:   "",
+						Mcc:         1,
+						Mnc:         2,
+						TotalAmount: 100,
+						UnitPrice:   2,
+						Currency:    "USD",
+					},
+				},
+				SignDate:  cp.SignDate,
+				StartDate: cp.StartDate,
+				EndDate:   cp.EndDate,
+			},
+			want:    false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -2068,6 +2002,13 @@ func TestGetSettlementContract(t *testing.T) {
 	if _, err := FindSettlementContract(ctx, &a2, &cdr); err == nil {
 		t.Fatal("should find nothing...")
 	}
+
+	a3 := contracts[0].PartyB.Address
+	cdr3 := cdrParam
+	cdr3.PreStop = "PCCWG"
+	if _, err := FindSettlementContract(ctx, &a3, &cdr3); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestStopParam_Verify(t *testing.T) {
@@ -2243,6 +2184,19 @@ func TestContractParam_IsPreStop(t *testing.T) {
 			fields: fields{
 				CreateContractParam: param.CreateContractParam,
 				PreStops:            []string{"PCCWG", "111"},
+				NextStops:           nil,
+				ConfirmDate:         param.ConfirmDate,
+				Status:              param.Status,
+			},
+			args: args{
+				n: "PCCWG1",
+			},
+			want: false,
+		}, {
+			name: "ok",
+			fields: fields{
+				CreateContractParam: param.CreateContractParam,
+				PreStops:            []string{},
 				NextStops:           nil,
 				ConfirmDate:         param.ConfirmDate,
 				Status:              param.Status,
@@ -3390,11 +3344,6 @@ func TestCDRStatus_ExtractID(t *testing.T) {
 	}
 }
 
-type mockCDR struct {
-	Params []SettlementCDR  `json:"params"`
-	Status SettlementStatus `json:"status"`
-}
-
 func TestGetSummaryReport(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
@@ -3422,42 +3371,37 @@ func TestGetSummaryReport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var cdr []*mockCDR
-	if err := json.Unmarshal([]byte(cdrs), &cdr); err != nil {
-		t.Fatal(err)
-	} else {
-		for _, c := range cdr {
-			params := make(map[string][]CDRParam, 0)
-			param1 := c.Params[0].CDRParam
-			params[a1.String()] = []CDRParam{param1}
-			if len(c.Params) > 1 {
-				param2 := c.Params[1].CDRParam
-				params[a2.String()] = []CDRParam{param2}
-			}
+	for i := 0; i < 10; i++ {
+		params := make(map[string][]CDRParam, 0)
+		param1 := cdrParam
+		if i%2 == 0 {
+			param1.Sender = "Slack"
+		}
+		params[a1.String()] = []CDRParam{param1}
+		params[a2.String()] = []CDRParam{param1}
 
-			s := &CDRStatus{
-				Params: params,
-				Status: c.Status,
+		s := &CDRStatus{
+			Params: params,
+			Status: SettlementStatusSuccess,
+		}
+		//t.Log(s.String())
+		if h, err := s.ToHash(); err != nil {
+			t.Fatal(err)
+		} else {
+			if h.IsZero() {
+				t.Fatal("invalid hash")
 			}
-			//t.Log(s.String())
-			if h, err := s.ToHash(); err != nil {
+			if abi, err := s.ToABI(); err != nil {
 				t.Fatal(err)
 			} else {
-				if h.IsZero() {
-					t.Fatal("invalid hash")
-				}
-				if abi, err := s.ToABI(); err != nil {
+				if err := ctx.SetStorage(contractAddr[:], h[:], abi); err != nil {
 					t.Fatal(err)
-				} else {
-					if err := ctx.SetStorage(contractAddr[:], h[:], abi); err != nil {
-						t.Fatal(err)
-					}
 				}
 			}
 		}
-		if err := ctx.SaveStorage(); err != nil {
-			t.Fatal(err)
-		}
+	}
+	if err := ctx.SaveStorage(); err != nil {
+		t.Fatal(err)
 	}
 
 	if report, err := GetSummaryReport(ctx, &contractAddr, 0, 0); err != nil {
@@ -3849,6 +3793,13 @@ func TestGenerateMultiPartyInvoice(t *testing.T) {
 		}
 		t.Log(util.ToIndentString(invoice))
 	}
+	if cdrs, err := GetMultiPartyCDRStatus(ctx, &ca1, &ca2); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(cdrs) != 2 {
+			t.Fatal("invalid multi-party CDR")
+		}
+	}
 }
 
 func TestContractParam_IsAvailable(t *testing.T) {
@@ -4057,9 +4008,11 @@ func TestContractParam_IsExpired(t *testing.T) {
 func Test_sortInvoiceFun(t *testing.T) {
 	var invoices []*InvoiceRecord
 	for i := 0; i < 4; i++ {
+		s, _ := random.Intn(1000)
+		e, _ := random.Intn(1000)
 		invoice := &InvoiceRecord{
-			StartDate: 0,
-			EndDate:   0,
+			StartDate: int64(s),
+			EndDate:   int64(e),
 		}
 		invoices = append(invoices, invoice)
 	}
@@ -4752,6 +4705,45 @@ func TestCDRParam_GetCustomer(t *testing.T) {
 			}
 			if got := z.GetCustomer(); got != tt.want {
 				t.Errorf("GetCustomer() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCDRStatus_ToHash(t *testing.T) {
+	type fields struct {
+		Params map[string][]CDRParam
+		Status SettlementStatus
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    types.Hash
+		wantErr bool
+	}{
+		{
+			name: "f",
+			fields: fields{
+				Params: nil,
+				Status: SettlementStatusSuccess,
+			},
+			want:    types.ZeroHash,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CDRStatus{
+				Params: tt.fields.Params,
+				Status: tt.fields.Status,
+			}
+			got, err := z.ToHash()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ToHash() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ToHash() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

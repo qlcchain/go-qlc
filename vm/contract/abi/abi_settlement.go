@@ -393,11 +393,8 @@ func (z *CreateContractParam) Address() (types.Address, error) {
 func (z *CreateContractParam) Balance() (types.Balance, error) {
 	total := types.ZeroBalance
 	for _, service := range z.Services {
-		if b, err := service.Balance(); err != nil {
-			return types.ZeroBalance, err
-		} else {
-			total = total.Add(b)
-		}
+		b, _ := service.Balance()
+		total = total.Add(b)
 	}
 	return total, nil
 }
@@ -1058,6 +1055,19 @@ func GetCDRMapping(ctx *vmstore.VMContext, hash *types.Hash) ([]*types.Address, 
 // @param addr settlement smart contract
 func GetAllCDRStatus(ctx *vmstore.VMContext, addr *types.Address) ([]*CDRStatus, error) {
 	return GetCDRStatusByDate(ctx, addr, 0, 0)
+}
+
+// GetMultiPartyCDRStatus get all CDR records belong to firstAddr and secondAddr
+func GetMultiPartyCDRStatus(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address) (map[types.Address][]*CDRStatus, error) {
+	if data1, err := GetCDRStatusByDate(ctx, firstAddr, 0, 0); err != nil {
+		return nil, err
+	} else {
+		if data2, err := GetCDRStatusByDate(ctx, secondAddr, 0, 0); err != nil {
+			return nil, err
+		} else {
+			return map[types.Address][]*CDRStatus{*firstAddr: data1, *secondAddr: data2}, nil
+		}
+	}
 }
 
 //FindSettlementContract query settlement contract by user address and CDR data
