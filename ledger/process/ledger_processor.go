@@ -329,7 +329,12 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 		lv.logger.Debug("delete pending, ", pendingKey)
 		return lv.l.DeletePending(&pendingKey, cache)
 	case types.ContractSend:
-		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data); ok && err == nil {
+		// check private tx
+		if block.IsPrivate() && !block.IsRecipient() {
+			return nil
+		}
+
+		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
 			case contract.SpecVer1:
@@ -484,12 +489,23 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 	if !config.IsGenesisBlock(block) {
 		switch block.GetType() {
 		case types.ContractReward:
+			// check private tx
+			if block.IsPrivate() && !block.IsRecipient() {
+				return nil
+			}
+
 			input, err := lv.l.GetStateBlock(block.GetLink())
 			if err != nil {
 				return fmt.Errorf("get contract reward block: %s", err)
 			}
+
+			// check private tx
+			if input.IsPrivate() && !input.IsRecipient() {
+				return nil
+			}
+
 			address := types.Address(input.GetLink())
-			c, ok, err := contract.GetChainContract(address, input.Data)
+			c, ok, err := contract.GetChainContract(address, input.GetPayload())
 			if !ok || err != nil {
 				return fmt.Errorf("invaild contract %s", err)
 			}
@@ -515,7 +531,12 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			}
 			return errors.New("invalid contract data")
 		case types.ContractSend:
-			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.Data)
+			// check private tx
+			if block.IsPrivate() && !block.IsRecipient() {
+				return nil
+			}
+
+			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.GetPayload())
 			if ok && err == nil {
 				d := c.GetDescribe()
 				switch d.GetVersion() {

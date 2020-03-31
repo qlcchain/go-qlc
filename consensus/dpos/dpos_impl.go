@@ -502,7 +502,7 @@ func (dps *DPoS) processPrivateBlocks() {
 
 		case bs := <-dps.privateRecvBlocks:
 			if bs.Block.IsPrivate() {
-				recvReq := &topic.EventPrivacyRecvReqMsg{EnclaveKey: bs.Block.Data, ReqData: bs, RspChan: dps.privateRecvRspCh}
+				recvReq := &topic.EventPrivacyRecvReqMsg{EnclaveKey: bs.Block.GetData(), ReqData: bs, RspChan: dps.privateRecvRspCh}
 				dps.eb.Publish(topic.EventPrivacySendReq, recvReq)
 			}
 
@@ -747,9 +747,14 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			dps.processors[index].ackedBlockNotify(hash)
 		}
 	case types.ContractSend: // beneficial maybe another account
+		// check private tx
+		if blk.IsPrivate() && blk.IsRecipient() {
+			break
+		}
+
 		dstAddr := types.ZeroAddress
 
-		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetPayload()); ok && err == nil {
 			ctx := vmstore.NewVMContext(dps.ledger)
 			dstAddr, err = c.GetTargetReceiver(ctx, blk)
 			if err != nil {
@@ -770,7 +775,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		}
 
 		if types.Address(blk.GetLink()) == types.PubKeyDistributionAddress {
-			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.Data)
+			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.GetData())
 			if err == nil {
 				if method.Name == cabi.MethodNamePKDPublish {
 					for _, p := range dps.processors {

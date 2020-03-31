@@ -691,8 +691,13 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 		return fmt.Errorf("%s %s", err, blockCur.GetLink())
 	}
 
+	// check private tx
+	if blockLink.IsPrivate() && !blockLink.IsRecipient() {
+		return nil
+	}
+
 	if blockCur.GetType() == types.ContractReward {
-		if c, ok, err := contract.GetChainContract(types.Address(blockLink.Link), blockLink.Data); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(blockLink.Link), blockLink.GetPayload()); ok && err == nil {
 			switch c.GetDescribe().GetVersion() {
 			case contract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(blockLink); err == nil && pendingKey != nil {
@@ -735,8 +740,13 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 }
 
 func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *ledger.Cache) error {
+	// check private tx
+	if blockCur.IsPrivate() && !blockCur.IsRecipient() {
+		return nil
+	}
+
 	if blockCur.GetType() == types.ContractSend {
-		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.Data); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.GetPayload()); ok && err == nil {
 			switch c.GetDescribe().GetVersion() {
 			case contract.SpecVer1:
 				if pendingKey, _, err := c.DoPending(blockCur); err == nil && pendingKey != nil {
@@ -846,7 +856,7 @@ func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {
 			if address == types.MintageAddress {
 				var param = new(cabi.ParamMintage)
 				tokenId = param.TokenId
-				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetPayload()); err == nil {
 					blkToken, _, _ = lv.l.GetUncheckedBlock(tokenId, types.UncheckedKindTokenInfo)
 				}
 			}

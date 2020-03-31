@@ -700,7 +700,12 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 			dps.logger.Errorf("add gap publish block to ledger err %s", err)
 		}
 	case process.GapPovHeight:
-		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
+		// check private tx
+		if bs.Block.IsPrivate() && !bs.Block.IsRecipient() {
+			break
+		}
+
+		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
 			case contract.SpecVer2:

@@ -36,19 +36,34 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 	}
 
 	if block.GetType() == types.ContractSend {
-		if c, ok, err := contract.GetChainContract(types.Address(block.GetLink()), block.Data); ok && err == nil {
+		// check private tx
+		if block.IsPrivate() && !block.IsRecipient() {
+			return Progress, nil
+		}
+
+		if c, ok, err := contract.GetChainContract(types.Address(block.GetLink()), block.GetPayload()); ok && err == nil {
 			checkWork = c.GetDescribe().WithWork()
 			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
 
 	if block.GetType() == types.ContractReward {
+		// check private tx
+		if block.IsPrivate() && !block.IsRecipient() {
+			return Progress, nil
+		}
+
 		linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 		if err != nil {
 			return GapSource, nil
 		}
 
-		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.Data); ok && err == nil {
+		// check private tx
+		if linkBlk.IsPrivate() && !linkBlk.IsRecipient() {
+			return Progress, nil
+		}
+
+		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.GetPayload()); ok && err == nil {
 			checkWork = c.GetDescribe().WithWork()
 			checkSign = c.GetDescribe().WithSignature()
 		}
@@ -91,19 +106,34 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	}
 
 	if block.GetType() == types.ContractSend {
-		if c, ok, err := contract.GetChainContract(types.Address(block.GetLink()), block.Data); ok && err == nil {
+		// check private tx
+		if block.IsPrivate() && !block.IsRecipient() {
+			return Progress, nil
+		}
+
+		if c, ok, err := contract.GetChainContract(types.Address(block.GetLink()), block.GetPayload()); ok && err == nil {
 			checkWork = c.GetDescribe().WithWork()
 			checkSign = c.GetDescribe().WithSignature()
 		}
 	}
 
 	if block.GetType() == types.ContractReward {
+		// check private tx
+		if block.IsPrivate() && !block.IsRecipient() {
+			return Progress, nil
+		}
+
 		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {
 			return GapSource, nil
 		}
 
-		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.Data); ok && err == nil {
+		// check private tx
+		if linkBlk.IsPrivate() && !linkBlk.IsRecipient() {
+			return Progress, nil
+		}
+
+		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.GetPayload()); ok && err == nil {
 			checkWork = c.GetDescribe().WithWork()
 			checkSign = c.GetDescribe().WithSignature()
 		}
@@ -499,13 +529,18 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 		return GapSource, nil
 	}
 
+	// check private tx
+	if input.IsPrivate() && !input.IsRecipient() {
+		return Progress, nil
+	}
+
 	pendingKey := types.PendingKey{
 		Address: block.GetAddress(),
 		Hash:    block.GetLink(),
 	}
 
 	// check pending
-	if c, ok, err := contract.GetChainContract(types.Address(input.Link), input.Data); ok && err == nil {
+	if c, ok, err := contract.GetChainContract(types.Address(input.Link), input.GetPayload()); ok && err == nil {
 		d := c.GetDescribe()
 		if d.WithPending() {
 			if _, err := lv.l.GetPending(&pendingKey); err == nil {
@@ -572,6 +607,11 @@ type blockContractCheck struct {
 }
 
 func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+	// check private tx
+	if block.IsPrivate() && !block.IsRecipient() {
+		return Progress, nil
+	}
+
 	switch block.GetType() {
 	case types.ContractSend:
 		return checkContractSendBlock(lv, block)
@@ -582,8 +622,13 @@ func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) 
 			return GapSource, nil
 		}
 
+		// check private tx
+		if input.IsPrivate() && !input.IsRecipient() {
+			return Progress, nil
+		}
+
 		address := types.Address(input.GetLink())
-		if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(address, input.GetPayload()); ok && err == nil {
 			clone := block.Clone()
 			//TODO:verify extra hash and commit to db
 			vmCtx := vmstore.NewVMContext(lv.l)
@@ -624,6 +669,11 @@ type cacheBlockContractCheck struct {
 }
 
 func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
+	// check private tx
+	if block.IsPrivate() && !block.IsRecipient() {
+		return Progress, nil
+	}
+
 	switch block.GetType() {
 	case types.ContractSend:
 		return checkContractSendBlock(lv, block)
@@ -634,8 +684,13 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 			return GapSource, nil
 		}
 
+		// check private tx
+		if input.IsPrivate() && !input.IsRecipient() {
+			return Progress, nil
+		}
+
 		address := types.Address(input.GetLink())
-		if c, ok, err := contract.GetChainContract(address, input.Data); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(address, input.GetPayload()); ok && err == nil {
 			clone := block.Clone()
 			//TODO:verify extra hash and commit to db
 			vmCtx := vmstore.NewVMContext(lv.l)
@@ -682,8 +737,13 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 		}
 	}
 
+	// check private tx
+	if block.IsPrivate() && !block.IsRecipient() {
+		return Progress, nil
+	}
+
 	// verify data
-	if c, ok, err := contract.GetChainContract(address, block.Data); ok && err == nil {
+	if c, ok, err := contract.GetChainContract(address, block.GetPayload()); ok && err == nil {
 		clone := block.Clone()
 		vmCtx := vmstore.NewVMContext(lv.l)
 		d := c.GetDescribe()

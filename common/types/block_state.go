@@ -35,6 +35,7 @@ type StateBlock struct {
 	PrivateFrom    string   `msg:"priFrom,extension,omitempty" json:"privateFrom,omitempty"`
 	PrivateFor     []string `msg:"priFor,extension,omitempty" json:"privateFor,omitempty"`
 	PrivateGroupID string   `msg:"priGid,extension,omitempty" json:"privateGroupID,omitempty"`
+	PrivateRawData []byte   `msg:"priRawData,omitempty" json:"privateRawData,omitempty"`
 
 	Work      Work      `msg:"work,extension" json:"work"`
 	Signature Signature `msg:"signature,extension" json:"signature"`
@@ -42,8 +43,7 @@ type StateBlock struct {
 	// following fields just for cache, not marshaled in db or p2p message
 	Flag uint64 `msg:"-" json:"-"`
 
-	PrivateRecvRsp bool   `msg:"-" json:"-"`
-	PrivateRawData []byte `msg:"-" json:"-"`
+	PrivateRecvRsp bool `msg:"-" json:"-"`
 }
 
 func (b *StateBlock) BuildHashData() []byte {
@@ -335,11 +335,11 @@ func (b *StateBlock) IsPrivate() bool {
 
 func (b *StateBlock) IsRecipient() bool {
 	if b.IsPrivate() {
-		if b.PrivateRecvRsp && len(b.PrivateRawData) > 0 {
-			return true
+		if len(b.PrivateRawData) == 0 {
+			return false
 		}
-		return false
 	}
+
 	return true
 }
 
@@ -350,6 +350,10 @@ func (b *StateBlock) GetPrivateRawData() []byte {
 func (b *StateBlock) SetPrivateRawData(rawData []byte) {
 	b.PrivateRawData = rawData
 	b.PrivateRecvRsp = true
+}
+
+func (b *StateBlock) ClearPrivateRawData() {
+	b.PrivateRawData = nil
 }
 
 //
