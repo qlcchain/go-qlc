@@ -237,34 +237,6 @@ func (bs *StateBlockList) Deserialize(text []byte) error {
 	return nil
 }
 
-func (b *StateBlock) TableSchema() (map[string]interface{}, string) {
-	fields := make(map[string]interface{})
-	fields["hash"] = b.GetHash()
-	fields["type"] = b.Type
-	fields["address"] = b.Address
-	fields["timestamp"] = b.Timestamp
-	return fields, ""
-}
-
-func (b *StateBlock) TableName() string {
-	return "BLOCKHASH"
-}
-
-func (b *StateBlock) SetRelation() map[string]interface{} {
-	val := make(map[string]interface{})
-	val["hash"] = b.GetHash().String()
-	val["type"] = b.GetType().String()
-	val["address"] = b.GetAddress().String()
-	val["timestamp"] = b.GetTimestamp()
-	return val
-}
-
-func (b *StateBlock) RemoveRelation() map[string]interface{} {
-	val := make(map[string]interface{})
-	val["hash"] = b.GetHash().String()
-	return val
-}
-
 //
 ////go:generate msgp
 //type BlockExtra struct {

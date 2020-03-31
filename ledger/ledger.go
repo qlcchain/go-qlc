@@ -319,7 +319,7 @@ func (l *Ledger) initRelation() error {
 			return err
 		}
 		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
-			l.relation.Add(block)
+			l.relation.Add(relation.TableConvert(block))
 			return nil
 		})
 		if err != nil {
