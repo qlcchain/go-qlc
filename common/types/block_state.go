@@ -39,7 +39,11 @@ type StateBlock struct {
 	Work      Work      `msg:"work,extension" json:"work"`
 	Signature Signature `msg:"signature,extension" json:"signature"`
 
+	// following fields just for cache, not marshaled in db or p2p message
 	Flag uint64 `msg:"-" json:"-"`
+
+	PrivateRecvRsp bool   `msg:"-" json:"-"`
+	PrivateRawData []byte `msg:"-" json:"-"`
 }
 
 func (b *StateBlock) BuildHashData() []byte {
@@ -147,6 +151,13 @@ func (b *StateBlock) GetStorage() Balance {
 }
 
 func (b *StateBlock) GetData() []byte {
+	return b.Data
+}
+
+func (b *StateBlock) GetPayload() []byte {
+	if b.IsPrivate() {
+		return b.GetPrivateRawData()
+	}
 	return b.Data
 }
 
@@ -313,6 +324,32 @@ func (b *StateBlock) RemoveRelation() map[string]interface{} {
 	val := make(map[string]interface{})
 	val["hash"] = b.GetHash().String()
 	return val
+}
+
+func (b *StateBlock) IsPrivate() bool {
+	if len(b.PrivateFrom) > 0 {
+		return true
+	}
+	return false
+}
+
+func (b *StateBlock) IsRecipient() bool {
+	if b.IsPrivate() {
+		if b.PrivateRecvRsp && len(b.PrivateRawData) > 0 {
+			return true
+		}
+		return false
+	}
+	return true
+}
+
+func (b *StateBlock) GetPrivateRawData() []byte {
+	return b.PrivateRawData
+}
+
+func (b *StateBlock) SetPrivateRawData(rawData []byte) {
+	b.PrivateRawData = rawData
+	b.PrivateRecvRsp = true
 }
 
 //

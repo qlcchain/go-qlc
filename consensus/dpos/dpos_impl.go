@@ -138,6 +138,9 @@ type DPoS struct {
 	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
 	repVH               chan *repVoteHeart
 	exited              *sync.WaitGroup
+
+	privateRecvBlocks chan *consensus.BlockSource
+	privateRecvRspCh  chan *topic.EventPrivacyRecvRspMsg
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -191,6 +194,9 @@ func NewDPoS(cfgFile string) *DPoS {
 		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
 		repVH:               make(chan *repVoteHeart, 409600),
 		exited:              new(sync.WaitGroup),
+
+		privateRecvBlocks: make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+		privateRecvRspCh:  make(chan *topic.EventPrivacyRecvRspMsg, common.DPoSMaxBlocks),
 	}
 
 	dps.pf.status.Store(perfTypeClose)
@@ -269,6 +275,7 @@ func (dps *DPoS) Start() {
 	go dps.batchVoteStart()
 	go dps.processSubMsg()
 	go dps.processBlocks()
+	go dps.processPrivateBlocks()
 	go dps.stat()
 	dps.processorStart()
 
@@ -478,6 +485,43 @@ func (dps *DPoS) processBlocks() {
 					dps.logger.Infof("process cache block[%s]", bs.Block.GetHash())
 					dps.dispatchMsg(bs)
 				}
+			}
+		}
+	}
+}
+
+func (dps *DPoS) processPrivateBlocks() {
+	dps.exited.Add(1)
+	defer dps.exited.Done()
+
+	for {
+		select {
+		case <-dps.ctx.Done():
+			dps.logger.Info("Stop processPrivateBlocks.")
+			return
+
+		case bs := <-dps.privateRecvBlocks:
+			if bs.Block.IsPrivate() {
+				recvReq := &topic.EventPrivacyRecvReqMsg{EnclaveKey: bs.Block.Data, ReqData: bs, RspChan: dps.privateRecvRspCh}
+				dps.eb.Publish(topic.EventPrivacySendReq, recvReq)
+			}
+
+		case recvRsp := <-dps.privateRecvRspCh:
+			if recvRsp.ReqData == nil {
+				dps.logger.Errorf("EventPrivacyRecvRspMsg ReqData is nil, drop it!")
+				break
+			}
+			if recvRsp.Err != nil {
+				dps.logger.Errorf("EventPrivacyRecvRspMsg got err %s", recvRsp.Err)
+				break
+			}
+
+			bs, ok := recvRsp.ReqData.(*consensus.BlockSource)
+			if !ok {
+				dps.logger.Errorf("EventPrivacyRecvRspMsg ReqData is not BlockSource, drop it!")
+			} else {
+				bs.Block.SetPrivateRawData(recvRsp.RawPayload)
+				dps.recvBlocks <- bs
 			}
 		}
 	}
@@ -761,6 +805,10 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 }
 
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
+	if bs.Block != nil && bs.Block.IsPrivate() {
+		dps.privateRecvBlocks <- bs
+		return
+	}
 	dps.recvBlocks <- bs
 }
 
@@ -1226,6 +1274,8 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 	outArgs["povSyncState"] = dps.povSyncState.String()
 	outArgs["blockSyncState"] = dps.blockSyncState.String()
 	outArgs["blockQueue"] = len(dps.recvBlocks)
+	outArgs["privateBlockQueue"] = len(dps.privateRecvBlocks)
+	outArgs["privateRecvRspQueue"] = len(dps.privateRecvRspCh)
 
 	pStats := make([]*processorStat, 0)
 	for _, p := range dps.processors {
