@@ -87,3 +87,13 @@ type EventBroadcastMsg struct {
 	Type    MessageType
 	Message interface{}
 }
+
+const (
+	PermissionEventNodeUpdate uint8 = iota
+)
+
+type PermissionEvent struct {
+	EventType uint8
+	NodeId    string
+	NodeUrl   string
+}

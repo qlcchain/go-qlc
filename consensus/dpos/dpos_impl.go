@@ -709,11 +709,6 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			if err != nil {
 				dps.logger.Error(err)
 			}
-
-			err = c.EventNotify(dps.eb, ctx, blk)
-			if err != nil {
-				dps.logger.Error(err)
-			}
 		}
 
 		if dstAddr != types.ZeroAddress {

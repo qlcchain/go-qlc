@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/abi"
@@ -34,9 +33,6 @@ type Contract interface {
 
 	DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error
 	DoReceiveOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock, input *types.StateBlock) error
-
-	// block trigger event
-	EventNotify(eb event.EventBus, ctx *vmstore.VMContext, block *types.StateBlock) error
 }
 
 const (

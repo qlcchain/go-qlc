@@ -97,13 +97,3 @@ func PublicKeyWithTypeHash(t uint16, k []byte) []byte {
 	h, _ := types.Sha256HashData(d)
 	return h.Bytes()
 }
-
-const (
-	PermissionEventNodeUpdate uint8 = iota
-)
-
-type PermissionEvent struct {
-	EventType uint8
-	NodeId    string
-	NodeUrl   string
-}

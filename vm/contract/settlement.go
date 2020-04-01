@@ -15,7 +15,6 @@ import (
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/sync"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -64,10 +63,6 @@ func (i internalContract) DoSendOnPov(_ *vmstore.VMContext, _ *statedb.PovContra
 
 func (i internalContract) DoReceiveOnPov(_ *vmstore.VMContext, _ *statedb.PovContractStateDB, _ uint64, _ *types.StateBlock, _ *types.StateBlock) error {
 	return ErrNotImplement
-}
-
-func (i internalContract) EventNotify(_ event.EventBus, _ *vmstore.VMContext, _ *types.StateBlock) error {
-	return nil
 }
 
 type CreateContract struct {
