@@ -17,3 +17,5 @@ jobs:
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           golangci_lint_flags: "--config=./.golangci.yml"
+          level: warning
+          reporter: "github-pr-review"
