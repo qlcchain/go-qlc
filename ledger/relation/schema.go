@@ -56,7 +56,7 @@ func create(tableName string, columns map[string]string, key string) string {
 		return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
 		( id integer PRIMARY KEY AUTOINCREMENT, %s)`, tableName, cs)
 	} else {
-		//TODO set key manually
+		//TODO set with primary key
 		return ""
 	}
 }
@@ -76,6 +76,6 @@ func TableConvert(obj interface{}) Table {
 			Hash:      blk.GetHash().String(),
 		}
 	default:
-		return nil
+		return obj.(Table)
 	}
 }
