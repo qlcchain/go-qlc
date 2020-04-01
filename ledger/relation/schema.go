@@ -40,7 +40,8 @@ func convertSchemaType(db string, typ string) string {
 	case "sqlite", "sqlite3":
 		return typ
 	case "mysql":
-		return "varchar(100)"
+		// TODO mysql type may different
+		return typ
 	default:
 		return "varchar(100)"
 	}
