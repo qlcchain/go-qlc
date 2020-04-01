@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common/storage/relationdb"
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger/relation/db"
+	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
@@ -21,17 +21,17 @@ func TestRelation_Relation(t *testing.T) {
 
 	blk1 := mock.StateBlockWithoutWork()
 	blk2 := mock.StateBlockWithoutWork()
-	r.Add(blk1)
-	r.Add(blk2)
+	r.Add(TableConvert(blk1))
+	r.Add(TableConvert(blk2))
 	for i := 0; i < batchMaxCount+10; i++ {
-		r.Add(mock.StateBlockWithoutWork())
+		r.Add(TableConvert(mock.StateBlockWithoutWork()))
 	}
-	r.Delete(blk1)
-	r.Delete(blk2)
+	r.Delete(TableConvert(blk1))
+	r.Delete(TableConvert(blk2))
 	time.Sleep(3 * time.Second)
 	c, err := r.BlocksCount()
 	if err != nil || c != batchMaxCount+10 {
-		t.Fatal(err, c)
+		t.Fatal(err, c, batchMaxCount+10)
 	}
 	if err := r.EmptyStore(); err != nil {
 		t.Fatal(err)
@@ -51,7 +51,7 @@ func TestRelation_flush(t *testing.T) {
 
 	cc := chaincontext.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
-	store, err := relationdb.NewDB(cfg)
+	store, err := db.NewDB(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,12 +59,14 @@ func TestRelation_flush(t *testing.T) {
 		db:         store,
 		eb:         cc.EventBus(),
 		dir:        cfgFile,
-		deleteChan: make(chan types.Schema, 10240),
-		addChan:    make(chan types.Schema, 10240),
+		deleteChan: make(chan Table, 10240),
+		addChan:    make(chan Table, 10240),
 		closedChan: make(chan bool),
+		tables:     make(map[string]schema),
+		logger:     log.NewLogger("relation"),
 	}
-	r.tables = []types.Schema{new(types.StateBlock)}
-	if err := r.init(); err != nil {
+	tables := []Table{new(BlockHash)}
+	if err := r.init(tables); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
@@ -74,10 +76,10 @@ func TestRelation_flush(t *testing.T) {
 	}()
 
 	for i := 0; i < batchMaxCount+10; i++ {
-		r.Add(mock.StateBlockWithoutWork())
+		r.Add(TableConvert(mock.StateBlockWithoutWork()))
 	}
 	for i := 0; i < batchMaxCount+10; i++ {
-		r.Delete(mock.StateBlockWithoutWork())
+		r.Delete(TableConvert(mock.StateBlockWithoutWork()))
 	}
 	r.flush()
 	if len(r.addChan) > 0 || len(r.deleteChan) > 0 {
@@ -99,7 +101,7 @@ func TestRelation_Close(t *testing.T) {
 	if len(cache) != 1 {
 		t.Fatal(len(cache))
 	}
-	store.Add(mock.StateBlockWithoutWork())
+	store.Add(TableConvert(mock.StateBlockWithoutWork()))
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}

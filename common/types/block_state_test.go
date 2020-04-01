@@ -257,26 +257,3 @@ func TestStateBlockList_Serialize(t *testing.T) {
 	blkBytes, _ := json.Marshal(&b2)
 	t.Log(string(blkBytes))
 }
-
-func TestStateBlock_TableSchema(t *testing.T) {
-	b := StateBlock{}
-	err := json.Unmarshal([]byte(testBlk), &b)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	fields, key := b.TableSchema()
-	t.Log(fields, key)
-	if len(fields) != 4 {
-		t.Fatal()
-	}
-	if b.TableName() != "BLOCKHASH" {
-		t.Fatal()
-	}
-	if r := b.SetRelation(); len(r) != 4 {
-		t.Fatal()
-	}
-	if r := b.RemoveRelation(); len(r) != 1 {
-		t.Fatal()
-	}
-}

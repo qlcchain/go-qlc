@@ -19,6 +19,17 @@ var (
 	ErrGenericTypeNotFound = errors.New("GenericType not found")
 )
 
+type GenericStore interface {
+	AddGenericType(key *types.GenericKey, value *types.GenericType) error
+	GetGenericType(key *types.GenericKey) (*types.GenericType, error)
+	DeleteGenericType(key *types.GenericKey) error
+	UpdateGenericType(key *types.GenericKey, value *types.GenericType) error
+	AddOrUpdateGenericType(key *types.GenericKey, value *types.GenericType) error
+	GetGenericTypes(fn func(key *types.GenericKey, value *types.GenericType) error) error
+	HasGenericType(key *types.GenericKey) (bool, error)
+	CountGenericTypes() (uint64, error)
+}
+
 func (l *Ledger) AddGenericType(key *types.GenericKey, value *types.GenericType) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixGenericType, key)
 	if err != nil {

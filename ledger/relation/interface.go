@@ -8,6 +8,7 @@ type Store interface {
 	BlocksCount() (uint64, error)
 	BlocksCountByType() (map[string]uint64, error)
 
+	Select(dest interface{}, query string, args ...interface{}) error
 	Close() error
 	EmptyStore() error
 }

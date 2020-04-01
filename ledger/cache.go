@@ -14,6 +14,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 )
 
@@ -411,11 +412,16 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 }
 
 func (c *Cache) dumpToRelation(key []byte, v interface{}, l *Ledger) error {
-	if obj, ok := v.(types.Schema); ok {
+	switch storage.KeyPrefix(key[0]) {
+	case storage.KeyPrefixBlock:
 		if !isDeleteKey(v) {
-			l.relation.Add(obj)
+			l.relation.Add(relation.TableConvert(v))
 		} else {
-			l.relation.Delete(obj)
+			hash, err := types.BytesToHash(key[1:])
+			if err != nil {
+				return fmt.Errorf("key to hash: %s", err)
+			}
+			l.relation.Delete(&relation.BlockHash{Hash: hash.String()})
 		}
 	}
 	return nil

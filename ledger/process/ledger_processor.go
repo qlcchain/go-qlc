@@ -10,12 +10,11 @@ package process
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/hashmap"
-	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract"
@@ -30,7 +29,7 @@ type LedgerVerifier struct {
 	blockCheck      map[types.BlockType]blockCheck
 	cacheBlockCheck map[types.BlockType]blockCheck
 	//syncBlockCheck  map[types.BlockType]blockCheck
-	representLock *hashmap.HashMap
+	representLock *sync.Map
 	logger        *zap.SugaredLogger
 }
 
@@ -40,7 +39,7 @@ func NewLedgerVerifier(l ledger.Store) *LedgerVerifier {
 		blockCheck:      newBlockCheck(),
 		cacheBlockCheck: newCacheBlockCheck(),
 		//syncBlockCheck:  newSyncBlockCheck(),
-		representLock: &hashmap.HashMap{},
+		representLock: new(sync.Map),
 		logger:        log.NewLogger("ledger_verifier"),
 	}
 }
@@ -256,6 +255,7 @@ func (c *onlineBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 
 func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 	lv.logger.Infof("block  process: %s(%s) ", block.GetHash().String(), block.GetType().String())
+	lv.lock(block)
 	err := lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
 		err := lv.processStateBlock(block, c)
 		if err != nil {
@@ -264,7 +264,7 @@ func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 		}
 		return nil
 	})
-	lv.unlock(block.Representative)
+	lv.unlock(block)
 	if err != nil {
 		return err
 	}
@@ -361,22 +361,31 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	}
 }
 
-func (lv *LedgerVerifier) lock(address types.Address) {
-	i, _ := lv.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
-	spin, _ := i.(*spinlock.SpinLock)
-	spin.Lock()
+func (lv *LedgerVerifier) lock(block *types.StateBlock) {
+	if block.GetToken() == config.ChainToken() {
+		i, _ := lv.representLock.LoadOrStore(block.Representative.String(), &sync.Mutex{})
+		l, _ := i.(*sync.Mutex)
+		l.Lock()
+		//fmt.Printf("lock: %s %s %p \n", block.GetHash(), block.Representative.String(), l)
+	}
 }
 
-func (lv *LedgerVerifier) unlock(address types.Address) {
-	i, _ := lv.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
-	spin, _ := i.(*spinlock.SpinLock)
-	spin.Unlock()
+func (lv *LedgerVerifier) unlock(block *types.StateBlock) {
+	if block.GetToken() == config.ChainToken() {
+		i, ok := lv.representLock.Load(block.Representative.String())
+		if !ok {
+			lv.logger.Errorf("get block lock fail, %s", block.GetHash())
+			return
+		}
+		l, _ := i.(*sync.Mutex)
+		l.Unlock()
+		//fmt.Printf("unlock: %s %s %p \n", block.GetHash(), block.Representative.String(), l)
+	}
 }
 
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, cache *ledger.Cache) error {
 	if block.GetToken() == config.ChainToken() {
 		if tm != nil && !tm.Representative.IsZero() {
-			lv.lock(block.Representative)
 			oldBenefit := &types.Benefit{
 				Vote:    am.GetVote(),
 				Network: am.GetNetwork(),
