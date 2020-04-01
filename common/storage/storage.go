@@ -88,8 +88,10 @@ const (
 	KeyPrefixTriePovState  = 102
 	KeyPrefixContractValue = 103 // idPrefixContractValue ledger.go
 	KeyPrefixStorageTrie   = 104
+	KeyPrefixVmLogs        = 105
 
-	KeyPrefixGenericType = 255
+	KeyPrefixGenericType  = 254
+	KeyPrefixGenericTypeC = 255
 )
 
 func GetKeyOfParts(t KeyPrefix, partList ...interface{}) ([]byte, error) {

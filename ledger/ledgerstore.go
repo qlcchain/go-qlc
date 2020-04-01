@@ -25,4 +25,5 @@ type Store interface {
 	LedgerStore
 	PrivacyStore
 	contractValueStore
+	vmlogsStore
 }

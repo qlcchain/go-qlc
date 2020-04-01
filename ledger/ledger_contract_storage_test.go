@@ -9,9 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func addContractValue(t *testing.T, l *Ledger) (*types.ContractKey, *types.ContractValue) {
@@ -25,7 +24,7 @@ func addContractValue(t *testing.T, l *Ledger) (*types.ContractKey, *types.Contr
 		BlockHash: mock.Hash(),
 		Root:      nil,
 	}
-	if err := l.AddOrUpdateContractValue(key, value); err != nil {
+	if err := l.AddOrUpdateContractValue(key, value, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
 	}
 	return key, value
@@ -56,7 +55,7 @@ func TestLedger_DeleteContractValue(t *testing.T) {
 	defer teardownTestCase(t)
 
 	k, _ := addContractValue(t, l)
-	err := l.DeleteContractValue(k)
+	err := l.DeleteContractValue(k, l.cache.GetCache())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,6 +100,9 @@ func TestLedger_CountContractValue(t *testing.T) {
 
 	addContractValue(t, l)
 	addContractValue(t, l)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	num, err := l.CountContractValues()
 	if err != nil {
 		t.Fatal(err)

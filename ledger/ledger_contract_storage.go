@@ -16,7 +16,6 @@ import (
 	"fmt"
 
 	"github.com/qlcchain/go-qlc/common/storage"
-
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -66,15 +65,11 @@ func (l *Ledger) DeleteContractValue(key *types.ContractKey, c ...storage.Cache)
 		return err
 	}
 
-	_, err = l.store.Get(k)
-	if err != nil {
-		if err == storage.KeyNotFound {
-			return ErrContractValueNotFound
-		}
-		return err
+	if len(c) > 0 {
+		return c[0].Delete(k)
+	} else {
+		return l.store.Delete(k)
 	}
-
-	return l.store.Delete(k)
 }
 
 func (l *Ledger) AddOrUpdateContractValue(key *types.ContractKey, value *types.ContractValue, c ...storage.Cache) error {
@@ -119,7 +114,14 @@ func (l *Ledger) HasContractValue(key *types.ContractKey) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return l.store.Has(k)
+	_, _, err = l.Get(k)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return false, ErrContractValueNotFound
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (l *Ledger) CountContractValues() (uint64, error) {

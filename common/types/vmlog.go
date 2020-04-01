@@ -34,3 +34,15 @@ func (vl *VmLogs) Hash() *Hash {
 	hash := HashData(source)
 	return &hash
 }
+
+func (v *VmLogs) Serialize() ([]byte, error) {
+	return v.MarshalMsg(nil)
+}
+
+func (v *VmLogs) Deserialize(text []byte) error {
+	_, err := v.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
