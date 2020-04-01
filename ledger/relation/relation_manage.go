@@ -90,7 +90,7 @@ func (r *Relation) init(tables []Table) error {
 		s.create = create(s.tableName, columnsMap, "")
 		s.insert = insert(s.tableName, columns)
 		r.tables[t.TableID()] = s
-		r.logger.Debug(s)
+		//r.logger.Debug(s)
 
 		if _, err := r.db.Exec(s.create); err != nil {
 			r.logger.Errorf("exec error, sql: %s, err: %s", s.create, err.Error())
