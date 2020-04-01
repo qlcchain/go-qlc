@@ -39,21 +39,23 @@ var (
 			Name:    "HKTCSL",
 		},
 		Previous: mock.Hash(),
-		Services: []cabi.ContractService{{
-			ServiceId:   mock.Hash().String(),
-			Mcc:         1,
-			Mnc:         2,
-			TotalAmount: 10,
-			UnitPrice:   2,
-			Currency:    "USD",
-		}, {
-			ServiceId:   mock.Hash().String(),
-			Mcc:         22,
-			Mnc:         1,
-			TotalAmount: 30,
-			UnitPrice:   4,
-			Currency:    "USD",
-		}},
+		Services: []cabi.ContractService{
+			{
+				ServiceId:   mock.Hash().String(),
+				Mcc:         1,
+				Mnc:         2,
+				TotalAmount: 10,
+				UnitPrice:   2,
+				Currency:    "USD",
+			}, {
+				ServiceId:   mock.Hash().String(),
+				Mcc:         22,
+				Mnc:         1,
+				TotalAmount: 30,
+				UnitPrice:   4,
+				Currency:    "USD",
+			},
+		},
 		SignDate:  time.Now().AddDate(0, 0, -5).Unix(),
 		StartDate: time.Now().AddDate(0, 0, -2).Unix(),
 		EndDate:   time.Now().AddDate(1, 0, 2).Unix(),
@@ -950,16 +952,20 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										if err != nil {
 											t.Fatal(err)
 										}
-										cdr1 := &cabi.CDRParam{
+										cdr1 := &cabi.CDRParamList{
 											ContractAddress: address,
-											Index:           1,
-											SmsDt:           time.Now().Unix(),
-											Sender:          "WeChat",
-											Destination:     "85257***343",
-											SendingStatus:   0,
-											DlrStatus:       0,
-											PreStop:         "",
-											NextStop:        "HKTCSL",
+											Params: []*cabi.CDRParam{
+												{
+													Index:         1,
+													SmsDt:         time.Now().Unix(),
+													Sender:        "WeChat",
+													Destination:   "85257***343",
+													SendingStatus: 0,
+													DlrStatus:     0,
+													PreStop:       "",
+													NextStop:      "HKTCSL",
+												},
+											},
 										}
 										abi, err = cdr1.ToABI()
 										if err != nil {
@@ -1003,16 +1009,20 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										if err != nil {
 											t.Fatal(err)
 										}
-										cdr2 := &cabi.CDRParam{
+										cdr2 := &cabi.CDRParamList{
 											ContractAddress: address,
-											Index:           1,
-											SmsDt:           time.Now().Unix(),
-											Sender:          "WeChat",
-											Destination:     "85257***343",
-											SendingStatus:   0,
-											DlrStatus:       0,
-											PreStop:         "PCCWG",
-											NextStop:        "",
+											Params: []*cabi.CDRParam{
+												{
+													Index:         1,
+													SmsDt:         time.Now().Unix(),
+													Sender:        "WeChat",
+													Destination:   "85257***343",
+													SendingStatus: 0,
+													DlrStatus:     0,
+													PreStop:       "PCCWG",
+													NextStop:      "",
+												},
+											},
 										}
 										abi, err = cdr2.ToABI()
 										if err != nil {
@@ -1059,7 +1069,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										} else {
 											t.Log(pk, pi)
 
-											if hash, err := cdr1.ToHash(); err != nil {
+											if hash, err := cdr1.Params[0].ToHash(); err != nil {
 												t.Fatal(err)
 											} else {
 												if status, err := cabi.GetCDRStatus(ctx, &address, hash); err != nil {

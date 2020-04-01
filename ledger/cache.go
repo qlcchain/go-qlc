@@ -10,12 +10,11 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type MemoryCache struct {
@@ -328,7 +327,7 @@ func newCache(index int) *Cache {
 
 func newTempCache() *Cache {
 	return &Cache{
-		cache:  gcache.New(100).Build(),
+		cache:  gcache.New(10000).Build(),
 		logger: log.NewLogger("ledger/cache"),
 	}
 }

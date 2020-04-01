@@ -151,6 +151,8 @@ var (
 	SettlementABI, _ = abi.JSONToABIContract(strings.NewReader(JsonSettlement))
 	keySize          = types.AddressSize*2 + 1
 	assetKeySize     = keySize + 1
+	contractKeySize  = keySize + 1
+	contractPrefix   = append(contractaddress.SettlementAddress[:], ContractFlag)
 	assetKeyPrefix   = append(contractaddress.SettlementAddress[:], AssetFlag)
 	mappingPrefix    = append(contractaddress.SettlementAddress[:], AddressMappingFlag)
 )
@@ -391,11 +393,8 @@ func (z *CreateContractParam) Address() (types.Address, error) {
 func (z *CreateContractParam) Balance() (types.Balance, error) {
 	total := types.ZeroBalance
 	for _, service := range z.Services {
-		if b, err := service.Balance(); err != nil {
-			return types.ZeroBalance, err
-		} else {
-			total = total.Add(b)
-		}
+		b, _ := service.Balance()
+		total = total.Add(b)
 	}
 	return total, nil
 }
@@ -582,6 +581,21 @@ func (z *ContractParam) String() string {
 	return util.ToIndentString(z)
 }
 
+func SaveContractParam(ctx *vmstore.VMContext, addr *types.Address, bts []byte) error {
+	if err := ctx.SetStorage(contractPrefix, addr[:], bts); err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetContractParam(ctx *vmstore.VMContext, addr *types.Address) ([]byte, error) {
+	if storage, err := ctx.GetStorage(contractPrefix, addr[:]); err != nil {
+		return nil, err
+	} else {
+		return storage, nil
+	}
+}
+
 //go:generate go-enum -f=$GOFILE --marshal --names
 /*
 ENUM(
@@ -605,30 +619,15 @@ Empty
 type DLRStatus int
 
 type CDRParam struct {
-	ContractAddress types.Address `msg:"a" json:"contractAddress"`
-	Index           uint64        `msg:"i" json:"index" validate:"min=1"`
-	SmsDt           int64         `msg:"dt" json:"smsDt" validate:"min=1"`
-	Sender          string        `msg:"tx" json:"sender" validate:"nonzero"`
-	Destination     string        `msg:"d" json:"destination" validate:"nonzero"`
-	SendingStatus   SendingStatus `msg:"s" json:"sendingStatus"`
-	DlrStatus       DLRStatus     `msg:"ds" json:"dlrStatus"`
-	PreStop         string        `msg:"ps" json:"preStop" `
-	NextStop        string        `msg:"ns" json:"nextStop" `
-}
-
-func (z *CDRParam) ToABI() ([]byte, error) {
-	id := SettlementABI.Methods[MethodNameProcessCDR].Id()
-	if data, err := z.MarshalMsg(nil); err != nil {
-		return nil, err
-	} else {
-		id = append(id, data...)
-		return id, nil
-	}
-}
-
-func (z *CDRParam) FromABI(data []byte) error {
-	_, err := z.UnmarshalMsg(data[4:])
-	return err
+	Index         uint64        `msg:"i" json:"index" validate:"min=1"`
+	SmsDt         int64         `msg:"dt" json:"smsDt" validate:"min=1"`
+	Sender        string        `msg:"tx" json:"sender" validate:"nonzero"`
+	Customer      string        `msg:"c" json:"customer"`
+	Destination   string        `msg:"d" json:"destination" validate:"nonzero"`
+	SendingStatus SendingStatus `msg:"s" json:"sendingStatus"`
+	DlrStatus     DLRStatus     `msg:"ds" json:"dlrStatus"`
+	PreStop       string        `msg:"ps" json:"preStop"`
+	NextStop      string        `msg:"ns" json:"nextStop"`
 }
 
 func (z *CDRParam) String() string {
@@ -663,6 +662,40 @@ func (z *CDRParam) Verify() error {
 
 func (z *CDRParam) ToHash() (types.Hash, error) {
 	return types.HashBytes(util.BE_Uint64ToBytes(z.Index), []byte(z.Sender), []byte(z.Destination))
+}
+
+func (z *CDRParam) GetCustomer() string {
+	if z.Customer == "" {
+		return z.Sender
+	}
+	return z.Customer
+}
+
+type CDRParamList struct {
+	ContractAddress types.Address `msg:"a" json:"contractAddress" validate:"qlcaddress"`
+	Params          []*CDRParam   `msg:"p" json:"params" validate:"min=1"`
+}
+
+func (z *CDRParamList) ToABI() ([]byte, error) {
+	id := SettlementABI.Methods[MethodNameProcessCDR].Id()
+	if data, err := z.MarshalMsg(nil); err != nil {
+		return nil, err
+	} else {
+		id = append(id, data...)
+		return id, nil
+	}
+}
+
+func (z *CDRParamList) FromABI(data []byte) error {
+	_, err := z.UnmarshalMsg(data[4:])
+	return err
+}
+
+func (z *CDRParamList) Verify() error {
+	if errs := validator.Validate(z); errs != nil {
+		return errs
+	}
+	return nil
 }
 
 //go:generate go-enum -f=$GOFILE --marshal --names
@@ -713,9 +746,19 @@ func (z *CDRStatus) State(addr *types.Address) (sender string, isMatching, state
 	if params, ok := z.Params[addr.String()]; ok {
 		switch size := len(params); {
 		case size == 1:
-			return params[0].Sender, isMatching, params[0].Status(), nil
+			return params[0].GetCustomer(), isMatching, params[0].Status(), nil
 		case size > 1: //upload multi-times or normalize time error
-			return params[0].Sender, isMatching, false, nil
+			c := ""
+			for _, param := range params {
+				if param.Customer != "" {
+					c = param.Customer
+					break
+				}
+			}
+			if c == "" {
+				c = params[0].GetCustomer()
+			}
+			return c, isMatching, false, nil
 		default:
 			return "", isMatching, false, nil
 		}
@@ -749,11 +792,20 @@ func (z *CDRStatus) IsInCycle(start, end int64) bool {
 
 func (z *CDRStatus) ExtractID() (dt int64, sender, destination string, err error) {
 	if len(z.Params) > 0 {
-		for _, v := range z.Params {
-			if len(v) >= 1 {
-				return v[0].SmsDt, v[0].Sender, v[0].Destination, nil
+		for _, params := range z.Params {
+			if len(params) >= 1 {
+				dt = params[0].SmsDt
+				destination = params[0].Destination
+				sender = params[0].GetCustomer()
+				for _, param := range params {
+					if param.Customer != "" {
+						sender = param.Customer
+						return
+					}
+				}
 			}
 		}
+		return
 	}
 
 	return 0, "", "", errors.New("can not find any CDR param")
@@ -1005,6 +1057,19 @@ func GetAllCDRStatus(ctx *vmstore.VMContext, addr *types.Address) ([]*CDRStatus,
 	return GetCDRStatusByDate(ctx, addr, 0, 0)
 }
 
+// GetMultiPartyCDRStatus get all CDR records belong to firstAddr and secondAddr
+func GetMultiPartyCDRStatus(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address) (map[types.Address][]*CDRStatus, error) {
+	if data1, err := GetCDRStatusByDate(ctx, firstAddr, 0, 0); err != nil {
+		return nil, err
+	} else {
+		if data2, err := GetCDRStatusByDate(ctx, secondAddr, 0, 0); err != nil {
+			return nil, err
+		} else {
+			return map[types.Address][]*CDRStatus{*firstAddr: data1, *secondAddr: data2}, nil
+		}
+	}
+}
+
 //FindSettlementContract query settlement contract by user address and CDR data
 func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *CDRParam) (*ContractParam, error) {
 	if contracts, err := queryContractParam(ctx, "FindSettlementContract", func(cp *ContractParam) bool {
@@ -1070,7 +1135,7 @@ func GetSettlementContract(ctx *vmstore.VMContext, addr *types.Address) (*Contra
 		_ = logger.Sync()
 	}()
 
-	if storage, err := ctx.GetStorage(contractaddress.SettlementAddress[:], addr[:]); err != nil {
+	if storage, err := ctx.GetStorage(contractPrefix, addr[:]); err != nil {
 		return nil, err
 	} else {
 		cp := &ContractParam{}
@@ -1897,8 +1962,8 @@ func queryContractParam(ctx *vmstore.VMContext, name string, fn func(cp *Contrac
 
 	var result []*ContractParam
 
-	if err := ctx.IteratorAll(contractaddress.SettlementAddress[:], func(key []byte, value []byte) error {
-		if len(key) == keySize && len(value) > 0 {
+	if err := ctx.IteratorAll(contractPrefix, func(key []byte, value []byte) error {
+		if len(key) == contractKeySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {
 				logger.Error(err)
@@ -1930,8 +1995,8 @@ func queryContractByAddressAndStopName(ctx *vmstore.VMContext, name string, fn f
 
 	var result *ContractParam
 
-	if err := ctx.IteratorAll(contractaddress.SettlementAddress[:], func(key []byte, value []byte) error {
-		if len(key) == keySize && len(value) > 0 {
+	if err := ctx.IteratorAll(contractPrefix, func(key []byte, value []byte) error {
+		if len(key) == contractKeySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {
 				logger.Error(err)

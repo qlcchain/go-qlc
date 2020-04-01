@@ -264,7 +264,6 @@ func buildContactParam(addr1, addr2 types.Address, name1, name2 string) *CreateC
 	}
 }
 
-//TODO: remove all sleep
 func TestSettlementAPI_Integration(t *testing.T) {
 	testcase, verifier, api := setupSettlementAPI(t)
 	defer testcase(t)
@@ -482,18 +481,17 @@ func TestSettlementAPI_Integration(t *testing.T) {
 
 			// pccw upload CDR
 			cdr1 := &cabi.CDRParam{
-				ContractAddress: types.ZeroAddress,
-				Index:           1111,
-				SmsDt:           time.Now().Unix(),
-				Sender:          "WeChat",
-				Destination:     "85257***343",
-				SendingStatus:   cabi.SendingStatusSent,
-				DlrStatus:       cabi.DLRStatusDelivered,
-				PreStop:         "",
-				NextStop:        "HKTCSL",
+				Index:         1111,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "WeChat",
+				Destination:   "85257***343",
+				SendingStatus: cabi.SendingStatusSent,
+				DlrStatus:     cabi.DLRStatusDelivered,
+				PreStop:       "",
+				NextStop:      "HKTCSL",
 			}
 
-			if blk, err := api.GetProcessCDRBlock(&pccwAddr, cdr1); err != nil {
+			if blk, err := api.GetProcessCDRBlock(&pccwAddr, []*cabi.CDRParam{cdr1}); err != nil {
 				t.Fatal(err)
 			} else {
 				blk.Signature = account1.Sign(txHash)
@@ -504,17 +502,16 @@ func TestSettlementAPI_Integration(t *testing.T) {
 
 			// CSL upload CDR
 			cdr2 := &cabi.CDRParam{
-				ContractAddress: types.ZeroAddress,
-				Index:           1111,
-				SmsDt:           time.Now().Unix(),
-				Sender:          "WeChat",
-				Destination:     "85257***343",
-				SendingStatus:   cabi.SendingStatusSent,
-				DlrStatus:       cabi.DLRStatusDelivered,
-				PreStop:         "PCCWG",
-				NextStop:        "",
+				Index:         1111,
+				SmsDt:         time.Now().Unix(),
+				Sender:        "WeChat",
+				Destination:   "85257***343",
+				SendingStatus: cabi.SendingStatusSent,
+				DlrStatus:     cabi.DLRStatusDelivered,
+				PreStop:       "PCCWG",
+				NextStop:      "",
 			}
-			if blk, err := api.GetProcessCDRBlock(&cslAddr, cdr2); err != nil {
+			if blk, err := api.GetProcessCDRBlock(&cslAddr, []*cabi.CDRParam{cdr2}); err != nil {
 				t.Fatal(err)
 			} else {
 				blk.Signature = account2.Sign(txHash)
@@ -594,22 +591,165 @@ func TestSortCDRs(t *testing.T) {
 	t.Log(r)
 }
 
+func TestSortCDRStatus(t *testing.T) {
+	const j = `[
+  {
+    "contractAddress": "qlc_3n4kx38h5ou7iyupezf4prbx89yxa7zujtf8d6r8ucpf6e9x13ki1dhcdwwk",
+    "params": {
+      "qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te": [
+        {
+          "index": 5285517,
+          "smsDt": 1585655170,
+          "sender": "Slack",
+          "customer": "",
+          "destination": "85257***3430",
+          "sendingStatus": "Sent",
+          "dlrStatus": "Delivered",
+          "preStop": "MONTNETS",
+          "nextStop": ""
+        }
+      ],
+      "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq": [
+        {
+          "index": 5285517,
+          "smsDt": 1585655170,
+          "sender": "Slack",
+          "customer": "",
+          "destination": "85257***3430",
+          "sendingStatus": "Sent",
+          "dlrStatus": "Delivered",
+          "preStop": "",
+          "nextStop": "A2P_PCCWG"
+        }
+      ]
+    },
+    "status": "success"
+  },
+  {
+    "contractAddress": "qlc_3mdqbk4w5utsxspss7tupwnetrs4yca68o78ybd433fnhihnftnmdw5g9pmj",
+    "params": {
+      "qlc_1je9h6w3o5b386oig7sb8j71sf6xr9f5ipemw8gojfcqjpk6r5hiu7z3jx3z": [
+        {
+          "index": 5285517,
+          "smsDt": 1585655170,
+          "sender": "Slack",
+          "customer": "",
+          "destination": "85257***3430",
+          "sendingStatus": "Sent",
+          "dlrStatus": "Delivered",
+          "preStop": "A2P_PCCWG",
+          "nextStop": ""
+        }
+      ],
+      "qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te": [
+        {
+          "index": 5285517,
+          "smsDt": 1585655170,
+          "sender": "Slack",
+          "customer": "",
+          "destination": "85257***3430",
+          "sendingStatus": "Sent",
+          "dlrStatus": "Delivered",
+          "preStop": "",
+          "nextStop": "CSL Hong Kong @ 3397"
+        }
+      ]
+    },
+    "status": "success"
+  },
+  {
+    "contractAddress": "qlc_3mdqbk4w5utsxspss7tupwnetrs4yca68o78ybd433fnhihnftnmdw5g9pmj",
+    "params": {
+      "qlc_1je9h6w3o5b386oig7sb8j71sf6xr9f5ipemw8gojfcqjpk6r5hiu7z3jx3z": [
+        {
+          "index": 5285518,
+          "smsDt": 1585655470,
+          "sender": "WeChat",
+          "customer": "",
+          "destination": "85257***3431",
+          "sendingStatus": "Sent",
+          "dlrStatus": "Delivered",
+          "preStop": "A2P_PCCWG",
+          "nextStop": ""
+        }
+      ],
+      "qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te": [
+        {
+          "index": 5285518,
+          "smsDt": 1585655470,
+          "sender": "WeChat",
+          "customer": "",
+          "destination": "85257***3431",
+          "sendingStatus": "Sent",
+          "dlrStatus": "Delivered",
+          "preStop": "",
+          "nextStop": "CSL Hong Kong @ 3397"
+        }
+      ]
+    },
+    "status": "success"
+  },
+  {
+    "contractAddress": "qlc_3n4kx38h5ou7iyupezf4prbx89yxa7zujtf8d6r8ucpf6e9x13ki1dhcdwwk",
+    "params": {
+      "qlc_3pbbee5imrf3aik35ay44phaugkqad5a8qkngot6by7h8pzjrwwmxwket4te": [
+        {
+          "index": 5285518,
+          "smsDt": 1585655470,
+          "sender": "WeChat",
+          "customer": "",
+          "destination": "85257***3431",
+          "sendingStatus": "Sent",
+          "dlrStatus": "Delivered",
+          "preStop": "MONTNETS",
+          "nextStop": ""
+        }
+      ],
+      "qlc_3pekn1xq8boq1ihpj8q96wnktxiu8cfbe5syaety3bywyd45rkyhmj8b93kq": [
+        {
+          "index": 5285518,
+          "smsDt": 1585655470,
+          "sender": "WeChat",
+          "customer": "",
+          "destination": "85257***3431",
+          "sendingStatus": "Sent",
+          "dlrStatus": "Delivered",
+          "preStop": "",
+          "nextStop": "A2P_PCCWG"
+        }
+      ]
+    },
+    "status": "success"
+  }
+]
+`
+	var r []*CDRStatus
+	if err := json.Unmarshal([]byte(j), &r); err != nil {
+		t.Fatal(err)
+	}
+	//t.Log(util.ToIndentString(r))
+	sort.Slice(r, func(i, j int) bool {
+		return sortCDRStatusFun(r[i], r[j])
+	})
+	t.Log(util.ToIndentString(r))
+}
+
 func buildCDRStatus() *cabi.CDRStatus {
+	i, _ := random.Intn(10000)
+	now := time.Now().Add(time.Minute * time.Duration(i)).Unix()
 	cdrParam := cabi.CDRParam{
-		Index:         1,
-		SmsDt:         time.Now().Unix(),
+		Index:         uint64(now / 20),
+		SmsDt:         now,
 		Sender:        "PCCWG",
 		Destination:   "85257***343",
 		SendingStatus: cabi.SendingStatusSent,
 		DlrStatus:     cabi.DLRStatusDelivered,
 	}
 	cdr1 := cdrParam
-	i, _ := random.Intn(10000)
-	cdr1.Index = uint64(i)
-	cdr1.SmsDt = time.Now().Add(time.Minute * time.Duration(cdr1.Index)).Unix()
 
 	status := &cabi.CDRStatus{
 		Params: map[string][]cabi.CDRParam{
+			mock.Address().String(): {cdr1},
 			mock.Address().String(): {cdr1},
 		},
 		Status: cabi.SettlementStatusSuccess,
@@ -873,29 +1013,29 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 
 	cdrCount := 10
 	for i := 0; i < cdrCount; i++ {
-		template := cabi.CDRParam{
-			ContractAddress: types.ZeroAddress,
-			Index:           1111,
-			SmsDt:           time.Now().Unix(),
-			Destination:     "85257***343",
-			SendingStatus:   cabi.SendingStatusSent,
-			DlrStatus:       cabi.DLRStatusDelivered,
-			PreStop:         "",
-			NextStop:        "",
-		}
-
+		var sender string
 		if i%2 == 1 {
-			template.Sender = "WeChat"
+			sender = "WeChat"
 		} else {
-			template.Sender = "Slack"
+			sender = "Slack"
 		}
-		template.Index++
+		now := time.Now().Add(time.Minute * 5 * time.Duration(i))
+		template := cabi.CDRParam{
+			Index:         uint64(now.Unix() / 300),
+			SmsDt:         now.Unix(),
+			Destination:   "85257***343",
+			Sender:        sender,
+			SendingStatus: cabi.SendingStatusSent,
+			DlrStatus:     cabi.DLRStatusDelivered,
+			PreStop:       "",
+			NextStop:      "",
+		}
 		template.Destination = template.Destination[:len(template.Destination)] + strconv.Itoa(i)
 
 		cdr1 := template
 		cdr1.NextStop = "A2P_PCCWG"
 
-		if blk, err := api.GetProcessCDRBlock(&montAddr, &cdr1); err != nil {
+		if blk, err := api.GetProcessCDRBlock(&montAddr, []*cabi.CDRParam{&cdr1}); err != nil {
 			t.Fatal(err)
 		} else {
 			blk.Signature = account1.Sign(blk.GetHash())
@@ -907,7 +1047,7 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		cdr2 := template
 		cdr2.PreStop = "MONTNETS"
 
-		if blk, err := api.GetProcessCDRBlock(&pccwAddr, &cdr2); err != nil {
+		if blk, err := api.GetProcessCDRBlock(&pccwAddr, []*cabi.CDRParam{&cdr2}); err != nil {
 			t.Fatal(err)
 		} else {
 			blk.Signature = account2.Sign(blk.GetHash())
@@ -919,7 +1059,7 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		cdr3 := template
 		cdr3.NextStop = "CSL Hong Kong @ 3397"
 
-		if blk, err := api.GetProcessCDRBlock(&pccwAddr, &cdr3); err != nil {
+		if blk, err := api.GetProcessCDRBlock(&pccwAddr, []*cabi.CDRParam{&cdr3}); err != nil {
 			t.Fatal(err)
 		} else {
 			blk.Signature = account2.Sign(blk.GetHash())
@@ -930,7 +1070,7 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		cdr4 := template
 		cdr4.PreStop = "A2P_PCCWG"
 
-		if blk, err := api.GetProcessCDRBlock(&cslAddr, &cdr4); err != nil {
+		if blk, err := api.GetProcessCDRBlock(&cslAddr, []*cabi.CDRParam{&cdr4}); err != nil {
 			t.Fatal(err)
 		} else {
 			blk.Signature = account3.Sign(blk.GetHash())
@@ -962,6 +1102,12 @@ func TestSettlementAPI_GenerateMultiPartyInvoice(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		t.Log(report)
+	}
+
+	if cdrs, err := api.GetMultiPartyCDRStatus(&contractAddr1, &contractAddr2, 100, offset(0)); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(util.ToIndentString(cdrs))
 	}
 }
 
