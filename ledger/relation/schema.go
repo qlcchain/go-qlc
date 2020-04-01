@@ -21,9 +21,9 @@ type Table interface {
 
 type BlockHash struct {
 	Id        int64
-	Hash      string `db:"hash" typ:"char(32)"`
-	Type      string `db:"type"  typ:"varchar(10)"`
-	Address   string `db:"address" typ:"char(32)"`
+	Hash      string `db:"hash" typ:"char(64)"`
+	Type      string `db:"type"  typ:"varchar(15)"`
+	Address   string `db:"address" typ:"char(64)"`
 	Timestamp int64  `db:"timestamp" typ:"integer"`
 }
 
@@ -40,9 +40,9 @@ func convertSchemaType(db string, typ string) string {
 	case "sqlite", "sqlite3":
 		return typ
 	case "mysql":
-		return "varchar(30)"
+		return "varchar(100)"
 	default:
-		return "varchar(30)"
+		return "varchar(100)"
 	}
 }
 
