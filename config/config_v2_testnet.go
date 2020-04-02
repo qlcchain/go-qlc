@@ -40,6 +40,7 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 			IsBootNode:         false,
 			BootNodeHttpServer: bootNodeHttpServer,
 			Listen:             "/ip4/0.0.0.0/tcp/19734",
+			WhiteListMode:      false,
 			SyncInterval:       120,
 			Discovery: &DiscoveryConfigV2{
 				DiscoveryInterval: 60,

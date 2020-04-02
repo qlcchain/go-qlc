@@ -3,6 +3,9 @@ package p2p
 import (
 	"time"
 
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -40,6 +43,16 @@ func NewQlcService(cfgFile string) (*QlcService, error) {
 	l := ledger.NewLedger(cfgFile)
 	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
+	ctx := vmstore.NewVMContext(l)
+	if cfg.P2P.WhiteListMode {
+		pn, err := abi.PermissionGetAllNodes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range pn {
+			node.protector.whiteList = append(node.protector.whiteList, v.NodeUrl)
+		}
+	}
 	return ns, nil
 }
 
@@ -94,11 +107,13 @@ func (ns *QlcService) setEvent() error {
 			ns.node.setRepresentativeNode(msg)
 		case *topic.EventP2PSyncStateMsg:
 			ns.msgService.syncService.onConsensusSyncFinished()
+		case *topic.PermissionEvent:
+			ns.node.updateWhiteList(msg.NodeUrl)
 		}
 	}), ns.msgEvent)
 
 	if err := ns.subscriber.Subscribe(topic.EventBroadcast, topic.EventSendMsgToSingle, topic.EventFrontiersReq,
-		topic.EventRepresentativeNode, topic.EventConsensusSyncFinished); err != nil {
+		topic.EventRepresentativeNode, topic.EventConsensusSyncFinished, topic.EventPermissionNodeUpdate); err != nil {
 		ns.node.logger.Error(err)
 		return err
 	}
