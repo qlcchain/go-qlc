@@ -40,7 +40,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "contract",
 			Version:   "1.0",
-			Service:   api.NewContractApi(),
+			Service:   api.NewContractApi(r.cc, r.ledger),
 			Public:    true,
 		}
 	case "mintage":

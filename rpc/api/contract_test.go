@@ -9,6 +9,13 @@ package api
 
 import (
 	"encoding/hex"
+	"github.com/google/uuid"
+	qctx "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"go.uber.org/zap"
@@ -19,8 +26,45 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 )
 
+type mockDataContractApi struct {
+	l  ledger.Store
+	cc *qctx.ChainContext
+	eb event.EventBus
+}
+
+func setupTestCaseContractApi(t *testing.T) (func(t *testing.T), *mockDataContractApi) {
+	md := new(mockDataContractApi)
+
+	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+
+	md.l = ledger.NewLedger(cm.ConfigFile)
+
+	md.cc = qctx.NewChainContext(cm.ConfigFile)
+	md.cc.Init(nil)
+
+	md.eb = md.cc.EventBus()
+
+	return func(t *testing.T) {
+		_ = md.eb.Close()
+		err := md.l.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}, md
+}
+
 func TestNewContractApi(t *testing.T) {
-	api := NewContractApi()
+	tearDown, md := setupTestCaseContractApi(t)
+	defer tearDown(t)
+
+	api := NewContractApi(md.cc, md.l)
 	if abi, err := api.GetAbiByContractAddress(types.BlackHoleAddress); err != nil {
 		t.Fatal(err)
 	} else if len(abi) == 0 {
