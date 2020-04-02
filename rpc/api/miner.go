@@ -197,7 +197,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	}
 
 	vmContext := vmstore.NewVMContext(m.ledger)
-	err = m.reward.SetStorage(vmContext, param.EndHeight, param.RewardAmount, param.RewardBlocks, send)
+	_, _, err = m.reward.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}

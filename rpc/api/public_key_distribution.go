@@ -132,7 +132,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.vr.SetStorage(vmContext, param.Account, vt, param.VInfo, vk)
+	_, _, err = p.vr.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.vu.SetStorage(vmContext, param.Account, vt, vs.VInfo, vs.VKey)
+	_, _, err = p.vu.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +524,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.pu.SetStorage(vmContext, param.Account, pt, id, kt, pk, verifiers, codesHash, param.Fee, tm.Header)
+	_, _, err = p.pu.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -602,7 +602,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.up.SetStorage(vmContext, pt, id, kt, pk, hash)
+	_, _, err = p.up.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -851,7 +851,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.or.SetStorage(vmContext, param.Account, ot, id, kt, pk, param.Code, hash)
+	_, _, err = p.or.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
