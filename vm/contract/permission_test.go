@@ -7,7 +7,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/ledger"
 
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
@@ -264,18 +263,6 @@ func TestNodeUpdate_ProcessSend(t *testing.T) {
 	_, _, err = n.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	eb := event.GetEventBus("test")
-	err = n.EventNotify(eb, ctx, blk)
-	if err != nil {
-		t.Fatal()
-	}
-
-	blk.Data = []byte{}
-	err = n.EventNotify(eb, ctx, blk)
-	if err == nil {
-		t.Fatal()
 	}
 }
 

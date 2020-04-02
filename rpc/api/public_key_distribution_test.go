@@ -598,6 +598,11 @@ func TestPublicKeyDistributionApi_GetPublishBlock(t *testing.T) {
 	}
 
 	addTestVerifierState(t, l, 100, []types.Address{mock.Address()}, 100)
+	preBlk := mock.StateBlockWithoutWork()
+	preBlk.Balance = common.PublishCost
+	l.AddStateBlock(preBlk)
+	am.Tokens[0].Header = preBlk.GetHash()
+	l.UpdateAccountMeta(am, l.Cache().GetCache())
 	_, err = pkd.GetPublishBlock(param)
 	if err != nil {
 		t.Fatal(err)
@@ -916,7 +921,15 @@ func TestPublicKeyDistributionApi_GetOracleBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	addTestVerifierState(t, l, 100, []types.Address{mock.Address()}, 1000)
+	addTestVerifierState(t, l, 100, []types.Address{param.Account}, 1000)
+	vk := mock.Hash()
+	addTestVerifierInfo(t, ctx, param.Account, common.OracleTypeEmail, "123@test.com", vk[:])
+	preBlk := mock.StateBlockWithoutWork()
+	preBlk.Balance = common.OracleCost
+	l.AddStateBlock(preBlk)
+	am.Tokens[0].Header = preBlk.GetHash()
+	am.CoinOracle = common.MinVerifierPledgeAmount
+	l.UpdateAccountMeta(am, l.Cache().GetCache())
 	_, err = pkd.GetOracleBlock(param)
 	if err != nil {
 		t.Fatal(err)

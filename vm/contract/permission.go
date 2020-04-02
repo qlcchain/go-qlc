@@ -7,11 +7,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+
 	"github.com/qlcchain/go-qlc/common/statedb"
 
-	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
-	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -177,6 +176,13 @@ func (n *NodeUpdate) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContra
 		return err
 	}
 
+	pe := &topic.PermissionEvent{
+		EventType: topic.PermissionEventNodeUpdate,
+		NodeId:    node.NodeId,
+		NodeUrl:   node.NodeUrl,
+	}
+	ctx.Ledger.EventBus().Publish(topic.EventPermissionNodeUpdate, pe)
+
 	trieKey := statedb.PovCreateContractLocalStateKey(abi.PermissionDataNode, []byte(node.NodeId))
 
 	node.Valid = true
@@ -186,21 +192,4 @@ func (n *NodeUpdate) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContra
 	}
 
 	return csdb.SetValue(trieKey, data)
-}
-
-func (n *NodeUpdate) EventNotify(eb event.EventBus, ctx *vmstore.VMContext, block *types.StateBlock) error {
-	node := new(abi.PermNode)
-	err := abi.PermissionABI.UnpackMethod(node, abi.MethodNamePermissionNodeUpdate, block.Data)
-	if err != nil {
-		return ErrUnpackMethod
-	}
-
-	pe := &common.PermissionEvent{
-		EventType: common.PermissionEventNodeUpdate,
-		NodeId:    node.NodeId,
-		NodeUrl:   node.NodeUrl,
-	}
-	eb.Publish(topic.EventPermissionNodeUpdate, pe)
-
-	return nil
 }

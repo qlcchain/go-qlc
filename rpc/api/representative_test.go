@@ -96,8 +96,8 @@ func TestRepApi_GetRewardSendBlock(t *testing.T) {
 	r := NewRepApi(cfg, l)
 	param := new(RepRewardParam)
 	param.RewardBlocks = 10
-	param.StartHeight = 0
-	param.EndHeight = 1439
+	param.StartHeight = common.PovMinerRewardHeightStart
+	param.EndHeight = common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay) - 1
 	param.RewardAmount = big.NewInt(100)
 
 	blk, _ := r.GetRewardSendBlock(param)
@@ -132,12 +132,24 @@ func TestRepApi_GetRewardSendBlock(t *testing.T) {
 	}
 
 	pb, td := mock.GeneratePovBlock(nil, 0)
+	pb.Header.BasHdr.Height = uint64(common.POVChainBlocksPerDay) * 4
 	l.AddPovBlock(pb, td)
 	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
 	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
-	blk, _ = r.GetRewardSendBlock(param)
+
+	ds := types.NewPovMinerDayStat()
+	it := types.NewPovMinerStatItem()
+	it.FirstHeight = param.StartHeight
+	it.LastHeight = param.EndHeight
+	it.RepBlockNum = uint32(param.RewardBlocks)
+	it.RepReward = types.Balance{Int: param.RewardAmount}
+	ds.DayIndex = uint32(common.PovMinerRewardHeightStart / uint64(common.POVChainBlocksPerDay))
+	ds.MinerStats[param.Account.String()] = it
+	l.AddPovMinerStat(ds)
+
+	blk, err := r.GetRewardSendBlock(param)
 	if blk == nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 }
 

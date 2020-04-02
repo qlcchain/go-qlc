@@ -11,7 +11,6 @@ import (
 	"errors"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract"
@@ -92,8 +91,4 @@ func (c *BaseContract) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovCont
 
 func (c *BaseContract) DoReceiveOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock, input *types.StateBlock) error {
 	return errors.New("not implemented")
-}
-
-func (c *BaseContract) EventNotify(eb event.EventBus, ctx *vmstore.VMContext, block *types.StateBlock) error {
-	return nil
 }
