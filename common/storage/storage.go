@@ -80,6 +80,8 @@ const (
 	KeyPrefixPeerInfo    //prefix+peerID => peerInfo
 	KeyPrefixGapPublish
 	KeyPrefixDPoS
+	KeyPrefixAccountBlockHash
+	KeyPrefixAccountPovHeight
 	KeyPrefixPrivatePayload
 
 	// Trie key space should be different

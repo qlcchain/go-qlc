@@ -10,12 +10,11 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type MemoryCache struct {
@@ -260,6 +259,31 @@ func (lc *MemoryCache) prefixIterator(prefix []byte, fn func(k []byte, v []byte)
 						return nil, fmt.Errorf("ledger iterator: %s", err)
 					}
 				}
+			}
+		}
+		index = (index - 1) % lc.cacheCount
+		if index < 0 {
+			index = lc.cacheCount - 1
+		}
+	}
+	return keys, nil
+}
+
+func (lc *MemoryCache) prefixIteratorInterface(prefix []byte, fn func(k []byte, v interface{}) error) ([][]byte, error) {
+	keys := make([][]byte, 0)
+	index := lc.writeIndex
+	readIndex := lc.readIndex
+	for index != readIndex {
+		items := lc.caches[index].cache.GetALL(false)
+		for k, v := range items {
+			key := originalKey(k.(string))
+			if bytes.HasPrefix(key, prefix) {
+				if !contain(keys, key) && !isDeleteKey(v) {
+					if err := fn(key, v); err != nil {
+						return nil, fmt.Errorf("ledger iterator: %s", err)
+					}
+				}
+				keys = append(keys, key)
 			}
 		}
 		index = (index - 1) % lc.cacheCount

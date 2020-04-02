@@ -7,6 +7,11 @@
 
 package ledger
 
+import (
+	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/types"
+)
+
 type Store interface {
 	AccountStore
 	SmartBlockStore
@@ -26,4 +31,24 @@ type Store interface {
 	PrivacyStore
 	contractValueStore
 	vmlogsStore
+}
+
+type ContractStore interface {
+	contractValueStore
+	vmlogsStore
+
+	GetBlockChild(hash types.Hash, c ...storage.Cache) (types.Hash, error)
+	GetStateBlock(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error)
+	GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error)
+	GetLatestPovBlock() (*types.PovBlock, error)
+
+	GetAccountMeta(address types.Address, c ...storage.Cache) (*types.AccountMeta, error)
+	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+	HasAccountMetaConfirmed(address types.Address) (bool, error)
+
+	GetAccountMetaByPovHeight(address types.Address, height uint64) (*types.AccountMeta, error)
+	GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error)
+	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
+
+	CalculateAmount(block *types.StateBlock) (types.Balance, error)
 }

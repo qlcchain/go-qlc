@@ -477,6 +477,9 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
+		if err := lv.l.AddAccountMetaHistory(am.Token(block.GetToken()), block, cache); err != nil {
+			return err
+		}
 		return lv.l.UpdateAccountMeta(am, cache)
 	} else {
 		account := types.AccountMeta{
@@ -490,6 +493,9 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			account.CoinNetwork = block.GetNetwork()
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
+		}
+		if err := lv.l.AddAccountMetaHistory(tmNew, block, cache); err != nil {
+			return err
 		}
 		return lv.l.AddAccountMeta(&account, cache)
 	}

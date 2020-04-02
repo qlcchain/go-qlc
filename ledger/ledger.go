@@ -13,8 +13,6 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"go.uber.org/zap"
-
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -26,6 +24,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/migration"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type LedgerStore interface {
@@ -695,6 +694,25 @@ func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error)
 
 func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
 	keys, err := l.cache.prefixIterator(prefix, fn)
+	if err != nil {
+		return fmt.Errorf("cache iterator : %s", err)
+	}
+	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
+		if !contain(keys, k) {
+			if err := fn(k, v); err != nil {
+				return fmt.Errorf("ledger iterator: %s", err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("ledger store iterator: %s", err)
+	}
+
+	return nil
+}
+
+func (l *Ledger) IteratorInterface(prefix []byte, end []byte, fn func(k []byte, v interface{}) error) error {
+	keys, err := l.cache.prefixIteratorInterface(prefix, fn)
 	if err != nil {
 		return fmt.Errorf("cache iterator : %s", err)
 	}
