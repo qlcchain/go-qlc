@@ -53,9 +53,11 @@ var (
 	PubKeyDistributionAddress, _ = GenerateBuiltinContractAddress(24)
 	SettlementAddress, _         = GenerateBuiltinContractAddress(25)
 	PermissionAddress, _         = GenerateBuiltinContractAddress(26)
+	PrivacyDemoKVAddress, _      = GenerateBuiltinContractAddress(27)
 
 	ChainContractAddressList = []Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress,
-		BlackHoleAddress, RepAddress, PubKeyDistributionAddress, SettlementAddress, PermissionAddress}
+		BlackHoleAddress, RepAddress, PubKeyDistributionAddress, SettlementAddress, PermissionAddress,
+		PrivacyDemoKVAddress}
 	RewardContractAddressList = []Address{MinerAddress, RepAddress}
 
 	// AddressEncoding is a base32 encoding using addressEncodingAlphabet as its

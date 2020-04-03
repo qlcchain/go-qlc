@@ -93,7 +93,7 @@ func (b *StateBlock) GetHash() Hash {
 	return hash
 }
 
-func (b *StateBlock) GetHashNotUsed() Hash {
+func (b *StateBlock) GetHashWithoutPrivacy() Hash {
 	t := []byte{byte(b.Type)}
 	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Vote.Bytes(), b.Network.Bytes(),
 		b.Storage.Bytes(), b.Oracle.Bytes(), b.Previous[:], b.Link[:], b.Sender, b.Receiver, b.Message[:], b.Data,
@@ -352,8 +352,9 @@ func (b *StateBlock) SetPrivateRawData(rawData []byte) {
 	b.PrivateRecvRsp = true
 }
 
-func (b *StateBlock) ClearPrivateRawData() {
+func (b *StateBlock) ResetPrivateRawData() {
 	b.PrivateRawData = nil
+	b.PrivateRecvRsp = false
 }
 
 //

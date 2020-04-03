@@ -285,17 +285,17 @@ func TestStateBlock_PrivateHash(t *testing.T) {
 	blk.Balance = NewBalance(rand.Int63())
 	blk.Vote = NewBalance(rand.Int63())
 
-	h1 := blk.GetHashNotUsed()
+	h1 := blk.GetHashWithoutPrivacy()
 
 	h2 := blk.GetHash()
 	if h1 != h2 {
 		t.Fatal("public GetHash != GetHashNotUsed")
 	}
 
-	blk.PrivateFrom = NewHexBytesFromHex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1")
-	blk.PrivateFor = append(blk.PrivateFor, NewHexBytesFromHex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff2"))
-	blk.PrivateFor = append(blk.PrivateFor, NewHexBytesFromHex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3"))
-	blk.PrivateGroupID = NewHexBytesFromHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff10")
+	blk.PrivateFrom = ("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1")
+	blk.PrivateFor = append(blk.PrivateFor, ("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff2"))
+	blk.PrivateFor = append(blk.PrivateFor, ("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3"))
+	blk.PrivateGroupID = ("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff10")
 
 	h3 := blk.GetHash()
 	if h1 == h3 {

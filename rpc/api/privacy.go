@@ -12,6 +12,9 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/contract"
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type PrivacyApi struct {
@@ -21,6 +24,7 @@ type PrivacyApi struct {
 	eb     event.EventBus
 	feb    *event.FeedEventBus
 	cc     *chainctx.ChainContext
+	demoKV *contract.PrivacyDemoKVSet
 }
 
 func NewPrivacyApi(cfg *config.Config, l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *PrivacyApi {
@@ -31,6 +35,7 @@ func NewPrivacyApi(cfg *config.Config, l ledger.Store, eb event.EventBus, cc *ch
 		feb:    cc.FeedEventBus(),
 		logger: log.NewLogger("rpc/privacy"),
 		cc:     cc,
+		demoKV: new(contract.PrivacyDemoKVSet),
 	}
 	return api
 }
@@ -83,10 +88,6 @@ func (api *PrivacyApi) DistributeRawPayload(param *PrivacyDistributeParam) ([]by
 	return privacyDistributeRawPayload(api.eb, msgReq)
 }
 
-type PrivacyPayloadResponse struct {
-	RawPayload []byte `json:"rawPayload"`
-}
-
 func (api *PrivacyApi) GetRawPayload(enclaveKey []byte) ([]byte, error) {
 	msgReq := &topic.EventPrivacyRecvReqMsg{
 		EnclaveKey: enclaveKey,
@@ -95,4 +96,10 @@ func (api *PrivacyApi) GetRawPayload(enclaveKey []byte) ([]byte, error) {
 	}
 
 	return privacyGetRawPayload(api.eb, msgReq)
+}
+
+// GetDemoKV returns KV in PrivacyKV contract (just for demo in testnet)
+func (api *PrivacyApi) GetDemoKV(key []byte) ([]byte, error) {
+	vmCtx := vmstore.NewVMContext(api.l)
+	return abi.PrivacyKVGetValue(vmCtx, key)
 }

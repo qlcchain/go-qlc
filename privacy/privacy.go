@@ -77,26 +77,34 @@ func (c *Controller) Stop() error {
 }
 
 func (c *Controller) onEventPrivacySendReqMsg(msg *topic.EventPrivacySendReqMsg) {
-	c.logger.Debugf("PrivacySendReq Event, PrivateFrom:%s", msg.PrivateFrom)
-
 	rspMsg := &topic.EventPrivacySendRspMsg{ReqData: msg.ReqData}
 	rspMsg.EnclaveKey, rspMsg.Err = c.ptm.Send(msg.RawPayload, msg.PrivateFrom, msg.PrivateFor)
+
+	if rspMsg.Err != nil {
+		c.logger.Debugf("PrivacySendReq Event, PrivateFrom:%s, return Err:%s", msg.PrivateFrom, rspMsg.Err)
+	} else {
+		c.logger.Debugf("PrivacySendReq Event, PrivateFrom:%s, return EnclaveKey:%s", msg.PrivateFrom, formatBytesPrefix(rspMsg.EnclaveKey))
+	}
 
 	msg.RspChan <- rspMsg
 }
 
 func (c *Controller) onEventPrivacyRecvReqMsg(msg *topic.EventPrivacyRecvReqMsg) {
-	c.logger.Debugf("PrivacyRecvReq Event, EnclaveKey:%s", formatBytesPrefix(msg.EnclaveKey))
-
 	rspMsg := &topic.EventPrivacyRecvRspMsg{ReqData: msg.ReqData}
 	rspMsg.RawPayload, rspMsg.Err = c.ptm.Receive(msg.EnclaveKey)
+
+	if rspMsg.Err != nil {
+		c.logger.Debugf("PrivacyRecvReq Event, EnclaveKey:%s, return Err:%s", formatBytesPrefix(msg.EnclaveKey), rspMsg.Err)
+	} else {
+		c.logger.Debugf("PrivacyRecvReq Event, EnclaveKey:%s, return RawPayload:%s", formatBytesPrefix(msg.EnclaveKey), formatBytesPrefix(rspMsg.RawPayload))
+	}
 
 	msg.RspChan <- rspMsg
 }
 
 func formatBytesPrefix(data []byte) string {
-	if len(data) > 8 {
-		return hex.EncodeToString(data[0:8])
+	if len(data) > 32 {
+		return hex.EncodeToString(data[0:32])
 	}
 	return hex.EncodeToString(data[0:])
 }

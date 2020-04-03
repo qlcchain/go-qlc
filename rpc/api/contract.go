@@ -61,6 +61,14 @@ func (c *ContractApi) PackContractData(abiStr string, methodName string, params 
 	return abiContract.PackMethod(methodName, arguments...)
 }
 
+func (c *ContractApi) PackChainContractData(contractAddress types.Address, methodName string, params []string) ([]byte, error) {
+	abiStr, err := c.GetAbiByContractAddress(contractAddress)
+	if err != nil {
+		return nil, err
+	}
+	return c.PackContractData(abiStr, methodName, params)
+}
+
 func (c *ContractApi) ContractAddressList() []types.Address {
 	return types.ChainContractAddressList
 }
@@ -70,7 +78,7 @@ type ContractSendBlockPara struct {
 	TokenName string        `json:"tokenName"`
 	To        types.Address `json:"to"`
 	Amount    types.Balance `json:"amount"`
-	Data      []byte        `json:"data,omitempty"`
+	Data      []byte        `json:"data"`
 
 	PrivateFrom    string   `json:"privateFrom,omitempty"`
 	PrivateFor     []string `json:"privateFor,omitempty"`
@@ -96,42 +104,60 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 	}
 
 	// check private parameters
-	blkFillData := para.Data
 	if len(para.PrivateFrom) > 0 {
-		if len(para.PrivateFor) == 0 || para.PrivateGroupID == "" {
-			return nil, errors.New("invalid private parameter")
+		if len(para.PrivateFor) == 0 && para.PrivateGroupID == "" {
+			return nil, errors.New("invalid PrivateFor and PrivateGroupID parameter")
 		}
 	}
 
+	rawPayload := para.Data
+	blkFillData := para.Data
+
+	if len(para.EnclaveKey) > 0 {
+		if len(para.PrivateFrom) == 0 {
+			return nil, errors.New("invalid PrivateFrom parameter when EnclaveKey not nil")
+		}
+
+		// fetch raw payload by enclave key for private txs
+		msgReq := &topic.EventPrivacyRecvReqMsg{
+			EnclaveKey: para.EnclaveKey,
+
+			RspChan: make(chan *topic.EventPrivacyRecvRspMsg, 1),
+		}
+
+		retPayload, err := privacyGetRawPayload(c.eb, msgReq)
+		if err != nil {
+			return nil, err
+		}
+		rawPayload = retPayload
+
+		blkFillData = para.EnclaveKey
+	} else if len(para.PrivateFrom) > 0 {
+		// convert raw payload to enclave key for private txs
+		msgReq := &topic.EventPrivacySendReqMsg{
+			RawPayload:     para.Data,
+			PrivateFrom:    para.PrivateFrom,
+			PrivateFor:     para.PrivateFor,
+			PrivateGroupID: para.PrivateGroupID,
+
+			RspChan: make(chan *topic.EventPrivacySendRspMsg, 1),
+		}
+
+		enclaveKey, err := privacyDistributeRawPayload(c.eb, msgReq)
+		if err != nil {
+			return nil, err
+		}
+
+		blkFillData = enclaveKey
+	}
+
 	// check contract method whether exist or not
-	cm, ok, err := contract.GetChainContract(para.To, para.Data)
+	cm, ok, err := contract.GetChainContract(para.To, rawPayload)
 	if err != nil {
 		return nil, err
 	}
 	if !ok || cm == nil {
 		return nil, errors.New("chain contract method not exist")
-	}
-
-	// convert raw data to enclave key for private txs
-	if len(para.PrivateFrom) > 0 {
-		if len(para.EnclaveKey) > 0 {
-			blkFillData = para.EnclaveKey
-		} else {
-			msgReq := &topic.EventPrivacySendReqMsg{
-				RawPayload:     para.Data,
-				PrivateFrom:    para.PrivateFrom,
-				PrivateFor:     para.PrivateFor,
-				PrivateGroupID: para.PrivateGroupID,
-
-				RspChan: make(chan *topic.EventPrivacySendRspMsg, 1),
-			}
-
-			enclaveKey, err := privacyDistributeRawPayload(c.eb, msgReq)
-			if err != nil {
-				return nil, err
-			}
-			blkFillData = enclaveKey
-		}
 	}
 
 	// check account metas
@@ -166,7 +192,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 		PrivateGroupID: para.PrivateGroupID,
 	}
 	if len(para.PrivateFrom) > 0 {
-		sendBlk.SetPrivateRawData(para.Data)
+		sendBlk.SetPrivateRawData(rawPayload)
 	}
 
 	// fill fields by ledger account metas
@@ -208,6 +234,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 		return nil, errors.New("invalid contract version")
 	}
 
+	sendBlk.ResetPrivateRawData()
 	return sendBlk, nil
 }
 

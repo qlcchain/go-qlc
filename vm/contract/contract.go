@@ -421,6 +421,21 @@ var qlcAllChainContracts = map[types.Address]*qlcChainContract{
 		cabi.PermissionABI,
 		cabi.JsonPermission,
 	},
+	types.PrivacyDemoKVAddress: {
+		map[string]Contract{
+			cabi.MethodNamePrivacyDemoKVSet: &PrivacyDemoKVSet{
+				BaseContract: BaseContract{
+					Describe: Describe{
+						specVer:       SpecVer2,
+						withSignature: true,
+						withWork:      true,
+					},
+				},
+			},
+		},
+		cabi.PrivacyDemoKVABI,
+		cabi.JsonPrivacyDemoKV,
+	},
 }
 
 func GetChainContract(addr types.Address, methodSelector []byte) (Contract, bool, error) {
