@@ -38,6 +38,7 @@ type LedgerStore interface {
 	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error)
+	GetVerifiedData() map[types.Hash]int
 	Action(at storage.ActionType, t int) (interface{}, error)
 	Flush() error
 }
@@ -54,7 +55,7 @@ type Ledger struct {
 	blockConfirmed chan *types.StateBlock
 	ctx            context.Context
 	cancel         context.CancelFunc
-	VerifiedData   map[types.Hash]int
+	verifiedData   map[types.Hash]int
 	logger         *zap.SugaredLogger
 }
 
@@ -188,7 +189,7 @@ func (l *Ledger) init() error {
 	if err != nil {
 		return fmt.Errorf("get verified data: %s ", err)
 	}
-	l.VerifiedData = vd
+	l.verifiedData = vd
 
 	if err := l.upgrade(); err != nil {
 		return fmt.Errorf("upgrade: %s ", err)
@@ -268,6 +269,10 @@ func (l *Ledger) getVerifiedData() (map[types.Hash]int, error) {
 	return verifiedMap, nil
 }
 
+func (l *Ledger) GetVerifiedData() map[types.Hash]int {
+	return l.verifiedData
+}
+
 func (l *Ledger) upgrade() error {
 	v, err := l.getVersion()
 	if err != nil {
@@ -314,7 +319,7 @@ func (l *Ledger) initRelation() error {
 			return err
 		}
 		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
-			l.relation.Add(block)
+			l.relation.Add(relation.TableConvert(block))
 			return nil
 		})
 		if err != nil {

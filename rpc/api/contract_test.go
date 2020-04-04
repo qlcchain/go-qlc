@@ -22,6 +22,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -65,7 +66,7 @@ func TestNewContractApi(t *testing.T) {
 	defer tearDown(t)
 
 	api := NewContractApi(md.cc, md.l)
-	if abi, err := api.GetAbiByContractAddress(types.BlackHoleAddress); err != nil {
+	if abi, err := api.GetAbiByContractAddress(contractaddress.BlackHoleAddress); err != nil {
 		t.Fatal(err)
 	} else if len(abi) == 0 {
 		t.Fatal("invalid abi")

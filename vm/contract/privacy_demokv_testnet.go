@@ -4,6 +4,7 @@ package contract
 
 import (
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -27,7 +28,7 @@ func (s *PrivacyDemoKVSet) ProcessSend(ctx *vmstore.VMContext, block *types.Stat
 	var key []byte
 	key = append(key, abi.PrivacyDemoKVStorageTypeKV)
 	key = append(key, para.Key...)
-	err = ctx.SetStorage(types.PrivacyDemoKVAddress[:], key, para.Value)
+	err = ctx.SetStorage(contractaddress.PrivacyDemoKVAddress[:], key, para.Value)
 	if err != nil {
 		return nil, nil, err
 	}

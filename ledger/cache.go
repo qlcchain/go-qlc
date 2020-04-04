@@ -14,6 +14,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 )
 
@@ -280,19 +281,19 @@ func contain(kvs [][]byte, key []byte) bool {
 
 func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
 	c := lc.getTempCache()
+	defer lc.releaseTempCache(c)
 	if err := fn(c); err != nil {
 		return err
 	}
 
 	mc := lc.GetCache()
 	mc.Quoted()
+	defer mc.Release()
 	for k, v := range c.cache.GetALL(false) {
 		if err := mc.Put(originalKey(k.(string)), v); err != nil {
 			return err
 		}
 	}
-	mc.Release()
-	lc.releaseTempCache(c)
 	return nil
 	//mc := lc.GetCache()
 	//mc.Quoted()
@@ -327,7 +328,7 @@ func newCache(index int) *Cache {
 
 func newTempCache() *Cache {
 	return &Cache{
-		cache:  gcache.New(100).Build(),
+		cache:  gcache.New(10000).Build(),
 		logger: log.NewLogger("ledger/cache"),
 	}
 }
@@ -364,13 +365,13 @@ func (c *Cache) flush(l *Ledger) error {
 	}
 
 	batch := l.store.Batch(false)
+	defer batch.Discard()
 	for k, v := range c.cache.GetALL(false) {
 		key := originalKey(k.(string))
 		if bytes.EqualFold(key[:1], []byte{byte(storage.KeyPrefixBlock)}) {
 			cs.Block = cs.Block + 1
 		}
 		if err := c.dumpToLevelDb(key, v, batch); err != nil {
-			batch.Cancel()
 			return fmt.Errorf("dump to store: %s ", err)
 		}
 		if err := c.dumpToRelation(key, v, l); err != nil {
@@ -411,11 +412,16 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 }
 
 func (c *Cache) dumpToRelation(key []byte, v interface{}, l *Ledger) error {
-	if obj, ok := v.(types.Schema); ok {
+	switch storage.KeyPrefix(key[0]) {
+	case storage.KeyPrefixBlock:
 		if !isDeleteKey(v) {
-			l.relation.Add(obj)
+			l.relation.Add(relation.TableConvert(v))
 		} else {
-			l.relation.Delete(obj)
+			hash, err := types.BytesToHash(key[1:])
+			if err != nil {
+				return fmt.Errorf("key to hash: %s", err)
+			}
+			l.relation.Delete(&relation.BlockHash{Hash: hash.String()})
 		}
 	}
 	return nil
@@ -467,7 +473,7 @@ func (c *Cache) Iterator(prefix []byte, end []byte, f func(k, v []byte) error) e
 	panic("not implemented")
 }
 
-func (c *Cache) Cancel() {
+func (c *Cache) Discard() {
 	panic("not implemented")
 }
 

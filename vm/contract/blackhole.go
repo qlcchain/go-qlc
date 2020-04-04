@@ -11,10 +11,10 @@ import (
 	"errors"
 	"fmt"
 
-	config2 "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	config2 "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -92,7 +92,7 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 }
 
 func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
-	input *types.StateBlock) ([]*ContractBlock, error) {
+	input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	// verify send block data
 	if b, err := ctx.GetStorage(input.Address[:], input.Previous[:]); err == nil && len(b) > 0 {
 		if _, err := cabi.ParseDestroyInfo(b); err != nil {
@@ -121,7 +121,7 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 	block.Previous = rxToken.Header
 	block.Representative = input.Representative
 
-	return []*ContractBlock{
+	return []*vmcontract.ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,

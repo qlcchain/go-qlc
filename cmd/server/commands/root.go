@@ -26,7 +26,10 @@ import (
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -48,6 +51,7 @@ var (
 	cfgPathP      string
 	isProfileP    bool
 	profPortP     int16
+	isSingleP     bool
 	configParamsP string
 	genesisSeedP  string
 
@@ -58,7 +62,7 @@ var (
 	cfgPath      cmdutil.Flag
 	isProfile    cmdutil.Flag
 	profPort     cmdutil.Flag
-	noBootstrap  cmdutil.Flag
+	isSingle     cmdutil.Flag
 	configParams cmdutil.Flag
 	genesisSeed  cmdutil.Flag
 	//chainContext   *context.ChainContext
@@ -107,6 +111,7 @@ func Execute(osArgs []string) {
 		rootCmd.PersistentFlags().Int16Var(&profPortP, "profPort", 6060, "profile port")
 		rootCmd.PersistentFlags().StringVar(&configParamsP, "configParams", "", "parameter set that needs to be changed")
 		rootCmd.PersistentFlags().StringVar(&genesisSeedP, "genesisSeed", "", "genesis seed")
+		rootCmd.PersistentFlags().BoolVar(&isSingleP, "single", false, "single node, no PoV, no bootnodes")
 		addCommand()
 		if err := rootCmd.Execute(); err != nil {
 			log.Root.Info(err)
@@ -149,6 +154,12 @@ func start() error {
 					return err
 				}
 			}
+		}
+
+		if isSingleP {
+			// clear boot nodes
+			cfg.P2P.BootNodes = cfg.P2P.BootNodes[:0]
+			log.Root.Debug("clear all boot nodes...")
 		}
 
 		return nil
@@ -224,11 +235,18 @@ func start() error {
 	chainContext.SetAccounts(accounts)
 	// start all services by chain context
 	err = chainContext.Init(func() error {
+		chaincontract.InitChainContract()
 		return chain.RegisterServices(chainContext)
 	})
 	if err != nil {
 		log.Root.Error(err)
 		return err
+	}
+
+	if isSingleP {
+		cfg, _ := cm.Config()
+		chainContext.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
+		chainContext.EventBus().Publish(topic.EventAddP2PStream, &topic.EventAddP2PStreamMsg{PeerID: cfg.P2P.ID.PeerID})
 	}
 	err = chainContext.Start()
 
@@ -318,12 +336,19 @@ func run() {
 		Usage: "genesis seed",
 		Value: "",
 	}
-
+	profPort = cmdutil.Flag{
+		Name:  "profPort",
+		Must:  false,
+		Usage: "prof port ",
+		Value: "",
+	}
+	args := []cmdutil.Flag{account, seed, cfgPath, isProfile, profPort, password, privateKey,
+		configParams, genesisSeed}
 	s := &ishell.Cmd{
-		Name: "run",
-		Help: "start qlc server",
+		Name:                "run",
+		Help:                "start qlc server",
+		CompleterWithPrefix: cmdutil.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []cmdutil.Flag{seed, cfgPath, isProfile, profPort}
 			if cmdutil.HelpText(c, args) {
 				return
 			}
@@ -337,6 +362,7 @@ func run() {
 			seedP = cmdutil.StringVar(c.Args, seed)
 			cfgPathP = cmdutil.StringVar(c.Args, cfgPath)
 			isProfileP = cmdutil.BoolVar(c.Args, isProfile)
+			isSingleP = cmdutil.BoolVar(c.Args, isSingle)
 			profPortTmp, _ := cmdutil.IntVar(c.Args, profPort)
 			if profPortTmp > 0 {
 				profPortP = int16(profPortTmp)
@@ -376,7 +402,7 @@ func generateChainTokenGenesisBlock(seedString string, cfg *config.Config) error
 	}
 	send := types.StateBlock{
 		Type:           types.ContractSend,
-		Address:        types.MintageAddress,
+		Address:        contractaddress.MintageAddress,
 		Link:           address.ToHash(),
 		Balance:        types.ZeroBalance,
 		Vote:           types.ZeroBalance,
@@ -451,7 +477,7 @@ func generateGasTokenGenesisBlock(seedString string, cfg *config.Config) error {
 	}
 	send := types.StateBlock{
 		Type:           types.ContractSend,
-		Address:        types.MintageAddress,
+		Address:        contractaddress.MintageAddress,
 		Link:           address.ToHash(),
 		Balance:        types.ZeroBalance,
 		Vote:           types.ZeroBalance,

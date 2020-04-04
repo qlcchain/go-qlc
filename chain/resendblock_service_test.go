@@ -13,17 +13,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
-	"github.com/qlcchain/go-qlc/ledger/process"
-
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
 	ctx "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func setupTestCaseResend(t *testing.T) (func(t *testing.T), *ledger.Ledger, *ResendBlockService) {

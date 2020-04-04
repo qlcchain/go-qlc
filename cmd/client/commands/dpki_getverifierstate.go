@@ -23,12 +23,13 @@ func addDpkiGetVerifierStateListCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "height of pov block",
 		Value: -1,
 	}
+	args := []util.Flag{hashFlag, heightFlag}
 
 	cmd := &ishell.Cmd{
-		Name: "getVerifierStateList",
-		Help: "get verifier state list",
+		Name:                "getVerifierStateList",
+		Help:                "get verifier state list",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{hashFlag, heightFlag}
 			if util.HelpText(c, args) {
 				return
 			}

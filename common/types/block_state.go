@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	BlockFlagNonSync uint64 = 1 << iota
+	BlockFlagSync uint64 = 1 << iota
 )
 
 //go:generate msgp
@@ -281,49 +281,11 @@ func (b *StateBlock) Clone() *StateBlock {
 }
 
 func (b *StateBlock) IsFromSync() bool {
-	return b.Flag&BlockFlagNonSync == 0
+	return b.Flag&BlockFlagSync == BlockFlagSync
 }
 
-type StateBlockList []*StateBlock
-
-func (bs *StateBlockList) Serialize() ([]byte, error) {
-	return bs.MarshalMsg(nil)
-}
-
-func (bs *StateBlockList) Deserialize(text []byte) error {
-	_, err := bs.UnmarshalMsg(text)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (b *StateBlock) TableSchema() (map[string]interface{}, string) {
-	fields := make(map[string]interface{})
-	fields["hash"] = b.GetHash()
-	fields["type"] = b.Type
-	fields["address"] = b.Address
-	fields["timestamp"] = b.Timestamp
-	return fields, ""
-}
-
-func (b *StateBlock) TableName() string {
-	return "BLOCKHASH"
-}
-
-func (b *StateBlock) SetRelation() map[string]interface{} {
-	val := make(map[string]interface{})
-	val["hash"] = b.GetHash().String()
-	val["type"] = b.GetType().String()
-	val["address"] = b.GetAddress().String()
-	val["timestamp"] = b.GetTimestamp()
-	return val
-}
-
-func (b *StateBlock) RemoveRelation() map[string]interface{} {
-	val := make(map[string]interface{})
-	val["hash"] = b.GetHash().String()
-	return val
+func (b *StateBlock) SetFromSync() {
+	b.Flag |= BlockFlagSync
 }
 
 func (b *StateBlock) IsPrivate() bool {
@@ -355,6 +317,20 @@ func (b *StateBlock) SetPrivateRawData(rawData []byte) {
 func (b *StateBlock) ResetPrivateRawData() {
 	b.PrivateRawData = nil
 	b.PrivateRecvRsp = false
+}
+
+type StateBlockList []*StateBlock
+
+func (bs *StateBlockList) Serialize() ([]byte, error) {
+	return bs.MarshalMsg(nil)
+}
+
+func (bs *StateBlockList) Deserialize(text []byte) error {
+	_, err := bs.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //

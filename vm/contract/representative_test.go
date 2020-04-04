@@ -4,10 +4,10 @@ import (
 	"math/big"
 	"testing"
 
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -29,7 +29,7 @@ func TestRepReward_GetLastRewardHeight(t *testing.T) {
 	}
 
 	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, uint64(1440), uint64(100), common.TimeNow().Unix(), big.NewInt(200))
-	err = ctx.SetStorage(types.RepAddress.Bytes(), account[:], data)
+	err = ctx.SetStorage(contractaddress.RepAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestRepReward_GetRewardHistory(t *testing.T) {
 
 	timeStamp := common.TimeNow().Unix()
 	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, uint64(1440), uint64(100), timeStamp, big.NewInt(200))
-	err = ctx.SetStorage(types.RepAddress.Bytes(), account[:], data)
+	err = ctx.SetStorage(contractaddress.RepAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +278,7 @@ func TestRepReward_ProcessSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx.SetStorage(types.RepAddress.Bytes(), account[:], data)
+	ctx.SetStorage(contractaddress.RepAddress.Bytes(), account[:], data)
 	ctx.SaveStorage()
 	_, _, err = r.ProcessSend(ctx, blk)
 	if err != ErrClaimRepeat {

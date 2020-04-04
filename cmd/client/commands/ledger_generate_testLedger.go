@@ -15,10 +15,9 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc/api"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
 )
 
 func addLedgerGenerateTestLedgerByIshell(parentCmd *ishell.Cmd) {
@@ -40,11 +39,12 @@ func addLedgerGenerateTestLedgerByIshell(parentCmd *ishell.Cmd) {
 		Usage: "receive accounts",
 		Value: []string{},
 	}
+	args := []util.Flag{from, repCounts, to}
 	c := &ishell.Cmd{
-		Name: "generateTestLedger",
-		Help: "generate test ledger",
+		Name:                "generateTestLedger",
+		Help:                "generate test ledger",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{from, repCounts, to}
 			if util.HelpText(c, args) {
 				return
 			}

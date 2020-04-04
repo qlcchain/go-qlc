@@ -57,11 +57,12 @@ func addPublishCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "verifiers",
 		Value: "",
 	}
+	args := []util.Flag{account, typ, id, kt, pk, fee, verifiers}
 	c := &ishell.Cmd{
-		Name: "publish",
-		Help: "publish id and key",
+		Name:                "publish",
+		Help:                "publish id and key",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{account, typ, id, kt, pk, fee, verifiers}
 			if util.HelpText(c, args) {
 				return
 			}

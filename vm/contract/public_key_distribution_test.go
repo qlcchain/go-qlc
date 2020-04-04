@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -253,12 +253,13 @@ func TestOracle(t *testing.T) {
 	pk := make([]byte, ed25519.PublicKeySize)
 	random.Bytes(pk)
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDOracle, ot, id, kt, pk, code, hash)
+	blk.SetFromSync()
 	_, _, err = o.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
 		t.Fatal(err)
 	}
 
-	blk.Flag = types.BlockFlagNonSync
+	blk.Flag = 0
 	_, _, err = o.ProcessSend(ctx, blk)
 	if err != ErrNotEnoughPledge {
 		t.Fatal(err)
@@ -368,13 +369,13 @@ func TestVerifierHeart(t *testing.T) {
 
 	ht := []uint32{common.OracleTypeInvalid, common.OracleTypeWeChat}
 	blk.Data, err = abi.PublicKeyDistributionABI.PackMethod(abi.MethodNamePKDVerifierHeart, ht)
-	blk.Flag &= ^types.BlockFlagNonSync
+	blk.SetFromSync()
 	_, _, err = vh.ProcessSend(ctx, blk)
 	if err != ErrCalcAmount {
 		t.Fatal(err)
 	}
 
-	blk.Flag |= types.BlockFlagNonSync
+	blk.Flag = 0
 	_, _, err = vh.ProcessSend(ctx, blk)
 	if err != ErrNotEnoughPledge {
 		t.Fatal(err)
@@ -759,7 +760,7 @@ func mockPKDRewardAddPovBlock(t *testing.T, l ledger.Store, povHeight uint64, tx
 	povBlk1.Header.BasHdr.Height = povHeight
 
 	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
-	csdb, err := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -813,7 +814,7 @@ func mockPKDRewardAddPovBlock(t *testing.T, l ledger.Store, povHeight uint64, tx
 	/*
 		{
 			gsdb2 := statedb.NewPovGlobalStateDB(l.DBStore(), povBlk1.Header.CbTx.StateHash)
-			csdb2, err := gsdb2.LookupContractStateDB(types.PubKeyDistributionAddress)
+			csdb2, err := gsdb2.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -82,7 +83,7 @@ type RepRewardInfo struct {
 }
 
 func GetLastRepRewardHeightByAccount(ctx *vmstore.VMContext, account types.Address) (uint64, error) {
-	data, err := ctx.GetStorage(types.RepAddress[:], account[:])
+	data, err := ctx.GetStorage(contractaddress.RepAddress[:], account[:])
 	if err == nil {
 		info := new(RepRewardInfo)
 		er := RepABI.UnpackVariable(info, VariableNameRepReward, data)

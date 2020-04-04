@@ -4,51 +4,124 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/ledger"
+
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/abi"
-
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-func addTestNode(t *testing.T, ctx *vmstore.VMContext, pn *PermNode) {
-	data, err := pn.MarshalMsg(nil)
+func addTestAdmin(t *testing.T, l *ledger.Ledger, admin *AdminAccount, povHeight uint64) {
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.BasHdr.Height = povHeight
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var key []byte
-	key = append(key, PermissionDataNode)
-	key = append(key, util.BE_Uint32ToBytes(pn.Index)...)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
-	if err != nil {
-		t.Fatal(err)
-	}
+	trieKey := statedb.PovCreateContractLocalStateKey(PermissionDataAdmin, admin.Account.Bytes())
 
-	err = ctx.SaveStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func addTestAdmin(t *testing.T, ctx *vmstore.VMContext, admin *AdminAccount) {
 	data, err := admin.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var key []byte
-	key = append(key, PermissionDataAdmin)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = csdb.SetValue(trieKey, data)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
-	err = ctx.SaveStorage()
+	err = gsdb.CommitToTrie()
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func addTestNode(t *testing.T, l *ledger.Ledger, pn *PermNode, povHeight uint64) {
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.BasHdr.Height = povHeight
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	trieKey := statedb.PovCreateContractLocalStateKey(PermissionDataNode, []byte(pn.NodeId))
+
+	data, err := pn.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = csdb.SetValue(trieKey, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = gsdb.CommitToTrie()
+	if err != nil {
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -59,131 +132,232 @@ func TestPermissionABI(t *testing.T) {
 	}
 }
 
-func TestPermissionInit(t *testing.T) {
+func TestPermissionIsAdmin(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l)
-	err := PermissionInit(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	account := cfg.GenesisAddress()
 
-	admin, err := GetPermissionAdmin(ctx)
-	if err != nil || admin.Addr != cfg.GenesisAddress() || admin.Status != PermissionAdminStatusActive ||
-		admin.Comment != "Initial Admin" {
+	if PermissionIsAdmin(ctx, account) {
 		t.Fatal()
 	}
 
-	nAdmin := &AdminAccount{
-		Addr:    mock.Address(),
-		Comment: "new admin",
-		Status:  PermissionAdminStatusActive,
-	}
-	addTestAdmin(t, ctx, nAdmin)
-
-	err = PermissionInit(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	admin, err = GetPermissionAdmin(ctx)
-	if err != nil || admin.Addr != nAdmin.Addr || admin.Status != PermissionAdminStatusActive ||
-		admin.Comment != "new admin" {
-		t.Fatal()
-	}
-}
-
-func TestGetPermissionNodeIndex(t *testing.T) {
-	teardownTestCase, l := setupLedgerForTestCase(t)
-	defer teardownTestCase(t)
-
-	ctx := vmstore.NewVMContext(l)
-	index := GetPermissionNodeIndex(ctx)
-	if index != 0 {
-		t.Fatal()
-	}
-
-	var key []byte
-	key = append(key, PermissionDataNodeIndex)
-	err := ctx.SetStorage(types.PermissionAddress[:], key, util.BE_Uint32ToBytes(10))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	index = GetPermissionNodeIndex(ctx)
-	if index != 10 {
-		t.Fatal()
-	}
-}
-
-func TestGetPermissionNode(t *testing.T) {
-	teardownTestCase, l := setupLedgerForTestCase(t)
-	defer teardownTestCase(t)
-
-	ctx := vmstore.NewVMContext(l)
-	pn, _ := GetPermissionNode(ctx, 10)
-	if pn != nil {
-		t.Fatal()
-	}
-
-	node := &PermNode{
-		Index:   10,
-		Kind:    PermissionNodeKindIPPort,
-		Node:    "127.0.0.1:9735",
-		Comment: "test",
-		Valid:   true,
-	}
-	addTestNode(t, ctx, node)
-
-	pn, err := GetPermissionNode(ctx, 10)
-	if err != nil || pn.Index != node.Index || pn.Kind != node.Kind || pn.Node != node.Node ||
-		pn.Comment != node.Comment || pn.Valid != node.Valid {
-		t.Fatal()
-	}
-}
-
-func TestGetAllPermissionNodes(t *testing.T) {
-	teardownTestCase, l := setupLedgerForTestCase(t)
-	defer teardownTestCase(t)
-
-	ctx := vmstore.NewVMContext(l)
-
-	node1 := &PermNode{
-		Index:   10,
-		Kind:    PermissionNodeKindIPPort,
-		Node:    "127.0.0.1:9735",
-		Comment: "test1",
-		Valid:   true,
-	}
-	addTestNode(t, ctx, node1)
-
-	node2 := &PermNode{
-		Index:   11,
-		Kind:    PermissionNodeKindPeerID,
-		Node:    "QmVLbouTEb9LGQJ56KvQCyoPXqDeqwYSE6j1YSyfLeHgN3",
-		Comment: "test1",
+	admin := &AdminAccount{
+		Account: mock.Address(),
+		Comment: "a1",
 		Valid:   false,
 	}
-	addTestNode(t, ctx, node2)
+	addTestAdmin(t, l, admin, 10)
 
-	pns, err := GetAllPermissionNodes(ctx)
+	if !PermissionIsAdmin(ctx, account) {
+		t.Fatal()
+	}
+
+	account = mock.Address()
+	if PermissionIsAdmin(ctx, account) {
+		t.Fatal()
+	}
+
+	if PermissionIsAdmin(ctx, admin.Account) {
+		t.Fatal()
+	}
+
+	admin = &AdminAccount{
+		Account: account,
+		Comment: "a1",
+		Valid:   true,
+	}
+	addTestAdmin(t, l, admin, 10)
+	if !PermissionIsAdmin(ctx, account) {
+		t.Fatal()
+	}
+
+	account = cfg.GenesisAddress()
+	if PermissionIsAdmin(ctx, account) {
+		t.Fatal()
+	}
+}
+
+func TestPermissionGetAdmin(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+
+	_, err := PermissionGetAdmin(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
+	admin := &AdminAccount{
+		Account: mock.Address(),
+		Comment: "a1",
+		Valid:   false,
+	}
+	addTestAdmin(t, l, admin, 10)
+
+	ac, err := PermissionGetAdmin(ctx)
+	if err != nil || len(ac) != 1 || ac[0].Account != cfg.GenesisAddress() {
+		t.Fatal()
+	}
+
+	admin = &AdminAccount{
+		Account: mock.Address(),
+		Comment: "a1",
+		Valid:   true,
+	}
+	addTestAdmin(t, l, admin, 10)
+
+	ac, err = PermissionGetAdmin(ctx)
+	if err != nil || len(ac) != 1 || ac[0].Account != admin.Account {
+		t.Fatal()
+	}
+}
+
+func TestPermissionUpdateNode(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nodeId := "id1"
+	nodeUrl := "1.1.1.1:8000"
+	comment := "222"
+	err = PermissionUpdateNode(csdb, nodeId, nodeUrl, comment)
 	if err != nil {
 		t.Fatal()
 	}
 
-	for _, n := range pns {
-		switch n.Index {
-		case 10:
-			if n.Valid != node1.Valid || n.Kind != node1.Kind || n.Node != node1.Node || n.Comment != node1.Comment {
-				t.Fatal()
-			}
-		case 11:
-			if n.Valid != node2.Valid || n.Kind != node2.Kind || n.Node != node2.Node || n.Comment != node2.Comment {
-				t.Fatal()
-			}
-		default:
-			t.Fatal()
-		}
+	err = gsdb.CommitToTrie()
+	if err != nil {
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pn, err := PermissionGetNode(ctx, nodeId)
+	if err != nil || pn.NodeId != nodeId || pn.NodeUrl != nodeUrl || pn.Comment != comment {
+		t.Fatal()
+	}
+}
+
+func TestPermissionGetNode(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+	nodeId := "123"
+	_, err := PermissionGetNode(ctx, nodeId)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pn := &PermNode{
+		NodeId:  "000",
+		NodeUrl: "1.1.1.1:8000",
+		Comment: "222",
+		Valid:   false,
+	}
+	addTestNode(t, l, pn, 10)
+
+	_, err = PermissionGetNode(ctx, nodeId)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pn = &PermNode{
+		NodeId:  nodeId,
+		NodeUrl: "1.1.1.1:8000",
+		Comment: "222",
+		Valid:   false,
+	}
+	addTestNode(t, l, pn, 10)
+
+	_, err = PermissionGetNode(ctx, nodeId)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pn = &PermNode{
+		NodeId:  nodeId,
+		NodeUrl: "1.1.1.1:8000",
+		Comment: "222",
+		Valid:   true,
+	}
+	addTestNode(t, l, pn, 10)
+
+	_, err = PermissionGetNode(ctx, nodeId)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPermissionGetAllNodes(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l)
+
+	_, err := PermissionGetAllNodes(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pn := &PermNode{
+		NodeId:  "n1",
+		NodeUrl: "1.1.1.1:8000",
+		Comment: "222",
+		Valid:   false,
+	}
+	addTestNode(t, l, pn, 10)
+
+	pns, err := PermissionGetAllNodes(ctx)
+	if err != nil || len(pns) != 0 {
+		t.Fatal()
+	}
+
+	pn = &PermNode{
+		NodeId:  "n1",
+		NodeUrl: "1.1.1.1:8000",
+		Comment: "222",
+		Valid:   true,
+	}
+	addTestNode(t, l, pn, 10)
+
+	pns, err = PermissionGetAllNodes(ctx)
+	if err != nil || len(pns) != 1 {
+		t.Fatal()
 	}
 }

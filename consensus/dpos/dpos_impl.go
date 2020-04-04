@@ -7,21 +7,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qlcchain/go-qlc/consensus"
-	"github.com/qlcchain/go-qlc/vm/contract"
-
 	"github.com/AsynkronIT/protoactor-go/actor"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/bluele/gcache"
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
@@ -86,7 +84,7 @@ const (
 )
 
 type DPoS struct {
-	ledger              *ledger.Ledger
+	ledger              ledger.Store
 	acTrx               *ActiveTrx
 	accounts            []*types.Account
 	onlineReps          sync.Map
@@ -754,14 +752,9 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 
 		dstAddr := types.ZeroAddress
 
-		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetPayload()); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(blk.GetLink()), blk.GetPayload()); ok && err == nil {
 			ctx := vmstore.NewVMContext(dps.ledger)
 			dstAddr, err = c.GetTargetReceiver(ctx, blk)
-			if err != nil {
-				dps.logger.Error(err)
-			}
-
-			err = c.EventNotify(dps.eb, ctx, blk)
 			if err != nil {
 				dps.logger.Error(err)
 			}
@@ -774,8 +767,8 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			}
 		}
 
-		if types.Address(blk.GetLink()) == types.PubKeyDistributionAddress {
-			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.GetData())
+		if types.Address(blk.GetLink()) == contractaddress.PubKeyDistributionAddress {
+			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.Data)
 			if err == nil {
 				if method.Name == cabi.MethodNamePKDPublish {
 					for _, p := range dps.processors {
@@ -796,7 +789,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 				return
 			}
 
-			if types.Address(input.GetLink()) == types.MintageAddress {
+			if types.Address(input.GetLink()) == contractaddress.MintageAddress {
 				param := new(cabi.ParamMintage)
 				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
 					index := dps.getProcessorIndex(input.Address)
@@ -1140,18 +1133,18 @@ func (dps *DPoS) chainFinished(hash types.Hash) {
 // 			return false, err
 // 		}
 // 		switch types.Address(sendblk.GetLink()) {
-// 		case types.NEP5PledgeAddress:
+// 		case contractaddress.NEP5PledgeAddress:
 // 			return true, nil
-// 		case types.MintageAddress:
+// 		case contractaddress.MintageAddress:
 // 			return true, nil
-// 		case types.BlackHoleAddress:
+// 		case vmcontract.BlackHoleAddress:
 // 			return true, nil
 // 		}
 // 	case types.ContractSend:
 // 		switch types.Address(block.GetLink()) {
-// 		case types.BlackHoleAddress:
+// 		case vmcontract.BlackHoleAddress:
 // 			return true, nil
-// 		case types.MinerAddress, types.RepAddress:
+// 		case contractaddress.MinerAddress, contractaddress.RepAddress:
 // 			return true, nil
 // 		}
 // 	}

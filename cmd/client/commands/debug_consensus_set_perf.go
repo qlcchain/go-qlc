@@ -14,12 +14,12 @@ func addDebugConsensusSetPerfCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "set perf operation(0:close 1:bl 2:bp 3:all 4:export)",
 		Value: "0",
 	}
-
+	args := []util.Flag{op}
 	cmd := &ishell.Cmd{
-		Name: "setConsPerf",
-		Help: "set consensus perf",
+		Name:                "setConsPerf",
+		Help:                "set consensus perf",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{op}
 			if util.HelpText(c, args) {
 				return
 			}

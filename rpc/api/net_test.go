@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -17,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 type peersCount struct {
@@ -62,7 +61,7 @@ func TestNetApi_ConnectPeersInfo(t *testing.T) {
 	if err == nil {
 		t.Fatal("should return count error")
 	}
-	peers, err = netApi.ConnectPeersInfo(2, offset)
+	peers, err = netApi.ConnectPeersInfo(3, offset)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +91,7 @@ func TestNetApi_GetAllPeersInfo(t *testing.T) {
 	if err == nil {
 		t.Fatal("should return count error")
 	}
-	peers, err = netApi.GetAllPeersInfo(5, offset)
+	peers, err = netApi.GetAllPeersInfo(6, offset)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +115,7 @@ func TestNetApi_GetOnlinePeersInfo(t *testing.T) {
 	if err == nil {
 		t.Fatal("should return count error")
 	}
-	peers, err = netApi.GetOnlinePeersInfo(3, offset)
+	peers, err = netApi.GetOnlinePeersInfo(10, offset)
 	if err != nil {
 		t.Fatal(err)
 	}

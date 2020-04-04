@@ -17,12 +17,12 @@ func addPovRepInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "addresses of representatives",
 		Value: "",
 	}
-
+	args := []util.Flag{repFlag}
 	cmd := &ishell.Cmd{
-		Name: "getRepStats",
-		Help: "get representative statistic info",
+		Name:                "getRepStats",
+		Help:                "get representative statistic info",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{repFlag}
 			if util.HelpText(c, args) {
 				return
 			}

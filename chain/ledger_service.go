@@ -10,20 +10,17 @@ package chain
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-
-	"github.com/qlcchain/go-qlc/ledger/process"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/config"
-
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type LedgerService struct {
@@ -71,7 +68,7 @@ func (ls *LedgerService) Init() error {
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis
-		err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data)
+		err := ctx.SetStorage(contractaddress.MintageAddress[:], gb.Token[:], gb.Data)
 		if err != nil {
 			ls.logger.Error(err)
 		}
@@ -97,12 +94,6 @@ func (ls *LedgerService) Init() error {
 		}
 	}
 	_ = ctx.SaveStorage()
-
-	err := abi.PermissionInit(ctx)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

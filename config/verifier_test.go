@@ -11,6 +11,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+
 	"github.com/qlcchain/go-qlc/common/types"
 
 	"gopkg.in/validator.v2"
@@ -240,7 +242,7 @@ func TestAddress(t *testing.T) {
 		}, {
 			name: "ok",
 			args: a2{
-				Address: types.MintageAddress,
+				Address: contractaddress.MintageAddress,
 			},
 			wantErr: false,
 		},

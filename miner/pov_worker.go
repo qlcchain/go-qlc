@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+
 	"github.com/qlcchain/go-qlc/common/statedb"
 
 	"go.uber.org/zap"
@@ -409,7 +411,7 @@ func (w *PovWorker) newBlockTemplate(minerAddr types.Address, algoType types.Pov
 	minerTxOut.Value = minerRwd
 
 	repTxOut := cbtx.GetRepTxOut()
-	repTxOut.Address = types.MinerAddress
+	repTxOut.Address = contractaddress.MinerAddress
 	repTxOut.Value = repRwd
 
 	cbTxHash := cbtx.ComputeHash()

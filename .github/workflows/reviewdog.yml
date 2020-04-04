@@ -1,0 +1,21 @@
+name: Review
+on: [pull_request]
+
+jobs:
+  golangci-lint:
+    name: golangci-lint
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Run golangci-lint with reviewdog
+        # uses: gythialy/action-golangci-lint@3d1863ffe4edb43814ef6364f1639db3eb519270
+        uses: docker://reviewdog/action-golangci-lint:v1
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          golangci_lint_flags: "--config=./.golangci.yml"
+          level: warning
+          reporter: "github-pr-review"

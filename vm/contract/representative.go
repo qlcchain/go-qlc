@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"math/big"
 
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -27,7 +28,7 @@ func (r *RepReward) GetLastRewardHeight(ctx *vmstore.VMContext, account types.Ad
 }
 
 func (r *RepReward) GetRewardHistory(ctx *vmstore.VMContext, account types.Address) (*cabi.RepRewardInfo, error) {
-	data, err := ctx.GetStorage(types.RepAddress[:], account[:])
+	data, err := ctx.GetStorage(contractaddress.RepAddress[:], account[:])
 	if err == nil {
 		info := new(cabi.RepRewardInfo)
 		er := cabi.RepABI.UnpackVariable(info, cabi.VariableNameRepReward, data)
@@ -153,7 +154,7 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, param.EndHeight,
 		param.RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
 		new(big.Int).Add(param.RewardAmount, oldInfo.RewardAmount))
-	err = ctx.SetStorage(types.RepAddress.Bytes(), param.Account[:], data)
+	err = ctx.SetStorage(contractaddress.RepAddress.Bytes(), param.Account[:], data)
 	if err != nil {
 		return nil, nil, ErrSetStorage
 	}
@@ -182,7 +183,7 @@ func (r *RepReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, RewardA
 	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, endHeight,
 		RewardBlocks+oldInfo.RewardBlocks, block.Timestamp,
 		new(big.Int).Add(RewardAmount, oldInfo.RewardAmount))
-	err = ctx.SetStorage(types.RepAddress.Bytes(), block.Address[:], data)
+	err = ctx.SetStorage(contractaddress.RepAddress.Bytes(), block.Address[:], data)
 	if err != nil {
 		return errors.New("save contract data err")
 	}
@@ -190,7 +191,7 @@ func (r *RepReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, RewardA
 	return nil
 }
 
-func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
+func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	param := new(cabi.RepRewardParam)
 
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, input.Data)
@@ -242,7 +243,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 		block.Previous = types.ZeroHash
 	}
 
-	return []*ContractBlock{
+	return []*vmcontract.ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,

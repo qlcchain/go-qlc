@@ -16,11 +16,8 @@ func addPermissionCmd() {
 		}
 		shell.AddCmd(cmd)
 
-		addPermissionAdminUpdateSendCmdByShell(cmd)
-		addPermissionAdminUpdateRewardCmdByShell(cmd)
-		addPermissionNodeAddCmdByShell(cmd)
+		addPermissionAdminHandoverCmdByShell(cmd)
 		addPermissionNodeUpdateCmdByShell(cmd)
-		addPermissionNodeRemoveCmdByShell(cmd)
 	} else {
 		var cmd = &cobra.Command{
 			Use:   "permission",

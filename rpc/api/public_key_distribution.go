@@ -15,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -123,7 +124,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		Network:        am.CoinNetwork,
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -131,7 +132,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.vr.SetStorage(vmContext, param.Account, vt, param.VInfo, vk)
+	_, _, err = p.vr.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +195,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 		Network:        am.CoinNetwork,
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -202,7 +203,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.vu.SetStorage(vmContext, param.Account, vt, vs.VInfo, vs.VKey)
+	_, _, err = p.vu.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -515,7 +516,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 		Address:        param.Account,
 		Balance:        tm.Balance.Sub(param.Fee),
 		Previous:       tm.Header,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -523,7 +524,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.pu.SetStorage(vmContext, param.Account, pt, id, kt, pk, verifiers, codesHash, param.Fee, tm.Header)
+	_, _, err = p.pu.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -593,7 +594,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 		Address:        param.Account,
 		Balance:        tm.Balance,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -601,7 +602,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.up.SetStorage(vmContext, pt, id, kt, pk, hash)
+	_, _, err = p.up.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -625,7 +626,7 @@ func (p *PublicKeyDistributionApi) getCSDB(isLatest bool, height uint64) *stated
 
 	if povHdr != nil {
 		gsdb := statedb.NewPovGlobalStateDB(p.l.DBStore(), povHdr.GetStateHash())
-		csdb, _ := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+		csdb, _ := gsdb.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 		return csdb
 	}
 
@@ -842,7 +843,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		Address:        param.Account,
 		Balance:        tm.Balance.Sub(common.OracleCost),
 		Previous:       tm.Header,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -850,7 +851,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 	}
 
 	vmContext := vmstore.NewVMContext(p.l)
-	err = p.or.SetStorage(vmContext, param.Account, ot, id, kt, pk, param.Code, hash)
+	_, _, err = p.or.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -1032,7 +1033,7 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 		Oracle:  types.ZeroBalance,
 		Storage: types.ZeroBalance,
 
-		Link:      types.Hash(types.PubKeyDistributionAddress),
+		Link:      types.Hash(contractaddress.PubKeyDistributionAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().Unix(),
 
@@ -1061,7 +1062,7 @@ func (p *PublicKeyDistributionApi) GetRewardRecvBlock(input *types.StateBlock) (
 	if input.GetType() != types.ContractSend {
 		return nil, errors.New("input block type is not contract send")
 	}
-	if input.GetLink() != types.PubKeyDistributionAddress.ToHash() {
+	if input.GetLink() != contractaddress.PubKeyDistributionAddress.ToHash() {
 		return nil, errors.New("input address is not contract PublicKeyDistribution")
 	}
 
@@ -1239,7 +1240,7 @@ func (p *PublicKeyDistributionApi) GetVerifierHeartBlock(account types.Address, 
 		Address:        account,
 		Balance:        tm.Balance.Sub(common.OracleCost),
 		Previous:       tm.Header,
-		Link:           types.Hash(types.PubKeyDistributionAddress),
+		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),

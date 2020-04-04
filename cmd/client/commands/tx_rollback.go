@@ -19,11 +19,12 @@ func addTxRollbackCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "rollback transaction hash",
 		Value: "",
 	}
+	args := []util.Flag{hash}
 	c := &ishell.Cmd{
-		Name: "rollback",
-		Help: "rollback transaction",
+		Name:                "rollback",
+		Help:                "rollback transaction",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{hash}
 			if util.HelpText(c, args) {
 				return
 			}

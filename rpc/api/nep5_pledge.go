@@ -20,6 +20,7 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -118,7 +119,7 @@ func (p *NEP5PledgeAPI) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.NEP5PledgeAddress),
+		Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),
@@ -241,7 +242,7 @@ func (p *NEP5PledgeAPI) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 		Oracle:         am.CoinOracle,
 		Storage:        am.CoinStorage,
 		Previous:       tm.Header,
-		Link:           types.Hash(types.NEP5PledgeAddress),
+		Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 		Representative: tm.Representative,
 		Data:           data,
 		PoVHeight:      povHeader.GetHeight(),

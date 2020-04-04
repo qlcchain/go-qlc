@@ -7,6 +7,7 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -95,8 +96,8 @@ func TestRepApi_GetRewardSendBlock(t *testing.T) {
 	r := NewRepApi(cfg, l)
 	param := new(RepRewardParam)
 	param.RewardBlocks = 10
-	param.StartHeight = 0
-	param.EndHeight = 1439
+	param.StartHeight = common.PovMinerRewardHeightStart
+	param.EndHeight = common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay) - 1
 	param.RewardAmount = big.NewInt(100)
 
 	blk, _ := r.GetRewardSendBlock(param)
@@ -131,12 +132,24 @@ func TestRepApi_GetRewardSendBlock(t *testing.T) {
 	}
 
 	pb, td := mock.GeneratePovBlock(nil, 0)
+	pb.Header.BasHdr.Height = uint64(common.POVChainBlocksPerDay) * 4
 	l.AddPovBlock(pb, td)
 	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
 	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
-	blk, _ = r.GetRewardSendBlock(param)
+
+	ds := types.NewPovMinerDayStat()
+	it := types.NewPovMinerStatItem()
+	it.FirstHeight = param.StartHeight
+	it.LastHeight = param.EndHeight
+	it.RepBlockNum = uint32(param.RewardBlocks)
+	it.RepReward = types.Balance{Int: param.RewardAmount}
+	ds.DayIndex = uint32(common.PovMinerRewardHeightStart / uint64(common.POVChainBlocksPerDay))
+	ds.MinerStats[param.Account.String()] = it
+	l.AddPovMinerStat(ds)
+
+	blk, err := r.GetRewardSendBlock(param)
 	if blk == nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 }
 
@@ -172,7 +185,7 @@ func TestRepApi_GetRewardRecvBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	sendBlock.Link = types.RepAddress.ToHash()
+	sendBlock.Link = contractaddress.RepAddress.ToHash()
 	blk, _ = r.GetRewardRecvBlock(sendBlock)
 	if blk != nil {
 		t.Fatal()
@@ -210,7 +223,7 @@ func TestRepApi_GetRewardRecvBlockBySendHash(t *testing.T) {
 	sendBlock.Data, _ = r.GetRewardData(param)
 	sendBlock.Address = param.Account
 	sendBlock.Type = types.ContractSend
-	sendBlock.Link = types.RepAddress.ToHash()
+	sendBlock.Link = contractaddress.RepAddress.ToHash()
 	l.AddStateBlock(sendBlock)
 
 	blk, _ := r.GetRewardRecvBlockBySendHash(sendBlock.GetHash())
@@ -234,7 +247,7 @@ func TestRepApi_GetRewardHistory(t *testing.T) {
 
 	timeStamp := common.TimeNow().Unix()
 	data, _ := cabi.RepABI.PackVariable(cabi.VariableNameRepReward, uint64(1440), uint64(100), timeStamp, big.NewInt(200))
-	err := ctx.SetStorage(types.RepAddress.Bytes(), account[:], data)
+	err := ctx.SetStorage(contractaddress.RepAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}

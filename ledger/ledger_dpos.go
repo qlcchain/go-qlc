@@ -7,6 +7,7 @@ import (
 
 type DposStore interface {
 	GetLastGapPovHeight() uint64
+	SetLastGapPovHeight(height uint64) error
 }
 
 const (

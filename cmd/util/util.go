@@ -14,6 +14,7 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/fatih/color"
+	"github.com/sahilm/fuzzy"
 )
 
 var prefix = "--"
@@ -171,4 +172,29 @@ func warnPrefix() {
 func Warn(a ...interface{}) {
 	warnPrefix()
 	fmt.Println(a...)
+}
+
+// OptsCompleter creates completer function for ishell from list of opts
+func OptsCompleter(args []Flag) func(prefix string, args []string) []string {
+	opts := make([]string, 0)
+	for _, a := range args {
+		opts = append(opts, prefix+a.Name)
+	}
+	opts = append(opts, prefix+"help")
+
+	return func(prefix string, args []string) []string {
+		if prefix == "" {
+			return opts
+		}
+
+		var completion []string
+
+		matches := fuzzy.Find(prefix, opts)
+		for _, match := range matches {
+			completion = append(completion, match.Str)
+		}
+
+		return completion
+
+	}
 }

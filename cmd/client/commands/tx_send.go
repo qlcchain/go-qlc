@@ -12,13 +12,11 @@ import (
 	"errors"
 	"fmt"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-
-	"github.com/qlcchain/go-qlc/cmd/util"
-
 	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
@@ -48,11 +46,12 @@ func addTxSendCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "send amount",
 		Value: "0",
 	}
+	args := []util.Flag{from, to, token, amount}
 	c := &ishell.Cmd{
-		Name: "send",
-		Help: "send transaction",
+		Name:                "send",
+		Help:                "send transaction",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{from, to, token, amount}
 			if util.HelpText(c, args) {
 				return
 			}

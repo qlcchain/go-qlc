@@ -4,10 +4,10 @@ import (
 	"math/big"
 	"testing"
 
-	config2 "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	config2 "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -29,7 +29,7 @@ func TestMinerReward_GetLastRewardHeight(t *testing.T) {
 	}
 
 	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, uint64(1440), uint64(100), common.TimeNow().Unix(), big.NewInt(200))
-	err = ctx.SetStorage(types.MinerAddress.Bytes(), account[:], data)
+	err = ctx.SetStorage(contractaddress.MinerAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestMinerReward_GetRewardHistory(t *testing.T) {
 
 	timeStamp := common.TimeNow().Unix()
 	data, _ := cabi.MinerABI.PackVariable(cabi.VariableNameMinerReward, uint64(1440), uint64(100), timeStamp, big.NewInt(200))
-	err = ctx.SetStorage(types.MinerAddress.Bytes(), account[:], data)
+	err = ctx.SetStorage(contractaddress.MinerAddress.Bytes(), account[:], data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestMinerReward_ProcessSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx.SetStorage(types.MinerAddress.Bytes(), account[:], data)
+	ctx.SetStorage(contractaddress.MinerAddress.Bytes(), account[:], data)
 	ctx.SaveStorage()
 	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrClaimRepeat {

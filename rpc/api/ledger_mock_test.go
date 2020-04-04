@@ -12,7 +12,8 @@ import (
 
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/topic"
-	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
@@ -32,6 +33,7 @@ func setPovStatus(l *ledger.Ledger, cc *qlcchainctx.ChainContext, t *testing.T) 
 		t.Fatal(err)
 	}
 	_ = cc.Init(func() error {
+		chaincontract.InitChainContract()
 		return nil
 	})
 	_ = cc.Start()
@@ -46,7 +48,7 @@ func setLedgerStatus(l *ledger.Ledger, t *testing.T) {
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis
-		err := ctx.SetStorage(types.MintageAddress[:], gb.Token[:], gb.Data)
+		err := ctx.SetStorage(contractaddress.MintageAddress[:], gb.Token[:], gb.Data)
 		if err != nil {
 			t.Fatal(err)
 		}

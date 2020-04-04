@@ -7,9 +7,8 @@ import (
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
@@ -32,12 +31,12 @@ func addPovRepStateListCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "sort type, total/vote/height",
 		Value: "balance",
 	}
-
+	args := []util.Flag{hashFlag, heightFlag, sortFlag}
 	cmd := &ishell.Cmd{
-		Name: "getAllRepStates",
-		Help: "get all rep state list",
+		Name:                "getAllRepStates",
+		Help:                "get all rep state list",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{hashFlag, heightFlag, sortFlag}
 			if util.HelpText(c, args) {
 				return
 			}

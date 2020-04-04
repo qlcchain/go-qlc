@@ -13,36 +13,31 @@ import (
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
-func addPermissionNodeAddCmdByShell(parentCmd *ishell.Cmd) {
-	admin := util.Flag{
-		Name:  "admin",
+func addPermissionAdminHandoverCmdByShell(parentCmd *ishell.Cmd) {
+	account := util.Flag{
+		Name:  "account",
 		Must:  true,
-		Usage: "admin user (private key in hex string)",
+		Usage: "account to register (private key in hex string)",
 		Value: "",
 	}
-	kind := util.Flag{
-		Name:  "kind",
+	successor := util.Flag{
+		Name:  "successor",
 		Must:  true,
-		Usage: "node kind (0:ip 1:peer id)",
-		Value: "",
-	}
-	node := util.Flag{
-		Name:  "node",
-		Must:  true,
-		Usage: "node addr",
+		Usage: "admin hand over to",
 		Value: "",
 	}
 	comment := util.Flag{
 		Name:  "comment",
 		Must:  false,
-		Usage: "node comment",
+		Usage: "admin comment",
 		Value: "",
 	}
+	args := []util.Flag{account, successor, comment}
 	c := &ishell.Cmd{
-		Name: "nodeAdd",
-		Help: "permission add node",
+		Name:                "adminHandover",
+		Help:                "update admin comment or hand over admin",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{admin, kind, node, comment}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -52,15 +47,11 @@ func addPermissionNodeAddCmdByShell(parentCmd *ishell.Cmd) {
 				return
 			}
 
-			adminP := util.StringVar(c.Args, admin)
-			nodeP := util.StringVar(c.Args, node)
+			accountP := util.StringVar(c.Args, account)
+			successorP := util.StringVar(c.Args, successor)
 			commentP := util.StringVar(c.Args, comment)
-			kindP, err := util.IntVar(c.Args, kind)
-			if err != nil {
-				util.Warn("parse node kind err")
-			}
 
-			err = nodeAdd(adminP, kindP, nodeP, commentP)
+			err := adminHandover(accountP, successorP, commentP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -69,16 +60,16 @@ func addPermissionNodeAddCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func nodeAdd(adminP string, kindP int, nodeP string, commentP string) error {
-	if adminP == "" {
-		return fmt.Errorf("admin can not be null")
+func adminHandover(account, successorP, comment string) error {
+	if account == "" {
+		return fmt.Errorf("account can not be null")
 	}
 
-	if nodeP == "" {
-		return fmt.Errorf("node addr can not be null")
+	if successorP == "" {
+		return fmt.Errorf("successor can not be null")
 	}
 
-	accBytes, err := hex.DecodeString(adminP)
+	accBytes, err := hex.DecodeString(account)
 	if err != nil {
 		return err
 	}
@@ -88,21 +79,25 @@ func nodeAdd(adminP string, kindP int, nodeP string, commentP string) error {
 		return fmt.Errorf("account format err")
 	}
 
+	successor, err := types.HexToAddress(successorP)
+	if err != nil {
+		return err
+	}
+
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 
-	param := &api.NodeParam{
-		Admin:   acc.Address(),
-		Kind:    uint8(kindP),
-		Node:    nodeP,
-		Comment: commentP,
+	param := &api.AdminUpdateParam{
+		Admin:     acc.Address(),
+		Successor: successor,
+		Comment:   comment,
 	}
 
 	var block types.StateBlock
-	err = client.Call(&block, "permission_getNodeAddBlock", param)
+	err = client.Call(&block, "permission_getAdminHandoverBlock", param)
 	if err != nil {
 		return err
 	}
@@ -114,7 +109,7 @@ func nodeAdd(adminP string, kindP int, nodeP string, commentP string) error {
 	hash := block.GetHash()
 	block.Signature = acc.Sign(hash)
 
-	fmt.Printf("node add block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
+	fmt.Printf("send block:\n%s\nhash[%s]\n", cutil.ToIndentString(block), block.GetHash())
 
 	var h types.Hash
 	err = client.Call(&h, "ledger_process", &block)

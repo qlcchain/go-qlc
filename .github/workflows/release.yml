@@ -12,9 +12,9 @@ jobs:
  
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
-          fetch-depth: 10
+          fetch-depth: 1
       - name: Publish GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

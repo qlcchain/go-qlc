@@ -10,6 +10,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -28,7 +29,7 @@ func addTestVerifierInfo(t *testing.T, ctx *vmstore.VMContext, account types.Add
 	key = append(key, abi.PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
 	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +45,7 @@ func addTestVerifierState(t *testing.T, l ledger.Store, povHeight uint64, accoun
 	povBlk.Header.BasHdr.Height = povHeight
 
 	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
-	csdb, err := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +108,7 @@ func addTestPublishInfo(t *testing.T, ctx *vmstore.VMContext, account types.Addr
 	key = append(key, id[:]...)
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +133,7 @@ func addTestOracleInfo(t *testing.T, ctx *vmstore.VMContext, account types.Addre
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -597,6 +598,11 @@ func TestPublicKeyDistributionApi_GetPublishBlock(t *testing.T) {
 	}
 
 	addTestVerifierState(t, l, 100, []types.Address{mock.Address()}, 100)
+	preBlk := mock.StateBlockWithoutWork()
+	preBlk.Balance = common.PublishCost
+	l.AddStateBlock(preBlk)
+	am.Tokens[0].Header = preBlk.GetHash()
+	l.UpdateAccountMeta(am, l.Cache().GetCache())
 	_, err = pkd.GetPublishBlock(param)
 	if err != nil {
 		t.Fatal(err)
@@ -915,7 +921,15 @@ func TestPublicKeyDistributionApi_GetOracleBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	addTestVerifierState(t, l, 100, []types.Address{mock.Address()}, 1000)
+	addTestVerifierState(t, l, 100, []types.Address{param.Account}, 1000)
+	vk := mock.Hash()
+	addTestVerifierInfo(t, ctx, param.Account, common.OracleTypeEmail, "123@test.com", vk[:])
+	preBlk := mock.StateBlockWithoutWork()
+	preBlk.Balance = common.OracleCost
+	l.AddStateBlock(preBlk)
+	am.Tokens[0].Header = preBlk.GetHash()
+	am.CoinOracle = common.MinVerifierPledgeAmount
+	l.UpdateAccountMeta(am, l.Cache().GetCache())
 	_, err = pkd.GetOracleBlock(param)
 	if err != nil {
 		t.Fatal(err)
@@ -1152,7 +1166,7 @@ func TestPublicKeyDistributionApi_Reward(t *testing.T) {
 
 	// mock trie state in global db
 	gsdb := statedb.NewPovGlobalStateDB(md.l.DBStore(), types.ZeroHash)
-	csdb, _ := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+	csdb, _ := gsdb.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 
 	ps := types.NewPovVerifierState()
 	ps.TotalReward = types.NewBigNumFromInt(100000000)

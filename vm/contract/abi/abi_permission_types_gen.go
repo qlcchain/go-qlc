@@ -24,22 +24,16 @@ func (z *AdminAccount) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "a":
-			err = dc.ReadExtension(&z.Addr)
-			if err != nil {
-				err = msgp.WrapError(err, "Addr")
-				return
-			}
 		case "c":
 			z.Comment, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Comment")
 				return
 			}
-		case "s":
-			z.Status, err = dc.ReadUint8()
+		case "v":
+			z.Valid, err = dc.ReadBool()
 			if err != nil {
-				err = msgp.WrapError(err, "Status")
+				err = msgp.WrapError(err, "Valid")
 				return
 			}
 		default:
@@ -55,19 +49,9 @@ func (z *AdminAccount) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z AdminAccount) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 3
-	// write "a"
-	err = en.Append(0x83, 0xa1, 0x61)
-	if err != nil {
-		return
-	}
-	err = en.WriteExtension(&z.Addr)
-	if err != nil {
-		err = msgp.WrapError(err, "Addr")
-		return
-	}
+	// map header, size 2
 	// write "c"
-	err = en.Append(0xa1, 0x63)
+	err = en.Append(0x82, 0xa1, 0x63)
 	if err != nil {
 		return
 	}
@@ -76,14 +60,14 @@ func (z AdminAccount) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Comment")
 		return
 	}
-	// write "s"
-	err = en.Append(0xa1, 0x73)
+	// write "v"
+	err = en.Append(0xa1, 0x76)
 	if err != nil {
 		return
 	}
-	err = en.WriteUint8(z.Status)
+	err = en.WriteBool(z.Valid)
 	if err != nil {
-		err = msgp.WrapError(err, "Status")
+		err = msgp.WrapError(err, "Valid")
 		return
 	}
 	return
@@ -92,20 +76,13 @@ func (z AdminAccount) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z AdminAccount) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 3
-	// string "a"
-	o = append(o, 0x83, 0xa1, 0x61)
-	o, err = msgp.AppendExtension(o, &z.Addr)
-	if err != nil {
-		err = msgp.WrapError(err, "Addr")
-		return
-	}
+	// map header, size 2
 	// string "c"
-	o = append(o, 0xa1, 0x63)
+	o = append(o, 0x82, 0xa1, 0x63)
 	o = msgp.AppendString(o, z.Comment)
-	// string "s"
-	o = append(o, 0xa1, 0x73)
-	o = msgp.AppendUint8(o, z.Status)
+	// string "v"
+	o = append(o, 0xa1, 0x76)
+	o = msgp.AppendBool(o, z.Valid)
 	return
 }
 
@@ -127,22 +104,16 @@ func (z *AdminAccount) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "a":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Addr)
-			if err != nil {
-				err = msgp.WrapError(err, "Addr")
-				return
-			}
 		case "c":
 			z.Comment, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Comment")
 				return
 			}
-		case "s":
-			z.Status, bts, err = msgp.ReadUint8Bytes(bts)
+		case "v":
+			z.Valid, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Status")
+				err = msgp.WrapError(err, "Valid")
 				return
 			}
 		default:
@@ -159,7 +130,7 @@ func (z *AdminAccount) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z AdminAccount) Msgsize() (s int) {
-	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Addr.Len() + 2 + msgp.StringPrefixSize + len(z.Comment) + 2 + msgp.Uint8Size
+	s = 1 + 2 + msgp.StringPrefixSize + len(z.Comment) + 2 + msgp.BoolSize
 	return
 }
 
@@ -181,16 +152,10 @@ func (z *PermNode) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "k":
-			z.Kind, err = dc.ReadUint8()
+		case "nu":
+			z.NodeUrl, err = dc.ReadString()
 			if err != nil {
-				err = msgp.WrapError(err, "Kind")
-				return
-			}
-		case "n":
-			z.Node, err = dc.ReadString()
-			if err != nil {
-				err = msgp.WrapError(err, "Node")
+				err = msgp.WrapError(err, "NodeUrl")
 				return
 			}
 		case "c":
@@ -217,26 +182,16 @@ func (z *PermNode) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z *PermNode) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
-	// write "k"
-	err = en.Append(0x84, 0xa1, 0x6b)
+func (z PermNode) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "nu"
+	err = en.Append(0x83, 0xa2, 0x6e, 0x75)
 	if err != nil {
 		return
 	}
-	err = en.WriteUint8(z.Kind)
+	err = en.WriteString(z.NodeUrl)
 	if err != nil {
-		err = msgp.WrapError(err, "Kind")
-		return
-	}
-	// write "n"
-	err = en.Append(0xa1, 0x6e)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.Node)
-	if err != nil {
-		err = msgp.WrapError(err, "Node")
+		err = msgp.WrapError(err, "NodeUrl")
 		return
 	}
 	// write "c"
@@ -263,15 +218,12 @@ func (z *PermNode) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z *PermNode) MarshalMsg(b []byte) (o []byte, err error) {
+func (z PermNode) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
-	// string "k"
-	o = append(o, 0x84, 0xa1, 0x6b)
-	o = msgp.AppendUint8(o, z.Kind)
-	// string "n"
-	o = append(o, 0xa1, 0x6e)
-	o = msgp.AppendString(o, z.Node)
+	// map header, size 3
+	// string "nu"
+	o = append(o, 0x83, 0xa2, 0x6e, 0x75)
+	o = msgp.AppendString(o, z.NodeUrl)
 	// string "c"
 	o = append(o, 0xa1, 0x63)
 	o = msgp.AppendString(o, z.Comment)
@@ -299,16 +251,10 @@ func (z *PermNode) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "k":
-			z.Kind, bts, err = msgp.ReadUint8Bytes(bts)
+		case "nu":
+			z.NodeUrl, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Kind")
-				return
-			}
-		case "n":
-			z.Node, bts, err = msgp.ReadStringBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Node")
+				err = msgp.WrapError(err, "NodeUrl")
 				return
 			}
 		case "c":
@@ -336,7 +282,7 @@ func (z *PermNode) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *PermNode) Msgsize() (s int) {
-	s = 1 + 2 + msgp.Uint8Size + 2 + msgp.StringPrefixSize + len(z.Node) + 2 + msgp.StringPrefixSize + len(z.Comment) + 2 + msgp.BoolSize
+func (z PermNode) Msgsize() (s int) {
+	s = 1 + 3 + msgp.StringPrefixSize + len(z.NodeUrl) + 2 + msgp.StringPrefixSize + len(z.Comment) + 2 + msgp.BoolSize
 	return
 }

@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"math/big"
 
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/contract/dpki"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -61,7 +62,7 @@ func (vr *VerifierRegister) SetStorage(ctx *vmstore.VMContext, account types.Add
 	key = append(key, abi.PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
 	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -110,7 +111,7 @@ func (vu *VerifierUnregister) SetStorage(ctx *vmstore.VMContext, account types.A
 	key = append(key, abi.PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
 	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -245,7 +246,7 @@ func (p *Publish) SetStorage(ctx *vmstore.VMContext, account types.Address, pt u
 	key = append(key, id[:]...)
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -324,7 +325,7 @@ func (up *UnPublish) SetStorage(ctx *vmstore.VMContext, pt uint32, id types.Hash
 	key = append(key, id[:]...)
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
-	dataOld, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], key)
+	dataOld, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], key)
 	if err != nil {
 		return err
 	}
@@ -340,7 +341,7 @@ func (up *UnPublish) SetStorage(ctx *vmstore.VMContext, pt uint32, id types.Hash
 		return err
 	}
 
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, dataNew)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, dataNew)
 	if err != nil {
 		return err
 	}
@@ -414,7 +415,7 @@ func (o *Oracle) SetStorage(ctx *vmstore.VMContext, account types.Address, ot ui
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -611,7 +612,7 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		}, nil
 }
 
-func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	param := new(dpki.PKDRewardParam)
 
 	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, input.Data)
@@ -659,7 +660,7 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 		block.Previous = types.ZeroHash
 	}
 
-	return []*ContractBlock{
+	return []*vmcontract.ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -704,7 +705,7 @@ func (r *PKDReward) SetRewardInfo(ctx *vmstore.VMContext, address types.Address,
 	var rwdInfoKey []byte
 	rwdInfoKey = append(rwdInfoKey, abi.PKDStorageTypeReward)
 	rwdInfoKey = append(rwdInfoKey, address.Bytes()...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress.Bytes(), rwdInfoKey, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress.Bytes(), rwdInfoKey, data)
 	if err != nil {
 		return errors.New("save contract data err")
 	}
@@ -717,7 +718,7 @@ func (r *PKDReward) GetRewardInfo(ctx *vmstore.VMContext, address types.Address)
 	rwdInfoKey = append(rwdInfoKey, abi.PKDStorageTypeReward)
 	rwdInfoKey = append(rwdInfoKey, address.Bytes()...)
 
-	valBytes, err := ctx.GetStorage(types.PubKeyDistributionAddress[:], rwdInfoKey)
+	valBytes, err := ctx.GetStorage(contractaddress.PubKeyDistributionAddress[:], rwdInfoKey)
 	if err != nil {
 		return nil, err
 	}
@@ -740,7 +741,7 @@ func (r *PKDReward) GetVerifierState(ctx *vmstore.VMContext, povHeight uint64, a
 	}
 
 	gsdb := statedb.NewPovGlobalStateDB(ctx.Ledger.DBStore(), povHdr.GetStateHash())
-	csdb, err := gsdb.LookupContractStateDB(types.PubKeyDistributionAddress)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
 	if err != nil {
 		return nil, err
 	}

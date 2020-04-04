@@ -10,37 +10,36 @@ package process
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
-	"github.com/qlcchain/go-qlc/common/hashmap"
-	"github.com/qlcchain/go-qlc/common/sync/spinlock"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type LedgerVerifier struct {
-	l               *ledger.Ledger
+	l               ledger.Store
 	blockCheck      map[types.BlockType]blockCheck
 	cacheBlockCheck map[types.BlockType]blockCheck
 	//syncBlockCheck  map[types.BlockType]blockCheck
-	representLock *hashmap.HashMap
+	representLock *sync.Map
 	logger        *zap.SugaredLogger
 }
 
-func NewLedgerVerifier(l *ledger.Ledger) *LedgerVerifier {
+func NewLedgerVerifier(l ledger.Store) *LedgerVerifier {
 	return &LedgerVerifier{
 		l:               l,
 		blockCheck:      newBlockCheck(),
 		cacheBlockCheck: newCacheBlockCheck(),
 		//syncBlockCheck:  newSyncBlockCheck(),
-		representLock: &hashmap.HashMap{},
+		representLock: new(sync.Map),
 		logger:        log.NewLogger("ledger_verifier"),
 	}
 }
@@ -67,7 +66,8 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 		}
 		if r != Progress {
 			if r == UnReceivable {
-				if _, ok := lv.l.VerifiedData[block.GetHash()]; ok {
+				vd := lv.l.GetVerifiedData()
+				if _, ok := vd[block.GetHash()]; ok {
 					return Progress, nil
 				}
 			}
@@ -255,6 +255,7 @@ func (c *onlineBlockCheck) Check(lv *LedgerVerifier, block *types.StateBlock) (P
 
 func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 	lv.logger.Infof("block  process: %s(%s) ", block.GetHash().String(), block.GetType().String())
+	lv.lock(block)
 	err := lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
 		err := lv.processStateBlock(block, c)
 		if err != nil {
@@ -263,12 +264,12 @@ func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 		}
 		return nil
 	})
-	lv.unlock(block.Representative)
+	lv.unlock(block)
 	if err != nil {
 		return err
 	}
 	lv.logger.Debug("publish addRelation,", block.GetHash())
-	lv.l.EB.Publish(topic.EventAddRelation, block)
+	lv.l.EventBus().Publish(topic.EventAddRelation, block)
 	return nil
 }
 
@@ -334,15 +335,15 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			return nil
 		}
 
-		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.GetPayload()); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(block.Link), block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
-			case contract.SpecVer1:
+			case vmcontract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
 				}
-			case contract.SpecVer2:
+			case vmcontract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
@@ -365,22 +366,31 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	}
 }
 
-func (lv *LedgerVerifier) lock(address types.Address) {
-	i, _ := lv.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
-	spin, _ := i.(*spinlock.SpinLock)
-	spin.Lock()
+func (lv *LedgerVerifier) lock(block *types.StateBlock) {
+	if block.GetToken() == config.ChainToken() {
+		i, _ := lv.representLock.LoadOrStore(block.Representative.String(), &sync.Mutex{})
+		l, _ := i.(*sync.Mutex)
+		l.Lock()
+		//fmt.Printf("lock: %s %s %p \n", block.GetHash(), block.Representative.String(), l)
+	}
 }
 
-func (lv *LedgerVerifier) unlock(address types.Address) {
-	i, _ := lv.representLock.GetOrInsert(address.String(), &spinlock.SpinLock{})
-	spin, _ := i.(*spinlock.SpinLock)
-	spin.Unlock()
+func (lv *LedgerVerifier) unlock(block *types.StateBlock) {
+	if block.GetToken() == config.ChainToken() {
+		i, ok := lv.representLock.Load(block.Representative.String())
+		if !ok {
+			lv.logger.Errorf("get block lock fail, %s", block.GetHash())
+			return
+		}
+		l, _ := i.(*sync.Mutex)
+		l.Unlock()
+		//fmt.Printf("unlock: %s %s %p \n", block.GetHash(), block.Representative.String(), l)
+	}
 }
 
 func (lv *LedgerVerifier) updateRepresentative(block *types.StateBlock, am *types.AccountMeta, tm *types.TokenMeta, cache *ledger.Cache) error {
 	if block.GetToken() == config.ChainToken() {
 		if tm != nil && !tm.Representative.IsZero() {
-			lv.lock(block.Representative)
 			oldBenefit := &types.Benefit{
 				Vote:    am.GetVote(),
 				Network: am.GetNetwork(),
@@ -505,7 +515,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			}
 
 			address := types.Address(input.GetLink())
-			c, ok, err := contract.GetChainContract(address, input.GetPayload())
+			c, ok, err := vmcontract.GetChainContract(address, input.GetPayload())
 			if !ok || err != nil {
 				return fmt.Errorf("invaild contract %s", err)
 			}
@@ -536,11 +546,11 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				return nil
 			}
 
-			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.GetPayload())
+			c, ok, err := vmcontract.GetChainContract(types.Address(block.Link), block.GetPayload())
 			if ok && err == nil {
 				d := c.GetDescribe()
 				switch d.GetVersion() {
-				case contract.SpecVer2:
+				case vmcontract.SpecVer2:
 					vmCtx := vmstore.NewVMContext(lv.l)
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
 						if err := vmCtx.SaveStorage(cache); err != nil {

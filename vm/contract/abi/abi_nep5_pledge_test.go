@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -227,7 +228,7 @@ func mockPledgeInfo(ctx *vmstore.VMContext, addr types.Address, size int) ([]*NE
 			return nil, err
 		} else {
 			pledgeKey := GetPledgeKey(addr, info.Beneficial, info.NEP5TxId)
-			if err := ctx.SetStorage(types.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
+			if err := ctx.SetStorage(contractaddress.NEP5PledgeAddress[:], pledgeKey, data); err != nil {
 				return nil, err
 			}
 			infos = append(infos, info)

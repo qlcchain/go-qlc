@@ -13,19 +13,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qlcchain/go-qlc/config"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/AsynkronIT/protoactor-go/actor"
-
-	"github.com/qlcchain/go-qlc/common/event"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 )
 
@@ -196,7 +193,7 @@ func ReceiveBlock(sendBlock *types.StateBlock, account *types.Account, cc *conte
 		if err != nil {
 			return
 		}
-	} else if sendBlock.Type == types.ContractSend && sendBlock.Link == types.Hash(types.RewardsAddress) {
+	} else if sendBlock.Type == types.ContractSend && sendBlock.Link == types.Hash(contractaddress.RewardsAddress) {
 		sendHash := sendBlock.GetHash()
 		err = client.Call(&receiveBlock, "rewards_getReceiveRewardBlock", &sendHash)
 		if err != nil {

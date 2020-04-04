@@ -11,6 +11,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/abi"
@@ -111,7 +112,7 @@ func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType ui
 	key = append(key, PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
 	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -134,7 +135,7 @@ func delTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType ui
 	key = append(key, PKDStorageTypeVerifier)
 	key = append(key, util.BE_Uint32ToBytes(vType)...)
 	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -374,7 +375,7 @@ func addTestOracleInfo(ctx *vmstore.VMContext, account types.Address, ot uint32,
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
 	key = append(key, account[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -643,7 +644,7 @@ func addTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32
 	key = append(key, id[:]...)
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}
@@ -670,7 +671,7 @@ func delTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32
 	key = append(key, id[:]...)
 	key = append(key, kh...)
 	key = append(key, hash[:]...)
-	err = ctx.SetStorage(types.PubKeyDistributionAddress[:], key, data)
+	err = ctx.SetStorage(contractaddress.PubKeyDistributionAddress[:], key, data)
 	if err != nil {
 		return err
 	}

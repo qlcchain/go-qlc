@@ -6,21 +6,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qlcchain/go-qlc/consensus"
-
-	"github.com/qlcchain/go-qlc/vm/contract"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/p2p"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const ConfirmChainParallelNum = 10
@@ -413,9 +410,8 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
 
 	if bs.BlockFrom == types.Synchronized {
+		bs.Block.SetFromSync()
 		p.dps.updateLastProcessSyncTime()
-	} else {
-		bs.Block.Flag = types.BlockFlagNonSync
 	}
 
 	result, err = dps.lv.BlockCheck(bs.Block)
@@ -639,9 +635,8 @@ func (p *Processor) processUncheckedBlock(bs *consensus.BlockSource) {
 		dps.eb.Publish(topic.EventBroadcast, &p2p.EventBroadcastMsg{Type: p2p.PublishReq, Message: bs.Block})
 	}
 
-	if bs.BlockFrom != types.Synchronized {
-		bs.Block.Flag = types.BlockFlagNonSync
-	} else {
+	if bs.BlockFrom == types.Synchronized {
+		bs.Block.SetFromSync()
 		p.dps.updateLastProcessSyncTime()
 	}
 
@@ -705,10 +700,10 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 			break
 		}
 
-		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
-			case contract.SpecVer2:
+			case vmcontract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(dps.ledger)
 				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
 				if err != nil || gapResult != common.ContractRewardGapPov {

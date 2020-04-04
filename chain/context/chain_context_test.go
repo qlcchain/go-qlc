@@ -16,14 +16,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 type testService struct {

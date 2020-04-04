@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -129,7 +130,7 @@ func TestProcess_CacheException(t *testing.T) {
 		t.Fatal(r, err)
 	}
 	bc.Type = types.ContractSend
-	bc.Link = types.NEP5PledgeAddress.ToHash()
+	bc.Link = contractaddress.NEP5PledgeAddress.ToHash()
 	if r, err := lv.BlockCacheCheck(bc); err != nil {
 		t.Fatal(r, err)
 	}

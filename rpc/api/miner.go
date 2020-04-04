@@ -9,6 +9,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -188,7 +189,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		Oracle:  amCb.CoinOracle,
 		Storage: amCb.CoinStorage,
 
-		Link:      types.Hash(types.MinerAddress),
+		Link:      types.Hash(contractaddress.MinerAddress),
 		Data:      data,
 		Timestamp: common.TimeNow().Unix(),
 
@@ -196,7 +197,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 	}
 
 	vmContext := vmstore.NewVMContext(m.ledger)
-	err = m.reward.SetStorage(vmContext, param.EndHeight, param.RewardAmount, param.RewardBlocks, send)
+	_, _, err = m.reward.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +218,7 @@ func (m *MinerApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBloc
 	if input.GetType() != types.ContractSend {
 		return nil, errors.New("input block type is not contract send")
 	}
-	if input.GetLink() != types.MinerAddress.ToHash() {
+	if input.GetLink() != contractaddress.MinerAddress.ToHash() {
 		return nil, errors.New("input address is not contract miner")
 	}
 

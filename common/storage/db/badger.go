@@ -339,7 +339,7 @@ func (b *BadgerTransaction) Drop(prefix []byte) error {
 	return nil
 }
 
-func (b *BadgerTransaction) Cancel() {
+func (b *BadgerTransaction) Discard() {
 	b.txn.Discard()
 }
 
@@ -367,7 +367,7 @@ func (b *BadgerWriteBatch) Drop(prefix []byte) error {
 	panic("not implemented")
 }
 
-func (b *BadgerWriteBatch) Cancel() {
+func (b *BadgerWriteBatch) Discard() {
 	b.batch.Cancel()
 }
 

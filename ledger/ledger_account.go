@@ -14,6 +14,8 @@ type AccountStore interface {
 	CountAccountMetas() (uint64, error)
 	HasAccountMetaConfirmed(address types.Address) (bool, error)
 	AddAccountMeta(value *types.AccountMeta, c storage.Cache) error
+	UpdateAccountMeta(value *types.AccountMeta, c storage.Cache) error
+	DeleteAccountMeta(key types.Address, c storage.Cache) error
 
 	GetAccountMetaConfirmed(address types.Address, c ...storage.Cache) (*types.AccountMeta, error)
 
@@ -24,12 +26,15 @@ type AccountStore interface {
 	DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *Cache) error
 	GetTokenMetaConfirmed(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 
+	AddAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error
 	AddOrUpdateAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error
 	UpdateAccountMeteCache(value *types.AccountMeta, batch ...storage.Batch) error
 	DeleteAccountMetaCache(key types.Address, batch ...storage.Batch) error
 	GetAccountMeteCache(key types.Address, batch ...storage.Batch) (*types.AccountMeta, error)
 	GetAccountMetaCaches(fn func(am *types.AccountMeta) error) error
 	HasAccountMetaCache(key types.Address) (bool, error)
+
+	DeleteTokenMetaCache(address types.Address, tokenType types.Hash, batch ...storage.Batch) error
 
 	Weight(account types.Address) types.Balance
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)

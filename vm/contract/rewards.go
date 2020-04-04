@@ -10,9 +10,10 @@ package contract
 import (
 	"fmt"
 
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -38,7 +39,7 @@ func (ar *AirdropRewards) DoPending(block *types.StateBlock) (*types.PendingKey,
 	return doPending(block, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards)
 }
 
-func (ar *AirdropRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (ar *AirdropRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return generate(ctx, cabi.MethodNameAirdropRewards, cabi.MethodNameUnsignedAirdropRewards,
 		block, input, func(param *cabi.RewardsParam) []byte {
 			return cabi.GetRewardsKey(param.Id[:], param.TxHeader[:], param.RxHeader[:])
@@ -108,7 +109,7 @@ func doPending(block *types.StateBlock, signed, unsigned string) (*types.Pending
 }
 
 func (*ConfidantRewards) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
-	input *types.StateBlock) ([]*ContractBlock, error) {
+	input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	return generate(ctx, cabi.MethodNameConfidantRewards, cabi.MethodNameUnsignedConfidantRewards,
 		block, input, func(param *cabi.RewardsParam) []byte {
 			return cabi.GetConfidantKey(param.Beneficial, param.Id[:], param.TxHeader[:], param.RxHeader[:])
@@ -137,7 +138,7 @@ func (*ConfidantRewards) GetTargetReceiver(ctx *vmstore.VMContext, block *types.
 }
 
 func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.StateBlock, input *types.StateBlock,
-	fn func(param *cabi.RewardsParam) []byte) ([]*ContractBlock, error) {
+	fn func(param *cabi.RewardsParam) []byte) ([]*vmcontract.ContractBlock, error) {
 	param, err := cabi.ParseRewardsParam(signed, input.Data)
 	if err != nil {
 		return nil, err
@@ -209,7 +210,7 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 		}
 
 		key := fn(param)
-		if data, err := ctx.GetStorage(types.RewardsAddress[:], key); err != nil && err != vmstore.ErrStorageNotFound {
+		if data, err := ctx.GetStorage(contractaddress.RewardsAddress[:], key); err != nil && err != vmstore.ErrStorageNotFound {
 			return nil, err
 		} else {
 			//already exist
@@ -232,7 +233,7 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 				}
 			} else {
 				if data, err := info.ToABI(); err == nil {
-					if err := ctx.SetStorage(types.RewardsAddress[:], key, data); err != nil {
+					if err := ctx.SetStorage(contractaddress.RewardsAddress[:], key, data); err != nil {
 						return nil, err
 					}
 				} else {
@@ -241,7 +242,7 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 			}
 		}
 
-		return []*ContractBlock{
+		return []*vmcontract.ContractBlock{
 			{
 				VMContext: ctx,
 				Block:     block,

@@ -36,12 +36,12 @@ func addPovBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "tx count of pov block",
 		Value: 10,
 	}
-
+	args := []util.Flag{heightFlag, hashFlag, txOffsetFlag, txCountFlag}
 	cmd := &ishell.Cmd{
-		Name: "getBlockInfo",
-		Help: "get pov block info",
+		Name:                "getBlockInfo",
+		Help:                "get pov block info",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{heightFlag, hashFlag, txOffsetFlag, txCountFlag}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -158,12 +158,12 @@ func addPovBlockListCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "order is ascend or descend",
 		Value: false,
 	}
-
+	args := []util.Flag{heightFlag, countFlag, ascFlag}
 	cmd := &ishell.Cmd{
-		Name: "getBlockList",
-		Help: "get pov block list",
+		Name:                "getBlockList",
+		Help:                "get pov block list",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{heightFlag, countFlag, ascFlag}
 			if util.HelpText(c, args) {
 				return
 			}

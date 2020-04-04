@@ -7,47 +7,23 @@ import (
 const (
 	PermissionDataAdmin uint8 = iota
 	PermissionDataNode
-	PermissionDataNodeIndex
-)
-
-const (
-	PermissionAdminStatusActive uint8 = iota
-	PermissionAdminStatusHandOver
-)
-
-const (
-	PermissionNodeKindIPPort uint8 = iota
-	PermissionNodeKindPeerID
-	PermissionNodeKindInvalid
 )
 
 const (
 	PermissionCommentMaxLen = 128
 )
 
-func PermissionAdminStatusString(status uint8) string {
-	switch status {
-	case PermissionAdminStatusActive:
-		return "active"
-	case PermissionAdminStatusHandOver:
-		return "in hand over"
-	default:
-		return ""
-	}
-}
-
 //go:generate msgp
 type AdminAccount struct {
-	Addr    types.Address `msg:"a,extension" json:"account"`
+	Account types.Address `msg:"-" json:"account"`
 	Comment string        `msg:"c" json:"comment"`
-	Status  uint8         `msg:"s" json:"status"`
+	Valid   bool          `msg:"v" json:"valid"`
 }
 
 //go:generate msgp
 type PermNode struct {
-	Index   uint32 `msg:"-" json:"index"`
-	Kind    uint8  `msg:"k" json:"kind"`
-	Node    string `msg:"n" json:"node"`
+	NodeId  string `msg:"-" json:"nodeId"`
+	NodeUrl string `msg:"nu" json:"nodeUrl"`
 	Comment string `msg:"c" json:"comment"`
 	Valid   bool   `msg:"s" json:"valid"`
 }

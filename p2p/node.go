@@ -91,6 +91,7 @@ type QlcNode struct {
 	isRepresentative bool
 	reporter         p2pmetrics.Reporter
 	ping             *ping.Pinger
+	protector        *Protector
 }
 
 // NewNode return new QlcNode according to the config.
@@ -103,6 +104,7 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		streamManager: NewStreamManager(),
 		logger:        log.NewLogger("p2p"),
 		isMiner:       config.PoV.PovEnabled,
+		protector:     NewProtector(),
 	}
 	privateKey, err := config.DecodePrivateKey()
 	if err != nil {
@@ -125,33 +127,56 @@ func (node *QlcNode) setRepresentativeNode(isRepresentative bool) {
 	node.isRepresentative = isRepresentative
 }
 
-func (node *QlcNode) buildHost() error {
-	go node.getBootNode(node.cfg.P2P.BootNodes)
+func (node *QlcNode) updateWhiteList(ip string) {
+	if node.cfg.P2P.WhiteListMode {
+		if node.protector != nil {
+			node.protector.whiteList = append(node.protector.whiteList, ip)
+		}
+	}
+}
 
+func (node *QlcNode) buildHost() error {
+	var err error
+	go node.getBootNode(node.cfg.P2P.BootNodes)
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
-	qlcHost, err := libp2p.New(
-		node.ctx,
-		libp2p.ListenAddrs(sourceMultiAddr),
-		libp2p.Identity(node.privateKey),
-		//libp2p.NATPortMap(),
-		libp2p.BandwidthReporter(node.reporter),
-		libp2p.Ping(false),
-		// libp2p.NoSecurity,
-		// libp2p.DefaultMuxers,
-	)
+	if node.cfg.P2P.WhiteListMode {
+		node.host, err = libp2p.New(
+			node.ctx,
+			libp2p.ListenAddrs(sourceMultiAddr),
+			libp2p.Identity(node.privateKey),
+			//libp2p.NATPortMap(),
+			libp2p.BandwidthReporter(node.reporter),
+			libp2p.Ping(false),
+			libp2p.PrivateNetwork(node.protector),
+			// libp2p.NoSecurity,
+			// libp2p.DefaultMuxers,
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		node.host, err = libp2p.New(
+			node.ctx,
+			libp2p.ListenAddrs(sourceMultiAddr),
+			libp2p.Identity(node.privateKey),
+			//libp2p.NATPortMap(),
+			libp2p.BandwidthReporter(node.reporter),
+			libp2p.Ping(false),
+			// libp2p.NoSecurity,
+			// libp2p.DefaultMuxers,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	node.host.SetStreamHandler(QlcProtocolID, node.handleStream)
+	node.kadDht, err = dht.New(node.ctx, node.host)
 	if err != nil {
 		return err
 	}
-	qlcHost.SetStreamHandler(QlcProtocolID, node.handleStream)
-	node.host = qlcHost
-	kadDht, err := dht.New(node.ctx, node.host)
-	if err != nil {
-		return err
-	}
-	node.kadDht = kadDht
 	node.dis = discovery.NewRoutingDiscovery(node.kadDht)
-	node.peerStore = qlcHost.Peerstore()
+	node.peerStore = node.host.Peerstore()
 	if err := node.peerStore.AddPrivKey(node.ID, node.privateKey); err != nil {
 		return err
 	}
@@ -413,6 +438,18 @@ func (node *QlcNode) findPeers() error {
 		return true
 	})
 	for _, p := range peers {
+		if node.cfg.P2P.WhiteListMode {
+			var in bool
+			for _, v := range node.protector.whiteList {
+				if v == p.ID.Pretty() {
+					in = true
+					break
+				}
+			}
+			if !in {
+				continue
+			}
+		}
 		var pi *types.PeerInfo
 		if v, ok := node.streamManager.onlinePeersInfo.Load(p.ID.Pretty()); ok {
 			pi = v.(*types.PeerInfo)
@@ -440,7 +477,21 @@ func (node *QlcNode) findPeers() error {
 
 func (node *QlcNode) handleStream(s network.Stream) {
 	node.logger.Infof("Got a new stream from %s!", s.Conn().RemotePeer().Pretty())
-	node.streamManager.Add(s)
+	if node.cfg.P2P.WhiteListMode {
+		var count int
+		for _, v := range node.protector.whiteList {
+			if v == s.Conn().RemotePeer().Pretty() {
+				node.streamManager.Add(s)
+				break
+			}
+			count++
+		}
+		if count == len(node.protector.whiteList)-1 {
+			node.logger.Warnf("refuse connect from %s because it isn't in whitelist", s.Conn().RemotePeer().Pretty())
+		}
+	} else {
+		node.streamManager.Add(s)
+	}
 }
 
 // ID return node ID.

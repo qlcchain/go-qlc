@@ -11,10 +11,11 @@ import (
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/trie"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -132,6 +133,7 @@ func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
 
 	return lv.l.Cache().BatchUpdate(func(c *ledger.Cache) error {
 		batch := lv.l.DBStore().Batch(true)
+		defer batch.Discard()
 		if err := lv.rollbackBlocks(rollbackMap, c, batch); err != nil {
 			return fmt.Errorf("rollback cache batch: %s", err)
 		}
@@ -224,7 +226,7 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache 
 			if err := lv.l.DeleteBlockCache(block.GetHash(), batch); err != nil {
 				return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
 			}
-			lv.l.EB.Publish(topic.EventRollback, block.GetHash())
+			lv.l.EventBus().Publish(topic.EventRollback, block.GetHash())
 			lv.logger.Infof("rollback delete cache block %s (previous: %s, type: %s,  address: %s)", block.GetHash().String(), block.GetPrevious().String(), block.GetType(), block.GetAddress().String())
 
 			if b, _ := lv.l.HasBlockCache(block.GetPrevious()); b {
@@ -243,7 +245,7 @@ func (lv *LedgerVerifier) rollbackCacheBlocks(blocks []*types.StateBlock, cache 
 		if err := lv.l.DeleteBlockCache(block.GetHash(), batch); err != nil {
 			return fmt.Errorf("delete BlockCache fail(%s), hash(%s)", err, block.GetHash().String())
 		}
-		lv.l.EB.Publish(topic.EventRollback, block.GetHash())
+		lv.l.EventBus().Publish(topic.EventRollback, block.GetHash())
 		lv.logger.Errorf("rollback delete cache block %s (previous: %s, type: %s,  address: %s)", block.GetHash().String(), block.GetPrevious().String(), block.GetType(), block.GetAddress().String())
 	}
 
@@ -434,7 +436,7 @@ func (lv *LedgerVerifier) rollbackBlocks(rollbackMap map[types.Hash]*types.State
 			if err := lv.l.DeleteStateBlock(hashCur, cache); err != nil {
 				return fmt.Errorf("delete state block error: %s, %s", err, hashCur)
 			}
-			lv.l.EB.Publish(topic.EventRollback, hashCur)
+			lv.l.EventBus().Publish(topic.EventRollback, hashCur)
 			lv.logger.Errorf("rollback delete block done: %s (previous: %s, type: %s,  address: %s) ", hashCur.String(), blockCur.GetPrevious().String(), blockCur.GetType(), blockCur.GetAddress().String())
 
 			if err := lv.checkBlockCache(blockCur, batch); err != nil {
@@ -697,16 +699,16 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 	}
 
 	if blockCur.GetType() == types.ContractReward {
-		if c, ok, err := contract.GetChainContract(types.Address(blockLink.Link), blockLink.GetPayload()); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(blockLink.Link), blockLink.GetPayload()); ok && err == nil {
 			switch c.GetDescribe().GetVersion() {
-			case contract.SpecVer1:
+			case vmcontract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(blockLink); err == nil && pendingKey != nil {
 					lv.logger.Debug("add contract reward pending , ", pendingKey)
 					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
 						return fmt.Errorf("contract ver1 add pending: %s", err)
 					}
 				}
-			case contract.SpecVer2:
+			case vmcontract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, blockLink); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
@@ -746,14 +748,14 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 	}
 
 	if blockCur.GetType() == types.ContractSend {
-		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.GetPayload()); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(blockCur.Link), blockCur.GetPayload()); ok && err == nil {
 			switch c.GetDescribe().GetVersion() {
-			case contract.SpecVer1:
+			case vmcontract.SpecVer1:
 				if pendingKey, _, err := c.DoPending(blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
 					return lv.l.DeletePending(pendingKey, cache)
 				}
-			case contract.SpecVer2:
+			case vmcontract.SpecVer2:
 				vmCtx := vmstore.NewVMContext(lv.l)
 				if pendingKey, _, err := c.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
@@ -805,7 +807,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 				}
 			}
 		}
-		if types.IsRewardContractAddress(types.Address(block.GetLink())) {
+		if contractaddress.IsRewardContractAddress(types.Address(block.GetLink())) {
 			preHash := block.GetPrevious()
 			for {
 				if preHash.IsZero() {
@@ -853,7 +855,7 @@ func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {
 				return
 			}
 			address := types.Address(input.GetLink())
-			if address == types.MintageAddress {
+			if address == contractaddress.MintageAddress {
 				var param = new(cabi.ParamMintage)
 				tokenId = param.TokenId
 				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetPayload()); err == nil {

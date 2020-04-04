@@ -20,22 +20,16 @@ func addPermissionNodeUpdateCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "admin user (private key in hex string)",
 		Value: "",
 	}
-	index := util.Flag{
-		Name:  "index",
+	nodeId := util.Flag{
+		Name:  "nodeId",
 		Must:  true,
-		Usage: "node index",
+		Usage: "node id",
 		Value: "",
 	}
-	kind := util.Flag{
-		Name:  "kind",
-		Must:  true,
-		Usage: "node kind (0:ip 1:peer id)",
-		Value: "",
-	}
-	node := util.Flag{
-		Name:  "node",
-		Must:  true,
-		Usage: "node addr",
+	nodeUrl := util.Flag{
+		Name:  "nodeUrl",
+		Must:  false,
+		Usage: "node url",
 		Value: "",
 	}
 	comment := util.Flag{
@@ -44,11 +38,12 @@ func addPermissionNodeUpdateCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "node comment",
 		Value: "",
 	}
+	args := []util.Flag{admin, nodeId, nodeUrl, comment}
 	c := &ishell.Cmd{
-		Name: "nodeUpdate",
-		Help: "permission update node",
+		Name:                "nodeUpdate",
+		Help:                "permission update node",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{admin, index, kind, node, comment}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -59,18 +54,11 @@ func addPermissionNodeUpdateCmdByShell(parentCmd *ishell.Cmd) {
 			}
 
 			adminP := util.StringVar(c.Args, admin)
-			nodeP := util.StringVar(c.Args, node)
+			nodeIdP := util.StringVar(c.Args, nodeId)
+			nodeUrlP := util.StringVar(c.Args, nodeUrl)
 			commentP := util.StringVar(c.Args, comment)
-			kindP, err := util.IntVar(c.Args, kind)
-			if err != nil {
-				util.Warn("parse node kind err")
-			}
-			indexP, err := util.IntVar(c.Args, index)
-			if err != nil {
-				util.Warn("parse node index err")
-			}
 
-			err = nodeUpdate(adminP, indexP, kindP, nodeP, commentP)
+			err := nodeUpdate(adminP, nodeIdP, nodeUrlP, commentP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -79,16 +67,16 @@ func addPermissionNodeUpdateCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func nodeUpdate(adminP string, indexP int, kindP int, nodeP string, commentP string) error {
-	if adminP == "" {
+func nodeUpdate(admin, nodeId, nodeUrl, comment string) error {
+	if admin == "" {
 		return fmt.Errorf("admin can not be null")
 	}
 
-	if nodeP == "" {
-		return fmt.Errorf("node addr can not be null")
+	if nodeId == "" {
+		return fmt.Errorf("node id can not be null")
 	}
 
-	accBytes, err := hex.DecodeString(adminP)
+	accBytes, err := hex.DecodeString(admin)
 	if err != nil {
 		return err
 	}
@@ -106,10 +94,9 @@ func nodeUpdate(adminP string, indexP int, kindP int, nodeP string, commentP str
 
 	param := &api.NodeParam{
 		Admin:   acc.Address(),
-		Index:   uint32(indexP),
-		Kind:    uint8(kindP),
-		Node:    nodeP,
-		Comment: commentP,
+		NodeId:  nodeId,
+		NodeUrl: nodeUrl,
+		Comment: comment,
 	}
 
 	var block types.StateBlock

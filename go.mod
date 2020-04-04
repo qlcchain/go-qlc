@@ -3,7 +3,7 @@ module github.com/qlcchain/go-qlc
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20191118225719-e21ff1a235dd
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
-	github.com/abiosoft/ishell v2.0.0+incompatible
+	github.com/abiosoft/ishell v0.0.0-20190613190920-79d20b1325a4
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db
 	github.com/awnumar/memguard v0.16.2
 	github.com/beevik/ntp v0.2.0
@@ -27,6 +27,7 @@ require (
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jmoiron/sqlx v1.2.1-0.20190826204134-d7d95172beb5
 	github.com/kr/pretty v0.2.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/libp2p/go-libp2p v0.5.0
 	github.com/libp2p/go-libp2p-core v0.3.0
@@ -42,11 +43,11 @@ require (
 	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.6.0 // indirect
-	github.com/perlin-network/life v0.0.0-20191203030451-05c0e0f7eaea
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/qlcchain/jsonrpc2 v0.0.7
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
+	github.com/sahilm/fuzzy v0.1.0
 	github.com/shirou/gopsutil v2.19.12+incompatible
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -57,15 +58,15 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.5.1
 	github.com/tinylib/msgp v1.1.0
-	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
 	go.uber.org/atomic v1.4.0
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae // indirect
-	golang.org/x/tools v0.0.0-20200317031654-fbeba2149c82 // indirect
+	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/ini.v1 v1.52.0 // indirect

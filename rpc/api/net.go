@@ -78,40 +78,37 @@ func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
 }
 
 func (q *NetApi) ConnectPeersInfo(count int, offset *int) ([]*types.PeerInfo, error) {
-	c, o, err := checkOffset(count, offset)
+	p := q.cc.GetConnectPeersInfo()
+	start, end, err := calculateRange(len(p), count, offset)
 	if err != nil {
 		return nil, err
 	}
-	p := q.cc.GetConnectPeersInfo()
-	r := p[o : c+o]
-	return r, nil
+	return p[start:end], nil
 }
 
 func (q *NetApi) GetOnlinePeersInfo(count int, offset *int) ([]*types.PeerInfo, error) {
-	c, o, err := checkOffset(count, offset)
+	p := q.cc.GetOnlinePeersInfo()
+	start, end, err := calculateRange(len(p), count, offset)
 	if err != nil {
 		return nil, err
 	}
-	p := q.cc.GetOnlinePeersInfo()
-	r := p[o : c+o]
-	return r, nil
+	return p[start:end], nil
 }
 
 func (q *NetApi) GetAllPeersInfo(count int, offset *int) ([]*types.PeerInfo, error) {
-	c, o, err := checkOffset(count, offset)
-	if err != nil {
-		return nil, err
-	}
 	pis := make([]*types.PeerInfo, 0)
-	err = q.ledger.GetPeersInfo(func(pi *types.PeerInfo) error {
+	err := q.ledger.GetPeersInfo(func(pi *types.PeerInfo) error {
 		pis = append(pis, pi)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	pis2 := pis[o : c+o]
-	return pis2, nil
+	start, end, err := calculateRange(len(pis), count, offset)
+	if err != nil {
+		return nil, err
+	}
+	return pis[start:end], nil
 }
 
 func (q *NetApi) PeersCount() (map[string]uint64, error) {

@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
+	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
@@ -27,12 +26,12 @@ func addTxBlockInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "unconfirmed-0, confirmed-1",
 		Value: 1,
 	}
-
+	args := []util.Flag{hashFlag, statusFlag}
 	cmd := &ishell.Cmd{
-		Name: "getBlockInfo",
-		Help: "get account blocks info by hashes",
+		Name:                "getBlockInfo",
+		Help:                "get account blocks info by hashes",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{hashFlag, statusFlag}
 			if util.HelpText(c, args) {
 				return
 			}
@@ -104,12 +103,12 @@ func addTxBlockListCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "show style, etc list, detail",
 		Value: "list",
 	}
-
+	args := []util.Flag{addressFlag, offsetFlag, limitFlag, showFlag}
 	cmd := &ishell.Cmd{
-		Name: "getBlockList",
-		Help: "get account blocks list",
+		Name:                "getBlockList",
+		Help:                "get account blocks list",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{addressFlag, offsetFlag, limitFlag, showFlag}
 			if util.HelpText(c, args) {
 				return
 			}

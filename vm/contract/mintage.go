@@ -14,11 +14,12 @@ import (
 	"regexp"
 	"time"
 
-	cfg "github.com/qlcchain/go-qlc/config"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -97,7 +98,7 @@ func (m *Mintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.
 		}, nil
 }
 
-func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	param := new(cabi.ParamMintage)
 	_ = cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
 	var tokenInfo []byte
@@ -125,10 +126,10 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 		return nil, fmt.Errorf("invalid block amount %d", amount.Int)
 	}
 
-	if _, err := ctx.GetStorage(types.MintageAddress[:], []byte(param.NEP5TxId)); err == nil {
+	if _, err := ctx.GetStorage(contractaddress.MintageAddress[:], []byte(param.NEP5TxId)); err == nil {
 		return nil, fmt.Errorf("invalid mintage nep5 tx id %s", param.NEP5TxId)
 	} else {
-		if err := ctx.SetStorage(types.MintageAddress[:], []byte(param.NEP5TxId), nil); err != nil {
+		if err := ctx.SetStorage(contractaddress.MintageAddress[:], []byte(param.NEP5TxId), nil); err != nil {
 			return nil, err
 		}
 	}
@@ -149,15 +150,15 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 	block.Network = types.ZeroBalance
 	block.Oracle = types.ZeroBalance
 
-	if _, err := ctx.GetStorage(types.MintageAddress[:], param.TokenId[:]); err == nil {
+	if _, err := ctx.GetStorage(contractaddress.MintageAddress[:], param.TokenId[:]); err == nil {
 		return nil, fmt.Errorf("invalid token")
 	} else {
-		if err := ctx.SetStorage(types.MintageAddress[:], param.TokenId[:], tokenInfo); err != nil {
+		if err := ctx.SetStorage(contractaddress.MintageAddress[:], param.TokenId[:], tokenInfo); err != nil {
 			return nil, err
 		}
 	}
 
-	return []*ContractBlock{
+	return []*vmcontract.ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -225,13 +226,13 @@ func (m *WithdrawMintage) DoPending(block *types.StateBlock) (*types.PendingKey,
 		}, nil
 }
 
-func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
+func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
 	tokenId := new(types.Hash)
 	err := cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
 	if err != nil {
 		return nil, err
 	}
-	tokenInfoData, err := ctx.GetStorage(types.MintageAddress[:], tokenId[:])
+	tokenInfoData, err := ctx.GetStorage(contractaddress.MintageAddress[:], tokenId[:])
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +291,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	block.Previous = tm.Header
 
 	var pledgeData []byte
-	if pledgeData, err = ctx.GetStorage(types.MintageAddress[:], tokenId[:]); err != nil && err != vmstore.ErrStorageNotFound {
+	if pledgeData, err = ctx.GetStorage(contractaddress.MintageAddress[:], tokenId[:]); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	} else {
 		// already exist,verify data
@@ -306,7 +307,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 				oldPledge.TokenName != tokenInfo.TokenName || oldPledge.PledgeAmount.String() != tokenInfo.PledgeAmount.String() {
 				return nil, errors.New("invalid saved mine info")
 			}
-			if err := ctx.SetStorage(types.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
+			if err := ctx.SetStorage(contractaddress.MintageAddress[:], tokenId[:], newTokenInfo); err != nil {
 				return nil, err
 			}
 		} else {
@@ -315,7 +316,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	}
 
 	if tokenInfo.PledgeAmount.Sign() > 0 {
-		return []*ContractBlock{
+		return []*vmcontract.ContractBlock{
 			{
 				VMContext: ctx,
 				Block:     block,

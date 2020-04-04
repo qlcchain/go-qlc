@@ -1,11 +1,11 @@
 package abi
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/vm/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const (
@@ -37,7 +37,7 @@ func PrivacyKVGetValue(ctx *vmstore.VMContext, key []byte) ([]byte, error) {
 	var sKey []byte
 	sKey = append(sKey, PrivacyDemoKVStorageTypeKV)
 	sKey = append(sKey, key...)
-	data, err := ctx.GetStorage(types.PrivacyDemoKVAddress[:], sKey)
+	data, err := ctx.GetStorage(contractaddress.PrivacyDemoKVAddress[:], sKey)
 	if err != nil {
 		return nil, err
 	}

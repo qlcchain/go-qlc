@@ -12,6 +12,7 @@ import (
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 
@@ -136,7 +137,7 @@ func runPrivacySetDemoKVCmd(priKeyStr, keyStr, valStr, priFromStr, priForStr str
 	fmt.Printf("paraStrList: %s\n", paraStrList)
 
 	var contractRspData []byte
-	err = client.Call(&contractRspData, "contract_packChainContractData", types.PrivacyDemoKVAddress, "PrivacyDemoKVSet", paraStrList)
+	err = client.Call(&contractRspData, "contract_packChainContractData", contractaddress.PrivacyDemoKVAddress, "PrivacyDemoKVSet", paraStrList)
 	if err != nil {
 		return err
 	}
@@ -144,7 +145,7 @@ func runPrivacySetDemoKVCmd(priKeyStr, keyStr, valStr, priFromStr, priForStr str
 
 	contractSendPara := api.ContractSendBlockPara{
 		Address:   acc.Address(),
-		To:        types.PrivacyDemoKVAddress,
+		To:        contractaddress.PrivacyDemoKVAddress,
 		TokenName: "QLC",
 		Amount:    types.NewBalance(0),
 		Data:      contractRspData,

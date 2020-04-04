@@ -88,6 +88,16 @@ type EventBroadcastMsg struct {
 	Message interface{}
 }
 
+const (
+	PermissionEventNodeUpdate uint8 = iota
+)
+
+type PermissionEvent struct {
+	EventType uint8
+	NodeId    string
+	NodeUrl   string
+}
+
 type EventPrivacySendReqMsg struct {
 	RawPayload     types.HexBytes
 	PrivateFrom    string

@@ -1,60 +1,136 @@
 package api
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/ledger"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-func addTestNode(t *testing.T, ctx *vmstore.VMContext, pn *abi.PermNode) {
-	data, err := pn.MarshalMsg(nil)
+func addTestAdmin(t *testing.T, l *ledger.Ledger, admin *abi.AdminAccount, povHeight uint64) {
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.BasHdr.Height = povHeight
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var key []byte
-	key = append(key, abi.PermissionDataNode)
-	key = append(key, util.BE_Uint32ToBytes(pn.Index)...)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
-	if err != nil {
-		t.Fatal(err)
-	}
+	trieKey := statedb.PovCreateContractLocalStateKey(abi.PermissionDataAdmin, admin.Account.Bytes())
 
-	err = ctx.SaveStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func addTestAdmin(t *testing.T, ctx *vmstore.VMContext, admin *abi.AdminAccount) {
 	data, err := admin.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var key []byte
-	key = append(key, abi.PermissionDataAdmin)
-	err = ctx.SetStorage(types.PermissionAddress[:], key, data)
+	err = csdb.SetValue(trieKey, data)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
-	err = ctx.SaveStorage()
+	err = gsdb.CommitToTrie()
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestPermissionApi_GetAdminUpdateSendBlock(t *testing.T) {
+func addTestNodes(t *testing.T, l *ledger.Ledger, pns []*abi.PermNode, povHeight uint64) {
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.BasHdr.Height = povHeight
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, pn := range pns {
+		trieKey := statedb.PovCreateContractLocalStateKey(abi.PermissionDataNode, []byte(pn.NodeId))
+
+		data, err := pn.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err = gsdb.CommitToTrie()
+	if err != nil {
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPermissionApi_GetAdminUpdateBlock(t *testing.T) {
 	clear, l, cfgFile := getTestLedger()
 	if l == nil {
 		t.Fatal()
@@ -65,12 +141,12 @@ func TestPermissionApi_GetAdminUpdateSendBlock(t *testing.T) {
 	param := new(AdminUpdateParam)
 	param.Comment = strings.Repeat("x", abi.PermissionCommentMaxLen+1)
 
-	blk, err := p.GetAdminUpdateSendBlock(nil)
+	blk, err := p.GetAdminHandoverBlock(nil)
 	if err != ErrParameterNil {
 		t.Fatal()
 	}
 
-	blk, err = p.GetAdminUpdateSendBlock(param)
+	blk, err = p.GetAdminHandoverBlock(param)
 	if err != chainctx.ErrPoVNotFinish {
 		t.Fatal()
 	}
@@ -78,25 +154,13 @@ func TestPermissionApi_GetAdminUpdateSendBlock(t *testing.T) {
 	p.cc.Init(nil)
 	p.cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
 	time.Sleep(time.Second)
-	blk, _ = p.GetAdminUpdateSendBlock(param)
+	blk, _ = p.GetAdminHandoverBlock(param)
 	if blk != nil {
 		t.Fatal()
 	}
 
 	param.Comment = strings.Repeat("x", abi.PermissionCommentMaxLen)
-	blk, _ = p.GetAdminUpdateSendBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	abi.PermissionInit(p.ctx)
-	blk, _ = p.GetAdminUpdateSendBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	param.Admin = cfg.GenesisAddress()
-	blk, _ = p.GetAdminUpdateSendBlock(param)
+	blk, _ = p.GetAdminHandoverBlock(param)
 	if blk != nil {
 		t.Fatal()
 	}
@@ -105,108 +169,29 @@ func TestPermissionApi_GetAdminUpdateSendBlock(t *testing.T) {
 	l.AddPovBlock(pb, td)
 	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
 	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
-	blk, _ = p.GetAdminUpdateSendBlock(param)
+	blk, _ = p.GetAdminHandoverBlock(param)
+	if blk != nil {
+		t.Fatal()
+	}
+
+	param.Admin = cfg.GenesisAddress()
+	blk, _ = p.GetAdminHandoverBlock(param)
 	if blk != nil {
 		t.Fatal()
 	}
 
 	am := mock.AccountMeta(param.Admin)
 	l.AddAccountMeta(am, l.Cache().GetCache())
-	blk, _ = p.GetAdminUpdateSendBlock(param)
+	blk, _ = p.GetAdminHandoverBlock(param)
 	if blk != nil {
 		t.Fatal()
 	}
 
 	am.Tokens[0].Type = cfg.ChainToken()
 	l.UpdateAccountMeta(am, l.Cache().GetCache())
-	blk, _ = p.GetAdminUpdateSendBlock(param)
+	blk, err = p.GetAdminHandoverBlock(param)
 	if blk == nil {
-		t.Fatal()
-	}
-}
-
-func TestPermissionApi_GetAdminUpdateRewardBlock(t *testing.T) {
-	clear, l, cfgFile := getTestLedger()
-	if l == nil {
-		t.Fatal()
-	}
-	defer clear()
-
-	p := NewPermissionApi(cfgFile, l)
-	send := mock.StateBlockWithoutWork()
-
-	blk, _ := p.GetAdminUpdateRewardBlock(send)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	p.cc.Init(nil)
-	p.cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
-	time.Sleep(time.Second)
-	blk, _ = p.GetAdminUpdateRewardBlock(send)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	send.Type = types.ContractSend
-	blk, _ = p.GetAdminUpdateRewardBlock(send)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	send.Link = types.PermissionAddress.ToHash()
-	blk, _ = p.GetAdminUpdateRewardBlock(send)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	pb, td := mock.GeneratePovBlock(nil, 0)
-	l.AddPovBlock(pb, td)
-	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
-	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
-	blk, _ = p.GetAdminUpdateRewardBlock(send)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	send.Data, _ = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminUpdate, mock.Address(), "successor")
-	blk, _ = p.GetAdminUpdateRewardBlock(send)
-	if blk == nil {
-		t.Fatal()
-	}
-
-	t.Log(blk)
-}
-
-func TestPermissionApi_GetAdminUpdateRewardBlockBySendHash(t *testing.T) {
-	clear, l, cfgFile := getTestLedger()
-	if l == nil {
-		t.Fatal()
-	}
-	defer clear()
-
-	p := NewPermissionApi(cfgFile, l)
-	send := mock.StateBlockWithoutWork()
-	send.Type = types.ContractSend
-	send.Link = types.PermissionAddress.ToHash()
-	send.Data, _ = abi.PermissionABI.PackMethod(abi.MethodNamePermissionAdminUpdate, mock.Address(), "successor")
-	p.cc.Init(nil)
-	p.cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
-	time.Sleep(time.Second)
-	pb, td := mock.GeneratePovBlock(nil, 0)
-	l.AddPovBlock(pb, td)
-	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
-	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
-
-	blk, _ := p.GetAdminUpdateRewardBlockBySendHash(send.GetHash())
-	if blk != nil {
-		t.Fatal()
-	}
-
-	l.AddStateBlock(send)
-	blk, _ = p.GetAdminUpdateRewardBlockBySendHash(send.GetHash())
-	if blk == nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 }
 
@@ -224,86 +209,14 @@ func TestPermissionApi_GetAdmin(t *testing.T) {
 	}
 
 	ac := &abi.AdminAccount{
-		Addr:    mock.Address(),
+		Account: mock.Address(),
 		Comment: "test",
-		Status:  abi.PermissionAdminStatusActive,
+		Valid:   true,
 	}
-	addTestAdmin(t, p.ctx, ac)
+	addTestAdmin(t, l, ac, 10)
 
 	a, err = p.GetAdmin()
-	if err != nil || a.Account != ac.Addr || a.Status != abi.PermissionAdminStatusString(ac.Status) || a.Comment != ac.Comment {
-		t.Fatal()
-	}
-}
-
-func TestPermissionApi_GetNodeAddBlock(t *testing.T) {
-	clear, l, cfgFile := getTestLedger()
-	if l == nil {
-		t.Fatal()
-	}
-	defer clear()
-
-	p := NewPermissionApi(cfgFile, l)
-	param := new(NodeParam)
-
-	blk, err := p.GetNodeAddBlock(nil)
-	if err != ErrParameterNil {
-		t.Fatal()
-	}
-
-	blk, err = p.GetNodeAddBlock(param)
-	if err != chainctx.ErrPoVNotFinish {
-		t.Fatal()
-	}
-
-	p.cc.Init(nil)
-	p.cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
-	time.Sleep(time.Second)
-	blk, _ = p.GetNodeAddBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	param.Kind = abi.PermissionNodeKindPeerID
-	param.Node = "QmVLbouTEb9LGQJ56KvQCyoPXqDeqwYSE6j1YSyfLeHgN3"
-	param.Comment = "test"
-	blk, _ = p.GetNodeAddBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	abi.PermissionInit(p.ctx)
-	blk, _ = p.GetNodeAddBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	param.Admin = cfg.GenesisAddress()
-	blk, _ = p.GetNodeAddBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	pb, td := mock.GeneratePovBlock(nil, 0)
-	l.AddPovBlock(pb, td)
-	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
-	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
-	blk, _ = p.GetNodeAddBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	am := mock.AccountMeta(param.Admin)
-	l.AddAccountMeta(am, l.Cache().GetCache())
-	blk, _ = p.GetNodeAddBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	am.Tokens[0].Type = cfg.ChainToken()
-	l.UpdateAccountMeta(am, l.Cache().GetCache())
-	blk, _ = p.GetNodeAddBlock(param)
-	if blk == nil {
+	if err != nil || a.Account != ac.Account || a.Comment != ac.Comment {
 		t.Fatal()
 	}
 }
@@ -336,30 +249,30 @@ func TestPermissionApi_GetNodeUpdateBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	param.Index = 1
-	param.Kind = abi.PermissionNodeKindPeerID
-	param.Node = "QmVLbouTEb9LGQJ56KvQCyoPXqDeqwYSE6j1YSyfLeHgN3"
+	param.NodeId = "QmVLbouTEb9LGQJ56KvQCyoPXqDeqwYSE6j1YSyfLeHgN3"
+	param.NodeUrl = "123"
 	param.Comment = "test"
+	blk, _ = p.GetNodeUpdateBlock(param)
+	if blk != nil {
+		t.Fatal()
+	}
+
+	param.NodeId = "QmVLbouTEb9LGQJ56KvQCyoPXqDeqwYSE6j1YSyfLeHgN3"
+	param.NodeUrl = "1.1.1.1"
+	param.Comment = "test"
+	blk, _ = p.GetNodeUpdateBlock(param)
+	if blk != nil {
+		t.Fatal()
+	}
+
 	pn := &abi.PermNode{
-		Index:   1,
-		Kind:    param.Kind,
-		Node:    param.Node,
+		NodeId:  param.NodeId,
+		NodeUrl: param.NodeUrl,
 		Comment: param.Comment,
 		Valid:   true,
 	}
-	addTestNode(t, p.ctx, pn)
-	blk, _ = p.GetNodeUpdateBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
+	addTestNodes(t, l, []*abi.PermNode{pn}, 10)
 
-	abi.PermissionInit(p.ctx)
-	blk, _ = p.GetNodeUpdateBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	param.Admin = cfg.GenesisAddress()
 	blk, _ = p.GetNodeUpdateBlock(param)
 	if blk != nil {
 		t.Fatal()
@@ -369,6 +282,12 @@ func TestPermissionApi_GetNodeUpdateBlock(t *testing.T) {
 	l.AddPovBlock(pb, td)
 	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
 	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
+	blk, _ = p.GetNodeUpdateBlock(param)
+	if blk != nil {
+		t.Fatal()
+	}
+
+	param.Admin = cfg.GenesisAddress()
 	blk, _ = p.GetNodeUpdateBlock(param)
 	if blk != nil {
 		t.Fatal()
@@ -389,7 +308,7 @@ func TestPermissionApi_GetNodeUpdateBlock(t *testing.T) {
 	}
 }
 
-func TestPermissionApi_GetNodeRemoveBlock(t *testing.T) {
+func TestPermissionApi_GetNode(t *testing.T) {
 	clear, l, cfgFile := getTestLedger()
 	if l == nil {
 		t.Fatal()
@@ -397,96 +316,16 @@ func TestPermissionApi_GetNodeRemoveBlock(t *testing.T) {
 	defer clear()
 
 	p := NewPermissionApi(cfgFile, l)
-	param := new(NodeParam)
+	nodeId := "n1"
 
-	blk, err := p.GetNodeRemoveBlock(nil)
-	if err != ErrParameterNil {
-		t.Fatal()
-	}
-
-	blk, err = p.GetNodeRemoveBlock(param)
-	if err != chainctx.ErrPoVNotFinish {
-		t.Fatal()
-	}
-
-	p.cc.Init(nil)
-	p.cc.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
-	time.Sleep(time.Second)
-	blk, _ = p.GetNodeRemoveBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	param.Index = 1
-	param.Kind = abi.PermissionNodeKindPeerID
-	param.Node = "QmVLbouTEb9LGQJ56KvQCyoPXqDeqwYSE6j1YSyfLeHgN3"
-	param.Comment = "test"
-	pn := &abi.PermNode{
-		Index:   1,
-		Kind:    param.Kind,
-		Node:    param.Node,
-		Comment: param.Comment,
-		Valid:   true,
-	}
-	addTestNode(t, p.ctx, pn)
-	blk, _ = p.GetNodeRemoveBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	abi.PermissionInit(p.ctx)
-	blk, _ = p.GetNodeRemoveBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	param.Admin = cfg.GenesisAddress()
-	blk, _ = p.GetNodeRemoveBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	pb, td := mock.GeneratePovBlock(nil, 0)
-	l.AddPovBlock(pb, td)
-	l.SetPovLatestHeight(pb.Header.BasHdr.Height)
-	l.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
-	blk, _ = p.GetNodeRemoveBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	am := mock.AccountMeta(param.Admin)
-	l.AddAccountMeta(am, l.Cache().GetCache())
-	blk, _ = p.GetNodeRemoveBlock(param)
-	if blk != nil {
-		t.Fatal()
-	}
-
-	am.Tokens[0].Type = cfg.ChainToken()
-	l.UpdateAccountMeta(am, l.Cache().GetCache())
-	blk, _ = p.GetNodeRemoveBlock(param)
-	if blk == nil {
-		t.Fatal()
-	}
-}
-
-func TestPermissionApi_GetNodeByIndex(t *testing.T) {
-	clear, l, cfgFile := getTestLedger()
-	if l == nil {
-		t.Fatal()
-	}
-	defer clear()
-
-	p := NewPermissionApi(cfgFile, l)
-	index := uint32(10)
-	_, err := p.GetNodeByIndex(index)
+	_, err := p.GetNode(nodeId)
 	if err == nil {
 		t.Fatal()
 	}
 
-	pn := &abi.PermNode{Index: index, Valid: true}
-	addTestNode(t, p.ctx, pn)
-	_, err = p.GetNodeByIndex(index)
+	pn := &abi.PermNode{NodeId: nodeId, NodeUrl: "", Comment: "", Valid: true}
+	addTestNodes(t, l, []*abi.PermNode{pn}, 10)
+	_, err = p.GetNode(nodeId)
 	if err != nil {
 		t.Fatal()
 	}
@@ -506,11 +345,13 @@ func TestPermissionApi_GetNodes(t *testing.T) {
 		t.Fatal()
 	}
 
-	i := uint32(0)
-	for ; i < 15; i++ {
-		pn := &abi.PermNode{Index: i, Valid: true}
-		addTestNode(t, p.ctx, pn)
+	pns := make([]*abi.PermNode, 0)
+	for i := 0; i < 15; i++ {
+		pn := &abi.PermNode{NodeId: fmt.Sprintf("n%d", i), Valid: true}
+		pns = append(pns, pn)
 	}
+
+	addTestNodes(t, l, pns, 1)
 
 	count = p.GetNodesCount()
 	if count != 15 {
@@ -522,7 +363,7 @@ func TestPermissionApi_GetNodes(t *testing.T) {
 		t.Fatal()
 	}
 
-	if len(ns) != 5 || ns[0].Index != 6 || ns[4].Index != 10 {
+	if len(ns) != 5 {
 		t.Fatal()
 	}
 }

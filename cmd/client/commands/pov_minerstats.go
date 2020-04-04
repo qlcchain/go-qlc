@@ -18,12 +18,12 @@ func addPovMinerInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "addresses of miners",
 		Value: "",
 	}
-
+	args := []util.Flag{minerFlag}
 	cmd := &ishell.Cmd{
-		Name: "getMinerStats",
-		Help: "get miner statistic info",
+		Name:                "getMinerStats",
+		Help:                "get miner statistic info",
+		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{minerFlag}
 			if util.HelpText(c, args) {
 				return
 			}
