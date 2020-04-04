@@ -41,7 +41,7 @@ func NewPTM(cfg *config.Config) *PTM {
 }
 
 func (m *PTM) Init() error {
-	m.cache = gcache.New(10000).LRU().Expiration(5 * time.Minute).Build()
+	m.cache = gcache.New(10000).LRU().Build()
 	m.logger = log.NewLogger("privacy_ptm")
 
 	m.client = NewClient(m.cfg.Privacy.PtmNode)
@@ -74,7 +74,8 @@ func (m *PTM) Send(data []byte, from string, to []string) (out []byte, err error
 
 	out, err = m.client.SendPayload(data, from, to)
 	if err != nil {
-		return nil, err
+		m.logger.Infof("failed to send payload, %s", err)
+		return nil, ErrPtmAPIFailed
 	}
 
 	_ = m.cache.Set(string(out), data)
