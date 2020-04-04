@@ -9,6 +9,7 @@ package chain
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/chain/context"
 
 	"go.uber.org/zap"
