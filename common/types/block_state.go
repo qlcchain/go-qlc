@@ -35,7 +35,6 @@ type StateBlock struct {
 	PrivateFrom    string   `msg:"priFrom,extension,omitempty" json:"privateFrom,omitempty"`
 	PrivateFor     []string `msg:"priFor,extension,omitempty" json:"privateFor,omitempty"`
 	PrivateGroupID string   `msg:"priGid,extension,omitempty" json:"privateGroupID,omitempty"`
-	PrivateRawData []byte   `msg:"priRawData,omitempty" json:"privateRawData,omitempty"`
 
 	Work      Work      `msg:"work,extension" json:"work"`
 	Signature Signature `msg:"signature,extension" json:"signature"`
@@ -43,7 +42,8 @@ type StateBlock struct {
 	// following fields just for cache, not marshaled in db or p2p message
 	Flag uint64 `msg:"-" json:"-"`
 
-	PrivateRecvRsp bool `msg:"-" json:"-"`
+	PrivateRecvRsp bool   `msg:"-" json:"-"`
+	PrivatePayload []byte `msg:"-" json:"-"`
 }
 
 func (b *StateBlock) BuildHashData() []byte {
@@ -156,7 +156,7 @@ func (b *StateBlock) GetData() []byte {
 
 func (b *StateBlock) GetPayload() []byte {
 	if b.IsPrivate() {
-		return b.GetPrivateRawData()
+		return b.GetPrivatePayload()
 	}
 	return b.Data
 }
@@ -274,9 +274,17 @@ func (b *StateBlock) IsContractBlock() bool {
 
 func (b *StateBlock) Clone() *StateBlock {
 	clone := StateBlock{}
-	bytes, _ := b.Serialize()
-	_ = clone.Deserialize(bytes)
+	blkBytes, _ := b.Serialize()
+	_ = clone.Deserialize(blkBytes)
 	clone.Flag = b.Flag
+
+	// private tx fields
+	clone.PrivateRecvRsp = b.PrivateRecvRsp
+	if len(b.PrivatePayload) > 0 {
+		clone.PrivatePayload = make([]byte, len(b.PrivatePayload))
+		copy(clone.PrivatePayload, b.PrivatePayload)
+	}
+
 	return &clone
 }
 
@@ -297,7 +305,7 @@ func (b *StateBlock) IsPrivate() bool {
 
 func (b *StateBlock) IsRecipient() bool {
 	if b.IsPrivate() {
-		if len(b.PrivateRawData) == 0 {
+		if len(b.PrivatePayload) == 0 {
 			return false
 		}
 	}
@@ -305,18 +313,13 @@ func (b *StateBlock) IsRecipient() bool {
 	return true
 }
 
-func (b *StateBlock) GetPrivateRawData() []byte {
-	return b.PrivateRawData
+func (b *StateBlock) GetPrivatePayload() []byte {
+	return b.PrivatePayload
 }
 
-func (b *StateBlock) SetPrivateRawData(rawData []byte) {
-	b.PrivateRawData = rawData
+func (b *StateBlock) SetPrivatePayload(rawData []byte) {
+	b.PrivatePayload = rawData
 	b.PrivateRecvRsp = true
-}
-
-func (b *StateBlock) ResetPrivateRawData() {
-	b.PrivateRawData = nil
-	b.PrivateRecvRsp = false
 }
 
 type StateBlockList []*StateBlock

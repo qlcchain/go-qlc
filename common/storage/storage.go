@@ -80,6 +80,7 @@ const (
 	KeyPrefixPeerInfo    //prefix+peerID => peerInfo
 	KeyPrefixGapPublish
 	KeyPrefixDPoS
+	KeyPrefixPrivatePayload
 
 	// Trie key space should be different
 	KeyPrefixTrieVMStorage = 100 // vm_store.go, idPrefixStorage

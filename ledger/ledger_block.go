@@ -75,6 +75,12 @@ func (l *Ledger) GetRandomStateBlock() (*types.StateBlock, error) {
 				if err = b.Deserialize(val); err != nil {
 					return err
 				}
+				if b.IsPrivate() {
+					pl, err := l.GetBlockPrivatePayload(b.GetHash())
+					if err == nil {
+						b.SetPrivatePayload(pl)
+					}
+				}
 				if !config.IsGenesisBlock(b) {
 					blk = b
 					return errFound
@@ -140,6 +146,9 @@ func (l *Ledger) setStateBlock(block *types.StateBlock, c storage.Cache) error {
 	if err := l.setBlockLink(block, c); err != nil {
 		return fmt.Errorf("add block link error: %s", err)
 	}
+	if err := l.setBlockPrivatePayload(block, c); err != nil {
+		return fmt.Errorf("add block private payload error: %s", err)
+	}
 	return c.Put(k, block.Clone())
 }
 
@@ -164,6 +173,9 @@ func (l *Ledger) DeleteStateBlock(key types.Hash, c storage.Cache) error {
 	}
 	if err := l.deleteBlockLink(blk, c); err != nil {
 		return fmt.Errorf("delete link error: %s", err)
+	}
+	if err := l.deleteBlockPrivatePayload(blk, c); err != nil {
+		return fmt.Errorf("delete private payload error: %s", err)
 	}
 
 	l.logger.Info("publish deleteRelation,", key.String())
@@ -196,6 +208,12 @@ func (l *Ledger) GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*t
 	if err := meta.Deserialize(v); err != nil {
 		return nil, err
 	}
+	if meta.IsPrivate() {
+		pl, err := l.GetBlockPrivatePayload(meta.GetHash(), c...)
+		if err == nil {
+			meta.SetPrivatePayload(pl)
+		}
+	}
 	return meta, nil
 }
 
@@ -206,6 +224,12 @@ func (l *Ledger) GetStateBlocksConfirmed(fn func(*types.StateBlock) error) error
 		if err := blk.Deserialize(val); err != nil {
 			l.logger.Errorf("deserialize block error: %s", err)
 			return nil
+		}
+		if blk.IsPrivate() {
+			pl, err := l.GetBlockPrivatePayload(blk.GetHash())
+			if err == nil {
+				blk.SetPrivatePayload(pl)
+			}
 		}
 		if err := fn(blk); err != nil {
 			l.logger.Errorf("process block error: %s", err)
@@ -297,6 +321,32 @@ func (l *Ledger) GetBlockLink(hash types.Hash, c ...storage.Cache) (types.Hash, 
 	return *meta, nil
 }
 
+func (l *Ledger) GetBlockPrivatePayload(hash types.Hash, c ...storage.Cache) ([]byte, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPrivatePayload, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := l.getFromCache(k, c...)
+	if r != nil {
+		pl := r.([]byte)
+		return pl, nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, errors.New("block private payload not found")
+		}
+	}
+
+	v, err := l.store.Get(k)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return nil, errors.New("block private payload not found")
+		}
+		return nil, fmt.Errorf("get private payload error: %s", err)
+	}
+	return v, nil
+}
+
 func (l *Ledger) setBlockChild(cBlock *types.StateBlock, c storage.Cache) error {
 	pHash := cBlock.Parent()
 	cHash := cBlock.GetHash()
@@ -340,6 +390,21 @@ func (l *Ledger) setBlockLink(block *types.StateBlock, c storage.Cache) error {
 	return nil
 }
 
+func (l *Ledger) setBlockPrivatePayload(block *types.StateBlock, c storage.Cache) error {
+	if !block.IsPrivate() {
+		return nil
+	}
+	if len(block.PrivatePayload) > 0 {
+		blkHash := block.GetHash()
+		k, err := storage.GetKeyOfParts(storage.KeyPrefixPrivatePayload, blkHash)
+		if err != nil {
+			return err
+		}
+		return c.Put(k, &blkHash)
+	}
+	return nil
+}
+
 func (l *Ledger) deleteBlockChild(blk *types.StateBlock, c storage.Cache) error {
 	pHash := blk.Parent()
 	if !pHash.IsZero() {
@@ -356,6 +421,20 @@ func (l *Ledger) deleteBlockChild(blk *types.StateBlock, c storage.Cache) error 
 
 func (l *Ledger) deleteBlockLink(blk *types.StateBlock, c storage.Cache) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixLink, blk.GetLink())
+	if err != nil {
+		return err
+	}
+	if err := c.Delete(k); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Ledger) deleteBlockPrivatePayload(blk *types.StateBlock, c storage.Cache) error {
+	if !blk.IsPrivate() {
+		return nil
+	}
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixPrivatePayload, blk.GetHash())
 	if err != nil {
 		return err
 	}

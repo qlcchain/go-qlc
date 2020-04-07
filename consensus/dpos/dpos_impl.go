@@ -518,7 +518,7 @@ func (dps *DPoS) processPrivateBlocks() {
 			if !ok {
 				dps.logger.Errorf("EventPrivacyRecvRspMsg ReqData is not BlockSource, drop it!")
 			} else {
-				bs.Block.SetPrivateRawData(recvRsp.RawPayload)
+				bs.Block.SetPrivatePayload(recvRsp.RawPayload)
 				dps.recvBlocks <- bs
 			}
 		}

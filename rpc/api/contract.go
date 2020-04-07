@@ -193,7 +193,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 		PrivateGroupID: para.PrivateGroupID,
 	}
 	if len(para.PrivateFrom) > 0 {
-		sendBlk.SetPrivateRawData(rawPayload)
+		sendBlk.SetPrivatePayload(rawPayload)
 	}
 
 	// fill fields by ledger account metas
@@ -235,7 +235,6 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 		return nil, errors.New("invalid contract version")
 	}
 
-	sendBlk.ResetPrivateRawData()
 	return sendBlk, nil
 }
 
@@ -264,7 +263,7 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 	}
 
 	// make sure private raw data exist
-	if len(sendBlk.PrivateFrom) > 0 && len(sendBlk.PrivateRawData) == 0 {
+	if len(sendBlk.PrivateFrom) > 0 && len(sendBlk.GetPayload()) == 0 {
 		msgReq := &topic.EventPrivacyRecvReqMsg{
 			EnclaveKey: sendBlk.GetData(),
 
@@ -279,7 +278,7 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 			return nil, errors.New("send is private but this node is not recipient")
 		}
 
-		sendBlk.SetPrivateRawData(rawData)
+		sendBlk.SetPrivatePayload(rawData)
 	}
 
 	// check contract method whether exist or not

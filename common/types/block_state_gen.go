@@ -163,12 +163,6 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "PrivateGroupID")
 				return
 			}
-		case "priRawData":
-			z.PrivateRawData, err = dc.ReadBytes(z.PrivateRawData)
-			if err != nil {
-				err = msgp.WrapError(err, "PrivateRawData")
-				return
-			}
 		case "work":
 			err = dc.ReadExtension(&z.Work)
 			if err != nil {
@@ -194,9 +188,9 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 24
+	// map header, size 23
 	// write "type"
-	err = en.Append(0xde, 0x0, 0x18, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	err = en.Append(0xde, 0x0, 0x17, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	if err != nil {
 		return
 	}
@@ -412,16 +406,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "PrivateGroupID")
 		return
 	}
-	// write "priRawData"
-	err = en.Append(0xaa, 0x70, 0x72, 0x69, 0x52, 0x61, 0x77, 0x44, 0x61, 0x74, 0x61)
-	if err != nil {
-		return
-	}
-	err = en.WriteBytes(z.PrivateRawData)
-	if err != nil {
-		err = msgp.WrapError(err, "PrivateRawData")
-		return
-	}
 	// write "work"
 	err = en.Append(0xa4, 0x77, 0x6f, 0x72, 0x6b)
 	if err != nil {
@@ -448,9 +432,9 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 24
+	// map header, size 23
 	// string "type"
-	o = append(o, 0xde, 0x0, 0x18, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	o = append(o, 0xde, 0x0, 0x17, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o, err = z.Type.MarshalMsg(o)
 	if err != nil {
 		err = msgp.WrapError(err, "Type")
@@ -567,9 +551,6 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "priGid"
 	o = append(o, 0xa6, 0x70, 0x72, 0x69, 0x47, 0x69, 0x64)
 	o = msgp.AppendString(o, z.PrivateGroupID)
-	// string "priRawData"
-	o = append(o, 0xaa, 0x70, 0x72, 0x69, 0x52, 0x61, 0x77, 0x44, 0x61, 0x74, 0x61)
-	o = msgp.AppendBytes(o, z.PrivateRawData)
 	// string "work"
 	o = append(o, 0xa4, 0x77, 0x6f, 0x72, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.Work)
@@ -744,12 +725,6 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "PrivateGroupID")
 				return
 			}
-		case "priRawData":
-			z.PrivateRawData, bts, err = msgp.ReadBytesBytes(bts, z.PrivateRawData)
-			if err != nil {
-				err = msgp.WrapError(err, "PrivateRawData")
-				return
-			}
 		case "work":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Work)
 			if err != nil {
@@ -780,7 +755,7 @@ func (z *StateBlock) Msgsize() (s int) {
 	for za0001 := range z.PrivateFor {
 		s += msgp.StringPrefixSize + len(z.PrivateFor[za0001])
 	}
-	s += 7 + msgp.StringPrefixSize + len(z.PrivateGroupID) + 11 + msgp.BytesPrefixSize + len(z.PrivateRawData) + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len()
+	s += 7 + msgp.StringPrefixSize + len(z.PrivateGroupID) + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len()
 	return
 }
 
