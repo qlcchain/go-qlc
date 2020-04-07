@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/jmoiron/sqlx"
+
 	"github.com/google/uuid"
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -775,4 +777,8 @@ func (l *Ledger) Flush() error {
 	lock.Lock()
 	defer lock.Unlock()
 	return l.cache.rebuild()
+}
+
+func (l *Ledger) Relation() *sqlx.DB {
+	return nil
 }

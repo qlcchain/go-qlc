@@ -8,6 +8,7 @@
 package ledger
 
 import (
+	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -34,9 +35,6 @@ type Store interface {
 }
 
 type ContractStore interface {
-	contractValueStore
-	vmlogsStore
-
 	GetBlockChild(hash types.Hash, c ...storage.Cache) (types.Hash, error)
 	GetStateBlock(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error)
 	GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error)
@@ -50,5 +48,9 @@ type ContractStore interface {
 	GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error)
 	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
 
+	GetContractValue(key *types.ContractKey, c ...storage.Cache) (*types.ContractValue, error)
+	IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error
+
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
+	Relation() *sqlx.DB
 }

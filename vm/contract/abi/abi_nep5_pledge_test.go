@@ -84,7 +84,7 @@ func TestGetBeneficialInfos(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	infos, err := mockPledgeInfo(ctx, a, 4)
@@ -109,7 +109,7 @@ func TestGetBeneficialPledgeInfos(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	infos, err := mockPledgeInfo(ctx, a, 4)
@@ -142,7 +142,7 @@ func TestGetPledgeBeneficialAmount(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	infos, err := mockPledgeInfo(ctx, a, 4)
@@ -166,7 +166,7 @@ func TestGetPledgeBeneficialTotalAmount(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	_, err := mockPledgeInfo(ctx, a, 4)
@@ -185,7 +185,7 @@ func TestGetPledgeInfos(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	_, err := mockPledgeInfo(ctx, a, 4)
@@ -245,7 +245,7 @@ func TestGetTotalPledgeAmount(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	_, err := mockPledgeInfo(ctx, a, 4)
@@ -301,7 +301,7 @@ func TestSearchAllPledgeInfos(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	_, err := mockPledgeInfo(ctx, a, 4)
@@ -320,7 +320,7 @@ func TestSearchBeneficialPledgeInfo(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	infos, err := mockPledgeInfo(ctx, a, 4)
@@ -382,7 +382,7 @@ func TestSearchBeneficialPledgeInfoByTxId(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	infos, err := mockPledgeInfo(ctx, a, 4)
@@ -445,7 +445,7 @@ func TestSearchBeneficialPledgeInfoIgnoreWithdrawTime(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	infos, err := mockPledgeInfo(ctx, a, 4)
@@ -497,7 +497,7 @@ func TestSearchPledgeInfoWithNEP5TxId(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	infos, err := mockPledgeInfo(ctx, a, 4)
@@ -547,7 +547,7 @@ func Test_searchBeneficialPledgeInfoByTxId(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
 	infos, err := mockPledgeInfo(ctx, a, 4)

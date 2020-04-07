@@ -501,7 +501,7 @@ func GetCDRStatusByDate(ctx *vmstore.VMContext, addr *types.Address, start, end 
 
 	var result []*CDRStatus
 
-	if err := ctx.IteratorAll(addr[:], func(key []byte, value []byte) error {
+	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
 		if len(key) == keySize && len(value) > 0 {
 			status := &CDRStatus{}
 			if err := status.FromABI(value); err != nil {
@@ -848,7 +848,7 @@ func queryContractParam(ctx *vmstore.VMContext, name string, fn func(cp *Contrac
 
 	var result []*ContractParam
 
-	if err := ctx.IteratorAll(contractPrefix, func(key []byte, value []byte) error {
+	if err := ctx.Iterator(contractPrefix, func(key []byte, value []byte) error {
 		if len(key) == contractKeySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {
@@ -881,7 +881,7 @@ func queryContractByAddressAndStopName(ctx *vmstore.VMContext, name string, fn f
 
 	var result *ContractParam
 
-	if err := ctx.IteratorAll(contractPrefix, func(key []byte, value []byte) error {
+	if err := ctx.Iterator(contractPrefix, func(key []byte, value []byte) error {
 		if len(key) == contractKeySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {
@@ -915,7 +915,7 @@ func queryAsserts(ctx *vmstore.VMContext, name string, fn func(param *AssetParam
 	}()
 
 	var result []*AssetParam
-	if err := ctx.IteratorAll(assetKeyPrefix, func(key []byte, value []byte) error {
+	if err := ctx.Iterator(assetKeyPrefix, func(key []byte, value []byte) error {
 		if len(key) == assetKeySize && len(value) > 0 {
 			if param, err := ParseAssertParam(value); err != nil {
 				logger.Error(err)

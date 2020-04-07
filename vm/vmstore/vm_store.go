@@ -26,13 +26,7 @@ type ContractStore interface {
 	GetStorage(prefix, key []byte) ([]byte, error)
 	SetStorage(prefix, key []byte, value []byte) error
 	Iterator(prefix []byte, fn func(key []byte, value []byte) error) error
-
-	//CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	IsUserAccount(address types.Address) (bool, error)
-	//GetAccountMeta(address types.Address) (*types.AccountMeta, error)
-	//GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
-	//GetStateBlock(hash types.Hash) (*types.StateBlock, error)
-	//HasTokenMeta(address types.Address, token types.Hash) (bool, error)
 
 	SaveStorage(batch ...storage.Batch) error
 	RemoveStorage(prefix, key []byte, batch ...storage.Batch) error
@@ -48,6 +42,7 @@ var (
 )
 
 type VMContext struct {
+	//TODO  should replace `ledger.Store` to `ledger.ContractStore`
 	Ledger       ledger.Store
 	logger       *zap.SugaredLogger
 	contractAddr *types.Address

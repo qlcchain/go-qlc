@@ -3,6 +3,8 @@ package p2p
 import (
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 
