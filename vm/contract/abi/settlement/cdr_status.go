@@ -72,23 +72,31 @@ func (z *CDRStatus) ToHash() (types.Hash, error) {
 	return types.ZeroHash, errors.New("no cdr record")
 }
 
-func (z *CDRStatus) State(addr *types.Address, fn func(status *CDRStatus) (string, error)) (sender string, isMatching, state bool, err error) {
+func (z *CDRStatus) IsMatching(addrs []*types.Address) bool {
+	for _, addr := range addrs {
+		if _, ok := z.Params[addr.String()]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func (z *CDRStatus) State(addr *types.Address, fn func(status *CDRStatus) (string, error)) (sender string, state bool, err error) {
 	sender, err = fn(z)
 	if err != nil {
-		return "", false, false, err
+		return "", false, err
 	}
-	isMatching = len(z.Params) == 2
 	if params, ok := z.Params[addr.String()]; ok {
 		switch size := len(params); {
 		case size == 1:
-			return sender, isMatching, params[0].Status(), nil
+			return sender, params[0].Status(), nil
 		case size > 1: //upload multi-times or normalize time error
-			return sender, isMatching, false, nil
+			return sender, false, nil
 		default:
-			return "", isMatching, false, nil
+			return "", false, nil
 		}
 	} else {
-		return "", isMatching, false, fmt.Errorf("can not find data of %s", addr.String())
+		return "", false, fmt.Errorf("can not find data of %s", addr.String())
 	}
 }
 
@@ -227,6 +235,17 @@ func (z *CDRStatus) DoSettlement(cdr SettlementCDR) (err error) {
 		err = fmt.Errorf("invalid params size %d", size)
 	}
 	return err
+}
+
+func (z *CDRStatus) Merge(other *CDRStatus) *CDRStatus {
+	if other != nil {
+		for k, v := range other.Params {
+			if _, ok := z.Params[k]; !ok {
+				z.Params[k] = v
+			}
+		}
+	}
+	return z
 }
 
 func ParseCDRStatus(v []byte) (*CDRStatus, error) {

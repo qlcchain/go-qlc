@@ -453,7 +453,6 @@ func TestCDRStatus_State(t *testing.T) {
 		fields  fields
 		args    args
 		want    string
-		want1   bool
 		want2   bool
 		wantErr bool
 	}{
@@ -468,7 +467,6 @@ func TestCDRStatus_State(t *testing.T) {
 				fn:   customerFn,
 			},
 			want:    "Tencent",
-			want1:   true,
 			want2:   true,
 			wantErr: false,
 		}, {
@@ -482,7 +480,6 @@ func TestCDRStatus_State(t *testing.T) {
 				fn:   accountFn,
 			},
 			want:    "Tencent_DIRECTS",
-			want1:   true,
 			want2:   true,
 			wantErr: false,
 		}, {
@@ -496,7 +493,6 @@ func TestCDRStatus_State(t *testing.T) {
 				fn:   customerFn,
 			},
 			want:    "Tencent",
-			want1:   true,
 			want2:   false,
 			wantErr: false,
 		}, {
@@ -510,7 +506,6 @@ func TestCDRStatus_State(t *testing.T) {
 				fn:   customerFn,
 			},
 			want:    "",
-			want1:   false,
 			want2:   false,
 			wantErr: true,
 		}, {
@@ -524,7 +519,6 @@ func TestCDRStatus_State(t *testing.T) {
 				fn:   customerFn,
 			},
 			want:    "",
-			want1:   false,
 			want2:   false,
 			wantErr: true,
 		}, {
@@ -538,7 +532,6 @@ func TestCDRStatus_State(t *testing.T) {
 				fn:   customerFn,
 			},
 			want:    "Tencent",
-			want1:   false,
 			want2:   false,
 			wantErr: false,
 		}, {
@@ -552,7 +545,6 @@ func TestCDRStatus_State(t *testing.T) {
 				fn:   customerFn,
 			},
 			want:    "",
-			want1:   false,
 			want2:   false,
 			wantErr: false,
 		}, {
@@ -566,7 +558,6 @@ func TestCDRStatus_State(t *testing.T) {
 				fn:   customerFn,
 			},
 			want:    "",
-			want1:   true,
 			want2:   false,
 			wantErr: false,
 		},
@@ -577,7 +568,7 @@ func TestCDRStatus_State(t *testing.T) {
 				Params: tt.fields.Params,
 				Status: tt.fields.Status,
 			}
-			got, got1, got2, err := z.State(tt.args.addr, tt.args.fn)
+			got, got1, err := z.State(tt.args.addr, tt.args.fn)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("State() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -585,11 +576,8 @@ func TestCDRStatus_State(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("State() got = %v, want %v", got, tt.want)
 			}
-			if got1 != tt.want1 {
-				t.Errorf("State() got1 = %v, want %v", got1, tt.want1)
-			}
-			if got2 != tt.want2 {
-				t.Errorf("State() got2 = %v, want %v", got2, tt.want2)
+			if got1 != tt.want2 {
+				t.Errorf("State() got1 = %v, want %v", got1, tt.want2)
 			}
 		})
 	}
@@ -679,5 +667,149 @@ func TestParseCDRStatus(t *testing.T) {
 				t.Fatalf("invalid cdr status %v, %v", status, s2)
 			}
 		}
+	}
+}
+
+func TestCDRStatus_Merge(t *testing.T) {
+	a1 := mock.Address()
+	a2 := mock.Address()
+
+	status := &CDRStatus{
+		Params: map[string][]CDRParam{a1.String(): {cdrParam}},
+		Status: SettlementStatusStage1,
+	}
+	type fields struct {
+		Params map[string][]CDRParam
+		Status SettlementStatus
+	}
+	type args struct {
+		other *CDRStatus
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want1  int
+		want   *CDRStatus
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				Params: map[string][]CDRParam{a1.String(): {cdrParam}},
+				Status: SettlementStatusStage1,
+			},
+			args: args{
+				other: nil,
+			},
+			want1: 1,
+			want:  nil,
+		}, {
+			name: "ok",
+			fields: fields{
+				Params: map[string][]CDRParam{a1.String(): {cdrParam}},
+				Status: SettlementStatusStage1,
+			},
+			args: args{
+				other: status,
+			},
+			want1: 1,
+			want:  nil,
+		}, {
+			name: "ok",
+			fields: fields{
+				Params: map[string][]CDRParam{a2.String(): {cdrParam}},
+				Status: SettlementStatusStage1,
+			},
+			args: args{
+				other: status,
+			},
+			want1: 2,
+			want:  nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CDRStatus{
+				Params: tt.fields.Params,
+				Status: tt.fields.Status,
+			}
+
+			if got := z.Merge(tt.args.other); len(got.Params) != tt.want1 {
+				t.Errorf("Merge() = %v, want %v", len(got.Params), tt.want1)
+			}
+		})
+	}
+}
+
+func TestCDRStatus_IsMatching(t *testing.T) {
+	a1 := mock.Address()
+	a2 := mock.Address()
+	a3 := mock.Address()
+
+	type fields struct {
+		Params map[string][]CDRParam
+		Status SettlementStatus
+	}
+	type args struct {
+		addrs []*types.Address
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				Params: map[string][]CDRParam{a1.String(): {cdrParam}, a2.String(): {cdrParam}},
+				Status: SettlementStatusStage1,
+			},
+			args: args{
+				addrs: []*types.Address{&a1},
+			},
+			want: true,
+		}, {
+			name: "ok",
+			fields: fields{
+				Params: map[string][]CDRParam{a1.String(): {cdrParam}, a2.String(): {cdrParam}},
+				Status: SettlementStatusStage1,
+			},
+			args: args{
+				addrs: []*types.Address{&a1, &a2},
+			},
+			want: true,
+		}, {
+			name: "f1",
+			fields: fields{
+				Params: map[string][]CDRParam{a1.String(): {cdrParam}, a2.String(): {cdrParam}},
+				Status: SettlementStatusStage1,
+			},
+			args: args{
+				addrs: []*types.Address{&a1, &a3},
+			},
+			want: false,
+		}, {
+			name: "f2",
+			fields: fields{
+				Params: map[string][]CDRParam{a1.String(): {cdrParam}, a2.String(): {cdrParam}},
+				Status: SettlementStatusStage1,
+			},
+			args: args{
+				addrs: []*types.Address{&a3},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := &CDRStatus{
+				Params: tt.fields.Params,
+				Status: tt.fields.Status,
+			}
+			if got := z.IsMatching(tt.args.addrs); got != tt.want {
+				t.Errorf("IsMatching() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

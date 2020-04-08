@@ -473,15 +473,17 @@ func generateSummaryReport(ctx *vmstore.VMContext, addr *types.Address, fn func(
 	partyA := c.PartyA.Address
 	partyB := c.PartyB.Address
 
+	addrs := []*types.Address{&partyA, &partyB}
 	for _, status := range records {
+		isMatching := status.IsMatching(addrs)
 		//party A
-		if s1, isMatching, b1, err := status.State(&partyA, fn); err == nil {
+		if s1, b1, err := status.State(&partyA, fn); err == nil {
 			result.UpdateState(s1, "partyA", isMatching, b1)
 		}
 
 		//party B
-		if s2, isMatching2, b2, err := status.State(&partyB, fn); err == nil {
-			result.UpdateState(s2, "partyB", isMatching2, b2)
+		if s2, b2, err := status.State(&partyB, fn); err == nil {
+			result.UpdateState(s2, "partyB", isMatching, b2)
 		}
 	}
 
@@ -688,31 +690,34 @@ func GetMultiPartySummaryReport(ctx *vmstore.VMContext, firstAddr, secondAddr *t
 	partyB := c1.PartyB.Address
 	partyC := c2.PartyB.Address
 
+	addrs := []*types.Address{&partyA, &partyB, &partyC}
 	for _, record := range records {
-		// party A
-		if s1, isMatching1, b1, err := record.State(&partyA, customerFn); err == nil {
-			result.UpdateState(s1, "partyA", isMatching1, b1)
-		}
-
-		// party B
-		if s2, isMatching2, b2, err := record.State(&partyB, customerFn); err == nil {
-			result.UpdateState(s2, "partyB", isMatching2, b2)
-		}
-
 		hash, err := record.ToHash()
 		if err != nil {
 			logger.Error(err)
 			continue
 		}
 
-		stat2, err := GetCDRStatus(ctx, secondAddr, hash)
-		if err != nil {
+		if stat2, err := GetCDRStatus(ctx, secondAddr, hash); err == nil {
+			record.Merge(stat2)
+		} else {
 			logger.Errorf("%s[%s], err %s", secondAddr.String(), hash.String(), err)
-			continue
 		}
 
-		if s3, isMatching3, b3, err := stat2.State(&partyC, customerFn); err == nil {
-			result.UpdateState(s3, "partyC", isMatching3, b3)
+		isMatching := record.IsMatching(addrs)
+		// party A
+		if s1, b1, err := record.State(&partyA, customerFn); err == nil {
+			result.UpdateState(s1, "partyA", isMatching, b1)
+		}
+
+		// party B
+		if s2, b2, err := record.State(&partyB, customerFn); err == nil {
+			result.UpdateState(s2, "partyB", isMatching, b2)
+		}
+
+		// party C
+		if s3, b3, err := record.State(&partyC, customerFn); err == nil {
+			result.UpdateState(s3, "partyC", isMatching, b3)
 		}
 	}
 
