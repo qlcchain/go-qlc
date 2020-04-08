@@ -3,7 +3,6 @@ package privacy
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,9 +10,15 @@ import (
 	"strings"
 )
 
+type Transport interface {
+	http.RoundTripper
+	SetFakeMode(mode bool)
+}
+
 type Client struct {
 	scheme     string // http+unix, http
 	rootPath   string
+	transport  Transport
 	httpClient *http.Client
 }
 
@@ -35,12 +40,13 @@ func NewClient(ptmNode string) *Client {
 	c.httpClient = &http.Client{}
 
 	if c.scheme == "http+unix" {
-		c.httpClient.Transport = newUnixTransport("c", c.rootPath)
+		c.transport = newUnixTransport("c", c.rootPath)
 	} else if c.scheme == "http" {
-		c.httpClient.Transport = newHttpTransport()
+		c.transport = newHttpTransport()
 	} else {
 		return nil
 	}
+	c.httpClient.Transport = c.transport
 
 	return c
 }
@@ -50,24 +56,6 @@ func (c *Client) formatPath(path string) string {
 		return c.scheme + "://c" + path
 	}
 	return c.scheme + ":" + c.rootPath + path
-}
-
-func (c *Client) doJson(path string, apiReq interface{}) (*http.Response, error) {
-	buf := new(bytes.Buffer)
-	err := json.NewEncoder(buf).Encode(apiReq)
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("POST", c.formatPath(path), buf)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	res, err := c.httpClient.Do(req)
-	if err == nil && res.StatusCode != 200 {
-		return nil, fmt.Errorf("Non-200 status code: %+v", res)
-	}
-	return res, err
 }
 
 func (c *Client) Upcheck() (bool, error) {
@@ -102,31 +90,7 @@ func (c *Client) SendPayload(pl []byte, b64From string, b64To []string) ([]byte,
 		return nil, err
 	}
 	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("Non-200 status code: %+v", res)
-	}
-
-	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, res.Body))
-}
-
-func (c *Client) SendSignedPayload(signedPayload []byte, b64To []string) ([]byte, error) {
-	buf := bytes.NewBuffer(signedPayload)
-	req, err := http.NewRequest("POST", c.formatPath("/sendsignedtx"), buf)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("c11n-to", strings.Join(b64To, ","))
-	req.Header.Set("Content-Type", "application/octet-stream")
-	res, err := c.httpClient.Do(req)
-
-	if res != nil {
-		defer res.Body.Close()
-	}
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("Non-200 status code: %+v", res)
+		return nil, fmt.Errorf("non-200 status code: %d(%s)", res.StatusCode, res.Status)
 	}
 
 	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, res.Body))

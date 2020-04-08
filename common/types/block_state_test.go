@@ -280,4 +280,16 @@ func TestStateBlock_PrivateHash(t *testing.T) {
 	if h1 == h3 {
 		t.Fatal("private GetHash == GetHashNotUsed")
 	}
+
+	pl := make([]byte, 100, 100)
+	blk.SetPrivatePayload(pl)
+	if !blk.IsPrivate() {
+		t.Fatal("tx IsPrivate")
+	}
+	if !blk.IsRecipient() {
+		t.Fatal("tx IsRecipient")
+	}
+	if blk.GetPrivatePayload() == nil {
+		t.Fatal("tx GetPrivatePayload")
+	}
 }

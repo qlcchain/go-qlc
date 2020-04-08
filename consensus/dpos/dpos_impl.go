@@ -746,7 +746,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		}
 	case types.ContractSend: // beneficial maybe another account
 		// check private tx
-		if blk.IsPrivate() && blk.IsRecipient() {
+		if blk.IsPrivate() && !blk.IsRecipient() {
 			break
 		}
 

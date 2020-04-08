@@ -104,6 +104,9 @@ func (c *Controller) onEventPrivacyRecvReqMsg(msg *topic.EventPrivacyRecvReqMsg)
 }
 
 func formatBytesPrefix(data []byte) string {
+	if len(data) == 0 {
+		return "<nil>"
+	}
 	if len(data) > 32 {
 		return hex.EncodeToString(data[0:32])
 	}

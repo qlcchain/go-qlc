@@ -27,10 +27,11 @@ type UnixTransport struct {
 
 	mu sync.Mutex
 	// map a URL "hostname" to a UNIX domain socket path
-	loc map[string]string
+	loc      map[string]string
+	fakeMode bool
 }
 
-func newUnixTransport(loc, rootPath string) http.RoundTripper {
+func newUnixTransport(loc, rootPath string) *UnixTransport {
 	t := &UnixTransport{
 		DialTimeout:           1 * time.Second,
 		RequestTimeout:        5 * time.Second,
@@ -38,6 +39,10 @@ func newUnixTransport(loc, rootPath string) http.RoundTripper {
 	}
 	t.RegisterLocation(loc, rootPath)
 	return t
+}
+
+func (t *UnixTransport) SetFakeMode(mode bool) {
+	t.fakeMode = mode
 }
 
 func (t *UnixTransport) initTransport() {
@@ -104,16 +109,25 @@ func (t *UnixTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.URL == nil {
 		return nil, errors.New("http+unix: nil Request.URL")
 	}
-	if req.URL.Scheme != UnixScheme {
-		return nil, errors.New("unsupported protocol scheme: " + req.URL.Scheme)
-	}
 	if req.URL.Host == "" {
 		return nil, errors.New("http+unix: no Host in request URL")
+	}
+
+	if req.URL.Scheme != UnixScheme {
+		return nil, errors.New("unsupported protocol scheme: " + req.URL.Scheme)
 	}
 
 	tt := t.getTransport()
 	req = req.Clone(req.Context())
 	// get http.Transport to cooperate
 	req.URL.Scheme = "http"
+
+	if t.fakeMode {
+		rsp := new(http.Response)
+		rsp.StatusCode = 200
+		rsp.Body = http.NoBody
+		return rsp, nil
+	}
+
 	return tt.RoundTrip(req)
 }
