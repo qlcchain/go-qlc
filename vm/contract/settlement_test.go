@@ -24,7 +24,7 @@ import (
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi/settlement"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 

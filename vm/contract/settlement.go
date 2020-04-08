@@ -20,11 +20,30 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract"
 	cfg "github.com/qlcchain/go-qlc/config"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi/settlement"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-var ErrNotImplement = errors.New("not implemented")
+var (
+	ErrNotImplement    = errors.New("not implemented")
+	SettlementContract = vmcontract.NewChainContract(
+		map[string]vmcontract.Contract{
+			cabi.MethodNameCreateContract:    &CreateContract{},
+			cabi.MethodNameSignContract:      &SignContract{},
+			cabi.MethodNameProcessCDR:        &ProcessCDR{},
+			cabi.MethodNameAddPreStop:        &AddPreStop{},
+			cabi.MethodNameUpdatePreStop:     &UpdatePreStop{},
+			cabi.MethodNameRemovePreStop:     &RemovePreStop{},
+			cabi.MethodNameAddNextStop:       &AddNextStop{},
+			cabi.MethodNameUpdateNextStop:    &UpdateNextStop{},
+			cabi.MethodNameRemoveNextStop:    &RemoveNextStop{},
+			cabi.MethodNameTerminateContract: &TerminateContract{},
+			cabi.MethodNameRegisterAsset:     &RegisterAsset{},
+		},
+		cabi.SettlementABI,
+		cabi.JsonSettlement,
+	)
+)
 
 type internalContract struct {
 }
