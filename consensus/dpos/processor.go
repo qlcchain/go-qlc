@@ -226,6 +226,12 @@ func (p *Processor) tokenCreateNotify(hash types.Hash) {
 func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBlock) {
 	var height uint64
 
+	err := block.CheckPrivateRecvRsp()
+	if err != nil {
+		p.dps.logger.Errorf("block %s check private err %s", hash, err)
+		return
+	}
+
 	ck := chainKey{
 		addr:  block.Address,
 		token: block.Token,
@@ -411,6 +417,12 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	hash := bs.Block.GetHash()
 	var result process.ProcessResult
 	var err error
+
+	err = bs.Block.CheckPrivateRecvRsp()
+	if err != nil {
+		dps.logger.Errorf("block %s check private err %s", hash, err)
+		return
+	}
 
 	dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
 

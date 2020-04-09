@@ -124,11 +124,9 @@ func runPrivacySetDemoKVCmd(priKeyStr, keyStr, valStr, priFromStr, priForStr str
 	fmt.Printf("Key:\n")
 	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(keyBytes))
 	fmt.Printf("  String: %s\n", string(keyBytes))
-	fmt.Printf("  []byte: %v\n", keyBytes)
 	fmt.Printf("Value:\n")
 	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(valBytes))
 	fmt.Printf("  String: %s\n", string(valBytes))
-	fmt.Printf("  []byte: %v\n", valBytes)
 
 	paraStrList := []string{
 		hex.EncodeToString(keyBytes),
@@ -223,7 +221,6 @@ func runPrivacyGetDemoKVCmd(keyStr string) error {
 		keyBytes = []byte(keyStr)
 	}
 	fmt.Printf("Key:\n")
-	fmt.Printf("  Bytes:  %v\n", keyBytes)
 	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(keyBytes))
 	fmt.Printf("  String: %s\n", string(keyBytes))
 
@@ -234,7 +231,6 @@ func runPrivacyGetDemoKVCmd(keyStr string) error {
 	}
 
 	fmt.Printf("Value:\n")
-	fmt.Printf("  Bytes:  %v\n", valBytes)
 	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(valBytes))
 	fmt.Printf("  String: %s\n", string(valBytes))
 

@@ -9,6 +9,7 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -96,6 +97,14 @@ func (api *PrivacyApi) GetRawPayload(enclaveKey []byte) ([]byte, error) {
 	}
 
 	return privacyGetRawPayload(api.eb, msgReq)
+}
+
+func (api *PrivacyApi) GetBlockPrivatePayload(blockHash types.Hash) ([]byte, error) {
+	pl, err := api.l.GetBlockPrivatePayload(blockHash)
+	if err != nil {
+		return nil, err
+	}
+	return pl, nil
 }
 
 // GetDemoKV returns KV in PrivacyKV contract (just for demo in testnet)

@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -32,9 +33,9 @@ type StateBlock struct {
 	Extra          Hash      `msg:"extra,extension" json:"extra,omitempty"`
 	Representative Address   `msg:"representative,extension" json:"representative"`
 
-	PrivateFrom    string   `msg:"priFrom,extension,omitempty" json:"privateFrom,omitempty"`
-	PrivateFor     []string `msg:"priFor,extension,omitempty" json:"privateFor,omitempty"`
-	PrivateGroupID string   `msg:"priGid,extension,omitempty" json:"privateGroupID,omitempty"`
+	PrivateFrom    string   `msg:"priFrom,omitempty" json:"privateFrom,omitempty"`
+	PrivateFor     []string `msg:"priFor,omitempty" json:"privateFor,omitempty"`
+	PrivateGroupID string   `msg:"priGid,omitempty" json:"privateGroupID,omitempty"`
 
 	Work      Work      `msg:"work,extension" json:"work"`
 	Signature Signature `msg:"signature,extension" json:"signature"`
@@ -320,6 +321,13 @@ func (b *StateBlock) GetPrivatePayload() []byte {
 func (b *StateBlock) SetPrivatePayload(rawData []byte) {
 	b.PrivatePayload = rawData
 	b.PrivateRecvRsp = true
+}
+
+func (b *StateBlock) CheckPrivateRecvRsp() error {
+	if b.IsPrivate() && !b.PrivateRecvRsp {
+		return errors.New("private does not got recv rsp")
+	}
+	return nil
 }
 
 type StateBlockList []*StateBlock

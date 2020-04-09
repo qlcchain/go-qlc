@@ -3,6 +3,9 @@
 package contract
 
 import (
+	"encoding/hex"
+	"errors"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/log"
@@ -15,14 +18,24 @@ type PrivacyDemoKVSet struct {
 }
 
 func (s *PrivacyDemoKVSet) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	log := log.NewLogger("PrivacyDemoKVSet")
+	logger := log.NewLogger("PrivacyDemoKVSet")
 
-	log.Debugf("ProcessSend block %+v", block)
+	if len(block.GetPayload()) == 0 {
+		return nil, nil, errors.New("payload is nil")
+	}
 
 	para := new(abi.PrivacyDemoKVABISetPara)
 	err := abi.PrivacyDemoKVABI.UnpackMethod(para, abi.MethodNamePrivacyDemoKVSet, block.GetPayload())
 	if err != nil {
+		logger.Errorf("failed to unpack payload:%s", hex.EncodeToString(block.GetPayload()))
 		return nil, nil, ErrUnpackMethod
+	}
+
+	if len(para.Key) == 0 {
+		return nil, nil, errors.New("invalid Key para")
+	}
+	if len(para.Value) == 0 {
+		return nil, nil, errors.New("invalid Value para")
 	}
 
 	var key []byte

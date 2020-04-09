@@ -23,4 +23,5 @@ type Store interface {
 	Relation
 	CacheStore
 	LedgerStore
+	PrivacyStore
 }

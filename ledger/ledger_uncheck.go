@@ -82,6 +82,14 @@ func (l *Ledger) GetUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (*
 	if err := value.Deserialize(v); err != nil {
 		return nil, 0, fmt.Errorf("uncheck deserialize error: %s", err)
 	}
+
+	if value.Block.IsPrivate() {
+		pl, err := l.GetBlockPrivatePayload(value.Block.GetHash())
+		if err == nil {
+			value.Block.SetPrivatePayload(pl)
+		}
+	}
+
 	return value.Block, value.Kind, nil
 }
 
@@ -113,6 +121,13 @@ func (l *Ledger) getUncheckedBlocks(kind types.UncheckedKind, visit types.Unchec
 		h, err := types.BytesToHash(key[1:])
 		if err != nil {
 			return fmt.Errorf("uncheck kind err: %s", err)
+		}
+
+		if u.Block.IsPrivate() {
+			pl, err := l.GetBlockPrivatePayload(u.Block.GetHash())
+			if err == nil {
+				u.Block.SetPrivatePayload(pl)
+			}
 		}
 
 		if err := visit(u.Block, h, kind, u.Kind); err != nil {
@@ -199,6 +214,13 @@ func (l *Ledger) WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlo
 			return fmt.Errorf("uncheck deserialize err: %s", err)
 		}
 
+		if u.Block.IsPrivate() {
+			pl, err := l.GetBlockPrivatePayload(u.Block.GetHash())
+			if err == nil {
+				u.Block.SetPrivatePayload(pl)
+			}
+		}
+
 		return visit(u.Block, height, u.Kind)
 	})
 }
@@ -210,6 +232,13 @@ func (l *Ledger) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error {
 		u := new(types.Unchecked)
 		if err := u.Deserialize(val); err != nil {
 			return fmt.Errorf("uncheck deserialize err: %s", err)
+		}
+
+		if u.Block.IsPrivate() {
+			pl, err := l.GetBlockPrivatePayload(u.Block.GetHash())
+			if err == nil {
+				u.Block.SetPrivatePayload(pl)
+			}
 		}
 
 		height := util.BE_BytesToUint64(key[1:9])

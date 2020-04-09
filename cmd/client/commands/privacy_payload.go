@@ -89,7 +89,6 @@ func runPrivacyDistributePayloadCmd(dataStr, priFromStr, priForStr string) error
 	}
 
 	fmt.Printf("Data:\n")
-	fmt.Printf("  Bytes:  %v\n", dataBytes)
 	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(dataBytes))
 	fmt.Printf("  Base64: %s\n", base64.StdEncoding.EncodeToString(dataBytes))
 
@@ -106,7 +105,6 @@ func runPrivacyDistributePayloadCmd(dataStr, priFromStr, priForStr string) error
 	}
 
 	fmt.Printf("EnclaveKey:\n")
-	fmt.Printf("  Bytes:  %v\n", enclaveKeyBytes)
 	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(enclaveKeyBytes))
 	fmt.Printf("  Base64: %s\n", base64.StdEncoding.EncodeToString(enclaveKeyBytes))
 
@@ -116,8 +114,14 @@ func runPrivacyDistributePayloadCmd(dataStr, priFromStr, priForStr string) error
 func addPrivacyGetPayloadCmdByShell(parentCmd *ishell.Cmd) {
 	keyFlag := util.Flag{
 		Name:  "enclaveKey",
-		Must:  true,
+		Must:  false,
 		Usage: "enclave key of private transaction",
+		Value: "",
+	}
+	hashFlag := util.Flag{
+		Name:  "hash",
+		Must:  false,
+		Usage: "hash of private transaction",
 		Value: "",
 	}
 
@@ -125,14 +129,20 @@ func addPrivacyGetPayloadCmdByShell(parentCmd *ishell.Cmd) {
 		Name: "getRawPayload",
 		Help: "get raw payload of private transaction",
 		Func: func(c *ishell.Context) {
-			args := []util.Flag{keyFlag}
+			args := []util.Flag{keyFlag, hashFlag}
 			if util.HelpText(c, args) {
 				return
 			}
 
 			keyStr := util.StringVar(c.Args, keyFlag)
+			hashStr := util.StringVar(c.Args, hashFlag)
 
-			err := runPrivacyGetPayloadCmd(keyStr)
+			var err error
+			if hashStr != "" {
+				err = runPrivacyGetPayloadByHashCmd(hashStr)
+			} else {
+				err = runPrivacyGetPayloadCmd(keyStr)
+			}
 			if err != nil {
 				util.Warn(err)
 				return
@@ -166,8 +176,7 @@ func runPrivacyGetPayloadCmd(keyStr string) error {
 			keyBytes = []byte(keyStr)
 		}
 	}
-	fmt.Printf("Key:\n")
-	fmt.Printf("  Bytes:  %v\n", keyBytes)
+	fmt.Printf("EnclaveKey:\n")
 	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(keyBytes))
 	fmt.Printf("  Base64: %s\n", base64.StdEncoding.EncodeToString(keyBytes))
 
@@ -177,8 +186,31 @@ func runPrivacyGetPayloadCmd(keyStr string) error {
 		return err
 	}
 
-	fmt.Printf("Value:\n")
-	fmt.Printf("  Bytes:  %v\n", valBytes)
+	fmt.Printf("Payload:\n")
+	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(valBytes))
+	fmt.Printf("  Base64: %s\n", base64.StdEncoding.EncodeToString(valBytes))
+
+	return nil
+}
+
+func runPrivacyGetPayloadByHashCmd(hashStr string) error {
+	client, err := rpc.Dial(endpointP)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if len(hashStr) == 0 {
+		return errors.New("hash is nil")
+	}
+
+	var valBytes []byte
+	err = client.Call(&valBytes, "privacy_getBlockPrivatePayload", hashStr)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Payload:\n")
 	fmt.Printf("  HEX:    %s\n", hex.EncodeToString(valBytes))
 	fmt.Printf("  Base64: %s\n", base64.StdEncoding.EncodeToString(valBytes))
 

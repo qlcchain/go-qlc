@@ -518,6 +518,14 @@ func (dps *DPoS) processPrivateBlocks() {
 			if !ok {
 				dps.logger.Errorf("EventPrivacyRecvRspMsg ReqData is not BlockSource, drop it!")
 			} else {
+				blkHash := bs.Block.GetHash()
+
+				err := dps.ledger.AddBlockPrivatePayload(blkHash, recvRsp.RawPayload)
+				if err != nil {
+					dps.logger.Infof("block[%s] save private payload err[%s]", blkHash, err.Error())
+					break
+				}
+
 				bs.Block.SetPrivatePayload(recvRsp.RawPayload)
 				dps.recvBlocks <- bs
 			}
@@ -676,6 +684,16 @@ func (dps *DPoS) getProcessorIndex(address types.Address) int {
 }
 
 func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
+	if bs.Block != nil && bs.Block.IsPrivate() {
+		blkHash := bs.Block.GetHash()
+
+		err := bs.Block.CheckPrivateRecvRsp()
+		if err != nil {
+			dps.logger.Errorf("block %s check private err %s", blkHash, err)
+			return
+		}
+	}
+
 	if bs.Type == consensus.MsgConfirmAck {
 		ack := bs.Para.(*protos.ConfirmAckBlock)
 		dps.saveOnlineRep(ack.Account)
