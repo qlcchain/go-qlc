@@ -142,24 +142,7 @@ func InitChainContract() {
 	)
 	vmcontract.RegisterContracts(contractaddress.RepAddress, rep)
 
-	settlement := vmcontract.NewChainContract(
-		map[string]vmcontract.Contract{
-			cabi.MethodNameCreateContract:    &contract.CreateContract{},
-			cabi.MethodNameSignContract:      &contract.SignContract{},
-			cabi.MethodNameProcessCDR:        &contract.ProcessCDR{},
-			cabi.MethodNameAddPreStop:        &contract.AddPreStop{},
-			cabi.MethodNameUpdatePreStop:     &contract.UpdatePreStop{},
-			cabi.MethodNameRemovePreStop:     &contract.RemovePreStop{},
-			cabi.MethodNameAddNextStop:       &contract.AddNextStop{},
-			cabi.MethodNameUpdateNextStop:    &contract.UpdateNextStop{},
-			cabi.MethodNameRemoveNextStop:    &contract.RemoveNextStop{},
-			cabi.MethodNameTerminateContract: &contract.TerminateContract{},
-			cabi.MethodNameRegisterAsset:     &contract.RegisterAsset{},
-		},
-		cabi.SettlementABI,
-		cabi.JsonSettlement,
-	)
-	vmcontract.RegisterContracts(contractaddress.SettlementAddress, settlement)
+	vmcontract.RegisterContracts(contractaddress.SettlementAddress, contract.SettlementContract)
 
 	pk := vmcontract.NewChainContract(
 		map[string]vmcontract.Contract{

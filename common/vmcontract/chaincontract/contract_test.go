@@ -5,12 +5,13 @@ import (
 	"reflect"
 	"testing"
 
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
 func TestGetChainContractName(t *testing.T) {
@@ -171,9 +172,9 @@ func TestGetAbiByContractAddress(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				addr: contractaddress.SettlementAddress,
+				addr: contractaddress.BlackHoleAddress,
 			},
-			want:    cabi.JsonSettlement,
+			want:    cabi.JsonDestroy,
 			wantErr: false,
 		}, {
 			name: "f",

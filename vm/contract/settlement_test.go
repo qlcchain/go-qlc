@@ -8,8 +8,11 @@
 package contract
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
+	sync2 "sync"
 	"testing"
 	"time"
 
@@ -24,7 +27,7 @@ import (
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi/settlement"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -62,27 +65,23 @@ var (
 	}
 )
 
-func buildContract(l *ledger.Ledger, t *testing.T) {
-	a1 := account1.Address()
-	a2 := account2.Address()
+func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err error) {
+	a1 = account1.Address()
+	a2 = account2.Address()
 
 	ctx := vmstore.NewVMContext(l)
 
-	if am, err := l.GetAccountMeta(a1); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Log(util.ToIndentString(am))
+	if _, err = l.GetAccountMeta(a1); err != nil {
+		return
 	}
 
-	if am, err := l.GetAccountMeta(a2); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Log(util.ToIndentString(am))
+	if _, err = l.GetAccountMeta(a2); err != nil {
+		return
 	}
 
 	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
 	if err != nil {
-		t.Fatal(err)
+		return
 	}
 
 	param := createContractParam
@@ -90,15 +89,19 @@ func buildContract(l *ledger.Ledger, t *testing.T) {
 	param.PartyB.Address = a2
 	param.Previous = tm.Header
 
-	balance, err := param.Balance()
-	if err != nil {
-		t.Fatal(err)
+	contractAddress, _ = param.Address()
+
+	var balance types.Balance
+	if balance, err = param.Balance(); err != nil {
+		return
 	}
 	if tm.Balance.Compare(balance) == types.BalanceCompSmaller {
-		t.Fatalf("not enough balance, [%s] of [%s]", balance.String(), tm.Balance.String())
+		err = fmt.Errorf("not enough balance, [%s] of [%s]", balance.String(), tm.Balance.String())
+		return
 	}
 
-	if abi, err := param.ToABI(); err == nil {
+	var abi []byte
+	if abi, err = param.ToABI(); err == nil {
 		sb := &types.StateBlock{
 			Type:           types.ContractSend,
 			Token:          tm.Type,
@@ -119,34 +122,40 @@ func buildContract(l *ledger.Ledger, t *testing.T) {
 
 		h := ctx.Cache.Trie().Hash()
 		if h != nil {
-			povHeader, err := l.GetLatestPovHeader()
-			if err != nil {
-				t.Fatalf("get pov header error: %s", err)
+			povHeader, err2 := l.GetLatestPovHeader()
+			if err2 != nil {
+				err = err2
+				return
 			}
 			sb.PoVHeight = povHeader.GetHeight()
 			sb.Extra = *h
 		}
 
-		if err := updateBlock(l, sb); err != nil {
-			t.Fatal(err)
+		if err = updateBlock(l, sb); err != nil {
+			return
 		}
 
 		createContract := CreateContract{}
-		if _, _, err := createContract.ProcessSend(ctx, sb); err != nil {
-			t.Fatal(err)
+		if _, _, err = createContract.ProcessSend(ctx, sb); err != nil {
+			return
 		} else {
-			if err := ctx.SaveStorage(); err != nil {
-				t.Fatal(err)
+			if err = ctx.SaveStorage(); err != nil {
+				return
 			}
 		}
+
+		return
 	}
+	return
 }
 
 func TestCreate_And_Terminate_Contract(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	buildContract(l, t)
+	if _, _, _, err := buildContract(l); err != nil {
+		t.Fatal(err)
+	}
 	a1 := account1.Address()
 	a2 := account2.Address()
 
@@ -245,7 +254,9 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	buildContract(l, t)
+	if _, _, _, err := buildContract(l); err != nil {
+		t.Fatal(err)
+	}
 	a1 := account1.Address()
 	a2 := account2.Address()
 	ctx := vmstore.NewVMContext(l)
@@ -1364,9 +1375,11 @@ func Test_newLocker(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	all := l.cache.GetALL(true)
-
-	for k, v := range all {
-		t.Log(k, v)
+	if len(all) != 0 {
+		for k, v := range all {
+			t.Log(k, v)
+		}
+		t.Fatal("len should be zero")
 	}
 
 	if m3, err := l.Get(k); err != nil {
@@ -1677,5 +1690,135 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 		}
 	} else {
 		t.Fatal(err)
+	}
+}
+
+func TestProcessCDR_save(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	if ca, a1, a2, err := buildContract(l); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(ca.String())
+		t.Log(a1.String())
+		t.Log(a2.String())
+		p := &ProcessCDR{}
+		ctx := vmstore.NewVMContext(l)
+		data, err := cabi.GetContractParam(ctx, &ca)
+		if err != nil {
+			t.Fatal(err)
+		}
+		param, err := cabi.ParseContractParam(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var cdrs []*cabi.CDRParam
+		for i := 0; i < 10; i++ {
+			cdr := &cabi.CDRParam{
+				Index:         uint64(10000 + i),
+				SmsDt:         time.Now().Unix(),
+				Sender:        "PCCWG",
+				Destination:   "85257***34" + strconv.Itoa(i),
+				SendingStatus: cabi.SendingStatusSent,
+				DlrStatus:     cabi.DLRStatusDelivered}
+			cdrs = append(cdrs, cdr)
+		}
+
+		wg := sync2.WaitGroup{}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			sb := &types.StateBlock{
+				Address:   a1,
+				Timestamp: time.Now().Unix(),
+			}
+
+			for _, cdr := range cdrs {
+				ctx := vmstore.NewVMContext(l)
+				h, _ := cdr.ToHash()
+				key, _ := types.HashBytes(ca[:], h[:])
+				t.Log(a1.String(), ": ", key.String())
+				if err = p.save(ctx, sb, &ca, param, cdr); err != nil {
+					t.Log(err)
+				} else {
+					if err = ctx.SaveStorage(); err != nil {
+						t.Log(err)
+					}
+				}
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			sb := &types.StateBlock{
+				Address:   a2,
+				Timestamp: time.Now().Unix(),
+			}
+
+			for _, cdr := range cdrs {
+				ctx := vmstore.NewVMContext(l)
+				h, _ := cdr.ToHash()
+				key, _ := types.HashBytes(ca[:], h[:])
+				t.Log(a2.String(), ": ", key.String())
+				if err = p.save(ctx, sb, &ca, param, cdr); err != nil {
+					t.Log(err)
+				} else {
+					if err = ctx.SaveStorage(); err != nil {
+						t.Log(err)
+					}
+				}
+			}
+		}()
+
+		//ctx1, cancelFunc := context.WithCancel(context.Background())
+		//defer cancelFunc()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				all := lockerCache.cache.GetALL(true)
+				i := len(all)
+				j := 0
+				for _, v := range all {
+					if !v.(*sync.Mutex).IsLocked() {
+						j++
+					}
+				}
+				if i == j {
+					break
+				}
+
+				s := PrintLocker()
+				if s != "" {
+					t.Log(s)
+				}
+			}
+		}()
+
+		wg.Wait()
+		//cancelFunc()
+
+		time.Sleep(time.Second)
+
+		if records, err := cabi.GetCDRStatusByDate(ctx, &ca, 0, 0); err != nil {
+			t.Fatal(err)
+		} else {
+			if len(records) != 10 {
+				t.Fatalf("invalid records len, %d", len(records))
+			} else {
+				// for _, record := range records {
+				// 	if len(record.Params) != 2 {
+				// 		t.Fatalf("invalid record, %s", record.String())
+				// 	} else {
+				// 		//t.Log(record.String())
+				// 	}
+				// }
+			}
+		}
 	}
 }
