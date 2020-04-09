@@ -75,10 +75,9 @@ func blockType(bs []blocksType) map[string]uint64 {
 }
 
 func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
-	tx := r.db.MustBegin()
 	tx, err := r.db.Beginx()
 	if err != nil {
-		r.logger.Fatal(err, r.dir)
+		return fmt.Errorf("tx begin: %s", err)
 	}
 	if err := fn(tx); err != nil {
 		return fmt.Errorf("tx fn: %s", err)
