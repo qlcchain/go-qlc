@@ -8,9 +8,13 @@
 package contract
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/qlcchain/go-qlc/log"
 
 	"github.com/bluele/gcache"
 
@@ -20,11 +24,30 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract"
 	cfg "github.com/qlcchain/go-qlc/config"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi/settlement"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-var ErrNotImplement = errors.New("not implemented")
+var (
+	ErrNotImplement    = errors.New("not implemented")
+	SettlementContract = vmcontract.NewChainContract(
+		map[string]vmcontract.Contract{
+			cabi.MethodNameCreateContract:    &CreateContract{},
+			cabi.MethodNameSignContract:      &SignContract{},
+			cabi.MethodNameProcessCDR:        &ProcessCDR{},
+			cabi.MethodNameAddPreStop:        &AddPreStop{},
+			cabi.MethodNameUpdatePreStop:     &UpdatePreStop{},
+			cabi.MethodNameRemovePreStop:     &RemovePreStop{},
+			cabi.MethodNameAddNextStop:       &AddNextStop{},
+			cabi.MethodNameUpdateNextStop:    &UpdateNextStop{},
+			cabi.MethodNameRemoveNextStop:    &RemoveNextStop{},
+			cabi.MethodNameTerminateContract: &TerminateContract{},
+			cabi.MethodNameRegisterAsset:     &RegisterAsset{},
+		},
+		cabi.SettlementABI,
+		cabi.JsonSettlement,
+	)
+)
 
 type internalContract struct {
 }
@@ -246,6 +269,15 @@ func (s *SignContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 
 var lockerCache = newLocker()
 
+func PrintLocker() string {
+	all := lockerCache.cache.GetALL(true)
+	sb := strings.Builder{}
+	for k, v := range all {
+		sb.WriteString(fmt.Sprintf("%s=>%t\n", hex.EncodeToString([]byte(k.(string))), v.(*sync.Mutex).IsLocked()))
+	}
+	return sb.String()
+}
+
 type ProcessCDR struct {
 	internalContract
 }
@@ -282,9 +314,19 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		return nil, nil, err
 	}
 	contractAddress := paramList.ContractAddress
+	contract, err := cabi.GetSettlementContract(ctx, &contractAddress)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// verify sms date and uploading date
+	if block.Timestamp <= 0 || block.Timestamp < contract.StartDate || block.Timestamp > contract.EndDate {
+		return nil, nil, fmt.Errorf("invalid uploading date, should be in [%s, %s], got %s",
+			timeString(contract.StartDate), timeString(contract.EndDate), timeString(block.Timestamp))
+	}
 
 	for _, param := range paramList.Params {
-		if err := p.save(ctx, block, &contractAddress, param); err != nil {
+		if err := p.save(ctx, block, &contractAddress, contract, param); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -299,7 +341,8 @@ func (p *ProcessCDR) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		}, nil
 }
 
-func (p *ProcessCDR) save(ctx *vmstore.VMContext, block *types.StateBlock, contractAddress *types.Address, param *cabi.CDRParam) error {
+func (p *ProcessCDR) save(ctx *vmstore.VMContext, block *types.StateBlock, ca *types.Address,
+	contract *cabi.ContractParam, param *cabi.CDRParam) error {
 	// verify block data
 	if err := param.Verify(); err != nil {
 		return err
@@ -310,45 +353,41 @@ func (p *ProcessCDR) save(ctx *vmstore.VMContext, block *types.StateBlock, contr
 		return err
 	}
 
+	addr := block.Address
+	key, _ := types.HashBytes(ca[:], h[:])
+
 	// lock by CDR param
-	mutex, err := lockerCache.Get(h[:])
+	mutex, err := lockerCache.Get(key[:])
 	if err != nil {
 		return err
 	}
 	mutex.Lock()
-	defer mutex.Unlock()
-
-	contract, err := cabi.GetSettlementContract(ctx, contractAddress)
-	if err != nil {
-		return err
-	}
-
-	// verify sms date and uploading date
-	if block.Timestamp <= 0 || block.Timestamp < contract.StartDate || block.Timestamp > contract.EndDate {
-		return fmt.Errorf("invalid uploading date, should be in [%s, %s], got %s",
-			timeString(contract.StartDate), timeString(contract.EndDate), timeString(block.Timestamp))
-	}
+	log.Root.Debugf("lock: %s[%s], %t", key.String(), addr.String(), mutex.IsLocked())
+	defer func() {
+		mutex.Unlock()
+		log.Root.Debugf("unlock: %s[%s], %t", key.String(), addr.String(), mutex.IsLocked())
+	}()
 
 	if param.SmsDt <= 0 || param.SmsDt < contract.StartDate || param.SmsDt > contract.EndDate {
 		return fmt.Errorf("invalid SMS date, should be in [%s, %s], got %s",
 			timeString(contract.StartDate), timeString(contract.EndDate), timeString(param.SmsDt))
 	}
 
-	if !(contract.PartyA.Address == block.Address || contract.PartyB.Address == block.Address) {
-		return fmt.Errorf("%s can not upload CDR data to contract %s", block.Address.String(), contractAddress.String())
+	if !(contract.PartyA.Address == addr || contract.PartyB.Address == addr) {
+		return fmt.Errorf("%s can not upload CDR data to contract %s", addr.String(), ca.String())
 	}
 
-	if storage, err := ctx.GetStorage(contractAddress[:], h[:]); err != nil {
+	if storage, err := ctx.GetStorage(ca[:], h[:]); err != nil {
 		if err != vmstore.ErrStorageNotFound {
 			return err
 		} else {
 			// 1st upload data
 			state := &cabi.CDRStatus{
-				Params: map[string][]cabi.CDRParam{block.Address.String(): {*param}},
+				Params: map[string][]cabi.CDRParam{addr.String(): {*param}},
 				Status: cabi.SettlementStatusStage1,
 			}
 
-			if err := cabi.SaveCDRStatus(ctx, contractAddress, &h, state); err != nil {
+			if err := cabi.SaveCDRStatus(ctx, ca, &h, state); err != nil {
 				return err
 			}
 		}
@@ -358,13 +397,13 @@ func (p *ProcessCDR) save(ctx *vmstore.VMContext, block *types.StateBlock, contr
 		} else {
 			sr := cabi.SettlementCDR{
 				CDRParam: *param,
-				From:     block.Address,
+				From:     addr,
 			}
 			// update contract status
 			if err := state.DoSettlement(sr); err != nil {
 				return err
 			} else {
-				if err := cabi.SaveCDRStatus(ctx, contractAddress, &h, state); err != nil {
+				if err := cabi.SaveCDRStatus(ctx, ca, &h, state); err != nil {
 					return err
 				}
 			}

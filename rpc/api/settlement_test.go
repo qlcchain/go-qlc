@@ -26,7 +26,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/mock"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi/settlement"
 )
 
 var (
@@ -286,6 +286,8 @@ func TestSettlementAPI_Integration(t *testing.T) {
 	} else if address.IsZero() {
 		t.Fatal("ToAddress failed")
 	}
+	account := "SAP_DIRECTS"
+	customer := "SAP Mobile Services"
 
 	if blk, err := api.GetCreateContractBlock(param); err != nil {
 		t.Fatal(err)
@@ -483,6 +485,8 @@ func TestSettlementAPI_Integration(t *testing.T) {
 			cdr1 := &cabi.CDRParam{
 				Index:         1111,
 				SmsDt:         time.Now().Unix(),
+				Account:       account,
+				Customer:      customer,
 				Sender:        "WeChat",
 				Destination:   "85257***343",
 				SendingStatus: cabi.SendingStatusSent,
@@ -567,6 +571,26 @@ func TestSettlementAPI_Integration(t *testing.T) {
 				t.Log(report)
 			}
 
+			if report, err := api.GetSummaryReportByAccount(&contractAddr1, account, 0, 0); err != nil {
+				t.Fatal(err)
+			} else {
+				if v, ok := report.Records[account]; !ok {
+					t.Fatal("can not generate summary invoice")
+				} else {
+					t.Log(report, v)
+				}
+			}
+
+			if invoice, err := api.GenerateInvoicesByAccount(&contractAddr1, account, 0, 0); err != nil {
+				t.Fatal(err)
+			} else {
+				if len(invoice) == 0 {
+					t.Fatal("invalid invoice")
+				} else {
+					t.Log(util.ToString(invoice))
+				}
+			}
+
 			if invoices, err := api.GenerateInvoices(&pccwAddr, 0, 0); err != nil {
 				t.Fatal(err)
 			} else {
@@ -576,6 +600,26 @@ func TestSettlementAPI_Integration(t *testing.T) {
 				t.Fatal(err)
 			} else {
 				t.Log(invoices)
+			}
+
+			if report, err := api.GetSummaryReportByCustomer(&contractAddr1, customer, 0, 0); err != nil {
+				t.Fatal(err)
+			} else {
+				if v, ok := report.Records[customer]; !ok {
+					t.Fatal("can not generate summary report")
+				} else {
+					t.Log(report, v)
+				}
+			}
+
+			if invoice, err := api.GenerateInvoicesByCustomer(&contractAddr1, customer, 0, 0); err != nil {
+				t.Fatal(err)
+			} else {
+				if len(invoice) == 0 {
+					t.Fatal("invalid invoice")
+				} else {
+					t.Log(util.ToString(invoice))
+				}
 			}
 		}
 	}

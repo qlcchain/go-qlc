@@ -26,7 +26,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi/settlement"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -854,14 +854,58 @@ func (s *SettlementAPI) GetSummaryReport(addr *types.Address, start, end int64) 
 	return cabi.GetSummaryReport(ctx, addr, start, end)
 }
 
+// GetSummaryReportByAccount generate summary report by PCCWG account
+// @param addr settlement contract address
+// @param account PCCWG account
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return summary report if error not exist
+func (s *SettlementAPI) GetSummaryReportByAccount(addr *types.Address, account string, start, end int64) (*cabi.SummaryResult, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetSummaryReportByAccount(ctx, addr, account, start, end)
+}
+
+// GetSummaryReportByCustomer generate summary report by PCCWG customer name
+// @param addr settlement contract address
+// @param customer PCCWG customer name
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return summary report if error not exist
+func (s *SettlementAPI) GetSummaryReportByCustomer(addr *types.Address, customer string, start, end int64) (*cabi.SummaryResult, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GetSummaryReportByCustomer(ctx, addr, customer, start, end)
+}
+
 // GenerateInvoices Generate reports for specified contracts based on start and end date
 // @param addr user qlcchain address
 // @param start report start date (UTC unix time)
 // @param end report end data (UTC unix time)
-// @return settlement report
+// @return settlement invoice
 func (s *SettlementAPI) GenerateInvoices(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
 	ctx := vmstore.NewVMContext(s.l)
 	return cabi.GenerateInvoices(ctx, addr, start, end)
+}
+
+// GenerateInvoicesByAccount generate invoice by PCCWG account
+// @param addr settlement contract address
+// @param account PCCWG account
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return settlement invoice
+func (s *SettlementAPI) GenerateInvoicesByAccount(addr *types.Address, account string, start, end int64) ([]*cabi.InvoiceRecord, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GenerateInvoicesByAccount(ctx, addr, account, start, end)
+}
+
+// GenerateInvoicesByCustomer generate invoice by PCCWG customer name
+// @param addr settlement contract address
+// @param customer PCCWG customer name
+// @param start report start date (UTC unix time)
+// @param end report end data (UTC unix time)
+// @return settlement invoice
+func (s *SettlementAPI) GenerateInvoicesByCustomer(addr *types.Address, customer string, start, end int64) ([]*cabi.InvoiceRecord, error) {
+	ctx := vmstore.NewVMContext(s.l)
+	return cabi.GenerateInvoicesByCustomer(ctx, addr, customer, start, end)
 }
 
 // GenerateInvoicesByContract generate invoice by settlement contract address
