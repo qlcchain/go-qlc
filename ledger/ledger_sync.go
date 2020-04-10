@@ -57,7 +57,7 @@ func (l *Ledger) GetUncheckedSyncBlock(hash types.Hash) (*types.StateBlock, erro
 	}
 
 	if blk.IsPrivate() {
-		pl, err := l.GetBlockPrivatePayload(hash)
+		pl, err := l.GetBlockPrivatePayload(blk.GetHash())
 		if err == nil {
 			blk.SetPrivatePayload(pl)
 		}
