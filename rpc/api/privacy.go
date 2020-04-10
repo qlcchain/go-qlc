@@ -41,7 +41,16 @@ func NewPrivacyApi(cfg *config.Config, l ledger.Store, eb event.EventBus, cc *ch
 	return api
 }
 
-func privacyDistributeRawPayload(eb event.EventBus, msgReq *topic.EventPrivacySendReqMsg) ([]byte, error) {
+func privacyDistributeRawPayload(cc *chainctx.ChainContext, msgReq *topic.EventPrivacySendReqMsg) ([]byte, error) {
+	cfg, err := cc.Config()
+	if err != nil {
+		return nil, err
+	}
+	if !cfg.Privacy.Enable {
+		return nil, errors.New("privacy is not supported")
+	}
+
+	eb := cc.EventBus()
 	eb.Publish(topic.EventPrivacySendReq, msgReq)
 
 	select {
@@ -55,7 +64,16 @@ func privacyDistributeRawPayload(eb event.EventBus, msgReq *topic.EventPrivacySe
 	}
 }
 
-func privacyGetRawPayload(eb event.EventBus, msgReq *topic.EventPrivacyRecvReqMsg) ([]byte, error) {
+func privacyGetRawPayload(cc *chainctx.ChainContext, msgReq *topic.EventPrivacyRecvReqMsg) ([]byte, error) {
+	cfg, err := cc.Config()
+	if err != nil {
+		return nil, err
+	}
+	if !cfg.Privacy.Enable {
+		return nil, errors.New("privacy is not supported")
+	}
+
+	eb := cc.EventBus()
 	eb.Publish(topic.EventPrivacySendReq, msgReq)
 
 	select {
@@ -77,6 +95,10 @@ type PrivacyDistributeParam struct {
 }
 
 func (api *PrivacyApi) DistributeRawPayload(param *PrivacyDistributeParam) ([]byte, error) {
+	if !api.cfg.Privacy.Enable {
+		return nil, errors.New("privacy is not supported")
+	}
+
 	msgReq := &topic.EventPrivacySendReqMsg{
 		RawPayload:     param.RawPayload,
 		PrivateFrom:    param.PrivateFrom,
@@ -86,20 +108,28 @@ func (api *PrivacyApi) DistributeRawPayload(param *PrivacyDistributeParam) ([]by
 		RspChan: make(chan *topic.EventPrivacySendRspMsg, 1),
 	}
 
-	return privacyDistributeRawPayload(api.eb, msgReq)
+	return privacyDistributeRawPayload(api.cc, msgReq)
 }
 
 func (api *PrivacyApi) GetRawPayload(enclaveKey []byte) ([]byte, error) {
+	if !api.cfg.Privacy.Enable {
+		return nil, errors.New("privacy is not supported")
+	}
+
 	msgReq := &topic.EventPrivacyRecvReqMsg{
 		EnclaveKey: enclaveKey,
 
 		RspChan: make(chan *topic.EventPrivacyRecvRspMsg, 1),
 	}
 
-	return privacyGetRawPayload(api.eb, msgReq)
+	return privacyGetRawPayload(api.cc, msgReq)
 }
 
 func (api *PrivacyApi) GetBlockPrivatePayload(blockHash types.Hash) ([]byte, error) {
+	if !api.cfg.Privacy.Enable {
+		return nil, errors.New("privacy is not supported")
+	}
+
 	pl, err := api.l.GetBlockPrivatePayload(blockHash)
 	if err != nil {
 		return nil, err

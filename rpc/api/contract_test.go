@@ -45,6 +45,11 @@ func setupTestCaseContractApi(t *testing.T) (func(t *testing.T), *mockDataContra
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 
+	cfg, _ := cm.Config()
+	cfg.Privacy.Enable = true
+	cfg.Privacy.PtmNode = filepath.Join(dir, "__UnitTestCase__.ipc")
+	_ = cm.CommitAndSave()
+
 	l := ledger.NewLedger(cm.ConfigFile)
 	setLedgerStatus(l, t)
 	povBlk, povTd := mock.GenerateGenesisPovBlock()

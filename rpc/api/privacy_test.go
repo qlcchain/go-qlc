@@ -35,6 +35,11 @@ func setupTestCasePrivacyApi(t *testing.T) (func(t *testing.T), *mockDataTestPri
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 
+	cfg, _ := cm.Config()
+	cfg.Privacy.Enable = true
+	cfg.Privacy.PtmNode = filepath.Join(dir, "__UnitTestCase__.ipc")
+	_ = cm.CommitAndSave()
+
 	md.l = ledger.NewLedger(cm.ConfigFile)
 
 	md.cc = qctx.NewChainContext(cm.ConfigFile)

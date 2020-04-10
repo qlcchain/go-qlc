@@ -126,7 +126,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 			RspChan: make(chan *topic.EventPrivacyRecvRspMsg, 1),
 		}
 
-		retPayload, err := privacyGetRawPayload(c.eb, msgReq)
+		retPayload, err := privacyGetRawPayload(c.cc, msgReq)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +144,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 			RspChan: make(chan *topic.EventPrivacySendRspMsg, 1),
 		}
 
-		enclaveKey, err := privacyDistributeRawPayload(c.eb, msgReq)
+		enclaveKey, err := privacyDistributeRawPayload(c.cc, msgReq)
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +270,7 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 			RspChan: make(chan *topic.EventPrivacyRecvRspMsg, 1),
 		}
 
-		rawData, err := privacyGetRawPayload(c.eb, msgReq)
+		rawData, err := privacyGetRawPayload(c.cc, msgReq)
 		if err != nil {
 			return nil, err
 		}
