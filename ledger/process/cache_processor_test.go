@@ -94,49 +94,49 @@ func TestProcess_CacheException(t *testing.T) {
 
 	// open
 	bc[0].Signature, _ = types.NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600")
-	if r, err := lv.BlockCacheCheck(bc[0]); err != nil || r != BadSignature {
+	if r, err := lv.BlockCacheCheck(bc[0]); r != BadSignature {
 		t.Fatal(r, err)
 	}
-	if r, err := lv.BlockCacheCheck(bc[1]); err != nil || r != GapPrevious {
+	if r, err := lv.BlockCacheCheck(bc[1]); r != GapPrevious {
 		t.Fatal(r, err)
 	}
 
 	if err := lv.BlockCacheProcess(bc[0]); err != nil {
 		t.Fatal(err)
 	}
-	if r, err := lv.BlockCacheCheck(bc[0]); err != nil || r != Old {
+	if r, err := lv.BlockCacheCheck(bc[0]); r != Old {
 		t.Fatal(r, err)
 	}
 
 	// open gapSource
-	if r, err := lv.BlockCacheCheck(bc[2]); err != nil || r != GapSource {
+	if r, err := lv.BlockCacheCheck(bc[2]); r != GapSource {
 		t.Fatal(r, err)
 	}
 
 	// send
-	if r, err := lv.BlockCacheCheck(bc[4]); err != nil || r != GapPrevious {
+	if r, err := lv.BlockCacheCheck(bc[4]); r != GapPrevious {
 		t.Fatal(r, err)
 	}
 
 	// receive
-	if r, err := lv.BlockCacheCheck(bc[5]); err != nil || r != GapPrevious {
+	if r, err := lv.BlockCacheCheck(bc[5]); r != GapPrevious {
 		t.Fatal(r, err)
 	}
 
 	// contract block
 	bc := mock.StateBlockWithoutWork()
 	bc.Type = types.ContractReward
-	if r, err := lv.BlockCacheCheck(bc); err != nil || r != GapSource {
+	if r, err := lv.BlockCacheCheck(bc); r != GapSource {
 		t.Fatal(r, err)
 	}
 	bc.Type = types.ContractSend
 	bc.Link = contractaddress.NEP5PledgeAddress.ToHash()
-	if r, err := lv.BlockCacheCheck(bc); err != nil {
+	if r, err := lv.BlockCacheCheck(bc); r == Progress {
 		t.Fatal(r, err)
 	}
 
 	bs := mock.ContractBlocks()
-	if r, err := lv.BlockCacheCheck(bs[1]); err != nil || r != GapPrevious {
+	if r, err := lv.BlockCacheCheck(bs[1]); r != GapPrevious {
 		t.Fatal(r, err)
 	}
 }

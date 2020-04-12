@@ -10,9 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
-
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -23,6 +20,8 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
 )
 
 var (
@@ -855,7 +854,7 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 	ledger := l.ledger
 	verifier := process.NewLedgerVerifier(ledger)
 	flag, err := verifier.BlockCacheCheck(block)
-	if err != nil {
+	if flag == process.Other {
 		l.logger.Error(err)
 		return types.ZeroHash, err
 	}
@@ -872,32 +871,34 @@ func (l *LedgerAPI) Process(block *types.StateBlock) (types.Hash, error) {
 		}
 		l.logger.Info("block cache process done, ", block.GetHash().String())
 		return hash, nil
-	case process.BadWork:
-		return types.ZeroHash, errors.New("bad work")
-	case process.BadSignature:
-		return types.ZeroHash, errors.New("bad signature")
-	case process.Old:
-		l.logger.Info("old block")
-		//return block.GetHash(), nil
-		return types.ZeroHash, errors.New("old block")
-	case process.Fork:
-		return types.ZeroHash, errors.New("fork")
-	case process.GapSource:
-		return types.ZeroHash, errors.New("gap source block")
-	case process.GapPrevious:
-		return types.ZeroHash, errors.New("gap previous block")
-	case process.BalanceMismatch:
-		return types.ZeroHash, errors.New("balance mismatch")
-	case process.UnReceivable:
-		return types.ZeroHash, errors.New("unReceivable")
-	case process.GapSmartContract:
-		return types.ZeroHash, errors.New("gap SmartContract")
-	case process.InvalidData:
-		return types.ZeroHash, errors.New("invalid data")
-	case process.ReceiveRepeated:
-		return types.ZeroHash, errors.New("generate receive block repeatedly ")
 	default:
-		return types.ZeroHash, errors.New("error processing block")
+		return types.ZeroHash, err
+		//case process.BadWork:
+		//	return types.ZeroHash, errors.New("bad work")
+		//case process.BadSignature:
+		//	return types.ZeroHash, errors.New("bad signature")
+		//case process.Old:
+		//	l.logger.Info("old block")
+		//	//return block.GetHash(), nil
+		//	return types.ZeroHash, errors.New("old block")
+		//case process.Fork:
+		//	return types.ZeroHash, errors.New("fork")
+		//case process.GapSource:
+		//	return types.ZeroHash, errors.New("gap source block")
+		//case process.GapPrevious:
+		//	return types.ZeroHash, errors.New("gap previous block")
+		//case process.BalanceMismatch:
+		//	return types.ZeroHash, errors.New("balance mismatch")
+		//case process.UnReceivable:
+		//	return types.ZeroHash, errors.New("unReceivable")
+		//case process.GapSmartContract:
+		//	return types.ZeroHash, errors.New("gap SmartContract")
+		//case process.InvalidData:
+		//	return types.ZeroHash, errors.New("invalid data")
+		//case process.ReceiveRepeated:
+		//	return types.ZeroHash, errors.New("generate receive block repeatedly ")
+		//default:
+		//	return types.ZeroHash, errors.New("error processing block")
 	}
 }
 

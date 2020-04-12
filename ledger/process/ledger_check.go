@@ -29,11 +29,11 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 	lv.logger.Debug("check block ", hash)
 	blockExist, err := lv.l.HasStateBlockConfirmed(hash)
 	if err != nil {
-		return Other, err
+		return errorP(block, Other, err)
 	}
 
 	if blockExist {
-		return Old, nil
+		return errorP(block, Old, nil)
 	}
 
 	if block.GetType() == types.ContractSend {
@@ -46,7 +46,7 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 	if block.GetType() == types.ContractReward {
 		linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 		if err != nil {
-			return GapSource, nil
+			return errorP(block, GapSource, nil)
 		}
 
 		if c, ok, err := vmcontract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.Data); ok && err == nil {
@@ -56,13 +56,13 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 	}
 
 	if checkWork && !block.IsValid() {
-		return BadWork, nil
+		return errorP(block, BadWork, nil)
 	}
 
 	if checkSign {
 		signature := block.GetSignature()
 		if !address.Verify(hash[:], signature[:]) {
-			return BadSignature, nil
+			return errorP(block, BadSignature, nil)
 		}
 	}
 
@@ -79,16 +79,16 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	checkSign := true
 
 	lv.logger.Debug("check cache block base info: ", hash)
-	if err := checkReceiveBlockRepeat(lv, block); err != Progress {
-		return err, nil
+	if pr := checkReceiveBlockRepeat(lv, block); pr != Progress {
+		return errorP(block, pr, nil)
 	}
 	blockExist, err := lv.l.HasStateBlock(hash)
 	if err != nil {
-		return Other, err
+		return errorP(block, Other, err)
 	}
 
 	if blockExist {
-		return Old, nil
+		return errorP(block, Old, nil)
 	}
 
 	if block.GetType() == types.ContractSend {
@@ -101,7 +101,7 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	if block.GetType() == types.ContractReward {
 		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {
-			return GapSource, nil
+			return errorP(block, GapSource, nil)
 		}
 
 		if c, ok, err := vmcontract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.Data); ok && err == nil {
@@ -111,13 +111,13 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 	}
 
 	if checkWork && !block.IsValid() {
-		return BadWork, nil
+		return errorP(block, BadWork, nil)
 	}
 
 	if checkSign {
 		signature := block.GetSignature()
 		if !address.Verify(hash[:], signature[:]) {
-			return BadSignature, nil
+			return errorP(block, BadSignature, nil)
 		}
 	}
 
@@ -154,17 +154,17 @@ func (blockForkCheck) fork(lv *LedgerVerifier, block *types.StateBlock) (Process
 	switch block.GetType() {
 	case types.Send, types.Receive, types.Change, types.Online, types.ContractSend:
 		if previous, err := lv.l.GetStateBlockConfirmed(block.GetPrevious()); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			if tm, err := lv.l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-				return Fork, nil
+				return errorP(block, Fork, fmt.Errorf("previous is %s, but token header is %s", previous.GetHash().String(), tm.Header.String()))
 			}
 		}
 		return Progress, nil
 	case types.Open:
 		//check fork
 		if _, err := lv.l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken()); err == nil {
-			return Fork, nil
+			return errorP(block, Fork, fmt.Errorf("open block, but token already exist"))
 		}
 		return Progress, nil
 	case types.ContractReward:
@@ -172,22 +172,22 @@ func (blockForkCheck) fork(lv *LedgerVerifier, block *types.StateBlock) (Process
 		if !block.IsOpen() {
 			// check previous
 			if previous, err := lv.l.GetStateBlockConfirmed(block.GetPrevious()); err != nil {
-				return GapPrevious, nil
+				return errorP(block, GapPrevious, nil)
 			} else {
 				//check fork
 				if tm, err := lv.l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-					return Fork, nil
+					return errorP(block, Fork, fmt.Errorf("previous is %s, but token header is %s", previous.GetHash().String(), tm.Header.String()))
 				}
 			}
 		} else {
 			//check fork
 			if _, err := lv.l.GetTokenMetaConfirmed(block.GetAddress(), block.GetToken()); err == nil {
-				return Fork, nil
+				return errorP(block, Fork, fmt.Errorf("open block, but token already exist"))
 			}
 		}
 		return Progress, nil
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -198,36 +198,36 @@ func (cacheBlockForkCheck) fork(lv *LedgerVerifier, block *types.StateBlock) (Pr
 	switch block.GetType() {
 	case types.Send, types.Receive, types.Change, types.Online, types.ContractSend:
 		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			//check fork
 			if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-				return Fork, nil
+				return errorP(block, Fork, fmt.Errorf("previous is %s, token header is %s", previous.GetHash().String(), tm.Header.String()))
 			}
 		}
 		return Progress, nil
 	case types.Open:
 		if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
-			return Fork, nil
+			return errorP(block, Fork, fmt.Errorf("open block, token already exist"))
 		}
 		return Progress, nil
 	case types.ContractReward:
 		if !block.IsOpen() {
 			if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-				return GapPrevious, nil
+				return errorP(block, GapPrevious, nil)
 			} else {
 				if tm, err := lv.l.GetTokenMeta(block.Address, block.GetToken()); err == nil && previous.GetHash() != tm.Header {
-					return Fork, nil
+					return errorP(block, Fork, fmt.Errorf("previous is %s, token header is %s", previous.GetHash().String(), tm.Header.String()))
 				}
 			}
 		} else {
 			if _, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
-				return Fork, nil
+				return errorP(block, Fork, fmt.Errorf("open block, token already exist"))
 			}
 		}
 		return Progress, nil
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -243,51 +243,51 @@ func (blockBalanceCheck) balance(lv *LedgerVerifier, block *types.StateBlock) (P
 	switch block.GetType() {
 	case types.Send:
 		if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			//check balance
 			if !(previous.Balance.Compare(block.Balance) == types.BalanceCompBigger) {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("previous: %s, block: %s", previous.Balance.String(), block.Balance.String()))
 			}
 			//check vote,network,storage,oracle
 			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
 				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
 				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
 				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("weight not equal"))
 			}
 		}
 		return Progress, nil
 	case types.ContractSend:
 		if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			//check totalBalance
 			if previous.TotalBalance().Compare(block.TotalBalance()) == types.BalanceCompSmaller {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("previous: %s, block: %s", previous.TotalBalance().String(), block.TotalBalance().String()))
 			}
 		}
 		return Progress, nil
 	case types.Change, types.Online:
 		// check previous
 		if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			//check balance
 			if block.Balance.Compare(previous.Balance) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("previous: %s, block: %s", previous.Balance.String(), block.Balance.String()))
 			}
 			//check vote,network,storage,oracle
 			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
 				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
 				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
 				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("weight not equal"))
 			}
 		}
 		return Progress, nil
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -299,50 +299,50 @@ func (cacheBlockBalanceCheck) balance(lv *LedgerVerifier, block *types.StateBloc
 	case types.Send:
 		// check previous
 		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			if !(previous.Balance.Compare(block.Balance) == types.BalanceCompBigger) {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("previous: %s, block: %s", previous.Balance.String(), block.Balance.String()))
 			}
 			//check vote,network,storage,oracle
 			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
 				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
 				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
 				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("weight not equal"))
 			}
 		}
 		return Progress, nil
 	case types.Change, types.Online:
 		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			//check balance
 			if block.Balance.Compare(previous.Balance) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("previous: %s, block: %s", previous.Balance.String(), block.Balance.String()))
 			}
 			//check vote,network,storage,oracle
 			if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
 				previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
 				previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
 				previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("weight not equal"))
 			}
 		}
 		return Progress, nil
 	case types.ContractSend:
 		// check previous
 		if previous, err := lv.l.GetStateBlock(block.Previous); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			//check totalBalance
 			if previous.TotalBalance().Compare(block.TotalBalance()) == types.BalanceCompSmaller {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("previous: %s, block: %s", previous.TotalBalance().String(), block.TotalBalance().String()))
 			}
 		}
 		return Progress, nil
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -359,7 +359,7 @@ func (blockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBlock) (P
 	case types.Receive:
 		// check previous
 		if previous, err := lv.l.GetStateBlockConfirmed(block.Previous); err != nil {
-			return GapPrevious, nil
+			return errorP(block, GapPrevious, nil)
 		} else {
 			pendingKey := types.PendingKey{
 				Address: block.Address,
@@ -370,22 +370,22 @@ func (blockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBlock) (P
 				if tm, err := lv.l.GetTokenMetaConfirmed(block.Address, block.Token); err == nil {
 					transferAmount := block.GetBalance().Sub(tm.Balance)
 					if !pending.Amount.Equal(transferAmount) || pending.Type != block.Token {
-						return BalanceMismatch, nil
+						return errorP(block, BalanceMismatch, fmt.Errorf("pending: %s, transfer: %s", pending.Amount.String(), transferAmount.String()))
 					}
 					//check vote,network,storage,oracle
 					if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
 						previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
 						previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
 						previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-						return BalanceMismatch, nil
+						return errorP(block, BalanceMismatch, fmt.Errorf("weight not equal"))
 					}
 				} else {
-					return Other, err
+					return errorP(block, Other, err)
 				}
 			} else if err == ledger.ErrPendingNotFound {
-				return UnReceivable, nil
+				return errorP(block, UnReceivable, fmt.Errorf("pending key: %s", pendingKey))
 			} else {
-				return Other, err
+				return errorP(block, Other, err)
 			}
 		}
 		return Progress, nil
@@ -398,7 +398,7 @@ func (blockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBlock) (P
 		//check pending
 		if pending, err := lv.l.GetPending(&pendingKey); err == nil {
 			if !pending.Amount.Equal(block.Balance) || pending.Type != block.Token {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("pending: %s, block: %s", pending.Amount.String(), block.Balance.String()))
 			}
 			//check vote,network,storage,oracle
 			vote := block.GetVote()
@@ -407,18 +407,18 @@ func (blockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBlock) (P
 			oracle := block.GetOracle()
 			if !vote.IsZero() || !network.IsZero() ||
 				!storage.IsZero() || !oracle.IsZero() {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("weight is not zero"))
 			}
 		} else if err == ledger.ErrPendingNotFound {
-			return UnReceivable, nil
+			return errorP(block, UnReceivable, fmt.Errorf("pending key: %s", pendingKey))
 		} else {
-			return Other, err
+			return errorP(block, Other, err)
 		}
 		return Progress, nil
 	case types.ContractReward:
 		return checkContractPending(lv, block)
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -442,22 +442,22 @@ func (cacheBlockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBloc
 				if tm, err := lv.l.GetTokenMeta(block.Address, block.Token); err == nil {
 					transferAmount := block.GetBalance().Sub(tm.Balance)
 					if !pending.Amount.Equal(transferAmount) || pending.Type != block.Token {
-						return BalanceMismatch, nil
+						return errorP(block, BalanceMismatch, fmt.Errorf("pending: %s, transfer: %s", pending.Amount.String(), transferAmount.String()))
 					}
 					//check vote,network,storage,oracle
 					if previous.GetVote().Compare(block.GetVote()) != types.BalanceCompEqual ||
 						previous.GetNetwork().Compare(block.GetNetwork()) != types.BalanceCompEqual ||
 						previous.GetStorage().Compare(block.GetStorage()) != types.BalanceCompEqual ||
 						previous.GetOracle().Compare(block.GetOracle()) != types.BalanceCompEqual {
-						return BalanceMismatch, nil
+						return errorP(block, BalanceMismatch, fmt.Errorf("weight not equal"))
 					}
 				} else {
-					return Other, fmt.Errorf("pending check err: %s", err)
+					return errorP(block, Other, fmt.Errorf("pending check err: %s", err))
 				}
 			} else if err == ledger.ErrPendingNotFound {
-				return UnReceivable, nil
+				return errorP(block, UnReceivable, fmt.Errorf("pending key: %s", pendingKey))
 			} else {
-				return Other, err
+				return errorP(block, Other, err)
 			}
 		}
 		return Progress, nil
@@ -469,7 +469,7 @@ func (cacheBlockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBloc
 		//check pending
 		if pending, err := lv.l.GetPending(&pendingKey); err == nil {
 			if !pending.Amount.Equal(block.Balance) || pending.Type != block.Token {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("pending: %s, block: %s", pending.Amount.String(), block.Balance.String()))
 			}
 			//check vote,network,storage,oracle
 			vote := block.GetVote()
@@ -478,18 +478,18 @@ func (cacheBlockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBloc
 			oracle := block.GetOracle()
 			if !vote.IsZero() || !network.IsZero() ||
 				!storage.IsZero() || !oracle.IsZero() {
-				return BalanceMismatch, nil
+				return errorP(block, BalanceMismatch, fmt.Errorf("weight is not zero"))
 			}
 		} else if err == ledger.ErrPendingNotFound {
-			return UnReceivable, nil
+			return errorP(block, UnReceivable, fmt.Errorf("pending key: %s", pendingKey))
 		} else {
-			return Other, err
+			return errorP(block, Other, err)
 		}
 		return Progress, nil
 	case types.ContractReward:
 		return checkContractPending(lv, block)
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -497,7 +497,7 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 	input, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 	if err != nil {
 		lv.logger.Errorf("send block must be confirmed: %s", err)
-		return GapSource, nil
+		return errorP(block, GapSource, nil)
 	}
 
 	pendingKey := types.PendingKey{
@@ -512,13 +512,13 @@ func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessR
 			if _, err := lv.l.GetPending(&pendingKey); err == nil {
 				return Progress, nil
 			} else if err == ledger.ErrPendingNotFound {
-				return UnReceivable, nil
+				return errorP(block, UnReceivable, fmt.Errorf("pending key is: %s", pendingKey))
 			} else {
-				return Other, fmt.Errorf("get contract pending: %s", err)
+				return errorP(block, Other, fmt.Errorf("get contract pending: %s", err))
 			}
 		}
 	} else {
-		return Other, fmt.Errorf("can not find chain contract %s", input.GetLink().String())
+		return errorP(block, Other, fmt.Errorf("can not find chain contract: %s", input.GetLink().String()))
 	}
 	return Progress, nil
 }
@@ -535,14 +535,14 @@ func (blockSourceCheck) source(lv *LedgerVerifier, block *types.StateBlock) (Pro
 	switch block.GetType() {
 	case types.Receive, types.Open:
 		if b, err := lv.l.HasStateBlockConfirmed(block.Link); !b && err == nil {
-			return GapSource, nil
+			return errorP(block, GapSource, nil)
 		}
 		return Progress, nil
 	case types.ContractReward:
 		// implement in contract data check
 		return Progress, nil
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -553,14 +553,14 @@ func (cacheBlockSourceCheck) source(lv *LedgerVerifier, block *types.StateBlock)
 	switch block.GetType() {
 	case types.Receive, types.Open:
 		if b, err := lv.l.HasStateBlock(block.Link); !b && err == nil {
-			return GapSource, nil
+			return errorP(block, GapSource, nil)
 		}
 		return Progress, nil
 	case types.ContractReward:
 		// implement in contract data check
 		return Progress, nil
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -580,7 +580,7 @@ func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) 
 		// check receive link
 		input, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 		if err != nil {
-			return GapSource, nil
+			return errorP(block, GapSource, nil)
 		}
 
 		address := types.Address(input.GetLink())
@@ -592,32 +592,33 @@ func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) 
 				if len(g) > 0 {
 					amount, err := lv.l.CalculateAmount(block)
 					if err != nil {
-						return Other, fmt.Errorf("calculate amount error: %s", err)
+						return errorP(block, Other, fmt.Errorf("calculate amount error: %s", err))
 					}
 					if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 						g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
 						return Progress, nil
 					} else {
-						lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
+						errInfo := fmt.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
 							g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
-						return InvalidData, nil
+						lv.logger.Error(errInfo)
+						return errorP(block, InvalidData, errInfo)
 					}
 				} else {
-					return Other, fmt.Errorf("can not generate receive block")
+					return errorP(block, Other, fmt.Errorf("can not generate receive block"))
 				}
 			} else {
 				if address == contractaddress.MintageAddress && e == vmstore.ErrStorageNotFound {
-					return GapTokenInfo, nil
+					return errorP(block, GapTokenInfo, nil)
 				} else {
-					return Other, fmt.Errorf("DoReceive err: %s ", e)
+					return errorP(block, Other, fmt.Errorf("DoReceive err: %s ", e))
 				}
 			}
 		} else {
 			//call vm.Run();
-			return Other, fmt.Errorf("can not find chain contract %s", address.String())
+			return errorP(block, Other, fmt.Errorf("can not find chain contract %s", address.String()))
 		}
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -632,7 +633,7 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 		//check smart c exist
 		input, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {
-			return GapSource, nil
+			return errorP(block, GapSource, nil)
 		}
 
 		address := types.Address(input.GetLink())
@@ -644,32 +645,33 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 				if len(g) > 0 {
 					amount, err := lv.l.CalculateAmount(block)
 					if err != nil {
-						return Other, fmt.Errorf("calculate amount error: %s", err)
+						return errorP(block, Other, fmt.Errorf("calculate amount error: %s", err))
 					}
 					if bytes.EqualFold(g[0].Block.Data, block.Data) && g[0].Token == block.Token &&
 						g[0].Amount.Compare(amount) == types.BalanceCompEqual && g[0].ToAddress == block.Address {
 						return Progress, nil
 					} else {
-						lv.logger.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
+						errorInfo := fmt.Errorf("data from contract, %s, %s, %s, %s, data from block, %s, %s, %s, %s",
 							g[0].Block.Data, g[0].Token, g[0].Amount, g[0].ToAddress, block.Data, block.Token, amount, block.Address)
-						return InvalidData, nil
+						lv.logger.Error(errorInfo)
+						return errorP(block, InvalidData, errorInfo)
 					}
 				} else {
-					return Other, fmt.Errorf("can not generate receive block")
+					return errorP(block, Other, fmt.Errorf("can not generate receive block"))
 				}
 			} else {
 				if address == contractaddress.MintageAddress && e == vmstore.ErrStorageNotFound {
-					return GapTokenInfo, nil
+					return errorP(block, GapTokenInfo, nil)
 				} else {
-					return Other, fmt.Errorf("DoReceive error : %s ", e)
+					return errorP(block, Other, fmt.Errorf("DoReceive error : %s ", e))
 				}
 			}
 		} else {
 			//call vm.Run();
-			return Other, fmt.Errorf("can not find chain contract %s", address.String())
+			return errorP(block, Other, fmt.Errorf("can not find chain contract %s", address.String()))
 		}
 	default:
-		return Other, invalidBlockType(block.GetType().String())
+		return errorP(block, Other, invalidBlockType(block.GetType().String()))
 	}
 }
 
@@ -679,7 +681,7 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 
 	if !vmcontract.IsChainContract(address) {
 		if b, err := lv.l.HasSmartContractBlock(address.ToHash()); !b && err == nil {
-			return GapSmartContract, nil
+			return errorP(block, GapSmartContract, nil)
 		}
 	}
 
@@ -695,21 +697,21 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return Progress, nil
 				} else {
 					lv.logger.Errorf("data not equal: %s, %s", block.Data, clone.Data)
-					return InvalidData, nil
+					return errorP(block, InvalidData, fmt.Errorf("data not equal: %s, %s", block.Data, clone.Data))
 				}
 			} else {
-				return Other, fmt.Errorf("v1 ProcessSend error, err: %s", err)
+				return errorP(block, Other, fmt.Errorf("v1 ProcessSend error, err: %s", err))
 			}
 		case vmcontract.SpecVer2:
 			if gapResult, _, err := c.DoGap(vmCtx, clone); err == nil {
 				switch gapResult {
 				case common.ContractRewardGapPov:
-					return GapPovHeight, nil
+					return errorP(block, GapPovHeight, nil)
 				case common.ContractDPKIGapPublish:
-					return GapPublish, nil
+					return errorP(block, GapPublish, nil)
 				}
 			} else {
-				return Other, fmt.Errorf("do gap error: %s", err)
+				return errorP(block, Other, fmt.Errorf("do gap error: %s", err))
 			}
 
 			if _, _, err := c.ProcessSend(vmCtx, clone); err == nil {
@@ -717,17 +719,17 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return Progress, nil
 				} else {
 					lv.logger.Errorf("data not equal: %v, %v", block.Data, clone.Data)
-					return InvalidData, nil
+					return errorP(block, InvalidData, fmt.Errorf("data not equal %s, %s", block.Data, clone.Data))
 				}
 			} else {
-				return Other, fmt.Errorf("v2 ProcessSend error,  err: %s", err)
+				return errorP(block, Other, fmt.Errorf("v2 ProcessSend error,  err: %s", err))
 			}
 		default:
-			return Other, fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
+			return errorP(block, Other, fmt.Errorf("unsupported chain contract version %d", d.GetVersion()))
 		}
 	} else {
 		// call vm.Run();
-		return Other, fmt.Errorf("can not find chain contract %s", address.String())
+		return errorP(block, Other, fmt.Errorf("can not find chain contract %s", address.String()))
 	}
 }
 
@@ -737,4 +739,21 @@ func invalidBlockType(typ string) error {
 
 type blockCheck interface {
 	Check(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error)
+}
+
+func errorP(block *types.StateBlock, result ProcessResult, detail error) (ProcessResult, error) {
+	switch result {
+	case Other:
+		return Other, fmt.Errorf("%s[%s],%s", block.GetHash(), block.GetType(), detail)
+	case GapPrevious:
+		return GapPrevious, fmt.Errorf("%s[%s]: gap previous: %s", block.GetHash(), block.GetType(), block.GetPrevious().String())
+	case GapSource:
+		return GapSource, fmt.Errorf("%s[%s]: gap source: %s", block.GetHash(), block.GetType(), block.GetLink().String())
+	default:
+		if detail == nil {
+			return result, fmt.Errorf("%s[%s]:%s", block.GetHash(), block.GetType(), result.String())
+		} else {
+			return result, fmt.Errorf("%s[%s]:%s, %s", block.GetHash(), block.GetType(), result.String(), detail)
+		}
+	}
 }

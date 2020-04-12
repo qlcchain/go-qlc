@@ -15,11 +15,11 @@ func (lv *LedgerVerifier) BlockCacheCheck(block *types.StateBlock) (ProcessResul
 	lv.logger.Infof("check cache block, %s(%s)", block.GetHash(), block.GetType().String())
 	if c, ok := lv.cacheBlockCheck[block.Type]; ok {
 		r, err := c.Check(lv, block)
-		if err != nil {
-			lv.logger.Errorf("error:%s, block:%s", err.Error(), block.GetHash().String())
+		if r == Other {
+			lv.logger.Errorf("cache check: %s", err)
 		}
 		if r != Progress {
-			lv.logger.Infof("check cache result:%s,(%s, %s)", r.String(), block.GetHash().String(), block.GetType().String())
+			lv.logger.Infof("cache check: %s", err)
 		}
 		return r, err
 	} else {

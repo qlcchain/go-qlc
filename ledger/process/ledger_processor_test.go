@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
@@ -37,6 +36,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 	_, _ = cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
 	bc, _ = mock.BlockChain(false)
+	fmt.Println(t.Name())
 
 	return func(t *testing.T) {
 		//err := l.db.Erase()
@@ -140,22 +140,22 @@ func TestProcess_Exception(t *testing.T) {
 
 	// open
 	bc[0].Signature, _ = types.NewSignature("5b11b17db9c8fe0cc58cac6a6eecef9cb122da8a81c6d3db1b5ee3ab065aa8f8cb1d6765c8eb91b58530c5ff5987ad95e6d34bb57f44257e20795ee412e61600")
-	if r, err := lv.BlockCheck(bc[0]); err != nil || r != BadSignature {
+	if r, err := lv.BlockCheck(bc[0]); r != BadSignature {
 		t.Fatal(r, err)
 	}
-	if r, err := lv.BlockCheck(bc[1]); err != nil || r != GapPrevious {
+	if r, err := lv.BlockCheck(bc[1]); r != GapPrevious {
 		t.Fatal(r, err)
 	}
 
 	if err := lv.BlockProcess(bc[0]); err != nil {
 		t.Fatal(err)
 	}
-	if r, err := lv.BlockCheck(bc[0]); err != nil || r != Old {
+	if r, err := lv.BlockCheck(bc[0]); r != Old {
 		t.Fatal(r, err)
 	}
 
 	// open gapSource
-	if r, err := lv.BlockCheck(bc[2]); err != nil || r != GapSource {
+	if r, err := lv.BlockCheck(bc[2]); r != GapSource {
 		t.Fatal(r, err)
 	}
 
@@ -169,34 +169,34 @@ func TestProcess_Exception(t *testing.T) {
 	}, lv.l.Cache().GetCache()); err != nil {
 		t.Fatal(err)
 	}
-	if r, err := lv.BlockCheck(bc[2]); err != nil || r != UnReceivable {
+	if r, err := lv.BlockCheck(bc[2]); r != UnReceivable {
 		t.Fatal(r, err)
 	}
 
 	// send
-	if r, err := lv.BlockCheck(bc[4]); err != nil || r != GapPrevious {
+	if r, err := lv.BlockCheck(bc[4]); r != GapPrevious {
 		t.Fatal(r, err)
 	}
 
 	// receive
-	if r, err := lv.BlockCheck(bc[5]); err != nil || r != GapSource {
+	if r, err := lv.BlockCheck(bc[5]); r != GapSource {
 		t.Fatal(r, err)
 	}
 
 	// contract block
 	bc := mock.StateBlockWithoutWork()
 	bc.Type = types.ContractReward
-	if r, err := lv.BlockCheck(bc); err != nil || r != GapSource {
+	if r, err := lv.BlockCheck(bc); r != GapSource {
 		t.Fatal(r, err)
 	}
 	bc.Type = types.ContractSend
 	bc.Link = contractaddress.NEP5PledgeAddress.ToHash()
-	if r, err := lv.BlockCheck(bc); err != nil {
+	if r, err := lv.BlockCheck(bc); r == Progress {
 		t.Fatal(r, err)
 	}
 
 	bs := mock.ContractBlocks()
-	if r, err := lv.BlockCheck(bs[1]); err != nil || r != GapPrevious {
+	if r, err := lv.BlockCheck(bs[1]); r != GapPrevious {
 		t.Fatal(r, err)
 	}
 
@@ -226,22 +226,22 @@ func TestBlock_fork(t *testing.T) {
 	blk.Address = am.Address
 	blk.Token = am.Tokens[0].Type
 	r, err := forkCheck.fork(lv, blk)
-	if err != nil || r != Fork {
+	if r != Fork {
 		t.Fatal(r, err)
 	}
 	blk.Type = types.Send
 	r, err = forkCheck.fork(lv, blk)
-	if err != nil || r != Fork {
+	if r != Fork {
 		t.Fatal(r, err)
 	}
 	blk.Type = types.ContractReward
 	r, err = forkCheck.fork(lv, blk)
-	if err != nil || r != Fork {
+	if r != Fork {
 		t.Fatal(r, err)
 	}
 	blk.Previous = types.ZeroHash
 	r, err = forkCheck.fork(lv, blk)
-	if err != nil || r != Fork {
+	if r != Fork {
 		t.Fatal(r, err)
 	}
 	r, err = forkCheck.fork(lv, &types.StateBlock{})
@@ -253,23 +253,23 @@ func TestBlock_fork(t *testing.T) {
 	cForkCheck := cacheBlockForkCheck{}
 	blk.Type = types.Open
 	r, err = cForkCheck.fork(lv, blk)
-	if err != nil || r != Fork {
+	if r != Fork {
 		t.Fatal(r, err)
 	}
 	blk.Previous = pre.GetHash()
 	blk.Type = types.Send
 	r, err = cForkCheck.fork(lv, blk)
-	if err != nil || r != Fork {
+	if r != Fork {
 		t.Fatal(r, err)
 	}
 	blk.Type = types.ContractReward
 	r, err = cForkCheck.fork(lv, blk)
-	if err != nil || r != Fork {
+	if r != Fork {
 		t.Fatal(r, err)
 	}
 	blk.Previous = types.ZeroHash
 	r, err = cForkCheck.fork(lv, blk)
-	if err != nil || r != Fork {
+	if r != Fork {
 		t.Fatal(r, err)
 	}
 	r, err = cForkCheck.fork(lv, &types.StateBlock{})

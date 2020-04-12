@@ -27,7 +27,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 	l := NewLedger(cm.ConfigFile)
-
+	fmt.Println(t.Name())
 	return func(t *testing.T) {
 		//err := l.DBStore.Erase()
 		err := l.Close()

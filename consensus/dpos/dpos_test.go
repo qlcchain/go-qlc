@@ -437,7 +437,7 @@ func (n *Node) ProcessBlock(block *types.StateBlock) {
 
 	verifier := process.NewLedgerVerifier(l)
 	flag, err := verifier.BlockCacheCheck(block)
-	if err != nil {
+	if flag == process.Other {
 		n.t.Fatal(err)
 	}
 

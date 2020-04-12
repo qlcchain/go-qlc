@@ -415,7 +415,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	}
 
 	result, err = dps.lv.BlockCheck(bs.Block)
-	if err != nil {
+	if result == process.Other {
 		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
 		return
 	}
