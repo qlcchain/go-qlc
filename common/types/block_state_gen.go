@@ -132,6 +132,37 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Representative")
 				return
 			}
+		case "priFrom":
+			z.PrivateFrom, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "PrivateFrom")
+				return
+			}
+		case "priFor":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "PrivateFor")
+				return
+			}
+			if cap(z.PrivateFor) >= int(zb0002) {
+				z.PrivateFor = (z.PrivateFor)[:zb0002]
+			} else {
+				z.PrivateFor = make([]string, zb0002)
+			}
+			for za0001 := range z.PrivateFor {
+				z.PrivateFor[za0001], err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "PrivateFor", za0001)
+					return
+				}
+			}
+		case "priGid":
+			z.PrivateGroupID, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "PrivateGroupID")
+				return
+			}
 		case "work":
 			err = dc.ReadExtension(&z.Work)
 			if err != nil {
@@ -157,9 +188,9 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 20
+	// map header, size 23
 	// write "type"
-	err = en.Append(0xde, 0x0, 0x14, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	err = en.Append(0xde, 0x0, 0x17, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	if err != nil {
 		return
 	}
@@ -338,6 +369,43 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Representative")
 		return
 	}
+	// write "priFrom"
+	err = en.Append(0xa7, 0x70, 0x72, 0x69, 0x46, 0x72, 0x6f, 0x6d)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.PrivateFrom)
+	if err != nil {
+		err = msgp.WrapError(err, "PrivateFrom")
+		return
+	}
+	// write "priFor"
+	err = en.Append(0xa6, 0x70, 0x72, 0x69, 0x46, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteArrayHeader(uint32(len(z.PrivateFor)))
+	if err != nil {
+		err = msgp.WrapError(err, "PrivateFor")
+		return
+	}
+	for za0001 := range z.PrivateFor {
+		err = en.WriteString(z.PrivateFor[za0001])
+		if err != nil {
+			err = msgp.WrapError(err, "PrivateFor", za0001)
+			return
+		}
+	}
+	// write "priGid"
+	err = en.Append(0xa6, 0x70, 0x72, 0x69, 0x47, 0x69, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.PrivateGroupID)
+	if err != nil {
+		err = msgp.WrapError(err, "PrivateGroupID")
+		return
+	}
 	// write "work"
 	err = en.Append(0xa4, 0x77, 0x6f, 0x72, 0x6b)
 	if err != nil {
@@ -364,9 +432,9 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 20
+	// map header, size 23
 	// string "type"
-	o = append(o, 0xde, 0x0, 0x14, 0xa4, 0x74, 0x79, 0x70, 0x65)
+	o = append(o, 0xde, 0x0, 0x17, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o, err = z.Type.MarshalMsg(o)
 	if err != nil {
 		err = msgp.WrapError(err, "Type")
@@ -471,6 +539,18 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 		err = msgp.WrapError(err, "Representative")
 		return
 	}
+	// string "priFrom"
+	o = append(o, 0xa7, 0x70, 0x72, 0x69, 0x46, 0x72, 0x6f, 0x6d)
+	o = msgp.AppendString(o, z.PrivateFrom)
+	// string "priFor"
+	o = append(o, 0xa6, 0x70, 0x72, 0x69, 0x46, 0x6f, 0x72)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.PrivateFor)))
+	for za0001 := range z.PrivateFor {
+		o = msgp.AppendString(o, z.PrivateFor[za0001])
+	}
+	// string "priGid"
+	o = append(o, 0xa6, 0x70, 0x72, 0x69, 0x47, 0x69, 0x64)
+	o = msgp.AppendString(o, z.PrivateGroupID)
 	// string "work"
 	o = append(o, 0xa4, 0x77, 0x6f, 0x72, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.Work)
@@ -614,6 +694,37 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Representative")
 				return
 			}
+		case "priFrom":
+			z.PrivateFrom, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PrivateFrom")
+				return
+			}
+		case "priFor":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PrivateFor")
+				return
+			}
+			if cap(z.PrivateFor) >= int(zb0002) {
+				z.PrivateFor = (z.PrivateFor)[:zb0002]
+			} else {
+				z.PrivateFor = make([]string, zb0002)
+			}
+			for za0001 := range z.PrivateFor {
+				z.PrivateFor[za0001], bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "PrivateFor", za0001)
+					return
+				}
+			}
+		case "priGid":
+			z.PrivateGroupID, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PrivateGroupID")
+				return
+			}
 		case "work":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Work)
 			if err != nil {
@@ -640,7 +751,11 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *StateBlock) Msgsize() (s int) {
-	s = 3 + 5 + z.Type.Msgsize() + 6 + msgp.ExtensionPrefixSize + z.Token.Len() + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Vote.Len() + 8 + msgp.ExtensionPrefixSize + z.Network.Len() + 8 + msgp.ExtensionPrefixSize + z.Storage.Len() + 7 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 7 + msgp.BytesPrefixSize + len(z.Sender) + 9 + msgp.BytesPrefixSize + len(z.Receiver) + 8 + msgp.ExtensionPrefixSize + z.Message.Len() + 5 + msgp.BytesPrefixSize + len(z.Data) + 10 + msgp.Uint64Size + 10 + msgp.Int64Size + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len()
+	s = 3 + 5 + z.Type.Msgsize() + 6 + msgp.ExtensionPrefixSize + z.Token.Len() + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Vote.Len() + 8 + msgp.ExtensionPrefixSize + z.Network.Len() + 8 + msgp.ExtensionPrefixSize + z.Storage.Len() + 7 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 7 + msgp.BytesPrefixSize + len(z.Sender) + 9 + msgp.BytesPrefixSize + len(z.Receiver) + 8 + msgp.ExtensionPrefixSize + z.Message.Len() + 5 + msgp.BytesPrefixSize + len(z.Data) + 10 + msgp.Uint64Size + 10 + msgp.Int64Size + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 8 + msgp.StringPrefixSize + len(z.PrivateFrom) + 7 + msgp.ArrayHeaderSize
+	for za0001 := range z.PrivateFor {
+		s += msgp.StringPrefixSize + len(z.PrivateFor[za0001])
+	}
+	s += 7 + msgp.StringPrefixSize + len(z.PrivateGroupID) + 5 + msgp.ExtensionPrefixSize + z.Work.Len() + 10 + msgp.ExtensionPrefixSize + z.Signature.Len()
 	return
 }
 

@@ -136,6 +136,9 @@ type DPoS struct {
 	febRpcMsgCh         chan *topic.EventRPCSyncCallMsg
 	repVH               chan *repVoteHeart
 	exited              *sync.WaitGroup
+
+	privateRecvBlocks chan *consensus.BlockSource
+	privateRecvRspCh  chan *topic.EventPrivacyRecvRspMsg
 }
 
 func NewDPoS(cfgFile string) *DPoS {
@@ -189,6 +192,9 @@ func NewDPoS(cfgFile string) *DPoS {
 		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
 		repVH:               make(chan *repVoteHeart, 409600),
 		exited:              new(sync.WaitGroup),
+
+		privateRecvBlocks: make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+		privateRecvRspCh:  make(chan *topic.EventPrivacyRecvRspMsg, common.DPoSMaxBlocks),
 	}
 
 	dps.pf.status.Store(perfTypeClose)
@@ -267,6 +273,7 @@ func (dps *DPoS) Start() {
 	go dps.batchVoteStart()
 	go dps.processSubMsg()
 	go dps.processBlocks()
+	go dps.processPrivateBlocks()
 	go dps.stat()
 	dps.processorStart()
 
@@ -481,6 +488,51 @@ func (dps *DPoS) processBlocks() {
 	}
 }
 
+func (dps *DPoS) processPrivateBlocks() {
+	dps.exited.Add(1)
+	defer dps.exited.Done()
+
+	for {
+		select {
+		case <-dps.ctx.Done():
+			dps.logger.Info("Stop processPrivateBlocks.")
+			return
+
+		case bs := <-dps.privateRecvBlocks:
+			if bs.Block.IsPrivate() {
+				recvReq := &topic.EventPrivacyRecvReqMsg{EnclaveKey: bs.Block.GetData(), ReqData: bs, RspChan: dps.privateRecvRspCh}
+				dps.eb.Publish(topic.EventPrivacySendReq, recvReq)
+			}
+
+		case recvRsp := <-dps.privateRecvRspCh:
+			if recvRsp.ReqData == nil {
+				dps.logger.Errorf("EventPrivacyRecvRspMsg ReqData is nil, drop it!")
+				break
+			}
+			if recvRsp.Err != nil {
+				dps.logger.Errorf("EventPrivacyRecvRspMsg got err %s", recvRsp.Err)
+				break
+			}
+
+			bs, ok := recvRsp.ReqData.(*consensus.BlockSource)
+			if !ok {
+				dps.logger.Errorf("EventPrivacyRecvRspMsg ReqData is not BlockSource, drop it!")
+			} else {
+				blkHash := bs.Block.GetHash()
+
+				err := dps.ledger.AddBlockPrivatePayload(blkHash, recvRsp.RawPayload)
+				if err != nil {
+					dps.logger.Infof("block[%s] save private payload err[%s]", blkHash, err.Error())
+					break
+				}
+
+				bs.Block.SetPrivatePayload(recvRsp.RawPayload)
+				dps.recvBlocks <- bs
+			}
+		}
+	}
+}
+
 func (dps *DPoS) processorStart() {
 	for i := 0; i < dps.processorNum; i++ {
 		dps.processors[i].start()
@@ -632,6 +684,16 @@ func (dps *DPoS) getProcessorIndex(address types.Address) int {
 }
 
 func (dps *DPoS) dispatchMsg(bs *consensus.BlockSource) {
+	if bs.Block != nil && bs.Block.IsPrivate() {
+		blkHash := bs.Block.GetHash()
+
+		err := bs.Block.CheckPrivateRecvRsp()
+		if err != nil {
+			dps.logger.Errorf("block %s check private err %s", blkHash, err)
+			return
+		}
+	}
+
 	if bs.Type == consensus.MsgConfirmAck {
 		ack := bs.Para.(*protos.ConfirmAckBlock)
 		dps.saveOnlineRep(ack.Account)
@@ -701,9 +763,14 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			dps.processors[index].ackedBlockNotify(hash)
 		}
 	case types.ContractSend: // beneficial maybe another account
+		// check private tx
+		if blk.IsPrivate() && !blk.IsRecipient() {
+			break
+		}
+
 		dstAddr := types.ZeroAddress
 
-		if c, ok, err := vmcontract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+		if c, ok, err := vmcontract.GetChainContract(types.Address(blk.GetLink()), blk.GetPayload()); ok && err == nil {
 			ctx := vmstore.NewVMContext(dps.ledger)
 			dstAddr, err = c.GetTargetReceiver(ctx, blk)
 			if err != nil {
@@ -754,6 +821,10 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 }
 
 func (dps *DPoS) ProcessMsg(bs *consensus.BlockSource) {
+	if bs.Block != nil && bs.Block.IsPrivate() {
+		dps.privateRecvBlocks <- bs
+		return
+	}
 	dps.recvBlocks <- bs
 }
 
@@ -1219,6 +1290,8 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 	outArgs["povSyncState"] = dps.povSyncState.String()
 	outArgs["blockSyncState"] = dps.blockSyncState.String()
 	outArgs["blockQueue"] = len(dps.recvBlocks)
+	outArgs["privateBlockQueue"] = len(dps.privateRecvBlocks)
+	outArgs["privateRecvRspQueue"] = len(dps.privateRecvRspCh)
 
 	pStats := make([]*processorStat, 0)
 	for _, p := range dps.processors {

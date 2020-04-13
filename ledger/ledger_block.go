@@ -75,6 +75,12 @@ func (l *Ledger) GetRandomStateBlock() (*types.StateBlock, error) {
 				if err = b.Deserialize(val); err != nil {
 					return err
 				}
+				if b.IsPrivate() {
+					pl, err := l.GetBlockPrivatePayload(b.GetHash())
+					if err == nil {
+						b.SetPrivatePayload(pl)
+					}
+				}
 				if !config.IsGenesisBlock(b) {
 					blk = b
 					return errFound
@@ -125,6 +131,10 @@ func (l *Ledger) UpdateStateBlock(block *types.StateBlock, c storage.Cache) erro
 }
 
 func (l *Ledger) setStateBlock(block *types.StateBlock, c storage.Cache) error {
+	err := block.CheckPrivateRecvRsp()
+	if err != nil {
+		return err
+	}
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
 	if err != nil {
 		return err
@@ -196,6 +206,12 @@ func (l *Ledger) GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*t
 	if err := meta.Deserialize(v); err != nil {
 		return nil, err
 	}
+	if meta.IsPrivate() {
+		pl, err := l.GetBlockPrivatePayload(hash)
+		if err == nil {
+			meta.SetPrivatePayload(pl)
+		}
+	}
 	return meta, nil
 }
 
@@ -206,6 +222,12 @@ func (l *Ledger) GetStateBlocksConfirmed(fn func(*types.StateBlock) error) error
 		if err := blk.Deserialize(val); err != nil {
 			l.logger.Errorf("deserialize block error: %s", err)
 			return nil
+		}
+		if blk.IsPrivate() {
+			pl, err := l.GetBlockPrivatePayload(blk.GetHash())
+			if err == nil {
+				blk.SetPrivatePayload(pl)
+			}
 		}
 		if err := fn(blk); err != nil {
 			l.logger.Errorf("process block error: %s", err)

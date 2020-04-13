@@ -242,4 +242,21 @@ func InitChainContract() {
 		cabi.JsonPermission,
 	)
 	vmcontract.RegisterContracts(contractaddress.PermissionAddress, pa)
+
+	pdkv := vmcontract.NewChainContract(
+		map[string]vmcontract.Contract{
+			cabi.MethodNamePrivacyDemoKVSet: &contract.PrivacyDemoKVSet{
+				BaseContract: contract.BaseContract{
+					Describe: vmcontract.Describe{
+						SpecVer:   vmcontract.SpecVer2,
+						Signature: true,
+						Work:      true,
+					},
+				},
+			},
+		},
+		cabi.PrivacyDemoKVABI,
+		cabi.JsonPrivacyDemoKV,
+	)
+	vmcontract.RegisterContracts(contractaddress.PrivacyDemoKVAddress, pdkv)
 }

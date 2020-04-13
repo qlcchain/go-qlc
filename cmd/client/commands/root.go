@@ -92,4 +92,5 @@ func addcommands() {
 	addTxCmd()
 	addPKDCmd()
 	addPermissionCmd()
+	addPrivacyCmd()
 }

@@ -240,9 +240,19 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 
 	ca := types.Address{}
 	if txBlock.GetType() == types.ContractSend {
+		// check private tx
+		if txBlock.IsPrivate() && !txBlock.IsRecipient() {
+			return nil
+		}
+
 		ca = types.Address(txBlock.GetLink())
-		methodSig = txBlock.GetData()
+		methodSig = txBlock.GetPayload()
 	} else if txBlock.GetType() == types.ContractReward {
+		// check private tx
+		if txBlock.IsPrivate() && !txBlock.IsRecipient() {
+			return nil
+		}
+
 		sendBlk, err = bc.ledger.GetStateBlockConfirmed(txBlock.GetLink())
 		if err != nil {
 			bc.logger.Errorf("failed to get chain contract send block err %s", err)
@@ -250,7 +260,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 		}
 
 		ca = types.Address(sendBlk.GetLink())
-		methodSig = sendBlk.GetData()
+		methodSig = sendBlk.GetPayload()
 	} else {
 		return nil
 	}

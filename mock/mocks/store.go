@@ -101,6 +101,20 @@ func (_m *Store) AddBlockCache(blk *types.StateBlock, batch ...storage.Batch) er
 	return r0
 }
 
+// AddBlockPrivatePayload provides a mock function with given fields: hash, payload
+func (_m *Store) AddBlockPrivatePayload(hash types.Hash, payload []byte) error {
+	ret := _m.Called(hash, payload)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, []byte) error); ok {
+		r0 = rf(hash, payload)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AddFrontier provides a mock function with given fields: frontier, c
 func (_m *Store) AddFrontier(frontier *types.Frontier, c *ledger.Cache) error {
 	ret := _m.Called(frontier, c)
@@ -1049,6 +1063,20 @@ func (_m *Store) DeleteBlockCache(hash types.Hash, batch ...storage.Batch) error
 	return r0
 }
 
+// DeleteBlockPrivatePayload provides a mock function with given fields: hash
+func (_m *Store) DeleteBlockPrivatePayload(hash types.Hash) error {
+	ret := _m.Called(hash)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash) error); ok {
+		r0 = rf(hash)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // DeleteFrontier provides a mock function with given fields: key, c
 func (_m *Store) DeleteFrontier(key types.Hash, c *ledger.Cache) error {
 	ret := _m.Called(key, c)
@@ -1845,6 +1873,29 @@ func (_m *Store) GetBlockLink(key types.Hash, c ...storage.Cache) (types.Hash, e
 	var r1 error
 	if rf, ok := ret.Get(1).(func(types.Hash, ...storage.Cache) error); ok {
 		r1 = rf(key, c...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetBlockPrivatePayload provides a mock function with given fields: hash
+func (_m *Store) GetBlockPrivatePayload(hash types.Hash) ([]byte, error) {
+	ret := _m.Called(hash)
+
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func(types.Hash) []byte); ok {
+		r0 = rf(hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(types.Hash) error); ok {
+		r1 = rf(hash)
 	} else {
 		r1 = ret.Error(1)
 	}

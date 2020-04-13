@@ -40,7 +40,7 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "contract",
 			Version:   "1.0",
-			Service:   api.NewContractApi(),
+			Service:   api.NewContractApi(r.cc, r.ledger),
 			Public:    true,
 		}
 	case "mintage":
@@ -141,6 +141,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewPermissionApi(r.cfgFile, r.ledger),
 			Public:    true,
 		}
+	case "privacy":
+		return rpc.API{
+			Namespace: "privacy",
+			Version:   "1.0",
+			Service:   api.NewPrivacyApi(r.config, r.ledger, r.eb, r.cc),
+			Public:    true,
+		}
 	default:
 		return rpc.API{}
 	}
@@ -177,6 +184,6 @@ func (r *RPC) GetWSApis() []rpc.API {
 func (r *RPC) GetPublicApis() []rpc.API {
 	apiModules := []string{"ledger", "account", "net", "util", "mintage", "contract", "pledge",
 		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement",
-		"permission"}
+		"permission", "privacy"}
 	return r.GetApis(apiModules...)
 }

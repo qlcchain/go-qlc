@@ -49,6 +49,11 @@ const (
 
 	EventAddBlockCache        TopicType = "addBlockCache"
 	EventPermissionNodeUpdate TopicType = "permissionNodeUpdate"
+
+	EventPrivacySendReq TopicType = "privacySendReq"
+	EventPrivacySendRsp TopicType = "privacySendRsp"
+	EventPrivacyRecvReq TopicType = "privacyRecvReq"
+	EventPrivacyRecvRsp TopicType = "privacyRecvRsp"
 )
 
 // Sync state

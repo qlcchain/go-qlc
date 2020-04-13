@@ -9,6 +9,7 @@ import (
 type ConfigV6 struct {
 	ConfigV5 `mapstructure:",squash"`
 	Genesis  *Genesis `json:"genesis"`
+	Privacy  *Privacy `json:"privacy"`
 }
 
 type Genesis struct {
@@ -22,14 +23,20 @@ type GenesisInfo struct {
 	Genesis    types.StateBlock `mapstructure:",squash" json:"genesis"`
 }
 
+type Privacy struct {
+	Enable  bool   `json:"enable"`
+	PtmNode string `json:"ptmNode"`
+}
+
 func DefaultConfigV6(dir string) (*ConfigV6, error) {
 	var cfg ConfigV6
 	cfg5, _ := DefaultConfigV5(dir)
 	cfg.ConfigV5 = *cfg5
 	cfg.Version = configVersion
 	cfg.Genesis = defaultGenesis()
+	cfg.Privacy = defaultPrivacy()
 	cfg.RPC.PublicModules = []string{"ledger", "account", "net", "util", "mintage", "contract", "pledge",
-		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement"}
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement", "privacy"}
 	return &cfg, nil
 }
 
@@ -55,4 +62,8 @@ func defaultGenesis() *Genesis {
 	return &Genesis{
 		GenesisBlocks: []*GenesisInfo{genesisInfo, gasInfo},
 	}
+}
+
+func defaultPrivacy() *Privacy {
+	return &Privacy{}
 }

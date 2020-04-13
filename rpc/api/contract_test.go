@@ -9,19 +9,103 @@ package api
 
 import (
 	"encoding/hex"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	qctx "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
+type mockDataContractApi struct {
+	l   ledger.Store
+	cc  *qctx.ChainContext
+	eb  event.EventBus
+	sub *event.ActorSubscriber
+}
+
+func setupTestCaseContractApi(t *testing.T) (func(t *testing.T), *mockDataContractApi) {
+	md := new(mockDataContractApi)
+
+	dir := filepath.Join(config.QlcTestDataDir(), "rewards", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+
+	cfg, _ := cm.Config()
+	cfg.Privacy.Enable = true
+	cfg.Privacy.PtmNode = filepath.Join(dir, "__UnitTestCase__.ipc")
+	_ = cm.CommitAndSave()
+
+	l := ledger.NewLedger(cm.ConfigFile)
+	setLedgerStatus(l, t)
+	povBlk, povTd := mock.GenerateGenesisPovBlock()
+	l.AddPovBlock(povBlk, povTd)
+	l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	l.SetPovLatestHeight(povBlk.GetHeight())
+	md.l = l
+
+	md.cc = qctx.NewChainContext(cm.ConfigFile)
+	md.cc.Init(func() error {
+		chaincontract.InitChainContract()
+		return nil
+	})
+
+	md.eb = md.cc.EventBus()
+
+	md.cc.Start()
+
+	md.sub = event.NewActorSubscriber(event.Spawn(func(ctx actor.Context) {
+		switch msgReq := ctx.Message().(type) {
+		case *topic.EventPrivacySendReqMsg:
+			msgReq.RspChan <- &topic.EventPrivacySendRspMsg{
+				EnclaveKey: util.RandomFixedBytes(32),
+			}
+		case *topic.EventPrivacyRecvReqMsg:
+			msgReq.RspChan <- &topic.EventPrivacyRecvRspMsg{
+				RawPayload: util.RandomFixedBytes(128),
+			}
+		}
+	}), md.eb)
+
+	err := md.sub.Subscribe(topic.EventPrivacySendReq, topic.EventPrivacyRecvReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return func(t *testing.T) {
+		_ = md.sub.UnsubscribeAll()
+		_ = md.cc.Stop()
+		_ = md.eb.Close()
+		err := md.l.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}, md
+}
+
 func TestNewContractApi(t *testing.T) {
-	api := NewContractApi()
+	tearDown, md := setupTestCaseContractApi(t)
+	defer tearDown(t)
+
+	api := NewContractApi(md.cc, md.l)
 	if abi, err := api.GetAbiByContractAddress(contractaddress.BlackHoleAddress); err != nil {
 		t.Fatal(err)
 	} else if len(abi) == 0 {

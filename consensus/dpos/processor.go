@@ -33,22 +33,22 @@ type chainOrderKey struct {
 }
 
 type Processor struct {
-	index           int
-	dps             *DPoS
-	uncheckedCache  gcache.Cache // gap blocks
-	quitCh          chan bool
-	blocks          chan *consensus.BlockSource
-	blocksAcked     chan types.Hash
-	tokenCreate     chan types.Hash
-	publishBlock    chan types.Hash
-	syncBlock       chan *types.StateBlock
-	acks            chan *voteInfo
-	frontiers       chan *types.StateBlock
-	syncStateChange chan topic.SyncState
-	syncState       topic.SyncState
-	orderedChain    *sync.Map
-	chainHeight     *sync.Map
-	// doneBlock          chan *types.StateBlock
+	index              int
+	dps                *DPoS
+	uncheckedCache     gcache.Cache // gap blocks
+	quitCh             chan bool
+	blocks             chan *consensus.BlockSource
+	blocksAcked        chan types.Hash
+	tokenCreate        chan types.Hash
+	publishBlock       chan types.Hash
+	syncBlock          chan *types.StateBlock
+	syncAcked          chan types.Hash
+	acks               chan *voteInfo
+	frontiers          chan *types.StateBlock
+	syncStateChange    chan topic.SyncState
+	syncState          topic.SyncState
+	orderedChain       *sync.Map
+	chainHeight        *sync.Map
 	confirmedChain     map[types.Hash]bool
 	confirmParallelNum int32
 	ctx                context.Context
@@ -63,20 +63,20 @@ func newProcessors(num int) []*Processor {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		p := &Processor{
-			index:           i,
-			quitCh:          make(chan bool, 1),
-			blocks:          make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
-			blocksAcked:     make(chan types.Hash, common.DPoSMaxBlocks),
-			tokenCreate:     make(chan types.Hash, 1024),
-			publishBlock:    make(chan types.Hash, common.DPoSMaxBlocks),
-			syncBlock:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			acks:            make(chan *voteInfo, common.DPoSMaxBlocks),
-			frontiers:       make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncStateChange: make(chan topic.SyncState, 1),
-			syncState:       topic.SyncNotStart,
-			orderedChain:    new(sync.Map),
-			chainHeight:     new(sync.Map),
-			// doneBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			index:              i,
+			quitCh:             make(chan bool, 1),
+			blocks:             make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+			blocksAcked:        make(chan types.Hash, common.DPoSMaxBlocks),
+			tokenCreate:        make(chan types.Hash, 1024),
+			publishBlock:       make(chan types.Hash, common.DPoSMaxBlocks),
+			syncBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncAcked:          make(chan types.Hash, common.DPoSMaxBlocks),
+			acks:               make(chan *voteInfo, common.DPoSMaxBlocks),
+			frontiers:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncStateChange:    make(chan topic.SyncState, 1),
+			syncState:          topic.SyncNotStart,
+			orderedChain:       new(sync.Map),
+			chainHeight:        new(sync.Map),
 			confirmedChain:     make(map[types.Hash]bool),
 			confirmParallelNum: ConfirmChainParallelNum,
 			ctx:                ctx,
@@ -121,7 +121,8 @@ func (p *Processor) syncBlockCheck(block *types.StateBlock) {
 			if has, _ := dps.ledger.HasStateBlockConfirmed(block.Previous); has {
 				checked = true
 			} else {
-				// p.enqueueUncheckedSync(block)
+				p.enqueueUncheckedSync(block)
+				return
 			}
 		}
 	}
@@ -179,6 +180,8 @@ func (p *Processor) processMsg() {
 		case block := <-p.syncBlock:
 			p.dps.updateLastProcessSyncTime()
 			p.syncBlockCheck(block)
+		case ack := <-p.syncAcked:
+			p.dequeueUncheckedSync(ack)
 		case <-timerConfirm.C:
 			if p.syncState == topic.SyncDone || p.syncState == topic.Syncing {
 				for hash, dealt := range p.confirmedChain {
@@ -223,6 +226,12 @@ func (p *Processor) tokenCreateNotify(hash types.Hash) {
 func (p *Processor) processConfirmedSync(hash types.Hash, block *types.StateBlock) {
 	var height uint64
 
+	err := block.CheckPrivateRecvRsp()
+	if err != nil {
+		p.dps.logger.Errorf("block %s check private err %s", hash, err)
+		return
+	}
+
 	ck := chainKey{
 		addr:  block.Address,
 		token: block.Token,
@@ -254,6 +263,8 @@ func (p *Processor) processAckedSync(hash types.Hash) {
 			p.confirmedChain[hash] = false
 		}
 	}
+
+	p.syncAcked <- hash
 }
 
 func (p *Processor) localRepVoteFrontier(block *types.StateBlock) {
@@ -406,6 +417,12 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 	hash := bs.Block.GetHash()
 	var result process.ProcessResult
 	var err error
+
+	err = bs.Block.CheckPrivateRecvRsp()
+	if err != nil {
+		dps.logger.Errorf("block %s check private err %s", hash, err)
+		return
+	}
 
 	dps.perfBlockProcessCheckPointAdd(hash, checkPointBlockCheck)
 
@@ -695,7 +712,12 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 			dps.logger.Errorf("add gap publish block to ledger err %s", err)
 		}
 	case process.GapPovHeight:
-		if c, ok, err := vmcontract.GetChainContract(types.Address(bs.Block.Link), bs.Block.Data); ok && err == nil {
+		// check private tx
+		if bs.Block.IsPrivate() && !bs.Block.IsRecipient() {
+			break
+		}
+
+		if c, ok, err := vmcontract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
 			case vmcontract.SpecVer2:
@@ -922,27 +944,27 @@ func (p *Processor) dequeueGapPublish(hash types.Hash) {
 // 	}
 // }
 
-// func (p *Processor) dequeueUncheckedSync(hash types.Hash) {
-// 	p.dequeueUncheckedSyncFromDb(hash)
-// }
+func (p *Processor) dequeueUncheckedSync(hash types.Hash) {
+	p.dequeueUncheckedSyncFromDb(hash)
+}
 
-// func (p *Processor) dequeueUncheckedSyncFromDb(hash types.Hash) {
-// 	dps := p.dps
-//
-// 	if block, err := dps.ledger.GetUncheckedSyncBlock(hash); err != nil {
-// 		return
-// 	} else {
-// 		confirmedHash := block.GetHash()
-// 		if err := dps.ledger.AddUnconfirmedSyncBlock(confirmedHash, block); err != nil {
-// 			dps.logger.Errorf("add unconfirmed sync block err", err)
-// 		}
-// 		p.processConfirmedSync(confirmedHash, block)
-//
-// 		if err := dps.ledger.DeleteUncheckedSyncBlock(hash); err != nil {
-// 			dps.logger.Errorf("del uncheck sync block err", err)
-// 		}
-// 	}
-// }
+func (p *Processor) dequeueUncheckedSyncFromDb(hash types.Hash) {
+	dps := p.dps
+
+	if block, err := dps.ledger.GetUncheckedSyncBlock(hash); err != nil {
+		return
+	} else {
+		confirmedHash := block.GetHash()
+		if err := dps.ledger.AddUnconfirmedSyncBlock(confirmedHash, block); err != nil {
+			dps.logger.Errorf("add unconfirmed sync block err", err)
+		}
+		p.processConfirmedSync(confirmedHash, block)
+
+		if err := dps.ledger.DeleteUncheckedSyncBlock(hash); err != nil {
+			dps.logger.Errorf("del uncheck sync block err", err)
+		}
+	}
+}
 
 // func (p *Processor) rollbackUncheckedFromMem(hash types.Hash) {
 // 	if !p.uncheckedCache.Has(hash) {

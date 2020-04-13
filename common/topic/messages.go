@@ -97,3 +97,34 @@ type PermissionEvent struct {
 	NodeId    string
 	NodeUrl   string
 }
+
+type EventPrivacySendReqMsg struct {
+	RawPayload     types.HexBytes
+	PrivateFrom    string
+	PrivateFor     []string
+	PrivateGroupID string
+
+	ReqData interface{}
+	RspChan chan *EventPrivacySendRspMsg
+}
+
+type EventPrivacySendRspMsg struct {
+	ReqData interface{}
+
+	Err        error
+	EnclaveKey []byte
+}
+
+type EventPrivacyRecvReqMsg struct {
+	EnclaveKey []byte
+
+	ReqData interface{}
+	RspChan chan *EventPrivacyRecvRspMsg
+}
+
+type EventPrivacyRecvRspMsg struct {
+	ReqData interface{}
+
+	Err        error
+	RawPayload []byte
+}

@@ -74,5 +74,10 @@ func RegisterServices(cc *context.ChainContext) error {
 	resendBlockService := NewResendBlockService(cfgFile)
 	_ = cc.Register(context.ResendBlockService, resendBlockService)
 
+	if cfg.Privacy.Enable {
+		privacyService := NewPrivacyService(cfgFile)
+		_ = cc.Register(context.PrivacyService, privacyService)
+	}
+
 	return nil
 }

@@ -13,6 +13,15 @@ import (
 	"testing"
 )
 
+func TestRandomFixedBytes(t *testing.T) {
+	l := 16
+	pb := RandomFixedBytes(l)
+	if len(pb) != l {
+		t.Fatal("invalid len", len(pb))
+	}
+	t.Log(pb)
+}
+
 func TestRandomFixedString(t *testing.T) {
 	l := 16
 	pw := RandomFixedString(l)

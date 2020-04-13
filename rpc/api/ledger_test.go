@@ -910,3 +910,49 @@ func TestLedgerAPI_GenesisBlock(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestLedgerAPI_PubSub(t *testing.T) {
+	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	blk1 := mock.StateBlock()
+
+	blkRpcCtx := rpc.SubscriptionContextRandom()
+	blkSub, err := ledgerApi.NewBlock(blkRpcCtx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blkSub == nil {
+		t.Fatal("blkSub is nil")
+	}
+
+	pendRpcCtx := rpc.SubscriptionContextRandom()
+	pendSub, err := ledgerApi.NewPending(pendRpcCtx, blk1.GetAddress())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pendSub == nil {
+		t.Fatal("blkSub is nil")
+	}
+
+	accRpcCtx := rpc.SubscriptionContextRandom()
+	accSub, err := ledgerApi.NewAccountBlock(accRpcCtx, blk1.GetAddress())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if accSub == nil {
+		t.Fatal("accSub is nil")
+	}
+
+	blRpcCtx := rpc.SubscriptionContextRandom()
+	blSub, err := ledgerApi.BalanceChange(blRpcCtx, blk1.GetAddress())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blSub == nil {
+		t.Fatal("blSub is nil")
+	}
+
+	ledgerApi.blockSubscription.setBlocks(blk1)
+	time.Sleep(10 * time.Millisecond)
+}

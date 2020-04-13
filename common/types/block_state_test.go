@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"reflect"
 	"testing"
 )
@@ -256,4 +257,39 @@ func TestStateBlockList_Serialize(t *testing.T) {
 
 	blkBytes, _ := json.Marshal(&b2)
 	t.Log(string(blkBytes))
+}
+
+func TestStateBlock_PrivateHash(t *testing.T) {
+	blk := StateBlock{}
+	blk.Balance = NewBalance(rand.Int63())
+	blk.Vote = NewBalance(rand.Int63())
+
+	h1 := blk.GetHashWithoutPrivacy()
+
+	h2 := blk.GetHash()
+	if h1 != h2 {
+		t.Fatal("public GetHash != GetHashNotUsed")
+	}
+
+	blk.PrivateFrom = ("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1")
+	blk.PrivateFor = append(blk.PrivateFor, ("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff2"))
+	blk.PrivateFor = append(blk.PrivateFor, ("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3"))
+	blk.PrivateGroupID = ("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff10")
+
+	h3 := blk.GetHash()
+	if h1 == h3 {
+		t.Fatal("private GetHash == GetHashNotUsed")
+	}
+
+	pl := make([]byte, 100, 100)
+	blk.SetPrivatePayload(pl)
+	if !blk.IsPrivate() {
+		t.Fatal("tx IsPrivate")
+	}
+	if !blk.IsRecipient() {
+		t.Fatal("tx IsRecipient")
+	}
+	if blk.GetPrivatePayload() == nil {
+		t.Fatal("tx GetPrivatePayload")
+	}
 }

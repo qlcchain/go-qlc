@@ -1,7 +1,9 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -30,12 +32,69 @@ type StateBlock struct {
 	Timestamp      int64     `msg:"timestamp" json:"timestamp"`
 	Extra          Hash      `msg:"extra,extension" json:"extra,omitempty"`
 	Representative Address   `msg:"representative,extension" json:"representative"`
-	Work           Work      `msg:"work,extension" json:"work"`
-	Signature      Signature `msg:"signature,extension" json:"signature"`
-	Flag           uint64    `msg:"-" json:"-"`
+
+	PrivateFrom    string   `msg:"priFrom,omitempty" json:"privateFrom,omitempty"`
+	PrivateFor     []string `msg:"priFor,omitempty" json:"privateFor,omitempty"`
+	PrivateGroupID string   `msg:"priGid,omitempty" json:"privateGroupID,omitempty"`
+
+	Work      Work      `msg:"work,extension" json:"work"`
+	Signature Signature `msg:"signature,extension" json:"signature"`
+
+	// following fields just for cache, not marshaled in db or p2p message
+	Flag uint64 `msg:"-" json:"-"`
+
+	PrivateRecvRsp bool   `msg:"-" json:"-"`
+	PrivatePayload []byte `msg:"-" json:"-"`
+}
+
+func (b *StateBlock) BuildHashData() []byte {
+	buf := new(bytes.Buffer)
+
+	// fields for public txs
+	buf.WriteByte(byte(b.Type))
+	buf.Write(b.Token[:])
+	buf.Write(b.Address[:])
+	buf.Write(b.Balance.Bytes())
+	buf.Write(b.Vote.Bytes())
+	buf.Write(b.Network.Bytes())
+	buf.Write(b.Storage.Bytes())
+	buf.Write(b.Oracle.Bytes())
+	buf.Write(b.Previous[:])
+	buf.Write(b.Link[:])
+	buf.Write(b.Sender)
+	buf.Write(b.Receiver)
+	buf.Write(b.Message[:])
+	buf.Write(b.Data)
+	buf.Write(util.BE_Int2Bytes(b.Timestamp))
+	buf.Write(util.BE_Uint64ToBytes(b.PoVHeight))
+	buf.Write(b.Extra[:])
+	buf.Write(b.Representative[:])
+
+	// additional fields for private txs
+	if len(b.PrivateFrom) > 0 {
+		buf.WriteString(b.PrivateFrom)
+	}
+	if len(b.PrivateFor) > 0 {
+		for _, pf := range b.PrivateFor {
+			if len(pf) > 0 {
+				buf.WriteString(pf)
+			}
+		}
+	}
+	if len(b.PrivateGroupID) > 0 {
+		buf.WriteString(b.PrivateGroupID)
+	}
+
+	return buf.Bytes()
 }
 
 func (b *StateBlock) GetHash() Hash {
+	data := b.BuildHashData()
+	hash := HashData(data)
+	return hash
+}
+
+func (b *StateBlock) GetHashWithoutPrivacy() Hash {
 	t := []byte{byte(b.Type)}
 	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Vote.Bytes(), b.Network.Bytes(),
 		b.Storage.Bytes(), b.Oracle.Bytes(), b.Previous[:], b.Link[:], b.Sender, b.Receiver, b.Message[:], b.Data,
@@ -93,6 +152,13 @@ func (b *StateBlock) GetStorage() Balance {
 }
 
 func (b *StateBlock) GetData() []byte {
+	return b.Data
+}
+
+func (b *StateBlock) GetPayload() []byte {
+	if b.IsPrivate() {
+		return b.GetPrivatePayload()
+	}
 	return b.Data
 }
 
@@ -209,9 +275,17 @@ func (b *StateBlock) IsContractBlock() bool {
 
 func (b *StateBlock) Clone() *StateBlock {
 	clone := StateBlock{}
-	bytes, _ := b.Serialize()
-	_ = clone.Deserialize(bytes)
+	blkBytes, _ := b.Serialize()
+	_ = clone.Deserialize(blkBytes)
 	clone.Flag = b.Flag
+
+	// private tx fields
+	clone.PrivateRecvRsp = b.PrivateRecvRsp
+	if len(b.PrivatePayload) > 0 {
+		clone.PrivatePayload = make([]byte, len(b.PrivatePayload))
+		copy(clone.PrivatePayload, b.PrivatePayload)
+	}
+
 	return &clone
 }
 
@@ -221,6 +295,39 @@ func (b *StateBlock) IsFromSync() bool {
 
 func (b *StateBlock) SetFromSync() {
 	b.Flag |= BlockFlagSync
+}
+
+func (b *StateBlock) IsPrivate() bool {
+	if len(b.PrivateFrom) > 0 {
+		return true
+	}
+	return false
+}
+
+func (b *StateBlock) IsRecipient() bool {
+	if b.IsPrivate() {
+		if len(b.PrivatePayload) == 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (b *StateBlock) GetPrivatePayload() []byte {
+	return b.PrivatePayload
+}
+
+func (b *StateBlock) SetPrivatePayload(rawData []byte) {
+	b.PrivatePayload = rawData
+	b.PrivateRecvRsp = true
+}
+
+func (b *StateBlock) CheckPrivateRecvRsp() error {
+	if b.IsPrivate() && !b.PrivateRecvRsp {
+		return errors.New("private does not got recv rsp")
+	}
+	return nil
 }
 
 type StateBlockList []*StateBlock

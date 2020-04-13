@@ -55,6 +55,14 @@ func (l *Ledger) GetUncheckedSyncBlock(hash types.Hash) (*types.StateBlock, erro
 	if err = blk.Deserialize(val); err != nil {
 		return nil, err
 	}
+
+	if blk.IsPrivate() {
+		pl, err := l.GetBlockPrivatePayload(blk.GetHash())
+		if err == nil {
+			blk.SetPrivatePayload(pl)
+		}
+	}
+
 	return blk, nil
 }
 
@@ -108,6 +116,13 @@ func (l *Ledger) GetUnconfirmedSyncBlock(hash types.Hash) (*types.StateBlock, er
 	}
 	if err = blk.Deserialize(val); err != nil {
 		return nil, err
+	}
+
+	if blk.IsPrivate() {
+		pl, err := l.GetBlockPrivatePayload(hash)
+		if err == nil {
+			blk.SetPrivatePayload(pl)
+		}
 	}
 
 	return blk, nil
