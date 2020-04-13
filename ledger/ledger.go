@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/jmoiron/sqlx"
-
 	"github.com/google/uuid"
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -41,6 +39,8 @@ type LedgerStore interface {
 	GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error)
 	GetVerifiedData() map[types.Hash]int
 	Action(at storage.ActionType, t int) (interface{}, error)
+	GetRelation(dest interface{}, query string) error
+	SelectRelation(dest interface{}, query string) error
 	Flush() error
 }
 
@@ -320,7 +320,11 @@ func (l *Ledger) initRelation() error {
 			return err
 		}
 		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
-			l.relation.Add(relation.TableConvert(block))
+			c, err := block.TableConvert()
+			if err != nil {
+				return err
+			}
+			l.relation.Add(c)
 			return nil
 		})
 		if err != nil {
@@ -779,6 +783,6 @@ func (l *Ledger) Flush() error {
 	return l.cache.rebuild()
 }
 
-func (l *Ledger) Relation() *sqlx.DB {
-	return nil
+func (l *Ledger) RegisterRelation(obj types.Table) error {
+	return l.relation.Register(obj)
 }

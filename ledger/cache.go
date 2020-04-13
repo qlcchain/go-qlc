@@ -12,7 +12,6 @@ import (
 	"github.com/bluele/gcache"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 	"go.uber.org/zap"
 )
@@ -436,16 +435,22 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 }
 
 func (c *Cache) dumpToRelation(key []byte, v interface{}, l *Ledger) error {
-	switch storage.KeyPrefix(key[0]) {
-	case storage.KeyPrefixBlock:
-		if !isDeleteKey(v) {
-			l.relation.Add(relation.TableConvert(v))
-		} else {
+	if !isDeleteKey(v) {
+		if val, ok := v.(types.Convert); ok {
+			objs, err := val.TableConvert()
+			if err != nil {
+				return fmt.Errorf("table convert: %s", err)
+			}
+			l.relation.Add(objs)
+		}
+	} else {
+		switch storage.KeyPrefix(key[0]) {
+		case storage.KeyPrefixBlock:
 			hash, err := types.BytesToHash(key[1:])
 			if err != nil {
 				return fmt.Errorf("key to hash: %s", err)
 			}
-			l.relation.Delete(&relation.BlockHash{Hash: hash.String()})
+			l.relation.Delete(&types.BlockHash{Hash: hash.String()})
 		}
 	}
 	return nil

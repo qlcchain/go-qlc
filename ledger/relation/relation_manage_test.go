@@ -1,6 +1,7 @@
 package relation
 
 import (
+	"github.com/qlcchain/go-qlc/common/types"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,13 +22,16 @@ func TestRelation_Relation(t *testing.T) {
 
 	blk1 := mock.StateBlockWithoutWork()
 	blk2 := mock.StateBlockWithoutWork()
-	r.Add(TableConvert(blk1))
-	r.Add(TableConvert(blk2))
+	v1, _ := blk1.TableConvert()
+	r.Add(v1)
+	v2, _ := blk2.TableConvert()
+	r.Add(v2)
 	for i := 0; i < batchMaxCount+10; i++ {
-		r.Add(TableConvert(mock.StateBlockWithoutWork()))
+		v, _ := mock.StateBlockWithoutWork().TableConvert()
+		r.Add(v)
 	}
-	r.Delete(TableConvert(blk1))
-	r.Delete(TableConvert(blk2))
+	r.Delete(&types.BlockHash{Hash: blk1.GetHash().String()})
+	r.Delete(&types.BlockHash{Hash: blk2.GetHash().String()})
 	time.Sleep(3 * time.Second)
 	c, err := r.BlocksCount()
 	if err != nil || c != batchMaxCount+10 {
@@ -59,14 +63,14 @@ func TestRelation_flush(t *testing.T) {
 		db:         store,
 		eb:         cc.EventBus(),
 		dir:        cfgFile,
-		deleteChan: make(chan Table, 10240),
-		addChan:    make(chan Table, 10240),
+		deleteChan: make(chan types.Table, 10240),
+		addChan:    make(chan types.Table, 10240),
 		closedChan: make(chan bool),
 		tables:     make(map[string]schema),
 		logger:     log.NewLogger("relation"),
 	}
-	tables := []Table{new(BlockHash)}
-	if err := r.init(tables); err != nil {
+	tables := new(types.BlockHash)
+	if err := r.Register(tables); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
@@ -76,10 +80,11 @@ func TestRelation_flush(t *testing.T) {
 	}()
 
 	for i := 0; i < batchMaxCount+10; i++ {
-		r.Add(TableConvert(mock.StateBlockWithoutWork()))
+		v1, _ := mock.StateBlockWithoutWork().TableConvert()
+		r.Add(v1)
 	}
 	for i := 0; i < batchMaxCount+10; i++ {
-		r.Delete(TableConvert(mock.StateBlockWithoutWork()))
+		r.Delete(&types.BlockHash{Hash: mock.StateBlockWithoutWork().GetHash().String()})
 	}
 	r.flush()
 	if len(r.addChan) > 0 || len(r.deleteChan) > 0 {
@@ -101,7 +106,8 @@ func TestRelation_Close(t *testing.T) {
 	if len(cache) != 1 {
 		t.Fatal(len(cache))
 	}
-	store.Add(TableConvert(mock.StateBlockWithoutWork()))
+	v1, _ := mock.StateBlockWithoutWork().TableConvert()
+	store.Add(v1)
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}

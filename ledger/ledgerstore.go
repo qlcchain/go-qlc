@@ -8,7 +8,6 @@
 package ledger
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -52,5 +51,6 @@ type ContractStore interface {
 	IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error
 
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
-	Relation() *sqlx.DB
+	GetRelation(dest interface{}, query string) error
+	SelectRelation(dest interface{}, query string) error
 }
