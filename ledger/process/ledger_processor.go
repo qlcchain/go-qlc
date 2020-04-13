@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"sync"
 
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -22,6 +20,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"go.uber.org/zap"
 )
 
 type LedgerVerifier struct {
@@ -61,8 +60,8 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 	lv.logger.Info("check block, ", block.GetHash())
 	if c, ok := lv.blockCheck[block.Type]; ok {
 		r, err := c.Check(lv, block)
-		if err != nil {
-			lv.logger.Errorf("block check error: %s (%s, %s)", err.Error(), block.GetHash().String(), block.GetType().String())
+		if r == Other {
+			lv.logger.Errorf("block check: %s", err)
 		}
 		if r != Progress {
 			if r == UnReceivable {
@@ -71,7 +70,7 @@ func (lv *LedgerVerifier) BlockCheck(block *types.StateBlock) (ProcessResult, er
 					return Progress, nil
 				}
 			}
-			lv.logger.Debugf("block check non-progress: %s (%s, %s)", r.String(), block.GetHash().String(), block.GetType().String())
+			lv.logger.Debugf("block check: %s", err)
 		}
 		return r, err
 	} else {
