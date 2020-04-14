@@ -67,7 +67,7 @@ func TestAirdropRewards(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := ctx.SaveStorage(); err != nil {
+			if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -153,7 +153,7 @@ func TestConfidantRewards(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := ctx.SaveStorage(); err != nil {
+			if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 				t.Fatal(err)
 			}
 

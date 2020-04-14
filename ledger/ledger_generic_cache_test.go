@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common/types"
 )
 

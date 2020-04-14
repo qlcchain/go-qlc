@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/ledger/process"
+
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -79,7 +81,7 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 		return
 	}
 
-	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+	tm, err := ctx.GetTokenMeta(a1, cfg.GasToken())
 	if err != nil {
 		return
 	}
@@ -120,7 +122,7 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 
 		sb.Signature = account1.Sign(sb.GetHash())
 
-		h := ctx.cache.Trie().Hash()
+		h := vmstore.TrieHash(ctx)
 		if h != nil {
 			povHeader, err2 := l.GetLatestPovHeader()
 			if err2 != nil {
@@ -130,8 +132,8 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 			sb.PoVHeight = povHeader.GetHeight()
 			sb.Extra = *h
 		}
-
-		if err = updateBlock(l, sb); err != nil {
+		verifier := process.NewLedgerVerifier(l)
+		if err = verifier.BlockProcess(sb); err != nil {
 			return
 		}
 
@@ -139,7 +141,7 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 		if _, _, err = createContract.ProcessSend(ctx, sb); err != nil {
 			return
 		} else {
-			if err = ctx.SaveStorage(); err != nil {
+			if err = l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 				return
 			}
 		}
@@ -160,8 +162,9 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 	a2 := account2.Address()
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
+	verifier := process.NewLedgerVerifier(l)
 
-	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
+	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(l, &a1); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(contractParams) == 0 {
@@ -175,7 +178,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 				t.Fatal(err)
 			} else {
 				terminateContract := &TerminateContract{}
-				tm, err := ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
+				tm, err := ctx.GetTokenMeta(a2, cfg.GasToken())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -199,7 +202,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 
 					sb.Signature = account2.Sign(sb.GetHash())
 
-					h := ctx.cache.Trie().Hash()
+					h := vmstore.TrieHash(ctx)
 					if h != nil {
 						povHeader, err := l.GetLatestPovHeader()
 						if err != nil {
@@ -209,14 +212,14 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 						sb.Extra = *h
 					}
 
-					if err := updateBlock(l, sb); err != nil {
+					if err := verifier.BlockProcess(sb); err != nil {
 						t.Fatal(err)
 					}
 
 					if _, _, err := terminateContract.ProcessSend(ctx, sb); err != nil {
 						t.Fatal(err)
 					} else {
-						if err := ctx.SaveStorage(); err != nil {
+						if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 							t.Fatal(err)
 						} else {
 							if r, err := terminateContract.GetTargetReceiver(ctx, sb); err != nil {
@@ -260,8 +263,8 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 	a1 := account1.Address()
 	a2 := account2.Address()
 	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
-
-	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
+	verifier := process.NewLedgerVerifier(l)
+	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(l, &a1); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(contractParams) == 0 {
@@ -278,7 +281,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// add next stop
-			tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+			tm, err := ctx.GetTokenMeta(a1, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -305,22 +308,23 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account1.Sign(sb.GetHash())
 
-			h := ctx.cache.Trie().Hash()
+			h := vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
 			}
 
-			if err := updateBlock(l, sb); err != nil {
+			if err := verifier.BlockProcess(sb); err != nil {
 				t.Fatal(err)
 			} else {
 				addNextStop := &AddNextStop{}
 				if _, _, err := addNextStop.ProcessSend(ctx, sb); err != nil {
 					t.Fatal(err)
 				} else {
-					if err := ctx.SaveStorage(); err != nil {
+					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 						t.Fatal(err)
 					}
+
 					if c, err := cabi.GetSettlementContract(ctx, &address); err != nil {
 						t.Fatal(err)
 					} else {
@@ -336,7 +340,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// update next stop
-			tm, err = ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+			tm, err = ctx.GetTokenMeta(a1, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -367,22 +371,23 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account1.Sign(sb.GetHash())
 
-			h = ctx.cache.Trie().Hash()
+			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
 			}
 
-			if err := updateBlock(l, sb); err != nil {
+			if err := verifier.BlockProcess(sb); err != nil {
 				t.Fatal(err)
 			} else {
 				updateNextStop := UpdateNextStop{}
 				if _, _, err := updateNextStop.ProcessSend(ctx, sb); err != nil {
 					t.Fatal(err)
 				} else {
-					if err := ctx.SaveStorage(); err != nil {
+					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 						t.Fatal(err)
 					}
+
 					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
 					if _, err := updateNextStop.DoReceive(ctx, rb, sb); err != nil {
 						t.Fatal(err)
@@ -402,7 +407,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// remove next stop
-			tm, err = ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+			tm, err = ctx.GetTokenMeta(a1, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -432,20 +437,20 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account1.Sign(sb.GetHash())
 
-			h = ctx.cache.Trie().Hash()
+			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
 			}
 
-			if err := updateBlock(l, sb); err != nil {
+			if err := verifier.BlockProcess(sb); err != nil {
 				t.Fatal(err)
 			} else {
 				removeNextStop := RemoveNextStop{}
 				if _, _, err := removeNextStop.ProcessSend(ctx, sb); err != nil {
 					t.Fatal(err)
 				} else {
-					if err := ctx.SaveStorage(); err != nil {
+					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 						t.Fatal(err)
 					}
 					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
@@ -463,7 +468,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// add pre stop
-			tm, err = ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
+			tm, err = ctx.GetTokenMeta(a2, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -490,20 +495,20 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account2.Sign(sb.GetHash())
 
-			h = ctx.cache.Trie().Hash()
+			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
 			}
 
-			if err := updateBlock(l, sb); err != nil {
+			if err := verifier.BlockProcess(sb); err != nil {
 				t.Fatal(err)
 			} else {
 				addPreStop := &AddPreStop{}
 				if _, _, err := addPreStop.ProcessSend(ctx, sb); err != nil {
 					t.Fatal(err)
 				} else {
-					if err := ctx.SaveStorage(); err != nil {
+					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 						t.Fatal(err)
 					}
 					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
@@ -525,7 +530,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// update pre stop
-			tm, err = ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
+			tm, err = ctx.GetTokenMeta(a2, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -556,20 +561,20 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account2.Sign(sb.GetHash())
 
-			h = ctx.cache.Trie().Hash()
+			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
 			}
 
-			if err := updateBlock(l, sb); err != nil {
+			if err := verifier.BlockProcess(sb); err != nil {
 				t.Fatal(err)
 			} else {
 				updatePreStop := &UpdatePreStop{}
 				if _, _, err := updatePreStop.ProcessSend(ctx, sb); err != nil {
 					t.Fatal(err)
 				} else {
-					if err := ctx.SaveStorage(); err != nil {
+					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 						t.Fatal(err)
 					}
 					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
@@ -591,7 +596,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			}
 
 			// remove pre stop
-			tm, err = ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
+			tm, err = ctx.GetTokenMeta(a2, cfg.GasToken())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -621,22 +626,23 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account2.Sign(sb.GetHash())
 
-			h = ctx.cache.Trie().Hash()
+			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
 			}
 
-			if err := updateBlock(l, sb); err != nil {
+			if err := verifier.BlockProcess(sb); err != nil {
 				t.Fatal(err)
 			} else {
 				removePreStop := &RemovePreStop{}
 				if _, _, err := removePreStop.ProcessSend(ctx, sb); err != nil {
 					t.Fatal(err)
 				} else {
-					if err := ctx.SaveStorage(); err != nil {
+					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 						t.Fatal(err)
 					}
+
 					rb := &types.StateBlock{Timestamp: time.Now().Unix()}
 					if _, err := removePreStop.DoReceive(ctx, rb, sb); err != nil {
 						t.Fatal(err)
@@ -673,8 +679,8 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 	}
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
-
-	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+	verifier := process.NewLedgerVerifier(l)
+	tm, err := ctx.GetTokenMeta(a1, cfg.GasToken())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -711,7 +717,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 		sb.Signature = account1.Sign(sb.GetHash())
 
-		h := ctx.cache.Trie().Hash()
+		h := vmstore.TrieHash(ctx)
 		if h != nil {
 			povHeader, err := l.GetLatestPovHeader()
 			if err != nil {
@@ -721,7 +727,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			sb.Extra = *h
 		}
 
-		if err := updateBlock(l, sb); err != nil {
+		if err := verifier.BlockProcess(sb); err != nil {
 			t.Fatal(err)
 		}
 
@@ -733,7 +739,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			if _, _, err := createContract.ProcessSend(ctx, sb); err != nil {
 				t.Fatal(err)
 			}
-			if err := ctx.SaveStorage(); err != nil {
+			if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -761,7 +767,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			}
 		}
 
-		if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(ctx, &a1); err != nil {
+		if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(l, &a1); err != nil {
 			t.Fatal(err)
 		} else {
 			if len(contractParams) == 0 {
@@ -778,7 +784,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 						ContractAddress: address,
 						ConfirmDate:     time.Now().Unix(),
 					}
-					tm2, err := ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
+					tm2, err := ctx.GetTokenMeta(a2, cfg.GasToken())
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -810,7 +816,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 							t.Fatal(err)
 						} else {
 							t.Log(pk, " >>> ", info)
-							if err := ctx.SaveStorage(); err != nil {
+							if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 								t.Fatal(err)
 							}
 
@@ -833,7 +839,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										t.Log(rb2.String())
 
 										// add prestop
-										tm, err = ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+										tm, err = ctx.GetTokenMeta(a1, cfg.GasToken())
 										if err != nil {
 											t.Fatal(err)
 										}
@@ -860,13 +866,13 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 										sb.Signature = account1.Sign(sb.GetHash())
 
-										h := ctx.cache.Trie().Hash()
+										h := vmstore.TrieHash(ctx)
 										if h != nil {
 											sb.PoVHeight = 0
 											sb.Extra = *h
 										}
 
-										if err := updateBlock(l, sb); err != nil {
+										if err := verifier.BlockProcess(sb); err != nil {
 											t.Fatal(err)
 										}
 										addNextStop := &AddNextStop{}
@@ -874,7 +880,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										} else {
 											t.Log(pendingKey, info)
-											if err := ctx.SaveStorage(); err != nil {
+											if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 												t.Fatal(err)
 											}
 										}
@@ -895,7 +901,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										}
 
 										// add prestop
-										tm2, err := ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
+										tm2, err := ctx.GetTokenMeta(a2, cfg.GasToken())
 										if err != nil {
 											t.Fatal(err)
 										}
@@ -923,13 +929,13 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 										sb2.Signature = account2.Sign(sb.GetHash())
 
-										h = ctx.cache.Trie().Hash()
+										h = vmstore.TrieHash(ctx)
 										if h != nil {
 											sb2.PoVHeight = 0
 											sb2.Extra = *h
 										}
 
-										if err := updateBlock(l, sb2); err != nil {
+										if err := verifier.BlockProcess(sb2); err != nil {
 											t.Fatal(err)
 										}
 										addPreStop := &AddPreStop{}
@@ -937,7 +943,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										} else {
 											t.Log(pendingKey, info)
-											if err := ctx.SaveStorage(); err != nil {
+											if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 												t.Fatal(err)
 											}
 										}
@@ -959,7 +965,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										// start process CDR as ac1
 										cdrContract := &ProcessCDR{}
 
-										tm, err = ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+										tm, err = ctx.GetTokenMeta(a1, cfg.GasToken())
 										if err != nil {
 											t.Fatal(err)
 										}
@@ -1000,13 +1006,13 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 										sb.Signature = account1.Sign(sb.GetHash())
 
-										h = ctx.cache.Trie().Hash()
+										h = vmstore.TrieHash(ctx)
 										if h != nil {
 											sb.PoVHeight = 0
 											sb.Extra = *h
 										}
 
-										if err := updateBlock(l, sb); err != nil {
+										if err := verifier.BlockProcess(sb); err != nil {
 											t.Fatal(err)
 										}
 
@@ -1016,7 +1022,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											t.Log(pk, pi)
 										}
 										// start process CDR as ac2
-										tm2, err = ctx.Ledger.GetTokenMeta(a2, cfg.GasToken())
+										tm2, err = ctx.GetTokenMeta(a2, cfg.GasToken())
 										if err != nil {
 											t.Fatal(err)
 										}
@@ -1057,13 +1063,13 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 										sb.Signature = account2.Sign(sb.GetHash())
 
-										h = ctx.cache.Trie().Hash()
+										h = vmstore.TrieHash(ctx)
 										if h != nil {
 											sb.PoVHeight = 0
 											sb.Extra = *h
 										}
 
-										if err := updateBlock(l, sb); err != nil {
+										if err := verifier.BlockProcess(sb); err != nil {
 											t.Fatal(err)
 										}
 
@@ -1083,7 +1089,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											if hash, err := cdr1.Params[0].ToHash(); err != nil {
 												t.Fatal(err)
 											} else {
-												if status, err := cabi.GetCDRStatus(ctx, &address, hash); err != nil {
+												if status, err := cabi.GetCDRStatus(l, &address, hash); err != nil {
 													t.Fatal(err)
 												} else {
 													t.Log(status)
@@ -1601,9 +1607,10 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
+	verifier := process.NewLedgerVerifier(l)
 
 	a1 := account1.Address()
-	tm, err := ctx.Ledger.GetTokenMeta(a1, cfg.GasToken())
+	tm, err := ctx.GetTokenMeta(a1, cfg.GasToken())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1647,7 +1654,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 
 		sb.Signature = account1.Sign(sb.GetHash())
 
-		h := ctx.cache.Trie().Hash()
+		h := vmstore.TrieHash(ctx)
 		if h != nil {
 			povHeader, err := l.GetLatestPovHeader()
 			if err != nil {
@@ -1657,7 +1664,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 			sb.Extra = *h
 		}
 
-		if err := updateBlock(l, sb); err != nil {
+		if err := verifier.BlockProcess(sb); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1669,7 +1676,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 			if _, _, err := registerAsset.ProcessSend(ctx, sb); err != nil {
 				t.Fatal(err)
 			}
-			if err := ctx.SaveStorage(); err != nil {
+			if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -1704,7 +1711,7 @@ func TestProcessCDR_save(t *testing.T) {
 		t.Log(a1.String())
 		t.Log(a2.String())
 		p := &ProcessCDR{}
-		ctx := vmstore.NewVMContext(l)
+		ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 		data, err := cabi.GetContractParam(ctx, &ca)
 		if err != nil {
 			t.Fatal(err)
@@ -1737,15 +1744,15 @@ func TestProcessCDR_save(t *testing.T) {
 			}
 
 			for _, cdr := range cdrs {
-				ctx := vmstore.NewVMContext(l)
+				ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 				h, _ := cdr.ToHash()
 				key, _ := types.HashBytes(ca[:], h[:])
 				t.Log(a1.String(), ": ", key.String())
 				if err = p.save(ctx, sb, &ca, param, cdr); err != nil {
 					t.Log(err)
 				} else {
-					if err = ctx.SaveStorage(); err != nil {
-						t.Log(err)
+					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+						t.Fatal(err)
 					}
 				}
 			}
@@ -1761,15 +1768,15 @@ func TestProcessCDR_save(t *testing.T) {
 			}
 
 			for _, cdr := range cdrs {
-				ctx := vmstore.NewVMContext(l)
+				ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 				h, _ := cdr.ToHash()
 				key, _ := types.HashBytes(ca[:], h[:])
 				t.Log(a2.String(), ": ", key.String())
 				if err = p.save(ctx, sb, &ca, param, cdr); err != nil {
 					t.Log(err)
 				} else {
-					if err = ctx.SaveStorage(); err != nil {
-						t.Log(err)
+					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+						t.Fatal(err)
 					}
 				}
 			}
@@ -1805,7 +1812,7 @@ func TestProcessCDR_save(t *testing.T) {
 
 		time.Sleep(time.Second)
 
-		if records, err := cabi.GetCDRStatusByDate(ctx, &ca, 0, 0); err != nil {
+		if records, err := cabi.GetCDRStatusByDate(l, &ca, 0, 0); err != nil {
 			t.Fatal(err)
 		} else {
 			if len(records) != 10 {

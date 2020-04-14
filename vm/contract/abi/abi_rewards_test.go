@@ -50,8 +50,8 @@ func TestGetRewardsDetail(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	err := vmContext.SaveStorage()
-	if err != nil {
+
+	if err := l.SaveStorage(vmstore.ToCache(vmContext)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -59,7 +59,7 @@ func TestGetRewardsDetail(t *testing.T) {
 
 	txId := hex.EncodeToString(data[0].Param.Id[:])
 	t.Log("query ", txId)
-	infos, err := GetRewardsDetail(vmContext, txId)
+	infos, err := GetRewardsDetail(l, txId)
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -69,7 +69,7 @@ func TestGetRewardsDetail(t *testing.T) {
 			t.Log("find ", util.ToIndentString(value))
 		}
 
-		rewards, err := GetTotalRewards(vmContext, txId)
+		rewards, err := GetTotalRewards(l, txId)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,15 +108,15 @@ func TestGetConfidantDetail(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	err := vmContext.SaveStorage()
-	if err != nil {
+
+	if err := l.SaveStorage(vmstore.ToCache(vmContext)); err != nil {
 		t.Fatal(err)
 	}
 
 	t.Log("prepare data successful")
 	rxAddress := data[0].Param.Beneficial
 	t.Log("query ", rxAddress.String())
-	infos, err := GetConfidantRewordsDetail(vmContext, rxAddress)
+	infos, err := GetConfidantRewordsDetail(l, rxAddress)
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -126,7 +126,7 @@ func TestGetConfidantDetail(t *testing.T) {
 			}
 		}
 
-		rewards, err := GetConfidantRewords(vmContext, rxAddress)
+		rewards, err := GetConfidantRewords(l, rxAddress)
 		if err != nil {
 			t.Fatal(err)
 		} else {

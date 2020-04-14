@@ -44,7 +44,7 @@ func setPovStatus(l *ledger.Ledger, cc *qlcchainctx.ChainContext, t *testing.T) 
 func setLedgerStatus(l *ledger.Ledger, t *testing.T) {
 	genesisInfos := config.GenesisInfos()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MintageAddress)
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis
@@ -73,5 +73,7 @@ func setLedgerStatus(l *ledger.Ledger, t *testing.T) {
 			}
 		}
 	}
-	_ = ctx.SaveStorage()
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
 }

@@ -188,7 +188,9 @@ func (n *Node) startLedgerService() {
 			}
 		}
 	}
-	_ = ctx.SaveStorage()
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		n.t.Fatal(err)
+	}
 }
 
 func (n *Node) startConsensusService() {
@@ -256,8 +258,7 @@ func (n *Node) GenerateSendBlock(from *types.Account, to types.Address, amount t
 		tokenName = "QLC"
 	}
 
-	vmContext := vmstore.NewVMContext(n.ledger, &contractaddress.MintageAddress)
-	info, err := mintage.GetTokenByName(vmContext, tokenName)
+	info, err := n.ledger.GetTokenByName(tokenName)
 	if err != nil {
 		n.t.Fatal(err)
 	}

@@ -83,12 +83,12 @@ func TestDestroyContract(t *testing.T) {
 		}
 	}
 
-	err = vmstore.SaveStorage(vmContext)
+	err = l.SaveStorage(vmstore.ToCache(vmContext))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if infos, err := abi.GetDestroyInfoDetail(vmContext, &addr); err == nil {
+	if infos, err := abi.GetDestroyInfoDetail(l, &addr); err == nil {
 		for idx, info := range infos {
 			t.Log(idx, util.ToIndentString(info))
 		}

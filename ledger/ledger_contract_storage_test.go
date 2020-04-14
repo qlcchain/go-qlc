@@ -5,7 +5,6 @@
 package ledger
 
 import (
-	"bytes"
 	"reflect"
 	"testing"
 
@@ -22,7 +21,6 @@ func addContractValue(t *testing.T, l *Ledger) (*types.ContractKey, *types.Contr
 	}
 	value := &types.ContractValue{
 		BlockHash: mock.Hash(),
-		Root:      nil,
 	}
 	if err := l.AddOrUpdateContractValue(key, value, l.cache.GetCache()); err != nil {
 		t.Fatal(err)
@@ -133,14 +131,13 @@ func TestLedger_BatchUpdateContractValue(t *testing.T) {
 	a := mock.Address()
 	previous := types.ZeroHash
 	for i := 0; i < 5; i++ {
-		root := mock.Hash()
 		block := mock.StateBlockWithAddress(a)
 		block.Type = types.ContractSend
 		block.Link = ca.ToHash()
 		//block.Previous = mock.Hash()
 		cache = append(cache, block)
 		h := block.GetHash()
-		if err := l.UpdateContractValueByBlock(block, &root); err != nil {
+		if err := l.UpdateContractValueByBlock(block); err != nil {
 			t.Fatal(err)
 		}
 		if value, err := l.GetContractValue(&types.ContractKey{
@@ -151,8 +148,8 @@ func TestLedger_BatchUpdateContractValue(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		} else {
-			if value.BlockHash.IsZero() || value.Root != nil {
-				t.Fatalf("%v, %v", value.BlockHash, value.Root)
+			if value.BlockHash.IsZero() {
+				t.Fatalf("%v", value.BlockHash)
 			}
 		}
 
@@ -163,8 +160,8 @@ func TestLedger_BatchUpdateContractValue(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		} else {
-			if value.BlockHash != previous || value.Root == nil || !bytes.Equal(value.Root[:], root[:]) {
-				t.Fatalf("%v, act:%v, exp: %s", value.BlockHash, value.Root, root)
+			if value.BlockHash != previous {
+				t.Fatalf("invalid hash, act:%v, exp: %v", value.BlockHash, previous)
 			}
 		}
 		previous = h
@@ -202,7 +199,6 @@ func TestLedger_IteratorContractStorage(t *testing.T) {
 	ca := mock.Address()
 	token := mock.Hash()
 	for i := 0; i < 4; i++ {
-		root := mock.Hash()
 		var block *types.StateBlock
 		if i%2 == 0 {
 			block = mock.StateBlockWithAddress(addr)
@@ -211,7 +207,7 @@ func TestLedger_IteratorContractStorage(t *testing.T) {
 		block.Type = types.ContractSend
 		block.Link = ca.ToHash()
 		block.Token = token
-		if err := l.UpdateContractValueByBlock(block, &root); err != nil {
+		if err := l.UpdateContractValueByBlock(block); err != nil {
 			t.Fatal(err)
 		}
 		if _, ok := counter[block.Address]; ok {

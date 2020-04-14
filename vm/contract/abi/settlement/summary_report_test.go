@@ -10,6 +10,9 @@ package settlement
 import (
 	"testing"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/ledger"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -47,7 +50,8 @@ func TestMultiPartySummaryResult_UpdateState(t *testing.T) {
 func Test_verifyMultiPartyAddress(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	a1 := mock.Address()
 	a2 := mock.Address()
@@ -89,7 +93,7 @@ func Test_verifyMultiPartyAddress(t *testing.T) {
 	}
 
 	// save to db
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -98,7 +102,7 @@ func Test_verifyMultiPartyAddress(t *testing.T) {
 	ca3, _ := contracts[2].Address()
 
 	type args struct {
-		ctx        *vmstore.VMContext
+		ctx        ledger.Store
 		firstAddr  *types.Address
 		secondAddr *types.Address
 	}
@@ -113,7 +117,7 @@ func Test_verifyMultiPartyAddress(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx:        ctx,
+				ctx:        l,
 				firstAddr:  &ca1,
 				secondAddr: &ca2,
 			},
@@ -124,7 +128,7 @@ func Test_verifyMultiPartyAddress(t *testing.T) {
 		}, {
 			name: "f1",
 			args: args{
-				ctx:        ctx,
+				ctx:        l,
 				firstAddr:  &ca1,
 				secondAddr: &a2,
 			},
@@ -135,7 +139,7 @@ func Test_verifyMultiPartyAddress(t *testing.T) {
 		}, {
 			name: "f2",
 			args: args{
-				ctx:        ctx,
+				ctx:        l,
 				firstAddr:  &ca1,
 				secondAddr: &ca3,
 			},
@@ -146,7 +150,7 @@ func Test_verifyMultiPartyAddress(t *testing.T) {
 		}, {
 			name: "f3",
 			args: args{
-				ctx:        ctx,
+				ctx:        l,
 				firstAddr:  &a2,
 				secondAddr: &ca2,
 			},

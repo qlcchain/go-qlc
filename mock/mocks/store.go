@@ -80,6 +80,20 @@ func (_m *Store) AddAccountMetaCache(value *types.AccountMeta, batch ...storage.
 	return r0
 }
 
+// AddAccountMetaHistory provides a mock function with given fields: tm, block, cache
+func (_m *Store) AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache *ledger.Cache) error {
+	ret := _m.Called(tm, block, cache)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.TokenMeta, *types.StateBlock, *ledger.Cache) error); ok {
+		r0 = rf(tm, block, cache)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AddBlockCache provides a mock function with given fields: blk, batch
 func (_m *Store) AddBlockCache(blk *types.StateBlock, batch ...storage.Batch) error {
 	_va := make([]interface{}, len(batch))
@@ -1133,6 +1147,20 @@ func (_m *Store) DeleteBlockCache(hash types.Hash, batch ...storage.Batch) error
 	var r0 error
 	if rf, ok := ret.Get(0).(func(types.Hash, ...storage.Batch) error); ok {
 		r0 = rf(hash, batch...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeleteBlockPrivatePayload provides a mock function with given fields: hash
+func (_m *Store) DeleteBlockPrivatePayload(hash types.Hash) error {
+	ret := _m.Called(hash)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash) error); ok {
+		r0 = rf(hash)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2794,6 +2822,20 @@ func (_m *Store) GetRandomStateBlock() (*types.StateBlock, error) {
 	return r0, r1
 }
 
+// GetRelation provides a mock function with given fields: dest, query
+func (_m *Store) GetRelation(dest interface{}, query string) error {
+	ret := _m.Called(dest, query)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}, string) error); ok {
+		r0 = rf(dest, query)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetRepresentation provides a mock function with given fields: key, c
 func (_m *Store) GetRepresentation(key types.Address, c ...storage.Cache) (*types.Benefit, error) {
 	_va := make([]interface{}, len(c))
@@ -2947,6 +2989,52 @@ func (_m *Store) GetStateBlocksConfirmed(fn func(*types.StateBlock) error) error
 	}
 
 	return r0
+}
+
+// GetTokenById provides a mock function with given fields: tokenId
+func (_m *Store) GetTokenById(tokenId types.Hash) (*types.TokenInfo, error) {
+	ret := _m.Called(tokenId)
+
+	var r0 *types.TokenInfo
+	if rf, ok := ret.Get(0).(func(types.Hash) *types.TokenInfo); ok {
+		r0 = rf(tokenId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.TokenInfo)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(types.Hash) error); ok {
+		r1 = rf(tokenId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetTokenByName provides a mock function with given fields: tokenName
+func (_m *Store) GetTokenByName(tokenName string) (*types.TokenInfo, error) {
+	ret := _m.Called(tokenName)
+
+	var r0 *types.TokenInfo
+	if rf, ok := ret.Get(0).(func(string) *types.TokenInfo); ok {
+		r0 = rf(tokenName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.TokenInfo)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(tokenName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetTokenMeta provides a mock function with given fields: address, tokenType
@@ -3516,6 +3604,45 @@ func (_m *Store) IteratorContractStorage(prefix []byte, callback func(*types.Con
 	return r0
 }
 
+// ListTokens provides a mock function with given fields:
+func (_m *Store) ListTokens() ([]*types.TokenInfo, error) {
+	ret := _m.Called()
+
+	var r0 []*types.TokenInfo
+	if rf, ok := ret.Get(0).(func() []*types.TokenInfo); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.TokenInfo)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// NewVMIterator provides a mock function with given fields: address
+func (_m *Store) NewVMIterator(address *types.Address) *ledger.Iterator {
+	ret := _m.Called(address)
+
+	var r0 *ledger.Iterator
+	if rf, ok := ret.Get(0).(func(*types.Address) *ledger.Iterator); ok {
+		r0 = rf(address)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ledger.Iterator)
+		}
+	}
+
+	return r0
+}
+
 // PendingAmount provides a mock function with given fields: address, token
 func (_m *Store) PendingAmount(address types.Address, token types.Hash) (types.Balance, error) {
 	ret := _m.Called(address, token)
@@ -3537,6 +3664,27 @@ func (_m *Store) PendingAmount(address types.Address, token types.Hash) (types.B
 	return r0, r1
 }
 
+// SaveStorage provides a mock function with given fields: val, c
+func (_m *Store) SaveStorage(val map[string]interface{}, c ...storage.Cache) error {
+	_va := make([]interface{}, len(c))
+	for _i := range c {
+		_va[_i] = c[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, val)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(map[string]interface{}, ...storage.Cache) error); ok {
+		r0 = rf(val, c...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SearchVmLogs provides a mock function with given fields: fn
 func (_m *Store) SearchVmLogs(fn func(types.Hash, *types.VmLogs) error) error {
 	ret := _m.Called(fn)
@@ -3544,6 +3692,20 @@ func (_m *Store) SearchVmLogs(fn func(types.Hash, *types.VmLogs) error) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(func(types.Hash, *types.VmLogs) error) error); ok {
 		r0 = rf(fn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SelectRelation provides a mock function with given fields: dest, query
+func (_m *Store) SelectRelation(dest interface{}, query string) error {
+	ret := _m.Called(dest, query)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}, string) error); ok {
+		r0 = rf(dest, query)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -3649,6 +3811,20 @@ func (_m *Store) UpdateAccountMeta(value *types.AccountMeta, c storage.Cache) er
 	return r0
 }
 
+// UpdateAccountMetaHistory provides a mock function with given fields: tm, block, cache
+func (_m *Store) UpdateAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache *ledger.Cache) error {
+	ret := _m.Called(tm, block, cache)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.TokenMeta, *types.StateBlock, *ledger.Cache) error); ok {
+		r0 = rf(tm, block, cache)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpdateAccountMeteCache provides a mock function with given fields: value, batch
 func (_m *Store) UpdateAccountMeteCache(value *types.AccountMeta, batch ...storage.Batch) error {
 	_va := make([]interface{}, len(batch))
@@ -3670,20 +3846,20 @@ func (_m *Store) UpdateAccountMeteCache(value *types.AccountMeta, batch ...stora
 	return r0
 }
 
-// UpdateContractValueByBlock provides a mock function with given fields: block, trieRoot, c
-func (_m *Store) UpdateContractValueByBlock(block *types.StateBlock, trieRoot *types.Hash, c ...storage.Cache) error {
+// UpdateContractValueByBlock provides a mock function with given fields: block, c
+func (_m *Store) UpdateContractValueByBlock(block *types.StateBlock, c ...storage.Cache) error {
 	_va := make([]interface{}, len(c))
 	for _i := range c {
 		_va[_i] = c[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, block, trieRoot)
+	_ca = append(_ca, block)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.StateBlock, *types.Hash, ...storage.Cache) error); ok {
-		r0 = rf(block, trieRoot, c...)
+	if rf, ok := ret.Get(0).(func(*types.StateBlock, ...storage.Cache) error); ok {
+		r0 = rf(block, c...)
 	} else {
 		r0 = ret.Error(0)
 	}

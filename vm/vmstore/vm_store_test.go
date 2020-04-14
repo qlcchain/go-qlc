@@ -25,7 +25,7 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 )
 
-func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
+func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext, ledger.Store) {
 	t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "vm", uuid.New().String())
@@ -34,6 +34,17 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
 	cm := config.NewCfgManager(dir)
 	cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
+
+	block, td := mock.GeneratePovBlock(nil, 0)
+	if err := l.AddPovBlock(block, td); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddPovBestHash(block.GetHeight(), block.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.SetPovLatestHeight(block.GetHeight()); err != nil {
+		t.Fatal(err)
+	}
 
 	v := NewVMContext(l, nil)
 
@@ -48,27 +59,27 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	}, v
+	}, v, l
 }
 
 func TestLedger_Storage(t *testing.T) {
-	teardownTestCase, context := setupTestCase(t)
+	teardownTestCase, ctx, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	prefix := mock.Hash()
 	key := []byte{10, 20, 30}
 	value := []byte{10, 20, 30, 40}
-	if err := context.SetStorage(prefix[:], key, value); err != nil {
+	if err := ctx.SetStorage(prefix[:], key, value); err != nil {
 		t.Fatal(err)
 	}
 
 	for i := 0; i < 10; i++ {
-		if err := context.SetStorage(prefix[:], []byte{10, 20, 40, byte(i)}, value); err != nil {
+		if err := ctx.SetStorage(prefix[:], []byte{10, 20, 40, byte(i)}, value); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	v, err := context.GetStorage(prefix[:], key)
+	v, err := ctx.GetStorage(prefix[:], key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,18 +88,18 @@ func TestLedger_Storage(t *testing.T) {
 	}
 
 	storageKey := getStorageKey(prefix[:], key)
-	if get, err := context.get(storageKey); err == nil {
+	if get, err := ctx.get(storageKey); err == nil {
 		t.Fatal("invalid storage", err)
 	} else {
 		t.Log(get, err)
 	}
 
-	err = context.SaveStorage()
+	err = l.SaveStorage(ToCache(ctx))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if get, err := context.get(storageKey); get == nil {
+	if get, err := ctx.get(storageKey); get == nil {
 		t.Fatal("invalid storage", err)
 	} else {
 		if !bytes.EqualFold(get, value) {
@@ -98,16 +109,8 @@ func TestLedger_Storage(t *testing.T) {
 		}
 	}
 
-	if err := context.RemoveStorage(prefix[:], key); err != nil {
-		t.Fatal(err)
-	}
-
-	if storage, err := context.GetStorage(prefix[:], key); err == nil && storage != nil {
-		t.Fatal("failed to delete storage")
-	}
-
 	counter := 0
-	if err = context.Iterator(prefix[:], func(key []byte, value []byte) error {
+	if err = ctx.Iterator(prefix[:], func(key []byte, value []byte) error {
 		counter++
 		return nil
 	}); err != nil {
@@ -118,11 +121,11 @@ func TestLedger_Storage(t *testing.T) {
 		t.Fatal("failed to iterator context data")
 	}
 
-	storage := context.cache.Storage()
+	storage := ctx.cache.storage
 	if len(storage) != 10 {
 		t.Fatal("failed to iterator cache data")
 	}
-	cacheTrie := context.cache.Trie()
+	cacheTrie := ctx.cache.Trie()
 	if cacheTrie == nil {
 		t.Fatal("invalid trie")
 	}
@@ -132,9 +135,14 @@ func TestLedger_Storage(t *testing.T) {
 	} else {
 		t.Log(hash.String())
 	}
-	if err = context.SaveTrie(); err != nil {
-		t.Fatal(err)
-	}
+}
+
+func getStorageKey(prefix []byte, key []byte) []byte {
+	var storageKey []byte
+	storageKey = append(storageKey, []byte{byte(storage.KeyPrefixVMStorage)}...)
+	storageKey = append(storageKey, prefix...)
+	storageKey = append(storageKey, key...)
+	return storageKey
 }
 
 func TestGetStorageKey(t *testing.T) {
@@ -147,7 +155,7 @@ func TestGetStorageKey(t *testing.T) {
 			prefix := make([]byte, 10)
 			key := make([]byte, 5)
 			storageKey := getStorageKey(prefix, key)
-			if storageKey[0] != storage.KeyPrefixTrieVMStorage {
+			if storageKey[0] != storage.KeyPrefixVMStorage {
 				t.Errorf("invalid prefix 0x%x", storageKey[:1])
 			}
 			if !bytes.HasPrefix(storageKey[1:], prefix) {
@@ -164,7 +172,7 @@ func TestGetStorageKey(t *testing.T) {
 }
 
 func TestVMCache_AppendLog(t *testing.T) {
-	teardownTestCase, ctx := setupTestCase(t)
+	teardownTestCase, ctx, _ := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx.cache.AppendLog(&types.VmLog{
@@ -189,45 +197,8 @@ func TestVMCache_AppendLog(t *testing.T) {
 	}
 }
 
-func TestVMContext_GetStorageByKey(t *testing.T) {
-	teardownTestCase, ctx := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	prefix := mock.Hash()
-	key := []byte{10, 20, 30}
-	value := []byte{10, 20, 30, 40}
-
-	if err := ctx.SetStorage(prefix[:], key, value); err != nil {
-		t.Fatal(err)
-	}
-
-	storageKey := getStorageKey(prefix[:], key)
-
-	if v, err := ctx.GetStorageByKey(storageKey); err != nil {
-		t.Fatal(err)
-	} else if !bytes.Equal(v, value) {
-		t.Fatalf("exp: %v, act: %v", value, v)
-	}
-
-	if err := ctx.RemoveStorageByKey(storageKey); err != nil {
-		t.Fatal(err)
-	}
-
-	if v, err := ctx.GetStorageByKey(storageKey); err == nil {
-		t.Fatal(err)
-	} else {
-		if err != ErrStorageNotFound {
-			t.Fatal(err)
-		}
-
-		if v != nil {
-			t.Fatal(v)
-		}
-	}
-}
-
 func TestVMContext_IsUserAccount(t *testing.T) {
-	teardownTestCase, ctx := setupTestCase(t)
+	teardownTestCase, ctx, _ := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	if b, err := ctx.IsUserAccount(mock.Address()); err == nil || b {

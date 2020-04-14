@@ -34,8 +34,7 @@ func TestRepReward_GetLastRewardHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -67,8 +66,7 @@ func TestRepReward_GetRewardHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -279,7 +277,10 @@ func TestRepReward_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx.SetStorage(contractaddress.RepAddress.Bytes(), account[:], data)
-	ctx.SaveStorage()
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
+
 	_, _, err = r.ProcessSend(ctx, blk)
 	if err != ErrClaimRepeat {
 		t.Fatal(err)
@@ -303,7 +304,10 @@ func TestRepReward_SetStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx.SaveStorage()
+
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
 
 	ri, err := r.GetRewardHistory(ctx, blk.Address)
 	if err != nil || ri.EndHeight != 2879 || ri.RewardBlocks != 240 || ri.RewardAmount.Cmp(amount) != 0 {
@@ -491,7 +495,10 @@ func TestRepReward_checkParamExistInOldRewardInfos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx.SaveStorage()
+
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
 
 	err = r.checkParamExistInOldRewardInfos(ctx, param)
 	if err == nil {

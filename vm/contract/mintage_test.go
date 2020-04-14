@@ -28,7 +28,7 @@ func TestMintage(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MintageAddress)
 
 	a := account1.Address()
 	b := mock.Address()
@@ -82,11 +82,11 @@ func TestMintage(t *testing.T) {
 		} else {
 			t.Log(r)
 		}
-
-		if err := ctx.SaveStorage(); err != nil {
+		if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 			t.Fatal(err)
 		}
-		if tokens, err := mintage.ListTokens(ctx); err != nil {
+
+		if tokens, err := l.ListTokens(); err != nil {
 			t.Fatal(err)
 		} else {
 			t.Log(util.ToIndentString(tokens))
@@ -144,7 +144,7 @@ func TestMintage(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := ctx.SaveStorage(); err != nil {
+			if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 				t.Fatal(err)
 			}
 		}

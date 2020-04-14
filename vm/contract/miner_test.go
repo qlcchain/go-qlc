@@ -21,7 +21,7 @@ func TestMinerReward_GetLastRewardHeight(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	account := mock.Address()
 	h, err := m.GetLastRewardHeight(ctx, account)
 	if h != 0 {
@@ -34,8 +34,7 @@ func TestMinerReward_GetLastRewardHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -53,7 +52,7 @@ func TestMinerReward_GetRewardHistory(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	account := mock.Address()
 	mi, err := m.GetRewardHistory(ctx, account)
 	if mi != nil || err == nil {
@@ -67,8 +66,7 @@ func TestMinerReward_GetRewardHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -86,7 +84,7 @@ func TestMinerReward_GetNodeRewardHeight(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	h, err := m.GetNodeRewardHeight(ctx)
 	if h != 0 {
 		t.Fatal()
@@ -138,7 +136,7 @@ func TestMinerReward_GetAvailRewardInfo(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	account := mock.Address()
 	lastHeight := uint64(0)
 	nodeHeight := common.PovMinerRewardHeightStart + uint64(common.POVChainBlocksPerDay)
@@ -175,7 +173,7 @@ func TestMinerReward_ProcessSend(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	blk := mock.StateBlock()
 	blk.Address = types.ZeroAddress
 	blk.Token = types.ZeroHash
@@ -281,7 +279,11 @@ func TestMinerReward_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx.SetStorage(contractaddress.MinerAddress.Bytes(), account[:], data)
-	ctx.SaveStorage()
+
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
+
 	_, _, err = m.ProcessSend(ctx, blk)
 	if err != ErrClaimRepeat {
 		t.Fatal(err)
@@ -296,7 +298,7 @@ func TestMinerReward_SetStorage(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	blk := mock.StateBlock()
 	blk.Address = mock.Address()
 	blk.Timestamp = common.TimeNow().Unix()
@@ -305,7 +307,9 @@ func TestMinerReward_SetStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx.SaveStorage()
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
 
 	mi, err := m.GetRewardHistory(ctx, blk.Address)
 	if err != nil || mi.EndHeight != 2879 || mi.RewardBlocks != 240 || mi.RewardAmount.Cmp(amount) != 0 {
@@ -321,7 +325,7 @@ func TestMinerReward_DoReceive(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	sendBlk := mock.StateBlock()
 	recvBlk := mock.StateBlock()
 	blks, err := m.DoReceive(ctx, recvBlk, sendBlk)
@@ -420,7 +424,7 @@ func TestMinerReward_DoGap(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	blk := mock.StateBlock()
 	gap, _, _ := m.DoGap(ctx, blk)
 	if gap != common.ContractNoGap {
@@ -469,7 +473,7 @@ func TestMinerReward_checkParamExistInOldRewardInfos(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	blk := mock.StateBlock()
 	account := mock.Address()
 
@@ -493,7 +497,9 @@ func TestMinerReward_checkParamExistInOldRewardInfos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx.SaveStorage()
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
 
 	err = m.checkParamExistInOldRewardInfos(ctx, param)
 	if err == nil {
@@ -509,7 +515,7 @@ func TestMinerReward_calcRewardBlocksByDayStats(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	account := mock.Address()
 
 	startHeight := common.PovMinerRewardHeightStart + 1
@@ -573,7 +579,7 @@ func TestMinerReward_GetTargetReceiver(t *testing.T) {
 	defer clear()
 
 	m := new(MinerReward)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 
 	blk := mock.StateBlock()
 	account := mock.Address()

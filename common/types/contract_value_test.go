@@ -45,7 +45,6 @@ func TestContractValue_Serialize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			z := &ContractValue{
 				BlockHash: tt.fields.Previous,
-				Root:      tt.fields.Root,
 			}
 			t.Log(z.String())
 			got, err := z.Serialize()
@@ -61,15 +60,15 @@ func TestContractValue_Serialize(t *testing.T) {
 					t.Fatalf("exp: %s, act: %s", tt.fields.Previous, want.BlockHash)
 				}
 
-				if tt.fields.Root != nil {
-					if !bytes.EqualFold(want.Root[:], tt.fields.Root[:]) {
-						t.Fatalf("exp: %s, act: %s", tt.fields.Root, want.Root)
-					}
-				} else {
-					if want.Root != nil {
-						t.Fatalf("suffix should be nil, %v", want.Root)
-					}
-				}
+				//if tt.fields.Root != nil {
+				//	if !bytes.EqualFold(want.Root[:], tt.fields.Root[:]) {
+				//		t.Fatalf("exp: %s, act: %s", tt.fields.Root, want.Root)
+				//	}
+				//} else {
+				//	if want.Root != nil {
+				//		t.Fatalf("suffix should be nil, %v", want.Root)
+				//	}
+				//}
 			}
 		})
 	}

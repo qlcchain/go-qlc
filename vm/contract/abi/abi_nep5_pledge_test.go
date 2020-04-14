@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/ledger"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/mock"
@@ -87,7 +89,7 @@ func TestGetBeneficialInfos(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	infos, err := mockPledgeInfo(ctx, a, 4)
+	infos, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +98,7 @@ func TestGetBeneficialInfos(t *testing.T) {
 	}
 
 	b := infos[0].Beneficial
-	info, balance := GetBeneficialInfos(ctx, b)
+	info, balance := GetBeneficialInfos(l, b)
 	if info == nil {
 		t.Fatal("invalid pledge info")
 	}
@@ -112,7 +114,7 @@ func TestGetBeneficialPledgeInfos(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	infos, err := mockPledgeInfo(ctx, a, 4)
+	infos, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +123,7 @@ func TestGetBeneficialPledgeInfos(t *testing.T) {
 	}
 
 	b := infos[0].Beneficial
-	info2, balance := GetBeneficialPledgeInfos(ctx, b, Network)
+	info2, balance := GetBeneficialPledgeInfos(l, b, Network)
 	if info2 == nil {
 		t.Fatal("invalid pledge info")
 	}
@@ -129,7 +131,7 @@ func TestGetBeneficialPledgeInfos(t *testing.T) {
 		t.Fatalf("invalid amount, exp: 100, act: %d", balance)
 	}
 
-	info3, balance3 := GetBeneficialPledgeInfos(ctx, b, Oracle)
+	info3, balance3 := GetBeneficialPledgeInfos(l, b, Oracle)
 	if info3 != nil {
 		t.Fatal("invalid pledge info")
 	}
@@ -145,7 +147,7 @@ func TestGetPledgeBeneficialAmount(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	infos, err := mockPledgeInfo(ctx, a, 4)
+	infos, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,10 +156,10 @@ func TestGetPledgeBeneficialAmount(t *testing.T) {
 		t.Fatal("invalid generate data...")
 	}
 	b := infos[0].Beneficial
-	if amount := GetPledgeBeneficialAmount(ctx, b, uint8(Network)); amount.Cmp(big.NewInt(100)) != 0 {
+	if amount := GetPledgeBeneficialAmount(l, b, uint8(Network)); amount.Cmp(big.NewInt(100)) != 0 {
 		t.Fatalf("invalid amount, exp: 100, act: %d", amount)
 	}
-	if amount := GetPledgeBeneficialAmount(ctx, b, uint8(Oracle)); amount.Cmp(big.NewInt(0)) != 0 {
+	if amount := GetPledgeBeneficialAmount(l, b, uint8(Oracle)); amount.Cmp(big.NewInt(0)) != 0 {
 		t.Fatalf("invalid amount, exp: 0, act: %d", amount)
 	}
 }
@@ -169,12 +171,12 @@ func TestGetPledgeBeneficialTotalAmount(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	_, err := mockPledgeInfo(ctx, a, 4)
+	_, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if amount, err := GetPledgeBeneficialTotalAmount(ctx, a); err != nil {
+	if amount, err := GetPledgeBeneficialTotalAmount(l, a); err != nil {
 		t.Fatal(err)
 	} else if amount.Cmp(big.NewInt(100)) != 0 {
 		t.Fatalf("invalid amount, exp: 100, act: %d", amount)
@@ -188,12 +190,12 @@ func TestGetPledgeInfos(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	_, err := mockPledgeInfo(ctx, a, 4)
+	_, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	infos, b := GetPledgeInfos(ctx, a)
+	infos, b := GetPledgeInfos(l, a)
 	if len(infos) != 4 {
 		t.Fatalf("invalid infos len, exp: 4, act: %d", len(infos))
 	}
@@ -209,7 +211,7 @@ func TestGetPledgeKey(t *testing.T) {
 	}
 }
 
-func mockPledgeInfo(ctx *vmstore.VMContext, addr types.Address, size int) ([]*NEP5PledgeInfo, error) {
+func mockPledgeInfo(ctx *vmstore.VMContext, store ledger.Store, addr types.Address, size int) ([]*NEP5PledgeInfo, error) {
 	var infos []*NEP5PledgeInfo
 	for i := 0; i < size; i++ {
 		b := mock.Address()
@@ -235,7 +237,7 @@ func mockPledgeInfo(ctx *vmstore.VMContext, addr types.Address, size int) ([]*NE
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := store.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		return nil, err
 	}
 	return infos, nil
@@ -248,12 +250,12 @@ func TestGetTotalPledgeAmount(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	_, err := mockPledgeInfo(ctx, a, 4)
+	_, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	amount := GetTotalPledgeAmount(ctx)
+	amount := GetTotalPledgeAmount(l)
 	if amount.Cmp(big.NewInt(400)) != 0 {
 		t.Fatalf("invalid total balance, exp: 400, act: %d", amount)
 	}
@@ -304,12 +306,12 @@ func TestSearchAllPledgeInfos(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	_, err := mockPledgeInfo(ctx, a, 4)
+	_, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if infos, err := SearchAllPledgeInfos(ctx); err != nil {
+	if infos, err := SearchAllPledgeInfos(l); err != nil {
 		t.Fatal(err)
 	} else if len(infos) != 4 {
 		t.Fatalf("invalid infos len, exp: 4, act: %d", len(infos))
@@ -320,10 +322,9 @@ func TestSearchBeneficialPledgeInfo(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
-
-	infos, err := mockPledgeInfo(ctx, a, 4)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
+	infos, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +333,7 @@ func TestSearchBeneficialPledgeInfo(t *testing.T) {
 	}
 
 	type args struct {
-		ctx   *vmstore.VMContext
+		ctx   ledger.Store
 		param *WithdrawPledgeParam
 	}
 	tests := []struct {
@@ -343,7 +344,7 @@ func TestSearchBeneficialPledgeInfo(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx: ctx,
+				ctx: l,
 				param: &WithdrawPledgeParam{
 					Beneficial: infos[0].Beneficial,
 					Amount:     infos[0].Amount,
@@ -358,7 +359,7 @@ func TestSearchBeneficialPledgeInfo(t *testing.T) {
 		}, {
 			name: "f",
 			args: args{
-				ctx: ctx,
+				ctx: l,
 				param: &WithdrawPledgeParam{
 					Beneficial: infos[0].Beneficial,
 					Amount:     infos[0].Amount,
@@ -385,7 +386,7 @@ func TestSearchBeneficialPledgeInfoByTxId(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	infos, err := mockPledgeInfo(ctx, a, 4)
+	infos, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +449,7 @@ func TestSearchBeneficialPledgeInfoIgnoreWithdrawTime(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	infos, err := mockPledgeInfo(ctx, a, 4)
+	infos, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,7 +458,7 @@ func TestSearchBeneficialPledgeInfoIgnoreWithdrawTime(t *testing.T) {
 	}
 
 	type args struct {
-		ctx   *vmstore.VMContext
+		ctx   ledger.Store
 		param *WithdrawPledgeParam
 	}
 	tests := []struct {
@@ -468,7 +469,7 @@ func TestSearchBeneficialPledgeInfoIgnoreWithdrawTime(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx: ctx,
+				ctx: l,
 				param: &WithdrawPledgeParam{
 					Beneficial: infos[0].Beneficial,
 					Amount:     infos[0].Amount,
@@ -500,7 +501,7 @@ func TestSearchPledgeInfoWithNEP5TxId(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	infos, err := mockPledgeInfo(ctx, a, 4)
+	infos, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,7 +510,7 @@ func TestSearchPledgeInfoWithNEP5TxId(t *testing.T) {
 	}
 
 	type args struct {
-		ctx   *vmstore.VMContext
+		ctx   ledger.Store
 		param *WithdrawPledgeParam
 	}
 	tests := []struct {
@@ -520,7 +521,7 @@ func TestSearchPledgeInfoWithNEP5TxId(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx: ctx,
+				ctx: l,
 				param: &WithdrawPledgeParam{
 					Beneficial: infos[0].Beneficial,
 					Amount:     infos[0].Amount,
@@ -550,7 +551,7 @@ func Test_searchBeneficialPledgeInfoByTxId(t *testing.T) {
 	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 	a := mock.Address()
 
-	infos, err := mockPledgeInfo(ctx, a, 4)
+	infos, err := mockPledgeInfo(ctx, l, a, 4)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -87,18 +87,18 @@ func TestGetTotalDestroyInfo(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	exp := types.Balance{Int: big.NewInt(10)}
 
-	if balance, err := GetTotalDestroyInfo(ctx, &a); err != nil {
+	if balance, err := GetTotalDestroyInfo(l, &a); err != nil {
 		t.Fatal(err)
 	} else if balance.Compare(exp) != types.BalanceCompEqual {
 		t.Fatalf("exp:%s, act: %s", exp.String(), balance.String())
 	}
-	if balance, err := GetTotalDestroyInfo(ctx, &a); err != nil {
+	if balance, err := GetTotalDestroyInfo(l, &a); err != nil {
 		t.Fatal(err)
 	} else if balance.Compare(exp) != types.BalanceCompEqual {
 		t.Fatalf("exp:%s, act: %s", exp.String(), balance.String())
@@ -122,11 +122,11 @@ func TestGetDestroyInfoDetail(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
-	if details, err := GetDestroyInfoDetail(ctx, &a); err != nil {
+	if details, err := GetDestroyInfoDetail(l, &a); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(details) != 1 {

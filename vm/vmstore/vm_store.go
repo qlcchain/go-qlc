@@ -12,10 +12,11 @@ import (
 	"fmt"
 	"reflect"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
-	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -76,10 +77,6 @@ func ToCache(ctx *VMContext) map[string]interface{} {
 	return result
 }
 
-func SaveStorage(ctx *VMContext) error {
-	return nil
-}
-
 //func SaveTrie(ctx *VMContext, batch ...storage.Batch) error {
 //	fn, err := ctx.cache.Trie().Save(batch...)
 //	if err != nil {
@@ -112,9 +109,9 @@ type VMContext struct {
 }
 
 func NewVMContext(l ledger.Store, contractAddr *types.Address) *VMContext {
-	povHdr, err := l.GetLatestPovHeader()
-	if err != nil {
-		return nil
+	h := uint64(0)
+	if povHdr, err := l.GetLatestPovHeader(); err == nil {
+		h = povHdr.GetHeight()
 	}
 
 	return &VMContext{
@@ -123,7 +120,7 @@ func NewVMContext(l ledger.Store, contractAddr *types.Address) *VMContext {
 		cache:        NewVMCache(),
 		trie:         trie.NewTrie(l.DBStore(), nil, trie.NewSimpleTrieNodePool()),
 		contractAddr: contractAddr,
-		poVHeight:    povHdr.GetHeight(),
+		poVHeight:    h,
 	}
 }
 
@@ -476,8 +473,9 @@ func (v *VMContext) getStorageKey(prefix, key []byte) []byte {
 func (v *VMContext) getRawStorageKey(prefix, key []byte) []byte {
 	var storageKey []byte
 	storageKey = append(storageKey, []byte{byte(storage.KeyPrefixVMStorage)}...)
-	storageKey = append(storageKey, v.contractAddr[:]...)
-	//storageKey = append(storageKey, v.accountAddr[:]...)
+	if v.contractAddr != nil {
+		storageKey = append(storageKey, v.contractAddr[:]...)
+	}
 	storageKey = append(storageKey, prefix...)
 	storageKey = append(storageKey, key...)
 	return storageKey
