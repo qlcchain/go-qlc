@@ -573,3 +573,15 @@ func (l *Ledger) GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, err
 		return tm, nil
 	}
 }
+
+func (l *Ledger) IsUserAccount(address types.Address) (bool, error) {
+	if b, err := l.HasAccountMetaConfirmed(address); b {
+		return true, nil
+	} else {
+		if err != nil {
+			return false, err
+		} else {
+			return false, fmt.Errorf("can not find user account %s", address)
+		}
+	}
+}

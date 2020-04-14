@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -41,9 +40,9 @@ func TestRelation_Blocks(t *testing.T) {
 
 	blk1 := mock.StateBlockWithoutWork()
 	blk2 := mock.StateBlockWithoutWork()
-	objs1, _ := blk1.TableConvert()
+	objs1, _ := blk1.RelationConvert()
 	r.Add(objs1)
-	objs2, _ := blk2.TableConvert()
+	objs2, _ := blk2.RelationConvert()
 	r.Add(objs2)
 	time.Sleep(1 * time.Second)
 	c, err := r.BlocksCount()

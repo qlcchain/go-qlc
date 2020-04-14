@@ -4,12 +4,11 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-func (r *Relation) count(s types.Table) (uint64, error) {
-	sql := fmt.Sprintf("select count (*) as total from %s", r.tables[s.TableID()].tableName)
+func (r *Relation) count(s types.Schema) (uint64, error) {
+	sql := fmt.Sprintf("select count (*) as total from %s", r.tables[s.IdentityID()].tableName)
 	r.logger.Debug(sql)
 	var i uint64
 	err := r.db.Get(&i, sql)
@@ -22,7 +21,7 @@ func (r *Relation) count(s types.Table) (uint64, error) {
 func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 	block := new(types.BlockHash)
 	var h []types.BlockHash
-	sql := fmt.Sprintf("select * from %s order by timestamp desc, type desc limit %d offset %d", r.tables[block.TableID()].tableName, limit, offset)
+	sql := fmt.Sprintf("select * from %s order by timestamp desc, type desc limit %d offset %d", r.tables[block.IdentityID()].tableName, limit, offset)
 	err := r.db.Select(&h, sql)
 	if err != nil {
 		return nil, fmt.Errorf("read error, sql: %s, err: %s", sql, err.Error())
@@ -33,7 +32,7 @@ func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 func (r *Relation) BlocksByAccount(address types.Address, limit int, offset int) ([]types.Hash, error) {
 	block := new(types.BlockHash)
 	var h []types.BlockHash
-	sql := fmt.Sprintf("select * from %s where address = '%s' order by timestamp desc, type desc limit %d offset %d", r.tables[block.TableID()].tableName, address.String(), limit, offset)
+	sql := fmt.Sprintf("select * from %s where address = '%s' order by timestamp desc, type desc limit %d offset %d", r.tables[block.IdentityID()].tableName, address.String(), limit, offset)
 	err := r.db.Select(&h, sql)
 	if err != nil {
 		return nil, fmt.Errorf("read error, sql: %s, err: %s", sql, err.Error())
@@ -48,7 +47,7 @@ func (r *Relation) BlocksCount() (uint64, error) {
 func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
 	block := new(types.BlockHash)
 	var t []blocksType
-	sql := fmt.Sprintf("select type, count(*) as count from %s  group by type", r.tables[block.TableID()].tableName)
+	sql := fmt.Sprintf("select type, count(*) as count from %s  group by type", r.tables[block.IdentityID()].tableName)
 	r.logger.Debug(sql)
 	err := r.db.Select(&t, sql)
 	if err != nil {

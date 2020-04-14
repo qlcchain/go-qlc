@@ -16,6 +16,8 @@ func NewDB(cfg *config.Config) (*sqlx.DB, error) {
 		return openSqlite(cfg)
 	case "mysql":
 		return openMysql(cfg)
+	case "postgres":
+		return openPostgres(cfg)
 	}
 	return nil, errors.New("unsupported driver")
 }

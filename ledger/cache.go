@@ -438,7 +438,7 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 func (c *Cache) dumpToRelation(key []byte, v interface{}, l *Ledger) error {
 	if !isDeleteKey(v) {
 		if val, ok := v.(types.Convert); ok {
-			objs, err := val.TableConvert()
+			objs, err := val.RelationConvert()
 			if err != nil {
 				return fmt.Errorf("table convert: %s", err)
 			}

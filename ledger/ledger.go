@@ -323,7 +323,7 @@ func (l *Ledger) initRelation() error {
 			return err
 		}
 		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
-			c, err := block.TableConvert()
+			c, err := block.RelationConvert()
 			if err != nil {
 				return err
 			}
@@ -786,6 +786,6 @@ func (l *Ledger) Flush() error {
 	return l.cache.rebuild()
 }
 
-func (l *Ledger) RegisterRelation(obj types.Table) error {
+func (l *Ledger) RegisterRelation(obj types.Schema) error {
 	return l.relation.Register(obj)
 }

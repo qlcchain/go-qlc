@@ -26,16 +26,19 @@ func convertSchemaType(db string, typ string) string {
 
 func create(tableName string, columns map[string]string, key string) string {
 	cs := ""
+	keyTyp := ""
 	for k, v := range columns {
-		cs = cs + fmt.Sprintf(" %s %s ,", k, v)
+		if k != key {
+			cs = cs + fmt.Sprintf(" %s %s ,", k, v)
+		} else {
+			keyTyp = v
+		}
 	}
 	cs = strings.TrimRight(cs, ",")
 	if key == "" {
-		return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
-		( id integer PRIMARY KEY AUTOINCREMENT, %s)`, tableName, cs)
+		return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s)`, tableName, cs)
 	} else {
-		//TODO set with primary key
-		return ""
+		return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s ( %s %s PRIMARY KEY NOT NULL, %s)`, tableName, key, keyTyp, cs)
 	}
 }
 

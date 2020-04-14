@@ -6,10 +6,10 @@ type Serializer interface {
 }
 
 type Convert interface {
-	TableConvert() ([]Table, error)
+	RelationConvert() ([]Schema, error)
 }
 
-type Table interface {
-	TableID() string
+type Schema interface {
+	IdentityID() string
 	DeleteKey() string
 }

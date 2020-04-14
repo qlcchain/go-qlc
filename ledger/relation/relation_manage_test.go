@@ -6,11 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/google/uuid"
-
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
@@ -23,12 +21,12 @@ func TestRelation_Relation(t *testing.T) {
 
 	blk1 := mock.StateBlockWithoutWork()
 	blk2 := mock.StateBlockWithoutWork()
-	v1, _ := blk1.TableConvert()
+	v1, _ := blk1.RelationConvert()
 	r.Add(v1)
-	v2, _ := blk2.TableConvert()
+	v2, _ := blk2.RelationConvert()
 	r.Add(v2)
 	for i := 0; i < batchMaxCount+10; i++ {
-		v, _ := mock.StateBlockWithoutWork().TableConvert()
+		v, _ := mock.StateBlockWithoutWork().RelationConvert()
 		r.Add(v)
 	}
 	r.Delete(&types.BlockHash{Hash: blk1.GetHash().String()})
@@ -64,8 +62,8 @@ func TestRelation_flush(t *testing.T) {
 		db:         store,
 		eb:         cc.EventBus(),
 		dir:        cfgFile,
-		deleteChan: make(chan types.Table, 10240),
-		addChan:    make(chan types.Table, 10240),
+		deleteChan: make(chan types.Schema, 10240),
+		addChan:    make(chan types.Schema, 10240),
 		closedChan: make(chan bool),
 		tables:     make(map[string]schema),
 		logger:     log.NewLogger("relation"),
@@ -81,7 +79,7 @@ func TestRelation_flush(t *testing.T) {
 	}()
 
 	for i := 0; i < batchMaxCount+10; i++ {
-		v1, _ := mock.StateBlockWithoutWork().TableConvert()
+		v1, _ := mock.StateBlockWithoutWork().RelationConvert()
 		r.Add(v1)
 	}
 	for i := 0; i < batchMaxCount+10; i++ {
@@ -107,7 +105,7 @@ func TestRelation_Close(t *testing.T) {
 	if len(cache) != 1 {
 		t.Fatal(len(cache))
 	}
-	v1, _ := mock.StateBlockWithoutWork().TableConvert()
+	v1, _ := mock.StateBlockWithoutWork().RelationConvert()
 	store.Add(v1)
 	if err := store.Close(); err != nil {
 		t.Fatal(err)

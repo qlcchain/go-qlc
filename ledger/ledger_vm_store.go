@@ -69,6 +69,19 @@ func (l *Ledger) NewVMIterator(address *types.Address) *Iterator {
 }
 
 func (l *Ledger) SaveStorage(val map[string]interface{}, c ...storage.Cache) error {
+	if len(c) > 0 {
+		for k, v := range val {
+			if err := c[0].Put([]byte(k), v); err != nil {
+				return err
+			}
+		}
+	} else {
+		for k, v := range val {
+			if err := l.cache.Put([]byte(k), v); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

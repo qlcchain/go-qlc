@@ -31,8 +31,8 @@ func (a *StructA) Deserialize(text []byte) error {
 	return json.Unmarshal(text, a)
 }
 
-func (a *StructA) TableConvert() ([]types.Table, error) {
-	return []types.Table{
+func (a *StructA) RelationConvert() ([]types.Schema, error) {
+	return []types.Schema{
 		&StructB{
 			Hash:    a.Hash.String(),
 			Address: a.Address.String(),
@@ -41,12 +41,11 @@ func (a *StructA) TableConvert() ([]types.Table, error) {
 }
 
 type StructB struct {
-	Id      int64
-	Hash    string `db:"hash" typ:"char(64)"`
+	Hash    string `db:"hash" typ:"char(64)" key:""`
 	Address string `db:"address" typ:"char(64)"`
 }
 
-func (b *StructB) TableID() string {
+func (b *StructB) IdentityID() string {
 	return "structb"
 }
 

@@ -6,15 +6,13 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/jmoiron/sqlx"
-	"go.uber.org/zap"
-
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type Relation struct {
@@ -22,8 +20,8 @@ type Relation struct {
 	eb         event.EventBus
 	subscriber *event.ActorSubscriber
 	dir        string
-	deleteChan chan types.Table
-	addChan    chan types.Table
+	deleteChan chan types.Schema
+	addChan    chan types.Schema
 	drive      string
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -55,17 +53,17 @@ func NewRelation(cfgFile string) (*Relation, error) {
 			drive:      cfg.DB.Driver,
 			eb:         cc.EventBus(),
 			dir:        cfgFile,
-			deleteChan: make(chan types.Table, 10240),
-			addChan:    make(chan types.Table, 10240),
+			deleteChan: make(chan types.Schema, 10240),
+			addChan:    make(chan types.Schema, 10240),
 			ctx:        ctx,
 			cancel:     cancel,
 			closedChan: make(chan bool),
 			tables:     make(map[string]schema),
 			logger:     log.NewLogger("relation"),
 		}
-		tables := []types.Table{new(types.BlockHash)}
-		for _, t := range tables {
-			if err := relation.Register(t); err != nil {
+		tables := []types.Schema{new(types.BlockHash)}
+		for _, table := range tables {
+			if err := relation.Register(table); err != nil {
 				return nil, fmt.Errorf("store init fail: %s", err)
 			}
 		}
@@ -76,9 +74,9 @@ func NewRelation(cfgFile string) (*Relation, error) {
 	return cache[cfgFile], nil
 }
 
-func (r *Relation) Register(t types.Table) error {
-	if _, ok := r.tables[t.TableID()]; ok {
-		return fmt.Errorf("table %s areadly exist", t.TableID())
+func (r *Relation) Register(t types.Schema) error {
+	if _, ok := r.tables[t.IdentityID()]; ok {
+		return fmt.Errorf("table %s areadly exist", t.IdentityID())
 	}
 	var s schema
 	rt := reflect.TypeOf(t).Elem()
@@ -86,20 +84,20 @@ func (r *Relation) Register(t types.Table) error {
 	columnsMap := make(map[string]string)
 	key := ""
 	for i := 0; i < rt.NumField(); i++ {
-		column := rt.Field(i).Tag.Get("db")
-		if column != "" {
+		tg := rt.Field(i).Tag
+		if column, b := tg.Lookup("db"); b {
+			if _, b := tg.Lookup("key"); b {
+				key = column
+			}
 			columns = append(columns, column)
-			columnsMap[column] = convertSchemaType(r.drive, rt.Field(i).Tag.Get("typ"))
-		}
-		if k := rt.Field(i).Tag.Get("key"); k != "" {
-			key = column
+			columnsMap[column] = convertSchemaType(r.drive, tg.Get("typ"))
 		}
 	}
 	s.tableName = rt.Name()
 	s.create = create(s.tableName, columnsMap, key)
 	s.insert = insert(s.tableName, columns)
-	r.tables[t.TableID()] = s
-	//r.logger.Debug(s)
+	r.tables[t.IdentityID()] = s
+	r.logger.Debug(s.create)
 
 	if _, err := r.db.Exec(s.create); err != nil {
 		r.logger.Errorf("exec error, sql: %s, err: %s", s.create, err.Error())
@@ -125,17 +123,17 @@ func (r *Relation) Close() error {
 	return nil
 }
 
-func (r *Relation) Add(obj []types.Table) {
+func (r *Relation) Add(obj []types.Schema) {
 	for _, o := range obj {
 		r.addChan <- o
 	}
 }
 
-func (r *Relation) Delete(obj types.Table) {
+func (r *Relation) Delete(obj types.Schema) {
 	r.deleteChan <- obj
 }
 
-func (r *Relation) batchAdd(txn *sqlx.Tx, objs []types.Table) error {
+func (r *Relation) batchAdd(txn *sqlx.Tx, objs []types.Schema) error {
 	//objsMap := make(map[string][]*BlockHash)
 	//for _, obj := range objs {
 	//	objsMap[obj.TableID()] = append(objsMap[obj.TableID()], obj.(*BlockHash))
@@ -150,7 +148,7 @@ func (r *Relation) batchAdd(txn *sqlx.Tx, objs []types.Table) error {
 	//	}
 	//}
 	for _, obj := range objs {
-		sql := r.tables[obj.TableID()].insert
+		sql := r.tables[obj.IdentityID()].insert
 		if _, err := txn.NamedExec(sql, obj); err != nil {
 			return fmt.Errorf("txn add exec: %s [%s]", err, sql)
 		}
@@ -158,7 +156,7 @@ func (r *Relation) batchAdd(txn *sqlx.Tx, objs []types.Table) error {
 	return nil
 }
 
-func (r *Relation) batchDelete(txn *sqlx.Tx, objs []types.Table) error {
+func (r *Relation) batchDelete(txn *sqlx.Tx, objs []types.Schema) error {
 	for _, obj := range objs {
 		if _, err := txn.Exec(obj.DeleteKey()); err != nil {
 			return fmt.Errorf("txn delete exec: %s", err)
@@ -172,8 +170,8 @@ func (r *Relation) closed() {
 }
 
 func (r *Relation) process() {
-	addObjs := make([]types.Table, 0)
-	deleteObjs := make([]types.Table, 0)
+	addObjs := make([]types.Schema, 0)
+	deleteObjs := make([]types.Schema, 0)
 
 	for {
 		select {
@@ -241,14 +239,14 @@ func (r *Relation) process() {
 func (r *Relation) flush() {
 	//add chan
 	if len(r.addChan) > 0 {
-		addObjs := make([]types.Table, 0)
+		addObjs := make([]types.Schema, 0)
 		for b := range r.addChan {
 			addObjs = append(addObjs, b)
 			if len(r.addChan) == 0 {
 				break
 			}
 		}
-		objs := make([]types.Table, 0)
+		objs := make([]types.Schema, 0)
 		for _, obj := range addObjs {
 			objs = append(objs, obj)
 			if len(objs) == batchMaxCount {
@@ -269,14 +267,14 @@ func (r *Relation) flush() {
 
 	// delete chan
 	if len(r.deleteChan) > 0 {
-		deleteObjs := make([]types.Table, 0)
+		deleteObjs := make([]types.Schema, 0)
 		for b := range r.deleteChan {
 			deleteObjs = append(deleteObjs, b)
 			if len(r.deleteChan) == 0 {
 				break
 			}
 		}
-		objs := make([]types.Table, 0)
+		objs := make([]types.Schema, 0)
 		for _, obj := range deleteObjs {
 			objs = append(objs, obj)
 			if len(objs) == batchMaxCount {
