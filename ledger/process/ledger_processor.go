@@ -534,13 +534,9 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			if len(g) > 0 {
 				ctx := g[0].VMContext
 				if ctx != nil {
-					err := ctx.SaveStorage(cache)
+					err := lv.l.SaveStorage(vmstore.ToCache(ctx), cache)
 					if err != nil {
 						return fmt.Errorf("reward block save storage error: %s", err)
-					}
-					err = ctx.SaveTrie(cache)
-					if err != nil {
-						return fmt.Errorf("reward block save trie error: %s", err)
 					}
 					return nil
 				}
@@ -559,11 +555,8 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				case vmcontract.SpecVer2:
 					vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
-						if err := vmCtx.SaveStorage(cache); err != nil {
+						if err := lv.l.SaveStorage(vmstore.ToCache(vmCtx), cache); err != nil {
 							return fmt.Errorf("send block save storage error: %s", err)
-						}
-						if err = vmCtx.SaveTrie(cache); err != nil {
-							return fmt.Errorf("send block save trie error: %s", err)
 						}
 					} else {
 						lv.logger.Errorf("process send error, %s", err)

@@ -13,17 +13,16 @@ import (
 )
 
 type VMCache struct {
-	logList types.VmLogs
-	storage map[string][]byte
-
+	logList   types.VmLogs
+	storage   map[string]interface{}
 	trie      *trie.Trie
 	trieDirty bool
 }
 
-func NewVMCache(trie *trie.Trie) *VMCache {
+func NewVMCache() *VMCache {
 	return &VMCache{
-		storage:   make(map[string][]byte),
-		trie:      trie.Clone(),
+		trie:      trie.NewTrie(nil, nil, trie.NewSimpleTrieNodePool()),
+		storage:   make(map[string]interface{}),
 		trieDirty: false,
 		logList:   types.VmLogs{Logs: make([]*types.VmLog, 0)},
 	}
@@ -32,16 +31,23 @@ func NewVMCache(trie *trie.Trie) *VMCache {
 func (cache *VMCache) Trie() *trie.Trie {
 	if cache.trieDirty {
 		for key, value := range cache.storage {
-			cache.trie.SetValue([]byte(key), value)
+			switch o := value.(type) {
+			case types.Serializer:
+				if data, err := o.Serialize(); err == nil {
+					cache.trie.SetValue([]byte(key), data)
+				}
+			case []byte:
+				cache.trie.SetValue([]byte(key), o)
+			}
 		}
 
-		cache.storage = make(map[string][]byte)
+		cache.storage = make(map[string]interface{})
 		cache.trieDirty = false
 	}
 	return cache.trie
 }
 
-func (cache *VMCache) SetStorage(key []byte, value []byte) {
+func (cache *VMCache) SetStorage(key []byte, value interface{}) {
 	if value == nil {
 		value = make([]byte, 0)
 	}
@@ -50,18 +56,10 @@ func (cache *VMCache) SetStorage(key []byte, value []byte) {
 	cache.trieDirty = true
 }
 
-func (cache *VMCache) GetStorage(key []byte) []byte {
-	if value, ok := cache.storage[string(key)]; ok && value != nil {
-		return value
-	}
+func (cache *VMCache) GetStorage(key []byte) (interface{}, bool) {
+	val, ok := cache.storage[string(key)]
 
-	return cache.trie.GetValue(key)
-}
-
-func (cache *VMCache) RemoveStorage(key []byte) {
-	if _, ok := cache.storage[string(key)]; ok {
-		delete(cache.storage, string(key))
-	}
+	return val, ok
 }
 
 func (cache *VMCache) AppendLog(log *types.VmLog) {
@@ -72,13 +70,9 @@ func (cache *VMCache) LogList() types.VmLogs {
 	return cache.logList
 }
 
-func (cache *VMCache) Storage() map[string][]byte {
-	return cache.storage
-}
-
 func (cache *VMCache) Clear() {
 	//TODO: reset trie
 	cache.logList.Logs = cache.logList.Logs[:0]
 	cache.trieDirty = false
-	cache.storage = make(map[string][]byte)
+	cache.storage = make(map[string]interface{})
 }

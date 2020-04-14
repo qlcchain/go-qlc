@@ -155,7 +155,7 @@ func (p *NEP5PledgeAPI) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 			return nil, fmt.Errorf("get pov header error: %s", err)
 		}
 		reward.PoVHeight = povHeader.GetHeight()
-		h := blocks[0].VMContext.Cache.Trie().Hash()
+		h := vmstore.TrieHash(blocks[0].VMContext)
 		if h != nil {
 			reward.Extra = *h
 		}
@@ -295,7 +295,7 @@ func (p *NEP5PledgeAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 		}
 		reward.PoVHeight = povHeader.GetHeight()
 
-		h := blocks[0].VMContext.Cache.Trie().Hash()
+		h := vmstore.TrieHash(blocks[0].VMContext)
 		if h != nil {
 			reward.Extra = *h
 		}
@@ -334,7 +334,7 @@ type PledgeInfos struct {
 
 //get pledge info by pledge address ,return pledgeinfos
 func (p *NEP5PledgeAPI) GetPledgeInfosByPledgeAddress(addr types.Address) *PledgeInfos {
-	infos, am := cabi.GetPledgeInfos(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress), addr)
+	infos, am := cabi.GetPledgeInfos(p.l, addr)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
 		npi := &NEP5PledgeInfo{
@@ -356,13 +356,13 @@ func (p *NEP5PledgeAPI) GetPledgeInfosByPledgeAddress(addr types.Address) *Pledg
 
 //get pledge total amount by beneficial address ,return total amount
 func (p *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(addr types.Address) (*big.Int, error) {
-	am, err := cabi.GetPledgeBeneficialTotalAmount(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress), addr)
+	am, err := cabi.GetPledgeBeneficialTotalAmount(p.l, addr)
 	return am, err
 }
 
 //get pledge info by beneficial,pType ,return PledgeInfos
 func (p *NEP5PledgeAPI) GetBeneficialPledgeInfosByAddress(beneficial types.Address) *PledgeInfos {
-	infos, am := cabi.GetBeneficialInfos(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress), beneficial)
+	infos, am := cabi.GetBeneficialInfos(p.l, beneficial)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
 		npi := &NEP5PledgeInfo{
@@ -389,7 +389,7 @@ func (p *NEP5PledgeAPI) GetBeneficialPledgeInfos(beneficial types.Address, pType
 		return nil, err
 	}
 
-	infos, am := cabi.GetBeneficialPledgeInfos(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress), beneficial, pt)
+	infos, am := cabi.GetBeneficialPledgeInfos(p.l, beneficial, pt)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range infos {
 		npi := &NEP5PledgeInfo{
@@ -416,7 +416,7 @@ func (p *NEP5PledgeAPI) GetPledgeBeneficialAmount(beneficial types.Address, pTyp
 		return nil, err
 	}
 
-	am := cabi.GetPledgeBeneficialAmount(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress), beneficial, uint8(pt))
+	am := cabi.GetPledgeBeneficialAmount(p.l, beneficial, uint8(pt))
 	return am, nil
 }
 
@@ -436,7 +436,7 @@ func (p *NEP5PledgeAPI) GetPledgeInfo(param *WithdrawPledgeParam) ([]*NEP5Pledge
 		Amount:     param.Amount.Int,
 		PType:      uint8(pType),
 	}
-	pr := cabi.SearchBeneficialPledgeInfoIgnoreWithdrawTime(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress), pm)
+	pr := cabi.SearchBeneficialPledgeInfoIgnoreWithdrawTime(p.l, pm)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range pr {
 		npi := &NEP5PledgeInfo{
@@ -470,7 +470,7 @@ func (p *NEP5PledgeAPI) GetPledgeInfoWithNEP5TxId(param *WithdrawPledgeParam) (*
 		PType:      uint8(pType),
 		NEP5TxId:   param.NEP5TxId,
 	}
-	pr := cabi.SearchPledgeInfoWithNEP5TxId(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress), pm)
+	pr := cabi.SearchPledgeInfoWithNEP5TxId(p.l, pm)
 	if pr != nil {
 		pledgeInfo := &NEP5PledgeInfo{
 			PType:         cabi.PledgeType(pr.PledgeInfo.PType).String(),
@@ -501,7 +501,7 @@ func (p *NEP5PledgeAPI) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam)
 		Amount:     param.Amount.Int,
 		PType:      uint8(pType),
 	}
-	pr := cabi.SearchBeneficialPledgeInfo(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress), pm)
+	pr := cabi.SearchBeneficialPledgeInfo(p.l, pm)
 	var pledgeInfo []*NEP5PledgeInfo
 	for _, v := range pr {
 		npi := &NEP5PledgeInfo{
@@ -521,7 +521,7 @@ func (p *NEP5PledgeAPI) GetPledgeInfoWithTimeExpired(param *WithdrawPledgeParam)
 func (p *NEP5PledgeAPI) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 	var result []*NEP5PledgeInfo
 
-	infos, err := cabi.SearchAllPledgeInfos(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress))
+	infos, err := cabi.SearchAllPledgeInfos(p.l)
 	if err != nil {
 		return nil, err
 	}
@@ -552,5 +552,5 @@ func (p *NEP5PledgeAPI) GetAllPledgeInfo() ([]*NEP5PledgeInfo, error) {
 
 // GetTotalPledgeAmount get all pledge amount
 func (p *NEP5PledgeAPI) GetTotalPledgeAmount() (*big.Int, error) {
-	return cabi.GetTotalPledgeAmount(vmstore.NewVMContext(p.l, &contractaddress.NEP5PledgeAddress)), nil
+	return cabi.GetTotalPledgeAmount(p.l), nil
 }

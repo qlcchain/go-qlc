@@ -118,11 +118,11 @@ func TestLedger_Storage(t *testing.T) {
 		t.Fatal("failed to iterator context data")
 	}
 
-	storage := context.Cache.Storage()
+	storage := context.cache.Storage()
 	if len(storage) != 10 {
 		t.Fatal("failed to iterator cache data")
 	}
-	cacheTrie := context.Cache.Trie()
+	cacheTrie := context.cache.Trie()
 	if cacheTrie == nil {
 		t.Fatal("invalid trie")
 	}
@@ -167,24 +167,24 @@ func TestVMCache_AppendLog(t *testing.T) {
 	teardownTestCase, ctx := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx.Cache.AppendLog(&types.VmLog{
+	ctx.cache.AppendLog(&types.VmLog{
 		Topics: []types.Hash{mock.Hash()},
 		Data:   []byte{10, 20, 30, 40},
 	})
 
-	ctx.Cache.AppendLog(&types.VmLog{
+	ctx.cache.AppendLog(&types.VmLog{
 		Topics: []types.Hash{mock.Hash()},
 		Data:   []byte{10, 20, 30, 50},
 	})
 
-	logs := ctx.Cache.LogList()
+	logs := ctx.cache.LogList()
 	for idx, l := range logs.Logs {
 		t.Log(idx, " >>>", l.Topics, ":", l.Data)
 	}
 
-	ctx.Cache.Clear()
+	ctx.cache.Clear()
 
-	if len(ctx.Cache.logList.Logs) != 0 {
+	if len(ctx.cache.logList.Logs) != 0 {
 		t.Fatal("invalid logs ")
 	}
 }

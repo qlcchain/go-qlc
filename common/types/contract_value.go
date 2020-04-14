@@ -11,8 +11,7 @@ import "fmt"
 
 //go:generate msgp
 type ContractValue struct {
-	BlockHash Hash  `msg:"p,extension" json:"previous"`
-	Root      *Hash `msg:"r,extension" json:"trieRoot,omitempty"`
+	BlockHash Hash `msg:"p,extension" json:"previous"`
 }
 
 func (z ContractValue) Serialize() ([]byte, error) {
@@ -28,5 +27,5 @@ func (z *ContractValue) Deserialize(text []byte) error {
 }
 
 func (z *ContractValue) String() string {
-	return fmt.Sprintf("h:%s, r:%v", z.BlockHash, z.Root)
+	return fmt.Sprintf("hash:%s", z.BlockHash)
 }

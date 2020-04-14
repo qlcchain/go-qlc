@@ -3,10 +3,11 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/mock"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 // StructA (store to badger)  -->  StructB (store to relation)

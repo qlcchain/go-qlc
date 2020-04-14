@@ -140,7 +140,7 @@ func (c *CreateContract) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 
 	if b, err := param.Verify(); err == nil && b {
 		// check balance
-		amount, err := ctx.Ledger.CalculateAmount(block)
+		amount, err := ctx.CalculateAmount(block)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -670,7 +670,7 @@ func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types
 		return nil, err
 	}
 
-	txMeta, _ := ctx.Ledger.GetAccountMeta(input.Address)
+	txMeta, _ := ctx.GetAccountMeta(input.Address)
 	txToken := txMeta.Token(input.Token)
 	txHash := input.GetHash()
 

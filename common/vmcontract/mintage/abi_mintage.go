@@ -1,27 +1,20 @@
 /*
- * Copyright (c) 2019 QLC Chain Team
+ * Copyright (c) 2020 QLC Chain Team
  *
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
  */
 
-package abi
+package mintage
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"strings"
-	"sync"
-
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const (
@@ -41,7 +34,6 @@ const (
 
 var (
 	MintageABI, _ = abi.JSONToABIContract(strings.NewReader(JsonMintage))
-	tokenCache    = &sync.Map{}
 )
 
 type ParamMintage struct {
@@ -94,75 +86,4 @@ func ParseGenesisTokenInfo(data []byte) (*types.TokenInfo, error) {
 func NewTokenHash(address types.Address, previous types.Hash, tokenName string) types.Hash {
 	h, _ := types.HashBytes(address[:], previous[:], util.String2Bytes(tokenName))
 	return h
-}
-
-func ListTokens(ctx *vmstore.VMContext) ([]*types.TokenInfo, error) {
-	logger := log.NewLogger("ListTokens")
-	defer func() {
-		logger.Sync()
-	}()
-	var infos []*types.TokenInfo
-	if err := ctx.Iterator(contractaddress.MintageAddress[:], func(key []byte, value []byte) error {
-		if len(value) > 0 {
-			tokenId, _ := types.BytesToHash(key[(types.AddressSize + 1):])
-			if config.IsGenesisToken(tokenId) {
-				if info, err := ParseGenesisTokenInfo(value); err == nil {
-					infos = append(infos, info)
-				} else {
-					logger.Error(err)
-				}
-			} else {
-				if info, err := ParseTokenInfo(value); err == nil {
-					exp := new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(info.Decimals)), nil)
-					info.TotalSupply = info.TotalSupply.Mul(info.TotalSupply, exp)
-					infos = append(infos, info)
-				} else {
-					logger.Error(err)
-				}
-			}
-		}
-		return nil
-	}); err == nil {
-		return infos, nil
-	} else {
-		return nil, err
-	}
-}
-
-func GetTokenById(ctx *vmstore.VMContext, tokenId types.Hash) (*types.TokenInfo, error) {
-	if _, ok := tokenCache.Load(tokenId); !ok {
-		if err := saveCache(ctx); err != nil {
-			return nil, err
-		}
-	}
-	if ti, ok := tokenCache.Load(tokenId); ok {
-		return ti.(*types.TokenInfo), nil
-	}
-
-	return nil, fmt.Errorf("can not find token %s", tokenId.String())
-}
-
-func GetTokenByName(ctx *vmstore.VMContext, tokenName string) (*types.TokenInfo, error) {
-	if _, ok := tokenCache.Load(tokenName); !ok {
-		if err := saveCache(ctx); err != nil {
-			return nil, err
-		}
-	}
-	if ti, ok := tokenCache.Load(tokenName); ok {
-		return ti.(*types.TokenInfo), nil
-	}
-
-	return nil, fmt.Errorf("can not find token %s", tokenName)
-}
-
-func saveCache(ctx *vmstore.VMContext) error {
-	if infos, err := ListTokens(ctx); err == nil {
-		for _, v := range infos {
-			tokenCache.Store(v.TokenId, v)
-			tokenCache.Store(v.TokenName, v)
-		}
-		return nil
-	} else {
-		return err
-	}
 }

@@ -202,7 +202,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmContext)
 	if h != nil {
 		send.Extra = *h
 	}

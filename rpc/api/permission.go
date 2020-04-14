@@ -205,7 +205,7 @@ func (p *PermissionApi) GetNode(id string) (*NodeInfo, error) {
 }
 
 func (p *PermissionApi) GetNodesCount() int {
-	ns, err := abi.PermissionGetAllNodes(p.ctx)
+	ns, err := abi.PermissionGetAllNodes(p.l)
 	if err != nil {
 		return 0
 	} else {
@@ -214,7 +214,7 @@ func (p *PermissionApi) GetNodesCount() int {
 }
 
 func (p *PermissionApi) GetNodes(count int, offset int) ([]*NodeInfo, error) {
-	ns, err := abi.PermissionGetAllNodes(p.ctx)
+	ns, err := abi.PermissionGetAllNodes(p.l)
 	if err != nil {
 		return nil, err
 	}

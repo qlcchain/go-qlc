@@ -120,7 +120,7 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 
 		sb.Signature = account1.Sign(sb.GetHash())
 
-		h := ctx.Cache.Trie().Hash()
+		h := ctx.cache.Trie().Hash()
 		if h != nil {
 			povHeader, err2 := l.GetLatestPovHeader()
 			if err2 != nil {
@@ -199,7 +199,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 
 					sb.Signature = account2.Sign(sb.GetHash())
 
-					h := ctx.Cache.Trie().Hash()
+					h := ctx.cache.Trie().Hash()
 					if h != nil {
 						povHeader, err := l.GetLatestPovHeader()
 						if err != nil {
@@ -305,7 +305,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account1.Sign(sb.GetHash())
 
-			h := ctx.Cache.Trie().Hash()
+			h := ctx.cache.Trie().Hash()
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
@@ -367,7 +367,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account1.Sign(sb.GetHash())
 
-			h = ctx.Cache.Trie().Hash()
+			h = ctx.cache.Trie().Hash()
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
@@ -432,7 +432,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account1.Sign(sb.GetHash())
 
-			h = ctx.Cache.Trie().Hash()
+			h = ctx.cache.Trie().Hash()
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
@@ -490,7 +490,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account2.Sign(sb.GetHash())
 
-			h = ctx.Cache.Trie().Hash()
+			h = ctx.cache.Trie().Hash()
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
@@ -556,7 +556,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account2.Sign(sb.GetHash())
 
-			h = ctx.Cache.Trie().Hash()
+			h = ctx.cache.Trie().Hash()
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
@@ -621,7 +621,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 
 			sb.Signature = account2.Sign(sb.GetHash())
 
-			h = ctx.Cache.Trie().Hash()
+			h = ctx.cache.Trie().Hash()
 			if h != nil {
 				sb.PoVHeight = 0
 				sb.Extra = *h
@@ -711,7 +711,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 		sb.Signature = account1.Sign(sb.GetHash())
 
-		h := ctx.Cache.Trie().Hash()
+		h := ctx.cache.Trie().Hash()
 		if h != nil {
 			povHeader, err := l.GetLatestPovHeader()
 			if err != nil {
@@ -860,7 +860,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 										sb.Signature = account1.Sign(sb.GetHash())
 
-										h := ctx.Cache.Trie().Hash()
+										h := ctx.cache.Trie().Hash()
 										if h != nil {
 											sb.PoVHeight = 0
 											sb.Extra = *h
@@ -923,7 +923,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 										sb2.Signature = account2.Sign(sb.GetHash())
 
-										h = ctx.Cache.Trie().Hash()
+										h = ctx.cache.Trie().Hash()
 										if h != nil {
 											sb2.PoVHeight = 0
 											sb2.Extra = *h
@@ -1000,7 +1000,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 										sb.Signature = account1.Sign(sb.GetHash())
 
-										h = ctx.Cache.Trie().Hash()
+										h = ctx.cache.Trie().Hash()
 										if h != nil {
 											sb.PoVHeight = 0
 											sb.Extra = *h
@@ -1057,7 +1057,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 										sb.Signature = account2.Sign(sb.GetHash())
 
-										h = ctx.Cache.Trie().Hash()
+										h = ctx.cache.Trie().Hash()
 										if h != nil {
 											sb.PoVHeight = 0
 											sb.Extra = *h
@@ -1647,7 +1647,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 
 		sb.Signature = account1.Sign(sb.GetHash())
 
-		h := ctx.Cache.Trie().Hash()
+		h := ctx.cache.Trie().Hash()
 		if h != nil {
 			povHeader, err := l.GetLatestPovHeader()
 			if err != nil {

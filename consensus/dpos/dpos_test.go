@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/chain/context"
@@ -26,7 +28,6 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/p2p"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -256,7 +257,7 @@ func (n *Node) GenerateSendBlock(from *types.Account, to types.Address, amount t
 	}
 
 	vmContext := vmstore.NewVMContext(n.ledger, &contractaddress.MintageAddress)
-	info, err := abi.GetTokenByName(vmContext, tokenName)
+	info, err := mintage.GetTokenByName(vmContext, tokenName)
 	if err != nil {
 		n.t.Fatal(err)
 	}
@@ -293,15 +294,15 @@ func (n *Node) GenerateChangeBlock(account *types.Account, representative types.
 func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Address, method string, param interface{}) *types.StateBlock {
 	switch ca {
 	case contractaddress.MintageAddress:
-		if method == abi.MethodNameMintage {
+		if method == mintage.MethodNameMintage {
 			totalSupply := big.NewInt(1000)
 			decimals := uint8(8)
 			tokenName := "testToken"
 			tokenSymbol := "testToken"
 			NEP5tTxId := random.RandomHexString(32)
-			tokenId := abi.NewTokenHash(from.Address(), param.(types.Hash), tokenName)
+			tokenId := mintage.NewTokenHash(from.Address(), param.(types.Hash), tokenName)
 
-			data, err := abi.MintageABI.PackMethod(abi.MethodNameMintage, tokenId, tokenName, tokenSymbol, totalSupply, decimals, to.Address(), NEP5tTxId)
+			data, err := mintage.MintageABI.PackMethod(mintage.MethodNameMintage, tokenId, tokenName, tokenSymbol, totalSupply, decimals, to.Address(), NEP5tTxId)
 			if err != nil {
 				n.t.Fatal(err)
 			}
@@ -337,12 +338,12 @@ func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Addre
 			send.Work = calcWork(send.Root())
 
 			return send
-		} else if method == abi.MethodNameMintageWithdraw {
+		} else if method == mintage.MethodNameMintageWithdraw {
 			tm, _ := n.ledger.GetTokenMeta(from.Address(), config.ChainToken())
 			if tm == nil {
 				n.t.Fatal()
 			}
-			data, err := abi.MintageABI.PackMethod(abi.MethodNameMintageWithdraw, param.(types.Hash))
+			data, err := mintage.MintageABI.PackMethod(mintage.MethodNameMintageWithdraw, param.(types.Hash))
 			if err != nil {
 				n.t.Fatal(err)
 			}
@@ -380,7 +381,7 @@ func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Addre
 func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address, method string, send *types.StateBlock) *types.StateBlock {
 	switch ca {
 	case contractaddress.MintageAddress:
-		if method == abi.MethodNameMintage {
+		if method == mintage.MethodNameMintage {
 			recv := &types.StateBlock{}
 			mintage := &contract.Mintage{}
 			vmContext := vmstore.NewVMContext(n.ledger, &contractaddress.MintageAddress)
@@ -393,7 +394,7 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 
 			if len(blocks) > 0 {
 				recv.Timestamp = common.TimeNow().Unix()
-				h := blocks[0].VMContext.Cache.Trie().Hash()
+				h := vmstore.TrieHash(blocks[0].VMContext)
 				recv.Extra = *h
 			}
 
@@ -401,7 +402,7 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 			recv.Work = calcWork(recv.Root())
 
 			return recv
-		} else if method == abi.MethodNameMintageWithdraw {
+		} else if method == mintage.MethodNameMintageWithdraw {
 			recv := &types.StateBlock{}
 			withdraw := &contract.WithdrawMintage{}
 			vmContext := vmstore.NewVMContext(n.ledger, &contractaddress.MintageAddress)
@@ -412,7 +413,7 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 
 			if len(blocks) > 0 {
 				recv.Timestamp = common.TimeNow().Unix()
-				h := blocks[0].VMContext.Cache.Trie().Hash()
+				h := vmstore.TrieHash(blocks[0].VMContext)
 				recv.Extra = *h
 			}
 

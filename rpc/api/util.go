@@ -5,8 +5,6 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -15,17 +13,15 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type UtilAPI struct {
 	logger *zap.SugaredLogger
-	ctx    *vmstore.VMContext
+	l      ledger.Store
 }
 
 func NewUtilAPI(l ledger.Store) *UtilAPI {
-	return &UtilAPI{ctx: vmstore.NewVMContext(l, &contractaddress.MintageAddress), logger: log.NewLogger("api_util")}
+	return &UtilAPI{l: l, logger: log.NewLogger("api_util")}
 }
 
 func (u *UtilAPI) Decrypt(cryptograph string, passphrase string) (string, error) {
@@ -46,7 +42,7 @@ func decimal(d uint8) int64 {
 
 func (u *UtilAPI) RawToBalance(balance types.Balance, unit string, tokenName *string) (*APIBalance, error) {
 	if tokenName != nil {
-		token, err := abi.GetTokenByName(u.ctx, *tokenName)
+		token, err := u.l.GetTokenByName(*tokenName)
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +62,7 @@ func (u *UtilAPI) RawToBalance(balance types.Balance, unit string, tokenName *st
 
 func (u *UtilAPI) BalanceToRaw(balance types.Balance, unit string, tokenName *string) (types.Balance, error) {
 	if tokenName != nil {
-		token, err := abi.GetTokenByName(u.ctx, *tokenName)
+		token, err := u.l.GetTokenByName(*tokenName)
 		if err != nil {
 			return types.ZeroBalance, err
 		}

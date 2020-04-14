@@ -27,7 +27,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -162,8 +161,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 	}
 
 	// check account metas
-	vmCtx := vmstore.NewVMContext(c.l)
-	info, err := cabi.GetTokenByName(vmCtx, para.TokenName)
+	info, err := c.l.GetTokenByName(para.TokenName)
 	if err != nil {
 		return nil, err
 	}
@@ -210,14 +208,14 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 	sendBlk.PoVHeight = povHeader.GetHeight()
 
 	// pre-running contract method send action
-	vmCtx = vmstore.NewVMContext(c.l)
+	vmCtx := vmstore.NewVMContext(c.l, &para.To)
 	cd := cm.GetDescribe()
 	if cd.GetVersion() == vmcontract.SpecVer1 {
 		if err := cm.DoSend(vmCtx, sendBlk); err != nil {
 			return nil, err
 		}
 
-		h := vmCtx.Cache.Trie().Hash()
+		h := vmstore.TrieHash(vmCtx)
 		if h != nil {
 			sendBlk.Extra = *h
 		}
@@ -227,7 +225,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 			return nil, err
 		}
 
-		h := vmCtx.Cache.Trie().Hash()
+		h := vmstore.TrieHash(vmCtx)
 		if h != nil {
 			sendBlk.Extra = *h
 		}
@@ -254,8 +252,6 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 	if para.SendHash.IsZero() {
 		return nil, errors.New("invalid transaction parameter")
 	}
-
-	vmCtx := vmstore.NewVMContext(c.l)
 
 	sendBlk, err := c.l.GetStateBlockConfirmed(para.SendHash)
 	if err != nil {
@@ -308,7 +304,7 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 	}
 
 	// pre-running contract method receive action
-	vmCtx = vmstore.NewVMContext(c.l)
+	vmCtx := vmstore.NewVMContextWithBlock(c.l, sendBlk)
 	g, err := cm.DoReceive(vmCtx, recvBlk, sendBlk)
 	if err != nil {
 		return nil, err
@@ -317,7 +313,7 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 		return nil, errors.New("run DoReceive got empty block")
 	}
 
-	h := g[0].VMContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(g[0].VMContext)
 	if h != nil {
 		recvBlk.Extra = *h
 	}

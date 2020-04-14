@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -139,6 +141,6 @@ func (api *PrivacyApi) GetBlockPrivatePayload(blockHash types.Hash) ([]byte, err
 
 // GetDemoKV returns KV in PrivacyKV contract (just for demo in testnet)
 func (api *PrivacyApi) GetDemoKV(key []byte) ([]byte, error) {
-	vmCtx := vmstore.NewVMContext(api.l)
+	vmCtx := vmstore.NewVMContext(api.l, &contractaddress.PrivacyDemoKVAddress)
 	return abi.PrivacyKVGetValue(vmCtx, key)
 }

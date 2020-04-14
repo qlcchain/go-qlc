@@ -36,7 +36,7 @@ type Nep5Pledge struct {
 // transfer quota to beneficial address
 func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
 	// check pledge amount
-	amount, err := ctx.Ledger.CalculateAmount(block)
+	amount, err := ctx.CalculateAmount(block)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	if err != nil {
 		return nil, err
 	}
-	a, _ := ctx.Ledger.CalculateAmount(input)
+	a, _ := ctx.CalculateAmount(input)
 	amount := a.Copy()
 
 	var withdrawTime int64
@@ -164,7 +164,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	//	}
 	//}
 
-	am, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
+	am, _ := ctx.GetAccountMeta(param.Beneficial)
 	if am != nil {
 		tm := am.Token(cfg.ChainToken())
 		block.Balance = am.CoinBalance
@@ -251,7 +251,7 @@ type WithdrawNep5Pledge struct {
 }
 
 func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
-	if amount, err := ctx.Ledger.CalculateAmount(block); err != nil {
+	if amount, err := ctx.CalculateAmount(block); err != nil {
 		return err
 	} else {
 		if block.Type != types.ContractSend || amount.Compare(types.ZeroBalance) == types.BalanceCompEqual {
@@ -295,7 +295,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 
 	pledgeInfo := pledgeResult
 
-	amount, _ := ctx.Ledger.CalculateAmount(input)
+	amount, _ := ctx.CalculateAmount(input)
 
 	var pledgeData []byte
 	if pledgeData, err = ctx.GetStorage(nil, pledgeInfo.Key[1:]); err != nil && err != vmstore.ErrStorageNotFound {
@@ -323,7 +323,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		}
 	}
 
-	am, _ := ctx.Ledger.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
+	am, _ := ctx.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
 	if am == nil {
 		return nil, fmt.Errorf("can not find %s", pledgeInfo.PledgeInfo.PledgeAddress.String())
 	}

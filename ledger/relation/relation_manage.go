@@ -3,9 +3,10 @@ package relation
 import (
 	"context"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/types"
 	"reflect"
 	"sync"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"

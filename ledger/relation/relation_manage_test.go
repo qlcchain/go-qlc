@@ -1,11 +1,12 @@
 package relation
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/google/uuid"
 

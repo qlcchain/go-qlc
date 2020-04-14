@@ -98,7 +98,9 @@ func TestReceiveBlock(t *testing.T) {
 			}
 		}
 	}
-	_ = ctx.SaveStorage()
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
 
 	block, td := mock.GeneratePovBlock(nil, 0)
 	if err := l.AddPovBlock(block, td); err != nil {

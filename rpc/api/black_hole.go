@@ -47,8 +47,8 @@ func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock
 		return nil, context.ErrPoVNotFinish
 	}
 
-	vmContext := vmstore.NewVMContext(b.l, &contractaddress.BlackHoleAddress)
-	sb, err := cabi.PackSendBlock(vmContext, param)
+	vmCtx := vmstore.NewVMContext(b.l, &contractaddress.BlackHoleAddress)
+	sb, err := cabi.PackSendBlock(vmCtx, param)
 	if err != nil {
 		return nil, err
 	}
@@ -57,11 +57,11 @@ func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock
 		return nil, fmt.Errorf("get pov header error: %s", err)
 	}
 	sb.PoVHeight = povHeader.GetHeight()
-	if _, _, err := b.blackHoleContract.ProcessSend(vmContext, sb); err != nil {
+	if _, _, err := b.blackHoleContract.ProcessSend(vmCtx, sb); err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmCtx)
 	if h != nil {
 		sb.Extra = *h
 	}
@@ -106,8 +106,7 @@ func (b *BlackHoleAPI) GetTotalDestroyInfo(addr *types.Address) (types.Balance, 
 		return types.ZeroBalance, ErrParameterNil
 	}
 
-	vmContext := vmstore.NewVMContext(b.l, &contractaddress.BlackHoleAddress)
-	return cabi.GetTotalDestroyInfo(vmContext, addr)
+	return cabi.GetTotalDestroyInfo(b.l, addr)
 }
 
 func (b *BlackHoleAPI) GetDestroyInfoDetail(addr *types.Address) ([]*cabi.DestroyInfo, error) {
@@ -115,6 +114,5 @@ func (b *BlackHoleAPI) GetDestroyInfoDetail(addr *types.Address) ([]*cabi.Destro
 		return nil, ErrParameterNil
 	}
 
-	vmContext := vmstore.NewVMContext(b.l, &contractaddress.BlackHoleAddress)
-	return cabi.GetDestroyInfoDetail(vmContext, addr)
+	return cabi.GetDestroyInfoDetail(b.l, addr)
 }

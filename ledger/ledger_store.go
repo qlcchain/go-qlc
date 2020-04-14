@@ -31,6 +31,7 @@ type Store interface {
 	PrivacyStore
 	contractValueStore
 	vmlogsStore
+	vmStore
 }
 
 type ContractStore interface {
@@ -48,8 +49,12 @@ type ContractStore interface {
 	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
 
 	GetContractValue(key *types.ContractKey, c ...storage.Cache) (*types.ContractValue, error)
-	IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error
+	//IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error
 
+	GetLatestPovHeader() (*types.PovHeader, error)
+	GetPovMinerStat(dayIndex uint32, batch ...storage.Batch) (*types.PovMinerDayStat, error)
+
+	IsUserAccount(address types.Address) (bool, error)
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	GetRelation(dest interface{}, query string) error
 	SelectRelation(dest interface{}, query string) error

@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/ledger"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/log"
@@ -168,12 +170,13 @@ func GetContractParam(ctx *vmstore.VMContext, addr *types.Address) ([]byte, erro
 // GetCDRStatus
 // @param addr settlement contract address
 // @param CDR data hash
-func GetCDRStatus(ctx *vmstore.VMContext, addr *types.Address, hash types.Hash) (*CDRStatus, error) {
+func GetCDRStatus(store ledger.Store, addr *types.Address, hash types.Hash) (*CDRStatus, error) {
 	logger := log.NewLogger("GetCDRStatus")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	if storage, err := ctx.GetStorage(addr[:], hash[:]); err != nil {
 		return nil, err
 	} else {
@@ -252,16 +255,16 @@ func GetCDRMapping(ctx *vmstore.VMContext, hash *types.Hash) ([]*types.Address, 
 
 // GetAllCDRStatus get all CDR records of the specific settlement contract
 // @param addr settlement smart contract
-func GetAllCDRStatus(ctx *vmstore.VMContext, addr *types.Address) ([]*CDRStatus, error) {
-	return GetCDRStatusByDate(ctx, addr, 0, 0)
+func GetAllCDRStatus(store ledger.Store, addr *types.Address) ([]*CDRStatus, error) {
+	return GetCDRStatusByDate(store, addr, 0, 0)
 }
 
 // GetMultiPartyCDRStatus get all CDR records belong to firstAddr and secondAddr
-func GetMultiPartyCDRStatus(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address) (map[types.Address][]*CDRStatus, error) {
-	if data1, err := GetCDRStatusByDate(ctx, firstAddr, 0, 0); err != nil {
+func GetMultiPartyCDRStatus(store ledger.Store, firstAddr, secondAddr *types.Address) (map[types.Address][]*CDRStatus, error) {
+	if data1, err := GetCDRStatusByDate(store, firstAddr, 0, 0); err != nil {
 		return nil, err
 	} else {
-		if data2, err := GetCDRStatusByDate(ctx, secondAddr, 0, 0); err != nil {
+		if data2, err := GetCDRStatusByDate(store, secondAddr, 0, 0); err != nil {
 			return nil, err
 		} else {
 			return map[types.Address][]*CDRStatus{*firstAddr: data1, *secondAddr: data2}, nil
@@ -270,7 +273,8 @@ func GetMultiPartyCDRStatus(ctx *vmstore.VMContext, firstAddr, secondAddr *types
 }
 
 //FindSettlementContract query settlement contract by user address and CDR data
-func FindSettlementContract(ctx *vmstore.VMContext, addr *types.Address, param *CDRParam) (*ContractParam, error) {
+func FindSettlementContract(store ledger.Store, addr *types.Address, param *CDRParam) (*ContractParam, error) {
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	if contracts, err := queryContractParam(ctx, "FindSettlementContract", func(cp *ContractParam) bool {
 		if cp.PartyA.Address == *addr {
 			return len(param.NextStop) > 0 && cp.IsNextStop(param.NextStop)
@@ -346,49 +350,55 @@ func GetSettlementContract(ctx *vmstore.VMContext, addr *types.Address) (*Contra
 	}
 }
 
-func GetAllSettlementContract(ctx *vmstore.VMContext) ([]*ContractParam, error) {
+func GetAllSettlementContract(store ledger.Store) ([]*ContractParam, error) {
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	return queryContractParam(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
 		return true
 	})
 }
 
 // GetContractsByAddress get all contract data by address both Party A and Party B
-func GetContractsByAddress(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
+func GetContractsByAddress(store ledger.Store, addr *types.Address) ([]*ContractParam, error) {
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	return queryContractParam(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
 		return cp.IsContractor(*addr)
 	})
 }
 
 // GetContractsByStatus get all contract data by address both Party A and Party B
-func GetContractsByStatus(ctx *vmstore.VMContext, addr *types.Address, status ContractStatus) ([]*ContractParam, error) {
+func GetContractsByStatus(store ledger.Store, addr *types.Address, status ContractStatus) ([]*ContractParam, error) {
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	return queryContractParam(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
 		return cp.IsContractor(*addr) && status == cp.Status
 	})
 }
 
 // GetContractsByStatus get all expired contract data by address both Party A and Party B
-func GetExpiredContracts(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
+func GetExpiredContracts(store ledger.Store, addr *types.Address) ([]*ContractParam, error) {
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	return queryContractParam(ctx, "GetContractsByAddress", func(cp *ContractParam) bool {
 		return cp.IsContractor(*addr) && cp.IsExpired()
 	})
 }
 
 // GetContractsIDByAddressAsPartyA get all contracts ID as Party A
-func GetContractsIDByAddressAsPartyA(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
+func GetContractsIDByAddressAsPartyA(store ledger.Store, addr *types.Address) ([]*ContractParam, error) {
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	return queryContractParam(ctx, "GetContractsIDByAddressAsPartyA", func(cp *ContractParam) bool {
 		return cp.PartyA.Address == *addr
 	})
 }
 
 // GetContractsIDByAddressAsPartyB get all contracts ID as Party B
-func GetContractsIDByAddressAsPartyB(ctx *vmstore.VMContext, addr *types.Address) ([]*ContractParam, error) {
+func GetContractsIDByAddressAsPartyB(store ledger.Store, addr *types.Address) ([]*ContractParam, error) {
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	return queryContractParam(ctx, "GetContractsIDByAddressAsPartyB", func(cp *ContractParam) bool {
 		return cp.PartyB.Address == *addr
 	})
 }
 
-func GetContractsAddressByPartyANextStop(ctx *vmstore.VMContext, addr *types.Address, nextStop string) (*types.Address, error) {
-	return queryContractByAddressAndStopName(ctx, "GetContractsAddressByPartyANextStop", func(cp *ContractParam) bool {
+func GetContractsAddressByPartyANextStop(store ledger.Store, addr *types.Address, nextStop string) (*types.Address, error) {
+	return queryContractByAddressAndStopName(store, "GetContractsAddressByPartyANextStop", func(cp *ContractParam) bool {
 		var b bool
 		if cp.PartyA.Address == *addr {
 			for _, n := range cp.NextStops {
@@ -402,8 +412,8 @@ func GetContractsAddressByPartyANextStop(ctx *vmstore.VMContext, addr *types.Add
 	})
 }
 
-func GetContractsAddressByPartyBPreStop(ctx *vmstore.VMContext, addr *types.Address, preStop string) (*types.Address, error) {
-	return queryContractByAddressAndStopName(ctx, "GetContractsAddressByPartyBPreStop", func(cp *ContractParam) bool {
+func GetContractsAddressByPartyBPreStop(store ledger.Store, addr *types.Address, preStop string) (*types.Address, error) {
+	return queryContractByAddressAndStopName(store, "GetContractsAddressByPartyBPreStop", func(cp *ContractParam) bool {
 		var b bool
 		if cp.PartyB.Address == *addr {
 			for _, n := range cp.PreStops {
@@ -419,15 +429,15 @@ func GetContractsAddressByPartyBPreStop(ctx *vmstore.VMContext, addr *types.Addr
 
 // GetSummaryReport
 // addr settlement contract address
-func GetSummaryReport(ctx *vmstore.VMContext, addr *types.Address, start, end int64) (*SummaryResult, error) {
-	return generateSummaryReport(ctx, addr, customerFn, start, end)
+func GetSummaryReport(store ledger.Store, addr *types.Address, start, end int64) (*SummaryResult, error) {
+	return generateSummaryReport(store, addr, customerFn, start, end)
 }
 
-func GetSummaryReportByAccount(ctx *vmstore.VMContext, addr *types.Address, account string, start, end int64) (*SummaryResult, error) {
+func GetSummaryReportByAccount(store ledger.Store, addr *types.Address, account string, start, end int64) (*SummaryResult, error) {
 	if account == "" {
 		return nil, errors.New("empty account")
 	}
-	return generateSummaryReport(ctx, addr, func(status *CDRStatus) (s string, err error) {
+	return generateSummaryReport(store, addr, func(status *CDRStatus) (s string, err error) {
 		_, a, _, err := status.ExtractAccount()
 		if err != nil {
 			return "", err
@@ -440,11 +450,11 @@ func GetSummaryReportByAccount(ctx *vmstore.VMContext, addr *types.Address, acco
 	}, start, end)
 }
 
-func GetSummaryReportByCustomer(ctx *vmstore.VMContext, addr *types.Address, customer string, start, end int64) (*SummaryResult, error) {
+func GetSummaryReportByCustomer(store ledger.Store, addr *types.Address, customer string, start, end int64) (*SummaryResult, error) {
 	if customer == "" {
 		return nil, errors.New("empty customer")
 	}
-	return generateSummaryReport(ctx, addr, func(status *CDRStatus) (s string, err error) {
+	return generateSummaryReport(store, addr, func(status *CDRStatus) (s string, err error) {
 		_, c, _, err := status.ExtractCustomer()
 		if err != nil {
 			return "", err
@@ -457,12 +467,12 @@ func GetSummaryReportByCustomer(ctx *vmstore.VMContext, addr *types.Address, cus
 	}, start, end)
 }
 
-func generateSummaryReport(ctx *vmstore.VMContext, addr *types.Address, fn func(status *CDRStatus) (string, error), start, end int64) (*SummaryResult, error) {
-	records, err := GetCDRStatusByDate(ctx, addr, start, end)
+func generateSummaryReport(store ledger.Store, addr *types.Address, fn func(status *CDRStatus) (string, error), start, end int64) (*SummaryResult, error) {
+	records, err := GetCDRStatusByDate(store, addr, start, end)
 	if err != nil {
 		return nil, err
 	}
-
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	c, err := GetSettlementContract(ctx, addr)
 	if err != nil {
 		return nil, err
@@ -493,15 +503,15 @@ func generateSummaryReport(ctx *vmstore.VMContext, addr *types.Address, fn func(
 }
 
 // GetCDRStatusByDate
-func GetCDRStatusByDate(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*CDRStatus, error) {
+func GetCDRStatusByDate(store ledger.Store, addr *types.Address, start, end int64) ([]*CDRStatus, error) {
 	logger := log.NewLogger("GetCDRStatusByDate")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
 	var result []*CDRStatus
-
-	if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+	iterator := store.NewVMIterator(&contractaddress.SettlementAddress)
+	if err := iterator.Next(addr[:], func(key []byte, value []byte) error {
 		if len(key) == keySize && len(value) > 0 {
 			status := &CDRStatus{}
 			if err := status.FromABI(value); err != nil {
@@ -520,11 +530,11 @@ func GetCDRStatusByDate(ctx *vmstore.VMContext, addr *types.Address, start, end 
 	return result, nil
 }
 
-func GenerateInvoicesByAccount(ctx *vmstore.VMContext, addr *types.Address, account string, start, end int64) ([]*InvoiceRecord, error) {
+func GenerateInvoicesByAccount(store ledger.Store, addr *types.Address, account string, start, end int64) ([]*InvoiceRecord, error) {
 	if account == "" {
 		return nil, errors.New("empty account")
 	}
-	return generateInvoices(ctx, addr, func(status *CDRStatus) (s string, err error) {
+	return generateInvoices(store, addr, func(status *CDRStatus) (s string, err error) {
 		if _, a, _, err := status.ExtractAccount(); err == nil {
 			if account == a {
 				return a, nil
@@ -537,11 +547,11 @@ func GenerateInvoicesByAccount(ctx *vmstore.VMContext, addr *types.Address, acco
 	}, start, end)
 }
 
-func GenerateInvoicesByCustomer(ctx *vmstore.VMContext, addr *types.Address, customer string, start, end int64) ([]*InvoiceRecord, error) {
+func GenerateInvoicesByCustomer(store ledger.Store, addr *types.Address, customer string, start, end int64) ([]*InvoiceRecord, error) {
 	if customer == "" {
 		return nil, errors.New("empty customer")
 	}
-	return generateInvoices(ctx, addr, func(status *CDRStatus) (s string, err error) {
+	return generateInvoices(store, addr, func(status *CDRStatus) (s string, err error) {
 		if _, c, _, err := status.ExtractCustomer(); err == nil {
 			if customer == c {
 				return c, nil
@@ -554,12 +564,12 @@ func GenerateInvoicesByCustomer(ctx *vmstore.VMContext, addr *types.Address, cus
 	}, start, end)
 }
 
-func generateInvoices(ctx *vmstore.VMContext, addr *types.Address, fn func(*CDRStatus) (string, error), start, end int64) ([]*InvoiceRecord, error) {
+func generateInvoices(store ledger.Store, addr *types.Address, fn func(*CDRStatus) (string, error), start, end int64) ([]*InvoiceRecord, error) {
 	logger := log.NewLogger("generateInvoices")
 	defer func() {
 		_ = logger.Sync()
 	}()
-
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	c, err := GetSettlementContract(ctx, addr)
 	if err != nil {
 		return nil, err
@@ -572,7 +582,7 @@ func generateInvoices(ctx *vmstore.VMContext, addr *types.Address, fn func(*CDRS
 	}
 
 	cache := make(map[string]int)
-	if cdrs, err := GetCDRStatusByDate(ctx, &contractAddr, start, end); err == nil {
+	if cdrs, err := GetCDRStatusByDate(store, &contractAddr, start, end); err == nil {
 		for _, cdr := range cdrs {
 			if cdr.Status == SettlementStatusSuccess {
 				if sender, err := fn(cdr); err == nil {
@@ -623,8 +633,8 @@ func generateInvoices(ctx *vmstore.VMContext, addr *types.Address, fn func(*CDRS
 
 // GenerateInvoicesByContract
 // addr settlement contract address
-func GenerateInvoicesByContract(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
-	return generateInvoices(ctx, addr, func(status *CDRStatus) (s string, err error) {
+func GenerateInvoicesByContract(store ledger.Store, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
+	return generateInvoices(store, addr, func(status *CDRStatus) (s string, err error) {
 		if _, sender, _, err := status.ExtractID(); err == nil {
 			return sender, nil
 		}
@@ -634,20 +644,20 @@ func GenerateInvoicesByContract(ctx *vmstore.VMContext, addr *types.Address, sta
 
 // GenerateInvoices
 // @param addr user qlcchain address
-func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
+func GenerateInvoices(store ledger.Store, addr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
 	logger := log.NewLogger("GenerateInvoices")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
-	contracts, err := GetContractsIDByAddressAsPartyA(ctx, addr)
+	contracts, err := GetContractsIDByAddressAsPartyA(store, addr)
 	if err != nil {
 		return nil, err
 	}
 	var result []*InvoiceRecord
 	for _, c := range contracts {
 		if contractAddr, err := c.Address(); err == nil {
-			if records, err := GenerateInvoicesByContract(ctx, &contractAddr, start, end); err == nil {
+			if records, err := GenerateInvoicesByContract(store, &contractAddr, start, end); err == nil {
 				for _, record := range records {
 					result = append(result, record)
 				}
@@ -667,18 +677,18 @@ func GenerateInvoices(ctx *vmstore.VMContext, addr *types.Address, start, end in
 }
 
 // GetMultiPartySummaryReport
-func GetMultiPartySummaryReport(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address, start, end int64) (*MultiPartySummaryResult, error) {
+func GetMultiPartySummaryReport(store ledger.Store, firstAddr, secondAddr *types.Address, start, end int64) (*MultiPartySummaryResult, error) {
 	logger := log.NewLogger("GetMultiPartySummaryReport")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
-	records, err := GetCDRStatusByDate(ctx, firstAddr, start, end)
+	records, err := GetCDRStatusByDate(store, firstAddr, start, end)
 	if err != nil {
 		return nil, err
 	}
 
-	c1, c2, _, err := verifyMultiPartyAddress(ctx, firstAddr, secondAddr)
+	c1, c2, _, err := verifyMultiPartyAddress(store, firstAddr, secondAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -698,7 +708,7 @@ func GetMultiPartySummaryReport(ctx *vmstore.VMContext, firstAddr, secondAddr *t
 			continue
 		}
 
-		if stat2, err := GetCDRStatus(ctx, secondAddr, hash); err == nil {
+		if stat2, err := GetCDRStatus(store, secondAddr, hash); err == nil {
 			record.Merge(stat2)
 		} else {
 			logger.Errorf("%s[%s], err %s", secondAddr.String(), hash.String(), err)
@@ -728,18 +738,18 @@ func GetMultiPartySummaryReport(ctx *vmstore.VMContext, firstAddr, secondAddr *t
 
 // GenerateMultiPartyInvoice
 // addr settlement contract address
-func GenerateMultiPartyInvoice(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
-	if _, _, _, err := verifyMultiPartyAddress(ctx, firstAddr, secondAddr); err != nil {
+func GenerateMultiPartyInvoice(store ledger.Store, firstAddr, secondAddr *types.Address, start, end int64) ([]*InvoiceRecord, error) {
+	if _, _, _, err := verifyMultiPartyAddress(store, firstAddr, secondAddr); err != nil {
 		return nil, err
 	}
 
-	return generateInvoices(ctx, firstAddr, func(status *CDRStatus) (s string, err error) {
+	return generateInvoices(store, firstAddr, func(status *CDRStatus) (s string, err error) {
 		hash, err := status.ToHash()
 		if err != nil {
 			return "", fmt.Errorf("tohash: %s, %s", status.String(), err)
 		}
 
-		if stat2, err := GetCDRStatus(ctx, secondAddr, hash); err == nil {
+		if stat2, err := GetCDRStatus(store, secondAddr, hash); err == nil {
 			if stat2.Status == SettlementStatusSuccess {
 				_, sender, _, err := stat2.ExtractID()
 				if err != nil {
@@ -799,19 +809,20 @@ func SaveAssetParam(ctx *vmstore.VMContext, bts []byte) error {
 	return nil
 }
 
-func GetAllAsserts(ctx *vmstore.VMContext) ([]*AssetParam, error) {
-	return queryAsserts(ctx, "GetAllAssert", func(param *AssetParam) bool {
+func GetAllAsserts(store ledger.Store) ([]*AssetParam, error) {
+	return queryAsserts(store, "GetAllAssert", func(param *AssetParam) bool {
 		return true
 	})
 }
 
-func GetAssertsByAddress(ctx *vmstore.VMContext, owner *types.Address) ([]*AssetParam, error) {
-	return queryAsserts(ctx, "GetAssertsByAddress", func(param *AssetParam) bool {
+func GetAssertsByAddress(store ledger.Store, owner *types.Address) ([]*AssetParam, error) {
+	return queryAsserts(store, "GetAssertsByAddress", func(param *AssetParam) bool {
 		return param.Owner.Address == *owner
 	})
 }
 
-func verifyMultiPartyAddress(ctx *vmstore.VMContext, firstAddr, secondAddr *types.Address) (*ContractParam, *ContractParam, bool, error) {
+func verifyMultiPartyAddress(store ledger.Store, firstAddr, secondAddr *types.Address) (*ContractParam, *ContractParam, bool, error) {
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	c1, err := GetSettlementContract(ctx, firstAddr)
 	if err != nil {
 		return nil, nil, false, err
@@ -847,7 +858,6 @@ func queryContractParam(ctx *vmstore.VMContext, name string, fn func(cp *Contrac
 	}()
 
 	var result []*ContractParam
-
 	if err := ctx.Iterator(contractPrefix, func(key []byte, value []byte) error {
 		if len(key) == contractKeySize && len(value) > 0 {
 			cp := &ContractParam{}
@@ -873,15 +883,15 @@ func queryContractParam(ctx *vmstore.VMContext, name string, fn func(cp *Contrac
 	return result, nil
 }
 
-func queryContractByAddressAndStopName(ctx *vmstore.VMContext, name string, fn func(cp *ContractParam) bool) (*types.Address, error) {
+func queryContractByAddressAndStopName(store ledger.Store, name string, fn func(cp *ContractParam) bool) (*types.Address, error) {
 	logger := log.NewLogger(name)
 	defer func() {
 		_ = logger.Sync()
 	}()
 
 	var result *ContractParam
-
-	if err := ctx.Iterator(contractPrefix, func(key []byte, value []byte) error {
+	iterator := store.NewVMIterator(&contractaddress.SettlementAddress)
+	if err := iterator.Next(contractPrefix, func(key []byte, value []byte) error {
 		if len(key) == contractKeySize && len(value) > 0 {
 			cp := &ContractParam{}
 			if err := cp.FromABI(value); err != nil {
@@ -908,14 +918,15 @@ func queryContractByAddressAndStopName(ctx *vmstore.VMContext, name string, fn f
 	return nil, fmt.Errorf("can not find any contract")
 }
 
-func queryAsserts(ctx *vmstore.VMContext, name string, fn func(param *AssetParam) bool) ([]*AssetParam, error) {
+func queryAsserts(store ledger.Store, name string, fn func(param *AssetParam) bool) ([]*AssetParam, error) {
 	logger := log.NewLogger(name)
 	defer func() {
 		_ = logger.Sync()
 	}()
 
 	var result []*AssetParam
-	if err := ctx.Iterator(assetKeyPrefix, func(key []byte, value []byte) error {
+	iterator := store.NewVMIterator(&contractaddress.SettlementAddress)
+	if err := iterator.Next(assetKeyPrefix, func(key []byte, value []byte) error {
 		if len(key) == assetKeySize && len(value) > 0 {
 			if param, err := ParseAssertParam(value); err != nil {
 				logger.Error(err)

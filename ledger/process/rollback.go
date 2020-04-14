@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+
 	"github.com/yireyun/go-queue"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -14,7 +16,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -776,10 +777,14 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 	}
 }
 
+// FIXME: rollback
 func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *ledger.Cache) error {
 	lv.logger.Warnf("rollback contract data, block:%s", block.GetHash().String())
-	vmContext := vmstore.NewVMContextWithBlock(lv.l, block)
-	return vmContext.DeleteBlockData(block, cache)
+	//vmContext := vmstore.NewVMContextWithBlock(lv.l, block)
+	//return vmContext.DeleteBlockData(block, cache)
+
+	return nil
+
 	//
 	//extra := block.GetExtra()
 	//if !extra.IsZero() {
@@ -858,9 +863,9 @@ func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {
 			}
 			address := types.Address(input.GetLink())
 			if address == contractaddress.MintageAddress {
-				var param = new(cabi.ParamMintage)
+				var param = new(mintage.ParamMintage)
 				tokenId = param.TokenId
-				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetPayload()); err == nil {
+				if err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.GetPayload()); err == nil {
 					blkToken, _, _ = lv.l.GetUncheckedBlock(tokenId, types.UncheckedKindTokenInfo)
 				}
 			}

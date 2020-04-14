@@ -31,7 +31,7 @@ type contractValueStore interface {
 	AddOrUpdateContractValue(key *types.ContractKey, value *types.ContractValue, c ...storage.Cache) error
 	CountContractValues() (uint64, error)
 	IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error
-	UpdateContractValueByBlock(block *types.StateBlock, trieRoot *types.Hash, c ...storage.Cache) error
+	UpdateContractValueByBlock(block *types.StateBlock, c ...storage.Cache) error
 	DeleteContractValueByBlock(block *types.StateBlock, c ...storage.Cache) error
 }
 
@@ -150,7 +150,7 @@ func (l *Ledger) IteratorContractStorage(prefix []byte, callback func(key *types
 	return nil
 }
 
-func (l *Ledger) UpdateContractValueByBlock(block *types.StateBlock, trieRoot *types.Hash, c ...storage.Cache) error {
+func (l *Ledger) UpdateContractValueByBlock(block *types.StateBlock, c ...storage.Cache) error {
 	a := block.Address
 	ca := block.ContractAddress()
 	hash := block.GetHash()
@@ -176,7 +176,6 @@ func (l *Ledger) UpdateContractValueByBlock(block *types.StateBlock, trieRoot *t
 	// update latest key/value
 	latestV := &types.ContractValue{
 		BlockHash: hash,
-		Root:      nil,
 	}
 	if err := l.AddOrUpdateContractValue(latestKey, latestV, c...); err != nil {
 		return err
@@ -190,7 +189,7 @@ func (l *Ledger) UpdateContractValueByBlock(block *types.StateBlock, trieRoot *t
 		Suffix:          nil,
 	}
 
-	cv := &types.ContractValue{BlockHash: previous, Root: trieRoot}
+	cv := &types.ContractValue{BlockHash: previous}
 	if err := l.AddOrUpdateContractValue(ck, cv, c...); err != nil {
 		return err
 	}

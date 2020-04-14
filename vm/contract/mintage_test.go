@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -19,7 +21,6 @@ import (
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -38,10 +39,10 @@ func TestMintage(t *testing.T) {
 	}
 
 	tokenName := "Test"
-	tokenID := cabi.NewTokenHash(a, tm.Header, tokenName)
+	tokenID := mintage.NewTokenHash(a, tm.Header, tokenName)
 	nep5TxId := random.RandomHexString(32)
 
-	if data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenID, tokenName,
+	if data, err := mintage.MintageABI.PackMethod(mintage.MethodNameMintage, tokenID, tokenName,
 		"T", big.NewInt(1000), uint8(8), b, nep5TxId); err != nil {
 		t.Fatal(err)
 	} else {
@@ -85,14 +86,14 @@ func TestMintage(t *testing.T) {
 		if err := ctx.SaveStorage(); err != nil {
 			t.Fatal(err)
 		}
-		if tokens, err := cabi.ListTokens(ctx); err != nil {
+		if tokens, err := mintage.ListTokens(ctx); err != nil {
 			t.Fatal(err)
 		} else {
 			t.Log(util.ToIndentString(tokens))
 		}
 	}
 
-	if data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintageWithdraw, tokenID); err != nil {
+	if data, err := mintage.MintageABI.PackMethod(mintage.MethodNameMintageWithdraw, tokenID); err != nil {
 		t.Fatal(err)
 	} else {
 		blk := &types.StateBlock{
@@ -118,14 +119,14 @@ func TestMintage(t *testing.T) {
 			t.Fatal(err)
 		} else {
 			tokenInfo := new(types.TokenInfo)
-			err = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, tokenInfoData)
+			err = mintage.MintageABI.UnpackVariable(tokenInfo, mintage.VariableNameToken, tokenInfoData)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			tokenInfo.WithdrawTime = time.Now().AddDate(0, 0, -1).Unix()
-			newTokenInfo, err := cabi.MintageABI.PackVariable(
-				cabi.VariableNameToken,
+			newTokenInfo, err := mintage.MintageABI.PackVariable(
+				mintage.VariableNameToken,
 				tokenInfo.TokenId,
 				tokenInfo.TokenName,
 				tokenInfo.TokenSymbol,
@@ -170,7 +171,7 @@ func Test_verifyToken(t *testing.T) {
 	nep5TxId := random.RandomHexString(32)
 
 	type args struct {
-		param cabi.ParamMintage
+		param mintage.ParamMintage
 	}
 	tests := []struct {
 		name    string
@@ -180,7 +181,7 @@ func Test_verifyToken(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				param: cabi.ParamMintage{
+				param: mintage.ParamMintage{
 					TokenId:     mock.Hash(),
 					TokenName:   "Test",
 					TokenSymbol: "t",
@@ -194,7 +195,7 @@ func Test_verifyToken(t *testing.T) {
 		}, {
 			name: "f1",
 			args: args{
-				param: cabi.ParamMintage{
+				param: mintage.ParamMintage{
 					TokenId:     mock.Hash(),
 					TokenName:   "",
 					TokenSymbol: "t",
@@ -208,7 +209,7 @@ func Test_verifyToken(t *testing.T) {
 		}, {
 			name: "f2",
 			args: args{
-				param: cabi.ParamMintage{
+				param: mintage.ParamMintage{
 					TokenId:     mock.Hash(),
 					TokenName:   "T**a",
 					TokenSymbol: "t",
@@ -222,7 +223,7 @@ func Test_verifyToken(t *testing.T) {
 		}, {
 			name: "f3",
 			args: args{
-				param: cabi.ParamMintage{
+				param: mintage.ParamMintage{
 					TokenId:     mock.Hash(),
 					TokenName:   "Test",
 					TokenSymbol: "t&a",

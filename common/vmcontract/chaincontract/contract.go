@@ -3,6 +3,8 @@ package chaincontract
 import (
 	"sync"
 
+	mintage2 "github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+
 	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -16,7 +18,7 @@ func InitChainContract() {
 	defer lock.Unlock()
 	mintage := vmcontract.NewChainContract(
 		map[string]vmcontract.Contract{
-			cabi.MethodNameMintage: &contract.Mintage{
+			mintage2.MethodNameMintage: &contract.Mintage{
 				BaseContract: contract.BaseContract{
 					Describe: vmcontract.Describe{
 						SpecVer:   vmcontract.SpecVer1,
@@ -25,7 +27,7 @@ func InitChainContract() {
 					},
 				},
 			},
-			cabi.MethodNameMintageWithdraw: &contract.WithdrawMintage{
+			mintage2.MethodNameMintageWithdraw: &contract.WithdrawMintage{
 				BaseContract: contract.BaseContract{
 					Describe: vmcontract.Describe{
 						SpecVer:   vmcontract.SpecVer1,
@@ -35,8 +37,8 @@ func InitChainContract() {
 				},
 			},
 		},
-		cabi.MintageABI,
-		cabi.JsonMintage,
+		mintage2.MintageABI,
+		mintage2.JsonMintage,
 	)
 	vmcontract.RegisterContracts(contractaddress.MintageAddress, mintage)
 

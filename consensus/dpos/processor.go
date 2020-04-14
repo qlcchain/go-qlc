@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -691,7 +693,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 		}
 
 		tokenId := new(types.Hash)
-		err = cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.GetData())
+		err = mintage.MintageABI.UnpackMethod(tokenId, mintage.MethodNameMintageWithdraw, input.GetData())
 		if err != nil {
 			dps.logger.Errorf("get token info err %s", err)
 			return
@@ -839,8 +841,8 @@ func (p *Processor) dequeueGapToken(hash types.Hash) {
 		return
 	}
 
-	param := new(cabi.ParamMintage)
-	if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err != nil {
+	param := new(mintage.ParamMintage)
+	if err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.GetData()); err != nil {
 		return
 	}
 

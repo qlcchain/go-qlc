@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/bluele/gcache"
 	"go.uber.org/zap"
@@ -808,8 +810,8 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			}
 
 			if types.Address(input.GetLink()) == contractaddress.MintageAddress {
-				param := new(cabi.ParamMintage)
-				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+				param := new(mintage.ParamMintage)
+				if err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.GetData()); err == nil {
 					index := dps.getProcessorIndex(input.Address)
 					if localIndex != index {
 						dps.processors[index].tokenCreateNotify(hash)

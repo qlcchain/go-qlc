@@ -30,24 +30,6 @@ func (z *ContractValue) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "BlockHash")
 				return
 			}
-		case "r":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "Root")
-					return
-				}
-				z.Root = nil
-			} else {
-				if z.Root == nil {
-					z.Root = new(Hash)
-				}
-				err = dc.ReadExtension(z.Root)
-				if err != nil {
-					err = msgp.WrapError(err, "Root")
-					return
-				}
-			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -60,10 +42,10 @@ func (z *ContractValue) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z *ContractValue) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+func (z ContractValue) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 1
 	// write "p"
-	err = en.Append(0x82, 0xa1, 0x70)
+	err = en.Append(0x81, 0xa1, 0x70)
 	if err != nil {
 		return
 	}
@@ -72,47 +54,19 @@ func (z *ContractValue) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "BlockHash")
 		return
 	}
-	// write "r"
-	err = en.Append(0xa1, 0x72)
-	if err != nil {
-		return
-	}
-	if z.Root == nil {
-		err = en.WriteNil()
-		if err != nil {
-			return
-		}
-	} else {
-		err = en.WriteExtension(z.Root)
-		if err != nil {
-			err = msgp.WrapError(err, "Root")
-			return
-		}
-	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z *ContractValue) MarshalMsg(b []byte) (o []byte, err error) {
+func (z ContractValue) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 1
 	// string "p"
-	o = append(o, 0x82, 0xa1, 0x70)
+	o = append(o, 0x81, 0xa1, 0x70)
 	o, err = msgp.AppendExtension(o, &z.BlockHash)
 	if err != nil {
 		err = msgp.WrapError(err, "BlockHash")
 		return
-	}
-	// string "r"
-	o = append(o, 0xa1, 0x72)
-	if z.Root == nil {
-		o = msgp.AppendNil(o)
-	} else {
-		o, err = msgp.AppendExtension(o, z.Root)
-		if err != nil {
-			err = msgp.WrapError(err, "Root")
-			return
-		}
 	}
 	return
 }
@@ -141,23 +95,6 @@ func (z *ContractValue) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "BlockHash")
 				return
 			}
-		case "r":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.Root = nil
-			} else {
-				if z.Root == nil {
-					z.Root = new(Hash)
-				}
-				bts, err = msgp.ReadExtensionBytes(bts, z.Root)
-				if err != nil {
-					err = msgp.WrapError(err, "Root")
-					return
-				}
-			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -171,12 +108,7 @@ func (z *ContractValue) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *ContractValue) Msgsize() (s int) {
-	s = 1 + 2 + msgp.ExtensionPrefixSize + z.BlockHash.Len() + 2
-	if z.Root == nil {
-		s += msgp.NilSize
-	} else {
-		s += msgp.ExtensionPrefixSize + z.Root.Len()
-	}
+func (z ContractValue) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.BlockHash.Len()
 	return
 }

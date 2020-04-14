@@ -21,7 +21,7 @@ func PovHeightRound(height uint64, round uint64) uint64 {
 }
 
 func PovGetNodeRewardHeightByDay(ctx *vmstore.VMContext) (uint64, error) {
-	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
+	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return 0, errors.New("failed to get latest block")
 	}

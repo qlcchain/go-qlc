@@ -157,7 +157,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 
 	addr := param.PartyA.Address
-	if tm, err := ctx.Ledger.GetTokenMeta(addr, config.GasToken()); err != nil {
+	if tm, err := ctx.GetTokenMeta(addr, config.GasToken()); err != nil {
 		return nil, err
 	} else {
 		createParam := &cabi.CreateContractParam{
@@ -208,7 +208,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 			if _, _, err := s.createContract.ProcessSend(ctx, sb); err != nil {
 				return nil, err
 			}
-			h := ctx.Cache.Trie().Hash()
+			h := vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.Extra = *h
 			}
@@ -244,7 +244,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 	}
 	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 
-	if tm, err := ctx.Ledger.GetTokenMeta(param.Address, config.GasToken()); err != nil {
+	if tm, err := ctx.GetTokenMeta(param.Address, config.GasToken()); err != nil {
 		return nil, err
 	} else {
 		if singedData, err := signParam.ToABI(); err == nil {
@@ -272,7 +272,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 				return nil, err
 			}
 
-			h := ctx.Cache.Trie().Hash()
+			h := vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.Extra = *h
 			}
@@ -309,7 +309,7 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 
 	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 
-	if tm, err := ctx.Ledger.GetTokenMeta(addr, config.GasToken()); err != nil {
+	if tm, err := ctx.GetTokenMeta(addr, config.GasToken()); err != nil {
 		return nil, err
 	} else {
 		if singedData, err := abi(); err == nil {
@@ -338,7 +338,7 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 				return nil, err
 			}
 
-			h := ctx.Cache.Trie().Hash()
+			h := vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.Extra = *h
 			}
@@ -454,8 +454,7 @@ type SettlementContract struct {
 // @return all settlement contracts
 func (s *SettlementAPI) GetAllContracts(count int, offset *int) ([]*SettlementContract, error) {
 	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
-		ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-		return cabi.GetAllSettlementContract(ctx)
+		return cabi.GetAllSettlementContract(s.l)
 	})
 }
 
@@ -466,8 +465,7 @@ func (s *SettlementAPI) GetAllContracts(count int, offset *int) ([]*SettlementCo
 // @return all settlement contract
 func (s *SettlementAPI) GetContractsByAddress(addr *types.Address, count int, offset *int) ([]*SettlementContract, error) {
 	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
-		ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-		return cabi.GetContractsByAddress(ctx, addr)
+		return cabi.GetContractsByAddress(s.l, addr)
 	})
 }
 
@@ -483,8 +481,7 @@ func (s *SettlementAPI) GetContractsByStatus(addr *types.Address, status string,
 		return nil, err
 	}
 	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
-		ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-		return cabi.GetContractsByStatus(ctx, addr, state)
+		return cabi.GetContractsByStatus(s.l, addr, state)
 	})
 }
 
@@ -496,8 +493,7 @@ func (s *SettlementAPI) GetContractsByStatus(addr *types.Address, status string,
 // @return matched settlement contract
 func (s *SettlementAPI) GetExpiredContracts(addr *types.Address, count int, offset *int) ([]*SettlementContract, error) {
 	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
-		ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-		return cabi.GetExpiredContracts(ctx, addr)
+		return cabi.GetExpiredContracts(s.l, addr)
 	})
 }
 
@@ -508,8 +504,7 @@ func (s *SettlementAPI) GetExpiredContracts(addr *types.Address, count int, offs
 // @return all settlement contract as PartyA
 func (s *SettlementAPI) GetContractsAsPartyA(addr *types.Address, count int, offset *int) ([]*SettlementContract, error) {
 	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
-		ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-		return cabi.GetContractsIDByAddressAsPartyA(ctx, addr)
+		return cabi.GetContractsIDByAddressAsPartyA(s.l, addr)
 	})
 }
 
@@ -520,8 +515,7 @@ func (s *SettlementAPI) GetContractsAsPartyA(addr *types.Address, count int, off
 // @return all settlement contract as PartyB
 func (s *SettlementAPI) GetContractsAsPartyB(addr *types.Address, count int, offset *int) ([]*SettlementContract, error) {
 	return s.queryContractsByAddress(count, offset, func() (params []*cabi.ContractParam, err error) {
-		ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-		return cabi.GetContractsIDByAddressAsPartyB(ctx, addr)
+		return cabi.GetContractsIDByAddressAsPartyB(s.l, addr)
 	})
 }
 
@@ -530,8 +524,7 @@ func (s *SettlementAPI) GetContractsAsPartyB(addr *types.Address, count int, off
 // @param stopName PartyA nextStop
 // @return contract Address
 func (s *SettlementAPI) GetContractAddressByPartyANextStop(addr *types.Address, stopName string) (*types.Address, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GetContractsAddressByPartyANextStop(ctx, addr, stopName)
+	return cabi.GetContractsAddressByPartyANextStop(s.l, addr, stopName)
 }
 
 // GetContractAddressByPartyBPreStop query all settlement contracts as Party B info by address and PreStop
@@ -539,8 +532,7 @@ func (s *SettlementAPI) GetContractAddressByPartyANextStop(addr *types.Address, 
 // @param stopName PartyB preStop
 // @return contract Address
 func (s *SettlementAPI) GetContractAddressByPartyBPreStop(addr *types.Address, stopName string) (*types.Address, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GetContractsAddressByPartyBPreStop(ctx, addr, stopName)
+	return cabi.GetContractsAddressByPartyBPreStop(s.l, addr, stopName)
 }
 
 // GetProcessCDRBlock save CDR data for the settlement
@@ -564,10 +556,10 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, params []*cabi.C
 
 	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 
-	if c, err := cabi.FindSettlementContract(ctx, addr, params[0]); err != nil {
+	if c, err := cabi.FindSettlementContract(s.l, addr, params[0]); err != nil {
 		return nil, err
 	} else {
-		if tm, err := ctx.Ledger.GetTokenMeta(*addr, config.GasToken()); err != nil {
+		if tm, err := ctx.GetTokenMeta(*addr, config.GasToken()); err != nil {
 			return nil, err
 		} else {
 			address, err := c.Address()
@@ -611,7 +603,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, params []*cabi.C
 					return nil, err
 				}
 
-				h := ctx.Cache.Trie().Hash()
+				h := vmstore.TrieHash(ctx)
 				if h != nil {
 					sb.Extra = *h
 				}
@@ -646,7 +638,7 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 	}
 	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 
-	if tm, err := ctx.Ledger.GetTokenMeta(param.Address, config.GasToken()); err != nil {
+	if tm, err := ctx.GetTokenMeta(param.Address, config.GasToken()); err != nil {
 		return nil, err
 	} else {
 		if singedData, err := param.ToABI(); err == nil {
@@ -676,7 +668,7 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 				return nil, err
 			}
 
-			h := ctx.Cache.Trie().Hash()
+			h := vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.Extra = *h
 			}
@@ -697,8 +689,7 @@ type CDRStatus struct {
 // @param addr settlement smart contract address
 // @param hash CDR data hash
 func (s *SettlementAPI) GetCDRStatus(addr *types.Address, hash types.Hash) (*CDRStatus, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	if cdr, err := cabi.GetCDRStatus(ctx, addr, hash); err != nil {
+	if cdr, err := cabi.GetCDRStatus(s.l, addr, hash); err != nil {
 		return nil, err
 	} else {
 		return &CDRStatus{
@@ -716,8 +707,7 @@ func (s *SettlementAPI) GetCDRStatusByCdrData(addr *types.Address, index uint64,
 	if err != nil {
 		return nil, err
 	}
-	ctx := vmstore.NewVMContext(s.l)
-	if cdr, err := cabi.GetCDRStatus(ctx, addr, hash); err != nil {
+	if cdr, err := cabi.GetCDRStatus(s.l, addr, hash); err != nil {
 		return nil, err
 	} else {
 		return &CDRStatus{
@@ -728,8 +718,7 @@ func (s *SettlementAPI) GetCDRStatusByCdrData(addr *types.Address, index uint64,
 }
 
 func (s *SettlementAPI) GetCDRStatusByDate(addr *types.Address, start, end int64, count int, offset *int) ([]*CDRStatus, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	if status, err := cabi.GetCDRStatusByDate(ctx, addr, start, end); err != nil {
+	if status, err := cabi.GetCDRStatusByDate(s.l, addr, start, end); err != nil {
 		return nil, err
 	} else {
 		size := len(status)
@@ -758,9 +747,7 @@ func (s *SettlementAPI) GetCDRStatusByDate(addr *types.Address, start, end int64
 // @param count max settlement contract records size
 // @param offset offset of all settlement contract records(optional)
 func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *int) ([]*CDRStatus, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-
-	if status, err := cabi.GetAllCDRStatus(ctx, addr); err != nil {
+	if status, err := cabi.GetAllCDRStatus(s.l, addr); err != nil {
 		return nil, err
 	} else {
 		size := len(status)
@@ -789,9 +776,7 @@ func (s *SettlementAPI) GetAllCDRStatus(addr *types.Address, count int, offset *
 // @param count max settlement contract records size
 // @param offset offset of all settlement contract records(optional)
 func (s *SettlementAPI) GetMultiPartyCDRStatus(firstAddr, secondAddr *types.Address, count int, offset *int) ([]*CDRStatus, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-
-	if records, err := cabi.GetMultiPartyCDRStatus(ctx, firstAddr, secondAddr); err != nil {
+	if records, err := cabi.GetMultiPartyCDRStatus(s.l, firstAddr, secondAddr); err != nil {
 		return nil, err
 	} else {
 		var result []*CDRStatus
@@ -850,8 +835,7 @@ func sortCDRStatusFun(cdr1, cdr2 *CDRStatus) bool {
 // @param end report end data (UTC unix time)
 // @return summary report if error not exist
 func (s *SettlementAPI) GetSummaryReport(addr *types.Address, start, end int64) (*cabi.SummaryResult, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GetSummaryReport(ctx, addr, start, end)
+	return cabi.GetSummaryReport(s.l, addr, start, end)
 }
 
 // GetSummaryReportByAccount generate summary report by PCCWG account
@@ -861,8 +845,7 @@ func (s *SettlementAPI) GetSummaryReport(addr *types.Address, start, end int64) 
 // @param end report end data (UTC unix time)
 // @return summary report if error not exist
 func (s *SettlementAPI) GetSummaryReportByAccount(addr *types.Address, account string, start, end int64) (*cabi.SummaryResult, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GetSummaryReportByAccount(ctx, addr, account, start, end)
+	return cabi.GetSummaryReportByAccount(s.l, addr, account, start, end)
 }
 
 // GetSummaryReportByCustomer generate summary report by PCCWG customer name
@@ -872,8 +855,7 @@ func (s *SettlementAPI) GetSummaryReportByAccount(addr *types.Address, account s
 // @param end report end data (UTC unix time)
 // @return summary report if error not exist
 func (s *SettlementAPI) GetSummaryReportByCustomer(addr *types.Address, customer string, start, end int64) (*cabi.SummaryResult, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GetSummaryReportByCustomer(ctx, addr, customer, start, end)
+	return cabi.GetSummaryReportByCustomer(s.l, addr, customer, start, end)
 }
 
 // GenerateInvoices Generate reports for specified contracts based on start and end date
@@ -882,8 +864,7 @@ func (s *SettlementAPI) GetSummaryReportByCustomer(addr *types.Address, customer
 // @param end report end data (UTC unix time)
 // @return settlement invoice
 func (s *SettlementAPI) GenerateInvoices(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GenerateInvoices(ctx, addr, start, end)
+	return cabi.GenerateInvoices(s.l, addr, start, end)
 }
 
 // GenerateInvoicesByAccount generate invoice by PCCWG account
@@ -893,8 +874,7 @@ func (s *SettlementAPI) GenerateInvoices(addr *types.Address, start, end int64) 
 // @param end report end data (UTC unix time)
 // @return settlement invoice
 func (s *SettlementAPI) GenerateInvoicesByAccount(addr *types.Address, account string, start, end int64) ([]*cabi.InvoiceRecord, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GenerateInvoicesByAccount(ctx, addr, account, start, end)
+	return cabi.GenerateInvoicesByAccount(s.l, addr, account, start, end)
 }
 
 // GenerateInvoicesByCustomer generate invoice by PCCWG customer name
@@ -904,8 +884,7 @@ func (s *SettlementAPI) GenerateInvoicesByAccount(addr *types.Address, account s
 // @param end report end data (UTC unix time)
 // @return settlement invoice
 func (s *SettlementAPI) GenerateInvoicesByCustomer(addr *types.Address, customer string, start, end int64) ([]*cabi.InvoiceRecord, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GenerateInvoicesByCustomer(ctx, addr, customer, start, end)
+	return cabi.GenerateInvoicesByCustomer(s.l, addr, customer, start, end)
 }
 
 // GenerateInvoicesByContract generate invoice by settlement contract address
@@ -914,8 +893,7 @@ func (s *SettlementAPI) GenerateInvoicesByCustomer(addr *types.Address, customer
 // @param end report end data (UTC unix time)
 // @return settlement report
 func (s *SettlementAPI) GenerateInvoicesByContract(addr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GenerateInvoicesByContract(ctx, addr, start, end)
+	return cabi.GenerateInvoicesByContract(s.l, addr, start, end)
 }
 
 // GenerateMultiPartyInvoice generate multi-party invoice by the two settlement contract address
@@ -925,8 +903,7 @@ func (s *SettlementAPI) GenerateInvoicesByContract(addr *types.Address, start, e
 // @param end report end data (UTC unix time)
 // @return settlement invoice
 func (s *SettlementAPI) GenerateMultiPartyInvoice(firstAddr, secondAddr *types.Address, start, end int64) ([]*cabi.InvoiceRecord, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GenerateMultiPartyInvoice(ctx, firstAddr, secondAddr, start, end)
+	return cabi.GenerateMultiPartyInvoice(s.l, firstAddr, secondAddr, start, end)
 }
 
 // GenerateMultiPartySummaryReport generate multi-party summary reports by the two settlement contract address
@@ -936,8 +913,7 @@ func (s *SettlementAPI) GenerateMultiPartyInvoice(firstAddr, secondAddr *types.A
 // @param end report end data (UTC unix time)
 // @return settlement invoice
 func (s *SettlementAPI) GenerateMultiPartySummaryReport(firstAddr, secondAddr *types.Address, start, end int64) (*cabi.MultiPartySummaryResult, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
-	return cabi.GetMultiPartySummaryReport(ctx, firstAddr, secondAddr, start, end)
+	return cabi.GetMultiPartySummaryReport(s.l, firstAddr, secondAddr, start, end)
 }
 
 // GetPreStopNames get all previous stop names by user address
@@ -996,7 +972,7 @@ func (s *SettlementAPI) GetRegisterAssetBlock(param *RegisterAssetParam) (*types
 	addr := param.Owner.Address
 	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 
-	tm, err := ctx.Ledger.GetTokenMeta(addr, config.GasToken())
+	tm, err := ctx.GetTokenMeta(addr, config.GasToken())
 	if err != nil {
 		return nil, err
 	}
@@ -1033,7 +1009,7 @@ func (s *SettlementAPI) GetRegisterAssetBlock(param *RegisterAssetParam) (*types
 			return nil, err
 		}
 
-		h := ctx.Cache.Trie().Hash()
+		h := vmstore.TrieHash(ctx)
 		if h != nil {
 			sb.Extra = *h
 		}
@@ -1089,16 +1065,14 @@ func (a *AssetParam) From(param *cabi.AssetParam) error {
 
 // GetAllAssets list all assets, for debug
 func (s *SettlementAPI) GetAllAssets(count int, offset *int) ([]*AssetParam, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 	return s.queryAssets(count, offset, func() ([]*cabi.AssetParam, error) {
-		return cabi.GetAllAsserts(ctx)
+		return cabi.GetAllAsserts(s.l)
 	})
 }
 
 func (s *SettlementAPI) GetAssetsByOwner(owner *types.Address, count int, offset *int) ([]*AssetParam, error) {
-	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 	return s.queryAssets(count, offset, func() ([]*cabi.AssetParam, error) {
-		return cabi.GetAssertsByAddress(ctx, owner)
+		return cabi.GetAssertsByAddress(s.l, owner)
 	})
 }
 

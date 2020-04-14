@@ -58,6 +58,7 @@ type Ledger struct {
 	cancel         context.CancelFunc
 	verifiedData   map[types.Hash]int
 	logger         *zap.SugaredLogger
+	tokenCache     sync.Map
 }
 
 var (
@@ -152,6 +153,7 @@ func NewLedger(cfgFile string) *Ledger {
 			cancel:         cancel,
 			blockConfirmed: make(chan *types.StateBlock, 1024),
 			logger:         log.NewLogger("ledger"),
+			tokenCache:     sync.Map{},
 		}
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
