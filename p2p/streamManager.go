@@ -253,7 +253,7 @@ func (sm *StreamManager) BroadcastMessage(messageName MessageType, v interface{}
 	}
 	version := p2pVersion
 	message := NewQlcMessage(messageContent, byte(version), messageName)
-	err = sm.node.publisher.Publish(MsgTopic, message)
+	err = sm.node.MessageTopic.Publish(sm.node.ctx, message)
 	if err != nil {
 		sm.node.logger.Error(err)
 		return
