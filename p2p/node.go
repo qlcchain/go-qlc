@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"reflect"
+	"runtime"
 	"strings"
 	"time"
 
@@ -84,8 +86,8 @@ type QlcNode struct {
 	kadDht           *dht.IpfsDHT
 	netService       *QlcService
 	logger           *zap.SugaredLogger
-	publisher        *pubsub.Publisher
-	subscriber       *pubsub.Subscriber
+	MessageTopic     *pubsub.Topic
+	pubSub           *libp2pps.PubSub
 	MessageSub       pubsub.Subscription
 	isMiner          bool
 	isRepresentative bool
@@ -185,15 +187,32 @@ func (node *QlcNode) buildHost() error {
 	}
 	node.streamManager.SetQlcNodeAndMaxStreamNum(node)
 	// Set up libp2p pubsub
-	gsub, err := libp2pps.NewGossipSub(node.ctx, node.host)
+	node.pubSub, err = libp2pps.NewGossipSub(node.ctx, node.host, libp2pps.WithMessageSigning(false))
 	if err != nil {
 		return errors.New("failed to set up pubsub")
 	}
-	node.publisher = pubsub.NewPublisher(gsub)
-	node.subscriber = pubsub.NewSubscriber(gsub)
+	tp, err := node.pubSub.Join(MsgTopic)
+	if err != nil {
+		return err
+	}
+	node.MessageTopic = pubsub.NewTopic(tp)
+	node.MessageSub, err = node.pubsubscribe(node.ctx, node.MessageTopic, node.processMessage)
+	if err != nil {
+		return err
+	}
 	// New ping service
 	node.ping = ping.NewPinger(node.host)
 	return nil
+}
+
+// Subscribes a handler function to a pubsub topic.
+func (node *QlcNode) pubsubscribe(ctx context.Context, topic *pubsub.Topic, handler pubSubHandler) (pubsub.Subscription, error) {
+	sub, err := topic.Subscribe()
+	if err != nil {
+		return nil, errors.New("failed to subscribe")
+	}
+	go node.handleSubscription(ctx, sub, handler)
+	return sub, nil
 }
 
 func (node *QlcNode) startLocalDiscovery() error {
@@ -220,15 +239,6 @@ func (node *QlcNode) StartServices() error {
 			return err
 		}
 	}
-
-	// subscribe to message notifications
-	msgSub, err := node.subscriber.Subscribe(MsgTopic)
-	if err != nil {
-		return errors.New("failed to subscribe to message topic")
-	}
-	node.MessageSub = msgSub
-
-	go node.handleSubscription(node.ctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
 	if node.localDiscovery == nil {
 		if node.cfg.P2P.Discovery.MDNSEnabled {
@@ -558,17 +568,20 @@ func (node *QlcNode) SendMessageToPeer(messageName MessageType, value interface{
 	return stream.SendMessageToPeer(messageName, data)
 }
 
-func (node *QlcNode) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s pubsub.Subscription, sname string) {
+func (node *QlcNode) handleSubscription(ctx context.Context, sub pubsub.Subscription, handler pubSubHandler) {
 	for {
-		pubSubMsg, err := s.Next(ctx)
+		received, err := sub.Next(ctx)
 		if err != nil {
-			node.logger.Debugf("%s.Next(): %s", sname, err)
+			if ctx.Err() != context.Canceled {
+				node.logger.Errorf("error reading message from topic %s: %s", sub.Topic(), err)
+			}
 			return
 		}
 
-		if err := f(ctx, pubSubMsg); err != nil {
+		if err := handler(ctx, received); err != nil {
+			handlerName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
 			if err != context.Canceled {
-				node.logger.Errorf("%s(): %s", fname, err)
+				node.logger.Errorf("error in handler %s for topic %s: %s", handlerName, sub.Topic(), err)
 			}
 		}
 	}
@@ -578,7 +591,7 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 	var message *QlcMessage
 	var err error
 	data := pubSubMsg.GetData()
-	peerID := pubSubMsg.GetFrom().Pretty()
+	peerID := pubSubMsg.GetSender().Pretty()
 	if peerID == node.ID.Pretty() {
 		return nil
 	}
@@ -604,7 +617,7 @@ func (node *QlcNode) processMessage(ctx context.Context, pubSubMsg pubsub.Messag
 	return nil
 }
 
-type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
+type pubSubHandler func(ctx context.Context, msg pubsub.Message) error
 
 func (node *QlcNode) GetBandwidthStats(stats *p2pmetrics.Stats) {
 	*stats = node.reporter.GetBandwidthTotals()
