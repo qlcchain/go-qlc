@@ -93,7 +93,7 @@ func (ls *LedgerService) Init() error {
 			}
 		}
 	}
-	return l.SaveStorage(vmstore.ToCache(ctx))
+	return l.SetStorage(vmstore.ToCache(ctx))
 }
 
 func (ls *LedgerService) Start() error {

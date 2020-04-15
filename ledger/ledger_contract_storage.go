@@ -114,7 +114,7 @@ func (l *Ledger) HasContractValue(key *types.ContractKey) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, _, err = l.Get(k)
+	_, _, err = l.GetObject(k)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return false, ErrContractValueNotFound

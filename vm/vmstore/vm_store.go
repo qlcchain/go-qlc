@@ -24,7 +24,6 @@ import (
 )
 
 type ContractStore interface {
-	ledger.ContractStore
 	GetStorage(prefix, key []byte) ([]byte, error)
 	SetStorage(prefix, key []byte, value []byte) error
 	//RemoveStorage(prefix, key []byte) error
@@ -44,24 +43,33 @@ type ContractStore interface {
 	GetTokenByName(tokenName string) (*types.TokenInfo, error)
 
 	EventBus() event.EventBus
+
+	GetBlockChild(hash types.Hash) (types.Hash, error)
+	GetStateBlock(hash types.Hash) (*types.StateBlock, error)
+	GetStateBlockConfirmed(hash types.Hash) (*types.StateBlock, error)
+	GetLatestPovBlock() (*types.PovBlock, error)
+
+	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
+	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
+	HasAccountMetaConfirmed(address types.Address) (bool, error)
+
+	GetAccountMetaByPovHeight(address types.Address) (*types.AccountMeta, error)
+	GetTokenMetaByPovHeight(address types.Address, token types.Hash) (*types.TokenMeta, error)
+	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
+
+	GetLatestPovHeader() (*types.PovHeader, error)
+	GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error)
+
+	IsUserAccount(address types.Address) (bool, error)
+	CalculateAmount(block *types.StateBlock) (types.Balance, error)
+	GetRelation(dest interface{}, query string) error
+	SelectRelation(dest interface{}, query string) error
 }
 
 var (
 	//ErrStorageExists   = errors.New("storage already exists")
 	ErrStorageNotFound = errors.New("storage not found")
 )
-
-//func SaveStorage(ctx *VMContext, batch ...storage.Batch) error {
-//	for k, val := range ctx.cache.storage {
-//		rawKey := ctx.getRawStorageKey([]byte(k), nil)
-//		err := ctx.set(rawKey, val, batch...)
-//		if err != nil {
-//			ctx.logger.Error(err)
-//			return err
-//		}
-//	}
-//	return nil
-//}
 
 func TrieHash(ctx *VMContext) *types.Hash {
 	return ctx.cache.Trie().Hash()
@@ -76,27 +84,6 @@ func ToCache(ctx *VMContext) map[string]interface{} {
 	return result
 }
 
-//func SaveTrie(ctx *VMContext, batch ...storage.Batch) error {
-//	fn, err := ctx.cache.Trie().Save(batch...)
-//	if err != nil {
-//		return err
-//	}
-//	fn()
-//	return nil
-//}
-
-//func SaveBlockData(ctx *VMContext, block *types.StateBlock, c ...storage.Cache) error {
-//	if err := SaveTrie(ctx); err != nil {
-//		return err
-//	}
-//	trieRoot := TrieHash(ctx)
-//	return ctx.l.UpdateContractValueByBlock(block, trieRoot, c...)
-//}
-//
-//func DeleteBlockData(ctx *VMContext, block *types.StateBlock, c ...storage.Cache) error {
-//	return ctx.l.DeleteContractValueByBlock(block, c...)
-//}
-
 type VMContext struct {
 	//TODO  should replace `ledger.Store` to `ledger.ContractStore`
 	l            ledger.Store
@@ -104,6 +91,7 @@ type VMContext struct {
 	contractAddr *types.Address
 	trie         *trie.Trie
 	cache        *VMCache
+	storageCache storage.Cache
 	poVHeight    uint64
 }
 
@@ -123,6 +111,10 @@ func NewVMContext(l ledger.Store, contractAddr *types.Address) *VMContext {
 	}
 }
 
+func (v *VMContext) WithCache(c storage.Cache) {
+	v.storageCache = c
+}
+
 // WithBlock Load storage trie from the specified user address and block hash
 func NewVMContextWithBlock(l ledger.Store, block *types.StateBlock) *VMContext {
 	povHdr, err := l.GetPovHeaderByHeight(block.PoVHeight)
@@ -140,24 +132,24 @@ func NewVMContextWithBlock(l ledger.Store, block *types.StateBlock) *VMContext {
 	}
 }
 
-func (v *VMContext) GetBlockChild(hash types.Hash, c ...storage.Cache) (types.Hash, error) {
-	return v.l.GetBlockChild(hash, c...)
+func (v *VMContext) GetBlockChild(hash types.Hash) (types.Hash, error) {
+	return v.l.GetBlockChild(hash, v.storageCache)
 }
 
-func (v *VMContext) GetStateBlock(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error) {
-	return v.l.GetStateBlock(hash, c...)
+func (v *VMContext) GetStateBlock(hash types.Hash) (*types.StateBlock, error) {
+	return v.l.GetStateBlock(hash, v.storageCache)
 }
 
-func (v *VMContext) GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error) {
-	return v.l.GetStateBlockConfirmed(hash, c...)
+func (v *VMContext) GetStateBlockConfirmed(hash types.Hash) (*types.StateBlock, error) {
+	return v.l.GetStateBlockConfirmed(hash, v.storageCache)
 }
 
 func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
 	return v.l.GetLatestPovBlock()
 }
 
-func (v *VMContext) GetAccountMeta(address types.Address, c ...storage.Cache) (*types.AccountMeta, error) {
-	return v.l.GetAccountMeta(address, c...)
+func (v *VMContext) GetAccountMeta(address types.Address) (*types.AccountMeta, error) {
+	return v.l.GetAccountMeta(address, v.storageCache)
 }
 
 func (v *VMContext) GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error) {
@@ -168,20 +160,16 @@ func (v *VMContext) HasAccountMetaConfirmed(address types.Address) (bool, error)
 	return v.l.HasAccountMetaConfirmed(address)
 }
 
-func (v *VMContext) GetAccountMetaByPovHeight(address types.Address, height uint64) (*types.AccountMeta, error) {
-	return v.l.GetAccountMetaByPovHeight(address, height)
+func (v *VMContext) GetAccountMetaByPovHeight(address types.Address) (*types.AccountMeta, error) {
+	return v.l.GetAccountMetaByPovHeight(address, v.poVHeight)
 }
 
-func (v *VMContext) GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error) {
-	return v.l.GetTokenMetaByPovHeight(address, token, height)
+func (v *VMContext) GetTokenMetaByPovHeight(address types.Address, token types.Hash) (*types.TokenMeta, error) {
+	return v.l.GetTokenMetaByPovHeight(address, token, v.poVHeight)
 }
 
 func (v *VMContext) GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error) {
 	return v.l.GetTokenMetaByBlockHash(hash)
-}
-
-func (v *VMContext) IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error {
-	return v.l.IteratorContractStorage(prefix, callback)
 }
 
 func (v *VMContext) CalculateAmount(block *types.StateBlock) (types.Balance, error) {
@@ -211,7 +199,7 @@ func (v *VMContext) SetObjectStorage(prefix, key []byte, value interface{}) erro
 }
 
 func (v *VMContext) GetStorageByRaw(i []byte) ([]byte, error) {
-	_, val, err := v.l.Get(i)
+	_, val, err := v.l.GetObject(i)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return nil, ErrStorageNotFound
@@ -259,7 +247,7 @@ func (v *VMContext) GetStorage(prefix, key []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func (v *VMContext) GetPovMinerStat(dayIndex uint32, batch ...storage.Batch) (*types.PovMinerDayStat, error) {
+func (v *VMContext) GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error) {
 	panic("implement me")
 }
 
@@ -324,7 +312,7 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 
 func (v *VMContext) get(key []byte) ([]byte, error) {
 	rawKey := v.getRawStorageKey(key, nil)
-	i, val, err := v.l.Get(rawKey)
+	i, val, err := v.l.GetObject(rawKey)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return nil, ErrStorageNotFound
@@ -384,67 +372,6 @@ func (v *VMContext) PovGlobalStateByHeight(h uint64) *statedb.PovGlobalStateDB {
 func (v *VMContext) PoVContractStateByHeight(h uint64) (*statedb.PovContractStateDB, error) {
 	return v.PovGlobalStateByHeight(h).LookupContractStateDB(*v.contractAddr)
 }
-
-//
-//func (v *VMContext) remove(key []byte, batch ...storage.Batch) (err error) {
-//	var b storage.Batch
-//	if len(batch) > 0 {
-//		b = batch[0]
-//	} else {
-//		b = v.l.DBStore().Batch(true)
-//		defer func() {
-//			if err := v.l.DBStore().PutBatch(b); err != nil {
-//				v.logger.Error(err)
-//			}
-//		}()
-//	}
-//	return b.Delete(key)
-//}
-
-//func (v *VMContext) iteratorContractValue(predicate func(key *types.ContractKey) bool,
-//	callback func(key *types.ContractKey, value *types.ContractValue) error) error {
-//	return v.l.IteratorContractStorage(v.contractAddr[:], func(key *types.ContractKey, value *types.ContractValue) error {
-//		if predicate(key) {
-//			return callback(key, value)
-//		}
-//		return nil
-//	})
-//}
-
-//func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
-//	return v.iteratorContractValue(func(key *types.ContractKey) bool {
-//		// get all account latest records
-//		return len(key.Suffix) > 0 && bytes.EqualFold(key.Suffix, ledger.LatestSuffix)
-//	}, func(key *types.ContractKey, value *types.ContractValue) error {
-//		if !value.BlockHash.IsZero() {
-//			// get latest trie root by account
-//			if val, err := v.l.GetContractValue(&types.ContractKey{
-//				ContractAddress: key.ContractAddress,
-//				AccountAddress:  key.AccountAddress,
-//				Hash:            value.BlockHash,
-//			}); err == nil {
-//				if val.Root != nil && !val.Root.IsZero() {
-//					t := trie.NewTrie(v.l.DBStore(), value.Root, trie.NewSimpleTrieNodePool())
-//					iterator := t.NewIterator(prefix)
-//					for {
-//						if key, value, ok := iterator.Next(); !ok {
-//							break
-//						} else {
-//							if err := fn(key, value); err != nil {
-//								return err
-//							}
-//						}
-//					}
-//				} else {
-//					v.logger.Debugf("%: %s latest trie root is empty", key.ContractAddress, key.AccountAddress)
-//				}
-//			} else {
-//				v.logger.Error(err)
-//			}
-//		}
-//		return nil
-//	})
-//}
 
 func (v *VMContext) ListTokens() ([]*types.TokenInfo, error) {
 	return v.l.ListTokens()

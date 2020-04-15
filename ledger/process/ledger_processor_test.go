@@ -38,7 +38,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 	l := ledger.NewLedger(cm.ConfigFile)
 	bc, _ = mock.BlockChain(false)
 	fmt.Println(t.Name())
-
+	setPovStatus(l, t)
 	return func(t *testing.T) {
 		//err := l.db.Erase()
 		err := l.Close()
@@ -51,6 +51,20 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 			t.Fatal(err)
 		}
 	}, l, NewLedgerVerifier(l)
+}
+
+func setPovStatus(l *ledger.Ledger, t *testing.T) {
+	block, td := mock.GeneratePovBlock(nil, 0)
+	block.Header.BasHdr.Height = 0
+	if err := l.AddPovBlock(block, td); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddPovBestHash(block.GetHeight(), block.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.SetPovLatestHeight(block.GetHeight()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestProcess_BlockProcess(t *testing.T) {

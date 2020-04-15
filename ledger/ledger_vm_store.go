@@ -54,6 +54,7 @@ func (i *Iterator) Next(prefix []byte, fn func(key []byte, value []byte) error) 
 type vmStore interface {
 	// NewVMIterator new Iterator by contract address
 	NewVMIterator(address *types.Address) *Iterator
+	SetStorage(val map[string]interface{}) error
 	SaveStorage(val map[string]interface{}, c ...storage.Cache) error
 	ListTokens() ([]*types.TokenInfo, error)
 	GetTokenById(tokenId types.Hash) (*types.TokenInfo, error)
@@ -68,18 +69,35 @@ func (l *Ledger) NewVMIterator(address *types.Address) *Iterator {
 	}
 }
 
+// set storage to badger, all value need to be slice
+func (l *Ledger) SetStorage(val map[string]interface{}) error {
+	batch := l.store.Batch(false)
+	for k, v := range val {
+		if err := batch.Put([]byte(k), v.([]byte)); err != nil {
+			return err
+		}
+	}
+	return l.store.PutBatch(batch)
+}
+
+// save storage to cache
 func (l *Ledger) SaveStorage(val map[string]interface{}, c ...storage.Cache) error {
-	if len(c) > 0 {
+	if len(c) > 0 && c[0] != nil {
 		for k, v := range val {
 			if err := c[0].Put([]byte(k), v); err != nil {
 				return err
 			}
 		}
 	} else {
-		for k, v := range val {
-			if err := l.cache.Put([]byte(k), v); err != nil {
-				return err
+		if err := l.cache.BatchUpdate(func(c *Cache) error {
+			for k, v := range val {
+				if err := c.Put([]byte(k), v); err != nil {
+					return err
+				}
 			}
+			return nil
+		}); err != nil {
+			return err
 		}
 	}
 	return nil

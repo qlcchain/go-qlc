@@ -33,7 +33,7 @@ func (l *Ledger) GetGenericTypeC(key *types.GenericKeyC, c ...storage.Cache) (*t
 		return nil, err
 	}
 
-	i, r, err := l.Get(k, c...)
+	i, r, err := l.GetObject(k, c...)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return nil, ErrGenericTypeCNotFound
@@ -55,7 +55,7 @@ func (l *Ledger) DeleteGenericTypeC(key *types.GenericKeyC, c storage.Cache) err
 	if err != nil {
 		return err
 	}
-	_, _, err = l.Get(k, c)
+	_, _, err = l.GetObject(k, c)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return ErrGenericTypeCNotFound
@@ -71,7 +71,7 @@ func (l *Ledger) UpdateGenericTypeC(key *types.GenericKeyC, value *types.Generic
 	if err != nil {
 		return err
 	}
-	_, _, err = l.Get(k, c)
+	_, _, err = l.GetObject(k, c)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return ErrGenericTypeCNotFound
@@ -95,7 +95,7 @@ func (l *Ledger) HasGenericTypeC(key *types.GenericKeyC, c ...storage.Cache) (bo
 	if err != nil {
 		return false, err
 	}
-	_, _, err = l.Get(k, c...)
+	_, _, err = l.GetObject(k, c...)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return false, ErrGenericTypeCNotFound

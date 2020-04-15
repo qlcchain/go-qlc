@@ -269,7 +269,7 @@ func (lc *MemoryCache) prefixIterator(prefix []byte, fn func(k []byte, v []byte)
 	return keys, nil
 }
 
-func (lc *MemoryCache) prefixIteratorInterface(prefix []byte, fn func(k []byte, v interface{}) error) ([][]byte, error) {
+func (lc *MemoryCache) prefixIteratorObject(prefix []byte, fn func(k []byte, v interface{}) error) ([][]byte, error) {
 	keys := make([][]byte, 0)
 	index := lc.writeIndex
 	readIndex := lc.readIndex

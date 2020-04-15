@@ -37,7 +37,7 @@ func (l *Ledger) GetVmLogs(key types.Hash, c ...storage.Cache) (*types.VmLogs, e
 		return nil, err
 	}
 
-	i, r, err := l.Get(k, c...)
+	i, r, err := l.GetObject(k, c...)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return nil, ErrVmLogsNotFound
@@ -67,7 +67,7 @@ func (l *Ledger) HasVmLogs(key types.Hash, c ...storage.Cache) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, _, err = l.Get(k, c...)
+	_, _, err = l.GetObject(k, c...)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return false, ErrVmLogsNotFound

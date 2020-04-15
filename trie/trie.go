@@ -48,7 +48,7 @@ func NewTrie(db storage.Store, rootHash *types.Hash, pool *NodePool) *Trie {
 
 func (trie *Trie) get(k []byte) ([]byte, error) {
 	if trie.store != nil {
-		i, b, err := trie.store.Get(k)
+		i, b, err := trie.store.GetObject(k)
 		if err == nil {
 			if i != nil {
 				return i.([]byte), nil

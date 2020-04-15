@@ -526,7 +526,7 @@ func (l *Ledger) GetTokenMetaByPovHeight(address types.Address, hash types.Hash,
 			return nil, err
 		}
 		found := false
-		if err := l.IteratorInterface(k, nil, func(k []byte, v interface{}) error {
+		if err := l.IteratorObject(k, nil, func(k []byte, v interface{}) error {
 			if t, ok := v.(*types.TokenMeta); ok {
 				if t.Type == hash {
 					tm = t.Clone()
@@ -563,7 +563,7 @@ func (l *Ledger) GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, err
 	if err != nil {
 		return nil, err
 	}
-	i, r, err := l.Get(k)
+	i, r, err := l.GetObject(k)
 	if err != nil {
 		return nil, err
 	}

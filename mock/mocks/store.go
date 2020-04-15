@@ -1669,7 +1669,7 @@ func (_m *Store) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 }
 
 // Get provides a mock function with given fields: k, c
-func (_m *Store) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
+func (_m *Store) Get(k []byte, c ...storage.Cache) ([]byte, error) {
 	_va := make([]interface{}, len(c))
 	for _i := range c {
 		_va[_i] = c[_i]
@@ -1679,32 +1679,23 @@ func (_m *Store) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) 
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func([]byte, ...storage.Cache) interface{}); ok {
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func([]byte, ...storage.Cache) []byte); ok {
 		r0 = rf(k, c...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
+			r0 = ret.Get(0).([]byte)
 		}
 	}
 
-	var r1 []byte
-	if rf, ok := ret.Get(1).(func([]byte, ...storage.Cache) []byte); ok {
+	var r1 error
+	if rf, ok := ret.Get(1).(func([]byte, ...storage.Cache) error); ok {
 		r1 = rf(k, c...)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]byte)
-		}
+		r1 = ret.Error(1)
 	}
 
-	var r2 error
-	if rf, ok := ret.Get(2).(func([]byte, ...storage.Cache) error); ok {
-		r2 = rf(k, c...)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // GetAccountMeta provides a mock function with given fields: address, c
@@ -2328,6 +2319,45 @@ func (_m *Store) GetLatestPovMinerStat(batch ...storage.Batch) (*types.PovMinerD
 	}
 
 	return r0, r1
+}
+
+// GetObject provides a mock function with given fields: k, c
+func (_m *Store) GetObject(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
+	_va := make([]interface{}, len(c))
+	for _i := range c {
+		_va[_i] = c[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, k)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 interface{}
+	if rf, ok := ret.Get(0).(func([]byte, ...storage.Cache) interface{}); ok {
+		r0 = rf(k, c...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interface{})
+		}
+	}
+
+	var r1 []byte
+	if rf, ok := ret.Get(1).(func([]byte, ...storage.Cache) []byte); ok {
+		r1 = rf(k, c...)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]byte)
+		}
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func([]byte, ...storage.Cache) error); ok {
+		r2 = rf(k, c...)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // GetOnlineRepresentations provides a mock function with given fields:
@@ -3666,6 +3696,20 @@ func (_m *Store) IteratorContractStorage(prefix []byte, callback func(*types.Con
 	return r0
 }
 
+// IteratorObject provides a mock function with given fields: prefix, end, fn
+func (_m *Store) IteratorObject(prefix []byte, end []byte, fn func([]byte, interface{}) error) error {
+	ret := _m.Called(prefix, end, fn)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]byte, []byte, func([]byte, interface{}) error) error); ok {
+		r0 = rf(prefix, end, fn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // ListTokens provides a mock function with given fields:
 func (_m *Store) ListTokens() ([]*types.TokenInfo, error) {
 	ret := _m.Called()
@@ -3838,6 +3882,20 @@ func (_m *Store) SetPovTxlScanCursor(height uint64, batch ...storage.Batch) erro
 	var r0 error
 	if rf, ok := ret.Get(0).(func(uint64, ...storage.Batch) error); ok {
 		r0 = rf(height, batch...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetStorage provides a mock function with given fields: val
+func (_m *Store) SetStorage(val map[string]interface{}) error {
+	ret := _m.Called(val)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(map[string]interface{}) error); ok {
+		r0 = rf(val)
 	} else {
 		r0 = ret.Error(0)
 	}

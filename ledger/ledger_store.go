@@ -51,8 +51,6 @@ type ContractStore interface {
 	GetLatestPovHeader() (*types.PovHeader, error)
 	GetPovMinerStat(dayIndex uint32, batch ...storage.Batch) (*types.PovMinerDayStat, error)
 
-	IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error
-
 	IsUserAccount(address types.Address) (bool, error)
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	GetRelation(dest interface{}, query string) error

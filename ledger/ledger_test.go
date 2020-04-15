@@ -415,16 +415,16 @@ func TestLedger_Cache(t *testing.T) {
 	if err := c.Put(key, []byte{4, 5, 6}); err != nil {
 		t.Fatal(err)
 	}
-	if i, r, err := l.Get(key, c); err != nil || i == nil || r != nil {
+	if i, r, err := l.GetObject(key, c); err != nil || i == nil || r != nil {
 		t.Fatal(err, i, r)
 	}
 	if err := c.Delete(key); err != nil {
 		t.Fatal(err)
 	}
-	if i, r, err := l.Get(key, c); err != storage.KeyNotFound || i != nil || r != nil {
+	if i, r, err := l.GetObject(key, c); err != storage.KeyNotFound || i != nil || r != nil {
 		t.Fatal(err, i, r)
 	}
-	if i, r, err := l.Get(key); err != storage.KeyNotFound || i != nil || r != nil {
+	if i, r, err := l.GetObject(key); err != storage.KeyNotFound || i != nil || r != nil {
 		t.Fatal(err, i, r)
 	}
 	// get from ledger cache
@@ -432,7 +432,7 @@ func TestLedger_Cache(t *testing.T) {
 	if err := l.store.Put(key2, []byte{4, 5, 6}); err != nil {
 		t.Fatal(err)
 	}
-	if i, r, err := l.Get(key2); err != nil || i != nil || r == nil {
+	if i, r, err := l.GetObject(key2); err != nil || i != nil || r == nil {
 		t.Fatal(err, i, r)
 	}
 
@@ -444,7 +444,7 @@ func TestLedger_Cache(t *testing.T) {
 	if err := l.Delete(key3); err != nil {
 		t.Fatal(err)
 	}
-	if i, r, err := l.Get(key3); err != storage.KeyNotFound || i != nil || r != nil {
+	if i, r, err := l.GetObject(key3); err != storage.KeyNotFound || i != nil || r != nil {
 		t.Fatal(err, i, r)
 	}
 

@@ -32,8 +32,10 @@ type LedgerStore interface {
 	Close() error
 	DBStore() storage.Store
 	EventBus() event.EventBus
-	Get(k []byte, c ...storage.Cache) (interface{}, []byte, error)
+	Get(k []byte, c ...storage.Cache) ([]byte, error)
+	GetObject(k []byte, c ...storage.Cache) (interface{}, []byte, error)
 	Iterator([]byte, []byte, func([]byte, []byte) error) error
+	IteratorObject(prefix []byte, end []byte, fn func([]byte, interface{}) error) error
 	GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
@@ -628,12 +630,34 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 	return &sb, nil
 }
 
-//func (l *Ledger) Flush() error {
-//	return nil
-//}
+func (l *Ledger) Get(k []byte, c ...storage.Cache) ([]byte, error) {
+	if len(c) > 0 && c[0] != nil {
+		if r, err := c[0].Get(k); r != nil {
+			return r.([]byte), nil
+		} else {
+			if err == ErrKeyDeleted {
+				return nil, storage.KeyNotFound
+			}
+		}
+	}
 
-func (l *Ledger) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
-	if len(c) > 0 {
+	if r, err := l.cache.Get(k); r != nil {
+		return r.([]byte), nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, storage.KeyNotFound
+		}
+	}
+
+	v, err := l.store.Get(k)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+func (l *Ledger) GetObject(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
+	if len(c) > 0 && c[0] != nil {
 		if r, err := c[0].Get(k); r != nil {
 			return r, nil, nil
 		} else {
@@ -682,7 +706,7 @@ func (l *Ledger) getFromStore(key []byte, batch ...storage.Batch) ([]byte, error
 }
 
 func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error) {
-	if len(c) > 0 {
+	if len(c) > 0 && c[0] != nil {
 		if r, err := c[0].Get(k); r != nil {
 			return r, nil
 		} else {
@@ -720,8 +744,8 @@ func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte)
 	return nil
 }
 
-func (l *Ledger) IteratorInterface(prefix []byte, end []byte, fn func(k []byte, v interface{}) error) error {
-	keys, err := l.cache.prefixIteratorInterface(prefix, fn)
+func (l *Ledger) IteratorObject(prefix []byte, end []byte, fn func(k []byte, v interface{}) error) error {
+	keys, err := l.cache.prefixIteratorObject(prefix, fn)
 	if err != nil {
 		return fmt.Errorf("cache iterator : %s", err)
 	}
