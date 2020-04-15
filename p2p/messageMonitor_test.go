@@ -28,7 +28,7 @@ func Test_MessageService_Stop(t *testing.T) {
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/19739"
 	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.P2P.IsBootNode = true
-	cfg.P2P.BootNodes = []string{"127.0.0.1:19639/ms"}
+	cfg.P2P.BootNodes = []string{"http://127.0.0.1:19639/bootNode/ms"}
 	http.HandleFunc("/ms/bootNode", func(w http.ResponseWriter, r *http.Request) {
 		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
 		_, _ = fmt.Fprintf(w, bootNode)
@@ -332,7 +332,7 @@ func Test_SendMessage(t *testing.T) {
 	cfg.LogLevel = "error"
 
 	cfg.P2P.IsBootNode = true
-	cfg.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
+	cfg.P2P.BootNodes = []string{"http://127.0.0.1:19640/msg/bootNode"}
 	http.HandleFunc("/msg/bootNode", func(w http.ResponseWriter, r *http.Request) {
 		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
 		_, _ = fmt.Fprintf(w, bootNode)
@@ -355,7 +355,7 @@ func Test_SendMessage(t *testing.T) {
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19741"
-	cfg1.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
+	cfg1.P2P.BootNodes = []string{"http://127.0.0.1:19640/msg/bootNode"}
 	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 	cfg1.LogLevel = "error"
@@ -372,7 +372,7 @@ func Test_SendMessage(t *testing.T) {
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19742"
-	cfg2.P2P.BootNodes = []string{"127.0.0.1:19640/msg"}
+	cfg2.P2P.BootNodes = []string{"http://127.0.0.1:19640/msg/bootNode"}
 	cfg2.P2P.Discovery.MDNSEnabled = false
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 	cfg2.LogLevel = "error"

@@ -21,7 +21,7 @@ func TestMDNS(t *testing.T) {
 	dir1 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
-	cfg1.P2P.Listen = "/ip4/0.0.0.0/tcp/19523"
+	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19523"
 	cfg1.P2P.Discovery.MDNSEnabled = true
 	cfg1.P2P.Discovery.MDNSInterval = 1
 	cfg1.P2P.IsBootNode = true
@@ -40,7 +40,7 @@ func TestMDNS(t *testing.T) {
 	dir2 := filepath.Join(config.QlcTestDataDir(), "p2p", uuid.New().String())
 	cc2 := context.NewChainContext(dir2)
 	cfg2, _ := cc2.Config()
-	cfg2.P2P.Listen = "/ip4/0.0.0.0/tcp/19524"
+	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19524"
 	cfg2.P2P.Discovery.MDNSEnabled = true
 	cfg1.P2P.Discovery.MDNSInterval = 0
 	cfg2.P2P.IsBootNode = true
@@ -137,7 +137,7 @@ func TestNodeDiscovery(t *testing.T) {
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/19737"
 	cfg1.P2P.Discovery.MDNSEnabled = false
-	cfg1.P2P.BootNodes = []string{"127.0.0.1:19636/discovery"}
+	cfg1.P2P.BootNodes = []string{"http://127.0.0.1:19636/discovery/bootNode"}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 
 	//node2 config
@@ -146,7 +146,7 @@ func TestNodeDiscovery(t *testing.T) {
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/19738"
 	cfg2.P2P.Discovery.MDNSEnabled = false
-	cfg2.P2P.BootNodes = []string{"127.0.0.1:19636/discovery"}
+	cfg2.P2P.BootNodes = []string{"http://127.0.0.1:19636/discovery/bootNode"}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 
 	//start bootNode

@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	bootNodes   = []string{"seed1-test.qlcchain.online:19737", "seed2-test.qlcchain.online:19737"}
+	bootNodes   = []string{"https://seed1-test.qlcchain.online/bootNode", "https://seed2-test.qlcchain.online/bootNode"}
 	jsonMintage = `{
         	"type": "ContractSend",
         	"token": "a7e8fa30c063e96a489a47bc43909505bd86735da4a109dca28be936118a8582",
