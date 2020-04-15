@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
-
 	"github.com/yireyun/go-queue"
 
 	"github.com/qlcchain/go-qlc/common"
@@ -14,6 +12,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/vm/vmstore"

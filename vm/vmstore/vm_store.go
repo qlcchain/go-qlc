@@ -16,9 +16,8 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
-	"github.com/qlcchain/go-qlc/common/types"
-
 	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
@@ -142,63 +141,59 @@ func NewVMContextWithBlock(l ledger.Store, block *types.StateBlock) *VMContext {
 }
 
 func (v *VMContext) GetBlockChild(hash types.Hash, c ...storage.Cache) (types.Hash, error) {
-	panic("implement me")
+	return v.l.GetBlockChild(hash, c...)
 }
 
 func (v *VMContext) GetStateBlock(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error) {
-	panic("implement me")
+	return v.l.GetStateBlock(hash, c...)
 }
 
 func (v *VMContext) GetStateBlockConfirmed(hash types.Hash, c ...storage.Cache) (*types.StateBlock, error) {
-	panic("implement me")
+	return v.l.GetStateBlockConfirmed(hash, c...)
 }
 
 func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {
-	panic("implement me")
+	return v.l.GetLatestPovBlock()
 }
 
 func (v *VMContext) GetAccountMeta(address types.Address, c ...storage.Cache) (*types.AccountMeta, error) {
-	panic("implement me")
+	return v.l.GetAccountMeta(address, c...)
 }
 
 func (v *VMContext) GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error) {
-	panic("implement me")
+	return v.l.GetTokenMeta(address, tokenType)
 }
 
 func (v *VMContext) HasAccountMetaConfirmed(address types.Address) (bool, error) {
-	panic("implement me")
+	return v.l.HasAccountMetaConfirmed(address)
 }
 
 func (v *VMContext) GetAccountMetaByPovHeight(address types.Address, height uint64) (*types.AccountMeta, error) {
-	panic("implement me")
+	return v.l.GetAccountMetaByPovHeight(address, height)
 }
 
 func (v *VMContext) GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error) {
-	panic("implement me")
+	return v.l.GetTokenMetaByPovHeight(address, token, height)
 }
 
 func (v *VMContext) GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error) {
-	panic("implement me")
-}
-
-func (v *VMContext) GetContractValue(key *types.ContractKey, c ...storage.Cache) (*types.ContractValue, error) {
-	panic("implement me")
+	return v.l.GetTokenMetaByBlockHash(hash)
 }
 
 func (v *VMContext) IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error {
-	panic("implement me")
+	return v.l.IteratorContractStorage(prefix, callback)
 }
 
 func (v *VMContext) CalculateAmount(block *types.StateBlock) (types.Balance, error) {
-	panic("implement me")
+	return v.l.CalculateAmount(block)
 }
 
 func (v *VMContext) GetRelation(dest interface{}, query string) error {
-	panic("implement me")
+	return v.l.GetRelation(dest, query)
 }
 
 func (v *VMContext) SelectRelation(dest interface{}, query string) error {
-	panic("implement me")
+	return v.l.SelectRelation(dest, query)
 }
 
 //func (v *VMContext) RemoveStorage(prefix, key []byte, batch ...storage.Batch) error {
@@ -227,7 +222,7 @@ func (v *VMContext) GetStorageByRaw(i []byte) ([]byte, error) {
 }
 
 func (v *VMContext) GetLatestPovHeader() (*types.PovHeader, error) {
-	panic("implement me")
+	return v.l.GetLatestPovHeader()
 }
 
 func (v *VMContext) IsUserAccount(address types.Address) (bool, error) {

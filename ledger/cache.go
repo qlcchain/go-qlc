@@ -254,11 +254,11 @@ func (lc *MemoryCache) prefixIterator(prefix []byte, fn func(k []byte, v []byte)
 			key := originalKey(k.(string))
 			if bytes.HasPrefix(key, prefix) {
 				if !contain(keys, key) && !isDeleteKey(v) {
-					keys = append(keys, key)
 					if err := fn(key, v.([]byte)); err != nil {
 						return nil, fmt.Errorf("ledger iterator: %s", err)
 					}
 				}
+				keys = append(keys, key)
 			}
 		}
 		index = (index - 1) % lc.cacheCount

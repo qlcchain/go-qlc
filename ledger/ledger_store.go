@@ -48,11 +48,10 @@ type ContractStore interface {
 	GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error)
 	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
 
-	GetContractValue(key *types.ContractKey, c ...storage.Cache) (*types.ContractValue, error)
-	//IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error
-
 	GetLatestPovHeader() (*types.PovHeader, error)
 	GetPovMinerStat(dayIndex uint32, batch ...storage.Batch) (*types.PovMinerDayStat, error)
+
+	IteratorContractStorage(prefix []byte, callback func(key *types.ContractKey, value *types.ContractValue) error) error
 
 	IsUserAccount(address types.Address) (bool, error)
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)

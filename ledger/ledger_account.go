@@ -42,6 +42,10 @@ type AccountStore interface {
 
 	AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache *Cache) error
 	UpdateAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache *Cache) error
+
+	GetAccountMetaByPovHeight(address types.Address, height uint64) (*types.AccountMeta, error)
+	GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error)
+	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
 }
 
 func (l *Ledger) GetAccountMeta(address types.Address, c ...storage.Cache) (*types.AccountMeta, error) {
