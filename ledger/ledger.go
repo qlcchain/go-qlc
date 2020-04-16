@@ -60,6 +60,7 @@ type Ledger struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	verifiedData   map[types.Hash]int
+	deletedSchema  []types.Schema
 	logger         *zap.SugaredLogger
 	tokenCache     sync.Map
 }
@@ -155,6 +156,7 @@ func NewLedger(cfgFile string) *Ledger {
 			ctx:            ctx,
 			cancel:         cancel,
 			blockConfirmed: make(chan *types.StateBlock, 1024),
+			deletedSchema:  make([]types.Schema, 0),
 			logger:         log.NewLogger("ledger"),
 			tokenCache:     sync.Map{},
 		}
@@ -325,7 +327,7 @@ func (l *Ledger) initRelation() error {
 			return err
 		}
 		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
-			c, err := block.RelationConvert()
+			c, err := block.ConvertToSchema()
 			if err != nil {
 				return err
 			}

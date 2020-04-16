@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -22,12 +21,12 @@ func TestRelation_Relation(t *testing.T) {
 
 	blk1 := mock.StateBlockWithoutWork()
 	blk2 := mock.StateBlockWithoutWork()
-	v1, _ := blk1.RelationConvert()
+	v1, _ := blk1.ConvertToSchema()
 	r.Add(v1)
-	v2, _ := blk2.RelationConvert()
+	v2, _ := blk2.ConvertToSchema()
 	r.Add(v2)
 	for i := 0; i < batchMaxCount+10; i++ {
-		v, _ := mock.StateBlockWithoutWork().RelationConvert()
+		v, _ := mock.StateBlockWithoutWork().ConvertToSchema()
 		r.Add(v)
 	}
 	r.Delete(&types.BlockHash{Hash: blk1.GetHash().String()})
@@ -80,7 +79,7 @@ func TestRelation_flush(t *testing.T) {
 	}()
 
 	for i := 0; i < batchMaxCount+10; i++ {
-		v1, _ := mock.StateBlockWithoutWork().RelationConvert()
+		v1, _ := mock.StateBlockWithoutWork().ConvertToSchema()
 		r.Add(v1)
 	}
 	for i := 0; i < batchMaxCount+10; i++ {
@@ -106,7 +105,7 @@ func TestRelation_Close(t *testing.T) {
 	if len(cache) != 1 {
 		t.Fatal(len(cache))
 	}
-	v1, _ := mock.StateBlockWithoutWork().RelationConvert()
+	v1, _ := mock.StateBlockWithoutWork().ConvertToSchema()
 	store.Add(v1)
 	if err := store.Close(); err != nil {
 		t.Fatal(err)

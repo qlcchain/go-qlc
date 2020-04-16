@@ -1,10 +1,9 @@
 package process
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
-
-	"github.com/yireyun/go-queue"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
@@ -15,7 +14,9 @@ import (
 	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/trie"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"github.com/yireyun/go-queue"
 )
 
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
@@ -776,73 +777,67 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 	}
 }
 
-// FIXME: rollback
 func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *ledger.Cache) error {
 	lv.logger.Warnf("rollback contract data, block:%s", block.GetHash().String())
-	//vmContext := vmstore.NewVMContextWithBlock(lv.l, block)
-	//return vmContext.DeleteBlockData(block, cache)
 
+	extra := block.GetExtra()
+	if !extra.IsZero() {
+		lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
+		t := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
+		iterator := t.NewIterator(nil)
+		//vmContext := vmstore.NewVMContextWithBlock(lv.l, block)
+		for {
+			if key, value, ok := iterator.Next(); !ok {
+				break
+			} else {
+				if contractData, err := lv.l.Get(key); err == nil {
+					if !bytes.Equal(contractData, value) {
+						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
+					}
+					// TODO: move contract data to a new table
+					lv.logger.Warnf("rollback contract data, remove storage key: %v", key)
+					if err := lv.l.RemoveStorage(key, contractData, cache); err == nil {
+						if err := t.Remove(cache); err != nil {
+							return fmt.Errorf("trie remove: %s", err)
+						}
+					} else {
+						return fmt.Errorf("storage remove: %s", err)
+					}
+				} else {
+					return fmt.Errorf("get storage by key: %s", err)
+				}
+			}
+		}
+		if contractaddress.IsRewardContractAddress(types.Address(block.GetLink())) {
+			preHash := block.GetPrevious()
+			for {
+				if preHash.IsZero() {
+					break
+				}
+				preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
+				if err != nil {
+					return fmt.Errorf("contract block previous not found (%s)", block.GetHash())
+				}
+				if preBlock.GetType() == block.GetType() && preBlock.GetLink() == block.GetLink() {
+					ex := preBlock.GetExtra()
+					tr := trie.NewTrie(lv.l.DBStore(), &ex, trie.NewSimpleTrieNodePool())
+					iter := tr.NewIterator(nil)
+					for {
+						if key, value, ok := iter.Next(); !ok {
+							break
+						} else {
+							if err := lv.l.SaveStorageByConvert(key, value, cache); err != nil {
+								lv.logger.Errorf("set storage error: %s", err)
+							}
+						}
+					}
+					break
+				}
+				preHash = preBlock.GetPrevious()
+			}
+		}
+	}
 	return nil
-
-	//
-	//extra := block.GetExtra()
-	//if !extra.IsZero() {
-	//	lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
-	//	t := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
-	//	iterator := t.NewIterator(nil)
-	//	vmContext := vmstore.NewVMContextWithBlock(lv.l, block)
-	//	for {
-	//		if key, value, ok := iterator.Next(); !ok {
-	//			break
-	//		} else {
-	//			if contractData, err := vmContext.GetStorageByKey(key); err == nil {
-	//				if !bytes.Equal(contractData, value) {
-	//					return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
-	//				}
-	//				// TODO: move contract data to a new table
-	//				lv.logger.Warnf("rollback contract data, remove storage key: %v", key)
-	//				if err := vmContext.RemoveStorageByKey(key, cache); err == nil {
-	//					if err := t.Remove(cache); err != nil {
-	//						return fmt.Errorf("trie remove: %s", err)
-	//					}
-	//				} else {
-	//					return fmt.Errorf("storage remove: %s", err)
-	//				}
-	//			} else {
-	//				return fmt.Errorf("get storage by key: %s", err)
-	//			}
-	//		}
-	//	}
-	//	if contractaddress.IsRewardContractAddress(types.Address(block.GetLink())) {
-	//		preHash := block.GetPrevious()
-	//		for {
-	//			if preHash.IsZero() {
-	//				break
-	//			}
-	//			preBlock, err := lv.l.GetStateBlockConfirmed(preHash)
-	//			if err != nil {
-	//				return fmt.Errorf("contract block previous not found (%s)", block.GetHash())
-	//			}
-	//			if preBlock.GetType() == block.GetType() && preBlock.GetLink() == block.GetLink() {
-	//				ex := preBlock.GetExtra()
-	//				tr := trie.NewTrie(lv.l.DBStore(), &ex, trie.NewSimpleTrieNodePool())
-	//				iter := tr.NewIterator(nil)
-	//				for {
-	//					if key, value, ok := iter.Next(); !ok {
-	//						break
-	//					} else {
-	//						if err := cache.Put(key, value); err != nil {
-	//							lv.logger.Errorf("set storage error: %s", err)
-	//						}
-	//					}
-	//				}
-	//				break
-	//			}
-	//			preHash = preBlock.GetPrevious()
-	//		}
-	//	}
-	//}
-	//return nil
 }
 
 func (lv *LedgerVerifier) RollbackUnchecked(hash types.Hash) {

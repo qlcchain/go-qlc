@@ -10,11 +10,10 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type MemoryCache struct {
@@ -438,22 +437,17 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 func (c *Cache) dumpToRelation(key []byte, v interface{}, l *Ledger) error {
 	if !isDeleteKey(v) {
 		if val, ok := v.(types.Convert); ok {
-			objs, err := val.RelationConvert()
+			objs, err := val.ConvertToSchema()
 			if err != nil {
 				return fmt.Errorf("table convert: %s", err)
 			}
 			l.relation.Add(objs)
 		}
-	} else {
-		switch storage.KeyPrefix(key[0]) {
-		case storage.KeyPrefixBlock:
-			hash, err := types.BytesToHash(key[1:])
-			if err != nil {
-				return fmt.Errorf("key to hash: %s", err)
-			}
-			l.relation.Delete(&types.BlockHash{Hash: hash.String()})
-		}
 	}
+	for _, obj := range l.deletedSchema {
+		l.relation.Delete(obj)
+	}
+	l.deletedSchema = l.deletedSchema[:0]
 	return nil
 }
 

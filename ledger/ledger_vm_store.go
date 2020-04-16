@@ -11,8 +11,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"go.uber.org/zap"
-
+	"github.com/qlcchain/go-qlc/common/relation"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -20,6 +19,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 const (
@@ -56,6 +56,8 @@ type vmStore interface {
 	NewVMIterator(address *types.Address) *Iterator
 	SetStorage(val map[string]interface{}) error
 	SaveStorage(val map[string]interface{}, c ...storage.Cache) error
+	SaveStorageByConvert(key []byte, val []byte, c storage.Cache) error
+	RemoveStorage(key []byte, val []byte, c storage.Cache) error
 	ListTokens() ([]*types.TokenInfo, error)
 	GetTokenById(tokenId types.Hash) (*types.TokenInfo, error)
 	GetTokenByName(tokenName string) (*types.TokenInfo, error)
@@ -101,6 +103,32 @@ func (l *Ledger) SaveStorage(val map[string]interface{}, c ...storage.Cache) err
 		}
 	}
 	return nil
+}
+
+func (l *Ledger) SaveStorageByConvert(key []byte, val []byte, c storage.Cache) error {
+	r, err := relation.ConvertToInterface(val)
+	if err != nil {
+		return fmt.Errorf("remove storage: %s", err)
+	}
+	if r != nil {
+		return c.Put(key, r)
+	}
+	return c.Put(key, val)
+}
+
+func (l *Ledger) RemoveStorage(key []byte, val []byte, c storage.Cache) error {
+	r, err := relation.ConvertToInterface(val)
+	if err != nil {
+		return fmt.Errorf("remove storage: %s", err)
+	}
+	if r != nil {
+		sc, err := r.ConvertToSchema()
+		if err != nil {
+			return fmt.Errorf("storage convert:  %s", err)
+		}
+		l.deletedSchema = append(l.deletedSchema, sc...)
+	}
+	return c.Delete(key)
 }
 
 func (l *Ledger) ListTokens() ([]*types.TokenInfo, error) {

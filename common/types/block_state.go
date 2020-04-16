@@ -355,7 +355,7 @@ func (bs *StateBlockList) Deserialize(text []byte) error {
 	return nil
 }
 
-func (b *StateBlock) RelationConvert() ([]Schema, error) {
+func (b *StateBlock) ConvertToSchema() ([]Schema, error) {
 	return []Schema{
 		&BlockHash{
 			Type:      b.Type.String(),

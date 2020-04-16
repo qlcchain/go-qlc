@@ -1,7 +1,6 @@
 package relation
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -41,7 +40,7 @@ func TestRegisterRelation(t *testing.T) {
 		t.Fatal()
 	}
 	if o, ok := r2.(types.Convert); ok {
-		fmt.Println(o.RelationConvert())
+		fmt.Println(o.ConvertToSchema())
 	} else {
 		t.Fatal()
 	}
@@ -66,7 +65,7 @@ func (a *StructA) Deserialize(text []byte) error {
 	return json.Unmarshal(text, a)
 }
 
-func (a *StructA) RelationConvert() ([]types.Schema, error) {
+func (a *StructA) ConvertToSchema() ([]types.Schema, error) {
 	fmt.Println("RelationConvert")
 	return nil, nil
 }
@@ -81,9 +80,7 @@ func TestRegisterRelation_bytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r, ok := re.([]byte); ok {
-		if !bytes.EqualFold(bs, r) {
-			t.Fatal()
-		}
+	if re != nil {
+		t.Fatal()
 	}
 }

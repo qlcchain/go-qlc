@@ -3770,6 +3770,20 @@ func (_m *Store) PendingAmount(address types.Address, token types.Hash) (types.B
 	return r0, r1
 }
 
+// RemoveStorage provides a mock function with given fields: key, val, c
+func (_m *Store) RemoveStorage(key []byte, val []byte, c storage.Cache) error {
+	ret := _m.Called(key, val, c)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]byte, []byte, storage.Cache) error); ok {
+		r0 = rf(key, val, c)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SaveStorage provides a mock function with given fields: val, c
 func (_m *Store) SaveStorage(val map[string]interface{}, c ...storage.Cache) error {
 	_va := make([]interface{}, len(c))
@@ -3784,6 +3798,20 @@ func (_m *Store) SaveStorage(val map[string]interface{}, c ...storage.Cache) err
 	var r0 error
 	if rf, ok := ret.Get(0).(func(map[string]interface{}, ...storage.Cache) error); ok {
 		r0 = rf(val, c...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SaveStorageByConvert provides a mock function with given fields: key, val, c
+func (_m *Store) SaveStorageByConvert(key []byte, val []byte, c storage.Cache) error {
+	ret := _m.Called(key, val, c)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]byte, []byte, storage.Cache) error); ok {
+		r0 = rf(key, val, c)
 	} else {
 		r0 = ret.Error(0)
 	}

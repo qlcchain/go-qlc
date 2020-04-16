@@ -13,9 +13,9 @@ import (
 var strLength = 10
 var suffix = []byte("qlcInterface")
 var identityLength = strLength + len(suffix)
-var relationMap = make(map[string]structRelation)
+var relationMap = make(map[string]structInfo)
 
-type structRelation struct {
+type structInfo struct {
 	value      reflect.Value
 	identityID []byte
 }
@@ -32,7 +32,7 @@ func RegisterInterface(con interface{}) error {
 	if _, ok := relationMap[typ]; ok {
 		return errors.Errorf("%s defined repeated", typ)
 	}
-	sr := structRelation{
+	sr := structInfo{
 		value:      t,
 		identityID: identityID(),
 	}
@@ -62,7 +62,7 @@ func ConvertToBytes(con interface{}) ([]byte, error) {
 	}
 }
 
-func ConvertToInterface(val []byte) (interface{}, error) {
+func ConvertToInterface(val []byte) (types.Convert, error) { //if val is not a Convert type, can not Deserialize because not register
 	if len(val) > identityLength {
 		identity := val[len(val)-identityLength:]
 		if m, err := getStructById(identity); err == nil {
@@ -72,11 +72,11 @@ func ConvertToInterface(val []byte) (interface{}, error) {
 			if len(v) <= 0 || !v[0].IsNil() {
 				return nil, fmt.Errorf("call method error : %s", v[0])
 			} else {
-				return typ.Interface(), nil
+				return typ.Interface().(types.Convert), nil
 			}
 		}
 	}
-	return val, nil
+	return nil, nil
 }
 
 func identityID() []byte {
@@ -94,11 +94,11 @@ func identityID() []byte {
 	return id
 }
 
-func getStructById(id []byte) (structRelation, error) {
+func getStructById(id []byte) (structInfo, error) {
 	for _, v := range relationMap {
 		if bytes.EqualFold(v.identityID, id) {
 			return v, nil
 		}
 	}
-	return structRelation{}, errors.New("not found struct map")
+	return structInfo{}, errors.New("not found struct map")
 }

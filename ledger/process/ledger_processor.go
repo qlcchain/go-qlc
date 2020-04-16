@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"sync"
 
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -21,7 +19,9 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/trie"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"go.uber.org/zap"
 )
 
 type LedgerVerifier struct {
@@ -538,6 +538,10 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 					if err != nil {
 						return fmt.Errorf("reward block save storage error: %s", err)
 					}
+					err = lv.saveTrie(vmstore.Trie(ctx), cache)
+					if err != nil {
+						return fmt.Errorf("reward block save trie error: %s", err)
+					}
 					return nil
 				}
 			}
@@ -558,6 +562,10 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 						if err := lv.l.SaveStorage(vmstore.ToCache(vmCtx), cache); err != nil {
 							return fmt.Errorf("send block save storage error: %s", err)
 						}
+						err = lv.saveTrie(vmstore.Trie(vmCtx), cache)
+						if err != nil {
+							return fmt.Errorf("send block save trie error: %s", err)
+						}
 					} else {
 						lv.logger.Errorf("process send error, %s", err)
 					}
@@ -565,5 +573,14 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			}
 		}
 	}
+	return nil
+}
+
+func (lv *LedgerVerifier) saveTrie(t *trie.Trie, cache *ledger.Cache) error {
+	fn, err := t.Save(cache)
+	if err != nil {
+		return err
+	}
+	fn()
 	return nil
 }

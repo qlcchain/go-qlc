@@ -6,7 +6,7 @@ type Serializer interface {
 }
 
 type Convert interface {
-	RelationConvert() ([]Schema, error)
+	ConvertToSchema() ([]Schema, error)
 }
 
 type Schema interface {

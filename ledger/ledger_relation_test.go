@@ -31,7 +31,7 @@ func (a *StructA) Deserialize(text []byte) error {
 	return json.Unmarshal(text, a)
 }
 
-func (a *StructA) RelationConvert() ([]types.Schema, error) {
+func (a *StructA) ConvertToSchema() ([]types.Schema, error) {
 	return []types.Schema{
 		&StructB{
 			Hash:    a.Hash.String(),
