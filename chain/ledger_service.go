@@ -9,8 +9,7 @@ package chain
 
 import (
 	"errors"
-
-	"go.uber.org/zap"
+	"fmt"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
@@ -21,6 +20,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+	"go.uber.org/zap"
 )
 
 type LedgerService struct {
@@ -101,7 +101,9 @@ func (ls *LedgerService) Start() error {
 		return errors.New("pre start fail")
 	}
 	defer ls.PostStart()
-
+	if err := ls.registerRelation(); err != nil {
+		return fmt.Errorf("ledger start: %s", err)
+	}
 	return nil
 }
 
@@ -120,4 +122,11 @@ func (ls *LedgerService) Stop() error {
 
 func (ls *LedgerService) Status() int32 {
 	return ls.State()
+}
+
+func (ls *LedgerService) registerRelation() error {
+	//if err := ls.Ledger.RegisterInterface(new(StructA),new(StructB));err !=nil{
+	//	return err
+	//}
+	return nil
 }

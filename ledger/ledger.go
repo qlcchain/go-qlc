@@ -13,11 +13,10 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"go.uber.org/zap"
-
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	typrelation "github.com/qlcchain/go-qlc/common/relation"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -26,6 +25,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger/migration"
 	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
+	"go.uber.org/zap"
 )
 
 type LedgerStore interface {
@@ -812,4 +812,11 @@ func (l *Ledger) Flush() error {
 
 func (l *Ledger) RegisterRelation(obj types.Schema) error {
 	return l.relation.Register(obj)
+}
+
+func (l *Ledger) RegisterInterface(con types.Convert, obj types.Schema) error {
+	if err := typrelation.RegisterInterface(con); err != nil {
+		return err
+	}
+	return l.RegisterRelation(obj)
 }
