@@ -55,7 +55,7 @@ func setupPrivacyTestCase(t *testing.T, scheme string) (func(t *testing.T), *moc
 	if err != nil {
 		t.Fatal(err)
 	}
-	md.privacy.ptm.client.transport.SetFakeMode(true)
+	md.privacy.ptm.SetFakeMode(true)
 
 	return func(t *testing.T) {
 		err := md.l.Close()

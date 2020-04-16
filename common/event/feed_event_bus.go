@@ -54,7 +54,7 @@ func (eb *FeedEventBus) RpcSyncCallWithTime(msg *ct.EventRPCSyncCallMsg, waitTim
 		waitTime = 60 * time.Second
 	}
 	if msg.ResponseChan == nil {
-		msg.ResponseChan = make(chan interface{})
+		msg.ResponseChan = make(chan interface{}, 100)
 	}
 	eb.Publish(ct.EventRpcSyncCall, msg)
 	select {

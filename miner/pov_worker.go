@@ -57,7 +57,7 @@ func NewPovWorker(cc *context.ChainContext, miner *Miner) *PovWorker {
 		quitCh: make(chan struct{}),
 		feb:    cc.FeedEventBus(),
 
-		febRpcMsgCh: make(chan *topic.EventRPCSyncCallMsg, 1),
+		febRpcMsgCh: make(chan *topic.EventRPCSyncCallMsg, 100),
 	}
 	worker.mineBlockPool = make(map[types.Hash]*types.PovMineBlock)
 	worker.minerAlgoBlocks = make(map[types.Address]map[types.PovAlgoType]*PovMinerAlgoBlock)

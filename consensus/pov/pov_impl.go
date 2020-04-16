@@ -64,7 +64,7 @@ func NewPovEngine(cfgFile string, fakePow bool) (*PoVEngine, error) {
 		ledger:   l,
 
 		quitCh:      make(chan struct{}),
-		febRpcMsgCh: make(chan *topic.EventRPCSyncCallMsg, 1),
+		febRpcMsgCh: make(chan *topic.EventRPCSyncCallMsg, 100),
 	}
 
 	pov.blkRecvCache = gcache.New(blkCacheSize).Simple().Expiration(blkCacheExpireTime).Build()

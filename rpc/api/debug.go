@@ -726,3 +726,22 @@ func (l *DebugApi) getConsensusService() (common.InterceptCall, error) {
 	}
 	return sv.(common.InterceptCall), nil
 }
+
+func (l *DebugApi) GetPrivacyInfo() (map[string]interface{}, error) {
+	inArgs := make(map[string]interface{})
+	outArgs := make(map[string]interface{})
+
+	l.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Debug.PrivacyInfo", In: inArgs, Out: outArgs})
+
+	err, ok := outArgs["err"]
+	if !ok {
+		return nil, errors.New("api not support")
+	}
+	if err != nil {
+		err := outArgs["err"].(error)
+		return nil, err
+	}
+	delete(outArgs, "err")
+
+	return outArgs, nil
+}

@@ -3,6 +3,8 @@ package privacy
 import (
 	"encoding/hex"
 
+	"github.com/qlcchain/go-qlc/common"
+
 	"go.uber.org/zap"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -20,6 +22,11 @@ type Controller struct {
 	eb         event.EventBus
 	subscriber *event.ActorSubscriber
 	ptm        *PTM
+	quitCh     chan struct{}
+
+	feb            *event.FeedEventBus
+	febRpcMsgCh    chan *topic.EventRPCSyncCallMsg
+	febRpcMsgSubID event.FeedSubscription
 }
 
 func NewController(cc *context.ChainContext) *Controller {
@@ -28,6 +35,10 @@ func NewController(cc *context.ChainContext) *Controller {
 	c.cfg, _ = cc.Config()
 	c.eb = cc.EventBus()
 	c.ptm = NewPTM(c.cfg)
+	c.quitCh = make(chan struct{})
+
+	c.feb = cc.FeedEventBus()
+	c.febRpcMsgCh = make(chan *topic.EventRPCSyncCallMsg, 100)
 	return c
 }
 
@@ -37,7 +48,12 @@ func (c *Controller) Init() error {
 		return err
 	}
 
-	c.subscriber = event.NewActorSubscriber(event.Spawn(func(ctx actor.Context) {
+	c.febRpcMsgSubID = c.feb.Subscribe(topic.EventRpcSyncCall, c.febRpcMsgCh)
+	if c.febRpcMsgSubID == nil {
+		c.logger.Error("failed to subscribe EventRpcSyncCall")
+	}
+
+	c.subscriber = event.NewActorSubscriber(event.SpawnWithPool(func(ctx actor.Context) {
 		switch msg := ctx.Message().(type) {
 		case *topic.EventPrivacySendReqMsg:
 			c.onEventPrivacySendReqMsg(msg)
@@ -60,14 +76,20 @@ func (c *Controller) Start() error {
 		return err
 	}
 
+	common.Go(c.mainLoop)
+
 	return nil
 }
 
 func (c *Controller) Stop() error {
+	c.febRpcMsgSubID.Unsubscribe()
+
 	err := c.subscriber.UnsubscribeAll()
 	if err != nil {
 		return err
 	}
+
+	close(c.quitCh)
 
 	err = c.ptm.Stop()
 	if err != nil {
@@ -75,6 +97,28 @@ func (c *Controller) Stop() error {
 	}
 
 	return nil
+}
+
+func (c *Controller) mainLoop() {
+	for {
+		select {
+		case <-c.quitCh:
+			return
+		case msg := <-c.febRpcMsgCh:
+			c.onEventRPCSyncCall(msg)
+		}
+	}
+}
+
+func (c *Controller) onEventRPCSyncCall(msg *topic.EventRPCSyncCallMsg) {
+	needRsp := false
+	if msg.Name == "Debug.PrivacyInfo" {
+		c.getDebugInfo(msg.In, msg.Out)
+		needRsp = true
+	}
+	if needRsp && msg.ResponseChan != nil {
+		msg.ResponseChan <- msg.Out
+	}
 }
 
 func (c *Controller) onEventPrivacySendReqMsg(msg *topic.EventPrivacySendReqMsg) {
@@ -101,6 +145,16 @@ func (c *Controller) onEventPrivacyRecvReqMsg(msg *topic.EventPrivacyRecvReqMsg)
 	}
 
 	msg.RspChan <- rspMsg
+}
+
+func (c *Controller) getDebugInfo(in interface{}, out interface{}) {
+	outArgs := out.(map[string]interface{})
+
+	outArgs["err"] = nil
+
+	if c.ptm != nil {
+		outArgs["ptm"] = c.ptm.GetDebugInfo()
+	}
 }
 
 func formatBytesPrefix(data []byte) string {
