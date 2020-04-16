@@ -75,6 +75,10 @@ func TrieHash(ctx *VMContext) *types.Hash {
 	return ctx.cache.Trie().Hash()
 }
 
+func Trie(ctx *VMContext) *trie.Trie {
+	return ctx.cache.Trie()
+}
+
 func ToCache(ctx *VMContext) map[string]interface{} {
 	result := make(map[string]interface{})
 	for k, val := range ctx.cache.storage {
@@ -111,8 +115,9 @@ func NewVMContext(l ledger.Store, contractAddr *types.Address) *VMContext {
 	}
 }
 
-func (v *VMContext) WithCache(c storage.Cache) {
+func (v *VMContext) WithCache(c storage.Cache) *VMContext {
 	v.storageCache = c
+	return v
 }
 
 // WithBlock Load storage trie from the specified user address and block hash

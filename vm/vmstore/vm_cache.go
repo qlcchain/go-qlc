@@ -8,6 +8,7 @@
 package vmstore
 
 import (
+	"github.com/qlcchain/go-qlc/common/relation"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/trie"
 )
@@ -31,13 +32,8 @@ func NewVMCache() *VMCache {
 func (cache *VMCache) Trie() *trie.Trie {
 	if cache.trieDirty {
 		for key, value := range cache.storage {
-			switch o := value.(type) {
-			case types.Serializer:
-				if data, err := o.Serialize(); err == nil {
-					cache.trie.SetValue([]byte(key), data)
-				}
-			case []byte:
-				cache.trie.SetValue([]byte(key), o)
+			if data, err := relation.ConvertToBytes(value); err == nil {
+				cache.trie.SetValue([]byte(key), data)
 			}
 		}
 
