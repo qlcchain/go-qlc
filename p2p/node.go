@@ -120,7 +120,7 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 	}
 	node.reporter = p2pmetrics.NewBandwidthCounter()
 	if node.cfg.P2P.IsBootNode {
-		node.boostrapAddrs = append(node.boostrapAddrs, node.cfg.P2P.Listen+"/p2p/"+node.cfg.P2P.ID.PeerID)
+		node.boostrapAddrs = append(node.boostrapAddrs, strings.ReplaceAll(node.cfg.P2P.Listen, "0.0.0.0", node.cfg.P2P.ListeningIp)+"/p2p/"+node.cfg.P2P.ID.PeerID)
 	}
 	return node, nil
 }
@@ -631,20 +631,10 @@ func (node *QlcNode) getBootNode(urls []string) {
 			return
 		case <-ticker.C:
 			for _, v := range urls {
-				url := "http://" + v + "/bootNode"
-				rsp, err := http.Get(url)
+				boot, err := accessHttpServer(v)
 				if err != nil {
 					continue
 				}
-				body, err := ioutil.ReadAll(rsp.Body)
-				if err != nil {
-					continue
-				}
-				ss := strings.Split(v, ":")
-				if len(ss) < 2 {
-					continue
-				}
-				boot := strings.ReplaceAll(string(body), "0.0.0.0", ss[0])
 				if len(node.boostrapAddrs) == 0 {
 					node.boostrapAddrs = append(node.boostrapAddrs, boot)
 				} else {
@@ -657,8 +647,25 @@ func (node *QlcNode) getBootNode(urls []string) {
 						}
 					}
 				}
-				_ = rsp.Body.Close()
 			}
 		}
+	}
+}
+
+func accessHttpServer(url string) (string, error) {
+	rsp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer rsp.Body.Close()
+	body, err := ioutil.ReadAll(rsp.Body)
+	if err != nil {
+		return "", err
+	}
+	s := strings.Contains(string(body), "p2p")
+	if s {
+		return string(body), nil
+	} else {
+		return "", errors.New("body is not a bootNode")
 	}
 }

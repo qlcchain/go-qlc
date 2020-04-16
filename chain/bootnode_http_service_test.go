@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -53,7 +54,7 @@ func TestNewBootNodeHttpService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(body) != (cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID) {
+	if string(body) != (strings.ReplaceAll(hs.cfg.P2P.Listen, "0.0.0.0", hs.cfg.P2P.ListeningIp) + "/p2p/" + cfg.P2P.ID.PeerID) {
 		t.Fatal("bootNode mismatch")
 	}
 	err = hs.Stop()

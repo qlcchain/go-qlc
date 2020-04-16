@@ -28,7 +28,7 @@ func TestServiceSync(t *testing.T) {
 	cfg.P2P.Listen = "/ip4/127.0.0.1/tcp/29747"
 	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.P2P.IsBootNode = true
-	cfg.P2P.BootNodes = []string{"127.0.0.1:29647/sync"}
+	cfg.P2P.BootNodes = []string{"http://127.0.0.1:29647/sync/bootNode"}
 	http.HandleFunc("/sync/bootNode", func(w http.ResponseWriter, r *http.Request) {
 		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
 		_, _ = fmt.Fprintf(w, bootNode)
@@ -45,7 +45,7 @@ func TestServiceSync(t *testing.T) {
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/29748"
 	cfg1.P2P.Discovery.MDNSEnabled = false
-	cfg1.P2P.BootNodes = []string{"127.0.0.1:29647/sync"}
+	cfg1.P2P.BootNodes = []string{"http://127.0.0.1:29647/sync/bootNode"}
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 	cfg1.P2P.SyncInterval = 5
 
@@ -55,7 +55,7 @@ func TestServiceSync(t *testing.T) {
 	cfg2, _ := cc2.Config()
 	cfg2.P2P.Listen = "/ip4/127.0.0.1/tcp/29749"
 	cfg2.P2P.Discovery.MDNSEnabled = false
-	cfg2.P2P.BootNodes = []string{"127.0.0.1:29647/sync"}
+	cfg2.P2P.BootNodes = []string{"http://127.0.0.1:29647/sync/bootNode"}
 	cfg2.P2P.Discovery.DiscoveryInterval = 1
 	cfg1.P2P.SyncInterval = 4
 

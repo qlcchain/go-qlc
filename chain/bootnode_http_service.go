@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"go.uber.org/zap"
 
@@ -47,7 +48,8 @@ func (hs *HttpService) Start() error {
 	defer hs.PostStart()
 
 	http.HandleFunc("/bootNode", func(w http.ResponseWriter, r *http.Request) {
-		bootNode := hs.cfg.P2P.Listen + "/p2p/" + hs.cfg.P2P.ID.PeerID
+		rl := strings.ReplaceAll(hs.cfg.P2P.Listen, "0.0.0.0", hs.cfg.P2P.ListeningIp)
+		bootNode := rl + "/p2p/" + hs.cfg.P2P.ID.PeerID
 		_, _ = fmt.Fprintf(w, bootNode)
 	})
 	go func() {
