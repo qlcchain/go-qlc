@@ -252,7 +252,7 @@ func TestRepApi_GetRewardHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ctx.SaveStorage()
+	err = l.SaveStorage(vmstore.ToCache(ctx))
 	if err != nil {
 		t.Fatal(err)
 	}

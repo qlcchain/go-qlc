@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/yireyun/go-queue"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -16,7 +18,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/trie"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"github.com/yireyun/go-queue"
 )
 
 func (lv *LedgerVerifier) Rollback(hash types.Hash) error {
