@@ -122,8 +122,8 @@ func BenchmarkDecodeDoDAccount(b *testing.B) {
 	}
 }
 
-func TestMarshalUnmarshalDoDService(t *testing.T) {
-	v := DoDService{}
+func TestMarshalUnmarshalDoDConnection(t *testing.T) {
+	v := DoDConnection{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -145,8 +145,8 @@ func TestMarshalUnmarshalDoDService(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgDoDService(b *testing.B) {
-	v := DoDService{}
+func BenchmarkMarshalMsgDoDConnection(b *testing.B) {
+	v := DoDConnection{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -154,8 +154,8 @@ func BenchmarkMarshalMsgDoDService(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgDoDService(b *testing.B) {
-	v := DoDService{}
+func BenchmarkAppendMsgDoDConnection(b *testing.B) {
+	v := DoDConnection{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -166,8 +166,8 @@ func BenchmarkAppendMsgDoDService(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalDoDService(b *testing.B) {
-	v := DoDService{}
+func BenchmarkUnmarshalDoDConnection(b *testing.B) {
+	v := DoDConnection{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -180,17 +180,17 @@ func BenchmarkUnmarshalDoDService(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeDoDService(t *testing.T) {
-	v := DoDService{}
+func TestEncodeDecodeDoDConnection(t *testing.T) {
+	v := DoDConnection{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeDoDService Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeDoDConnection Msgsize() is inaccurate")
 	}
 
-	vn := DoDService{}
+	vn := DoDConnection{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -204,8 +204,8 @@ func TestEncodeDecodeDoDService(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeDoDService(b *testing.B) {
-	v := DoDService{}
+func BenchmarkEncodeDoDConnection(b *testing.B) {
+	v := DoDConnection{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -218,8 +218,121 @@ func BenchmarkEncodeDoDService(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeDoDService(b *testing.B) {
-	v := DoDService{}
+func BenchmarkDecodeDoDConnection(b *testing.B) {
+	v := DoDConnection{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes(), b)
+	dc := msgp.NewReader(rd)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := v.DecodeMsg(dc)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestMarshalUnmarshalDoDUsage(t *testing.T) {
+	v := DoDUsage{}
+	bts, err := v.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+}
+
+func BenchmarkMarshalMsgDoDUsage(b *testing.B) {
+	v := DoDUsage{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.MarshalMsg(nil)
+	}
+}
+
+func BenchmarkAppendMsgDoDUsage(b *testing.B) {
+	v := DoDUsage{}
+	bts := make([]byte, 0, v.Msgsize())
+	bts, _ = v.MarshalMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bts, _ = v.MarshalMsg(bts[0:0])
+	}
+}
+
+func BenchmarkUnmarshalDoDUsage(b *testing.B) {
+	v := DoDUsage{}
+	bts, _ := v.MarshalMsg(nil)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(bts)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := v.UnmarshalMsg(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestEncodeDecodeDoDUsage(t *testing.T) {
+	v := DoDUsage{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+
+	m := v.Msgsize()
+	if buf.Len() > m {
+		t.Log("WARNING: TestEncodeDecodeDoDUsage Msgsize() is inaccurate")
+	}
+
+	vn := DoDUsage{}
+	err := msgp.Decode(&buf, &vn)
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf.Reset()
+	msgp.Encode(&buf, &v)
+	err = msgp.NewReader(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEncodeDoDUsage(b *testing.B) {
+	v := DoDUsage{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.EncodeMsg(en)
+	}
+	en.Flush()
+}
+
+func BenchmarkDecodeDoDUsage(b *testing.B) {
+	v := DoDUsage{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

@@ -1,7 +1,11 @@
 package contract
 
 import (
+	"errors"
+
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -16,13 +20,43 @@ func (ca *DoDCreateAccount) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 		return nil, nil, ErrToken
 	}
 
-	admin := new(abi.DoDAccount)
-	err := abi.DoDBillingABI.UnpackMethod(admin, abi.MethodNameDoDCreateAccount, block.Data)
+	account := new(abi.DoDAccount)
+	err := abi.DoDBillingABI.UnpackMethod(account, abi.MethodNameDoDCreateAccount, block.Data)
 	if err != nil {
 		return nil, nil, ErrUnpackMethod
 	}
 
+	err = ca.setStorage(ctx, account)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return nil, nil, nil
+}
+
+func (ca *DoDCreateAccount) setStorage(ctx *vmstore.VMContext, account *abi.DoDAccount) error {
+	var key []byte
+	ah := types.Sha256DHashData([]byte(account.AccountName))
+	key = append(key, abi.DoDDataTypeAccount)
+	key = append(key, ah.Bytes()...)
+
+	retVal, _ := ctx.GetStorage(contractaddress.DoDBillingAddress.Bytes(), key)
+	if len(retVal) > 0 {
+		oa := new(abi.DoDAccount)
+		_, err := oa.UnmarshalMsg(retVal)
+		if err != nil {
+			return err
+		}
+
+		account.UUID = oa.UUID
+	}
+
+	val, err := account.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	return ctx.SetStorage(contractaddress.DoDBillingAddress.Bytes(), key, val)
 }
 
 type DoDCoupleAccount struct {
@@ -34,65 +68,190 @@ func (ca *DoDCoupleAccount) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 		return nil, nil, ErrToken
 	}
 
-	admin := new(abi.DoDAccount)
-	err := abi.DoDBillingABI.UnpackMethod(admin, abi.MethodNameDoDCoupleAccount, block.Data)
+	account := new(abi.DoDAccount)
+	err := abi.DoDBillingABI.UnpackMethod(account, abi.MethodNameDoDCoupleAccount, block.Data)
 	if err != nil {
 		return nil, nil, ErrUnpackMethod
+	}
+
+	err = ca.setStorage(ctx, account)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return nil, nil, nil
 }
 
-type DoDServiceSet struct {
+func (ca *DoDCoupleAccount) setStorage(ctx *vmstore.VMContext, account *abi.DoDAccount) error {
+	var key []byte
+	ah := types.Sha256DHashData([]byte(account.AccountName))
+	key = append(key, abi.DoDDataTypeAccount)
+	key = append(key, ah.Bytes()...)
+
+	retVal, _ := ctx.GetStorage(contractaddress.DoDBillingAddress.Bytes(), key)
+	if len(retVal) > 0 {
+		oa := new(abi.DoDAccount)
+		_, err := oa.UnmarshalMsg(retVal)
+		if err != nil {
+			return err
+		}
+
+		account.AccountInfo = oa.AccountInfo
+		account.AccountType = oa.AccountType
+	}
+
+	val, err := account.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	return ctx.SetStorage(contractaddress.DoDBillingAddress.Bytes(), key, val)
+}
+
+type DoDSetService struct {
 	BaseContract
 }
 
-func (ss *DoDServiceSet) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+func (ss *DoDSetService) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.ChainToken() {
 		return nil, nil, ErrToken
 	}
 
-	admin := new(abi.DoDService)
-	err := abi.DoDBillingABI.UnpackMethod(admin, abi.MethodNameDoDServiceSet, block.Data)
+	conn := new(abi.DoDConnection)
+	err := abi.DoDBillingABI.UnpackMethod(conn, abi.MethodNameDoDSetService, block.Data)
 	if err != nil {
 		return nil, nil, ErrUnpackMethod
+	}
+
+	err = ss.setStorage(ctx, conn)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = ss.updateAccountService(ctx, conn)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return nil, nil, nil
 }
 
-type DoDUserServiceSet struct {
+func (ss *DoDSetService) setStorage(ctx *vmstore.VMContext, conn *abi.DoDConnection) error {
+	var key []byte
+	key = append(key, abi.DoDDataTypeConnection)
+	key = append(key, conn.ConnectionID...)
+
+	val, err := conn.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	return ctx.SetStorage(contractaddress.DoDBillingAddress.Bytes(), key, val)
+}
+
+func (ss *DoDSetService) updateAccountService(ctx *vmstore.VMContext, conn *abi.DoDConnection) error {
+	account := abi.GetAccount(ctx, conn.AccountName)
+	if account == nil {
+		return errors.New("account not exist")
+	}
+
+	for _, c := range account.Connections {
+		if c == conn.ConnectionID {
+			return nil
+		}
+	}
+
+	account.Connections = append(account.Connections, conn.ConnectionID)
+
+	var key []byte
+	ah := types.Sha256DHashData([]byte(account.AccountName))
+	key = append(key, abi.DoDDataTypeAccount)
+	key = append(key, ah.Bytes()...)
+
+	val, err := account.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	return ctx.SetStorage(contractaddress.DoDBillingAddress.Bytes(), key, val)
+}
+
+type DoDUpdateUsage struct {
 	BaseContract
 }
 
-func (us *DoDUserServiceSet) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+func (uu *DoDUpdateUsage) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.ChainToken() {
 		return nil, nil, ErrToken
 	}
 
-	admin := new(abi.DoDAccount)
-	err := abi.DoDBillingABI.UnpackMethod(admin, abi.MethodNameDoDUserServiceSet, block.Data)
+	usage := new(abi.DoDUsage)
+	err := abi.DoDBillingABI.UnpackMethod(usage, abi.MethodNameDoDUpdateUsage, block.Data)
 	if err != nil {
 		return nil, nil, ErrUnpackMethod
+	}
+
+	err = uu.setStorage(ctx, usage)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = uu.updateService(ctx, usage)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return nil, nil, nil
 }
 
-type DoDUsageUpdate struct {
-	BaseContract
+func (uu *DoDUpdateUsage) setStorage(ctx *vmstore.VMContext, usage *abi.DoDUsage) error {
+	var key []byte
+	key = append(key, abi.DoDDataTypeUsage)
+	key = append(key, usage.ConnectionID...)
+	key = append(key, util.BE_Uint64ToBytes(usage.Timestamp)...)
+
+	val, err := usage.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	return ctx.SetStorage(contractaddress.DoDBillingAddress.Bytes(), key, val)
 }
 
-func (uu *DoDUsageUpdate) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	if block.GetToken() != cfg.ChainToken() {
-		return nil, nil, ErrToken
+func (uu *DoDUpdateUsage) updateService(ctx *vmstore.VMContext, usage *abi.DoDUsage) error {
+	conn := abi.GetConnection(ctx, usage.ConnectionID)
+	if conn == nil {
+		return errors.New("connection not exist")
 	}
 
-	admin := new(abi.DoDAccount)
-	err := abi.DoDBillingABI.UnpackMethod(admin, abi.MethodNameDoDUsageUpdate, block.Data)
+	if conn.ChargeType == abi.DoDChargeTypeBandwidth && conn.PaidRule == abi.DoDPaidRulePrePaid && conn.BuyMode == abi.DoDBuyModeCommon {
+		var expense float64
+
+		if usage.Timestamp > conn.TempStartTime && usage.Timestamp <= conn.TempEndTime {
+			expense = conn.TempPrice * usage.Usage
+		} else {
+			expense = conn.Price * usage.Usage
+		}
+
+		conn.Balance -= expense
+	}
+
+	if conn.ChargeType == abi.DoDChargeTypeUsage && conn.PaidRule == abi.DoDPaidRulePrePaid {
+		if conn.BuyMode == abi.DoDBuyModeCommon {
+			conn.Quota -= usage.Usage
+		} else {
+			conn.Balance -= usage.Usage * conn.Price
+		}
+	}
+
+	var key []byte
+	key = append(key, abi.DoDDataTypeConnection)
+	key = append(key, conn.ConnectionID...)
+
+	val, err := conn.MarshalMsg(nil)
 	if err != nil {
-		return nil, nil, ErrUnpackMethod
+		return err
 	}
 
-	return nil, nil, nil
+	return ctx.SetStorage(contractaddress.DoDBillingAddress.Bytes(), key, val)
 }

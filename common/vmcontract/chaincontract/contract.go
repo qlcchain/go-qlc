@@ -259,4 +259,44 @@ func InitChainContract() {
 		cabi.JsonPermission,
 	)
 	vmcontract.RegisterContracts(contractaddress.PermissionAddress, pa)
+
+	dod := vmcontract.NewChainContract(
+		map[string]vmcontract.Contract{
+			cabi.MethodNameDoDCreateAccount: &contract.DoDCreateAccount{
+				BaseContract: contract.BaseContract{
+					Describe: vmcontract.Describe{
+						SpecVer:   vmcontract.SpecVer2,
+						Signature: true,
+					},
+				},
+			},
+			cabi.MethodNameDoDCoupleAccount: &contract.DoDCoupleAccount{
+				BaseContract: contract.BaseContract{
+					Describe: vmcontract.Describe{
+						SpecVer:   vmcontract.SpecVer2,
+						Signature: true,
+					},
+				},
+			},
+			cabi.MethodNameDoDSetService: &contract.DoDSetService{
+				BaseContract: contract.BaseContract{
+					Describe: vmcontract.Describe{
+						SpecVer:   vmcontract.SpecVer2,
+						Signature: true,
+					},
+				},
+			},
+			cabi.MethodNameDoDUpdateUsage: &contract.DoDUpdateUsage{
+				BaseContract: contract.BaseContract{
+					Describe: vmcontract.Describe{
+						SpecVer:   vmcontract.SpecVer2,
+						Signature: true,
+					},
+				},
+			},
+		},
+		cabi.DoDBillingABI,
+		cabi.JsonDoDBilling,
+	)
+	vmcontract.RegisterContracts(contractaddress.DoDBillingAddress, dod)
 }
