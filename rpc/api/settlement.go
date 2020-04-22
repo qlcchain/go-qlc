@@ -689,7 +689,8 @@ type CDRStatus struct {
 // @param addr settlement smart contract address
 // @param hash CDR data hash
 func (s *SettlementAPI) GetCDRStatus(addr *types.Address, hash types.Hash) (*CDRStatus, error) {
-	if cdr, err := cabi.GetCDRStatus(s.l, addr, hash); err != nil {
+	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
+	if cdr, err := cabi.GetCDRStatus(ctx, addr, hash); err != nil {
 		return nil, err
 	} else {
 		return &CDRStatus{
@@ -707,7 +708,8 @@ func (s *SettlementAPI) GetCDRStatusByCdrData(addr *types.Address, index uint64,
 	if err != nil {
 		return nil, err
 	}
-	if cdr, err := cabi.GetCDRStatus(s.l, addr, hash); err != nil {
+	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
+	if cdr, err := cabi.GetCDRStatus(ctx, addr, hash); err != nil {
 		return nil, err
 	} else {
 		return &CDRStatus{

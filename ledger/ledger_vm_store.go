@@ -145,7 +145,7 @@ func (l *Ledger) ListTokens() ([]*types.TokenInfo, error) {
 	var infos []*types.TokenInfo
 	if err := iterator.Next(nil, func(key []byte, value []byte) error {
 		if len(value) > 0 {
-			tokenId, _ := types.BytesToHash(key[(types.AddressSize + 1):])
+			tokenId, _ := types.BytesToHash(key[types.AddressSize:])
 			if config.IsGenesisToken(tokenId) {
 				if info, err := mintage.ParseGenesisTokenInfo(value); err == nil {
 					infos = append(infos, info)
