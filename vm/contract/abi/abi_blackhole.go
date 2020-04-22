@@ -54,7 +54,7 @@ const (
 
 	MethodNameDestroy   = "Destroy"
 	VariableDestroyInfo = "destroyInfo"
-	KeySize             = types.AddressSize + types.HashSize + 1
+	KeySize             = types.AddressSize + types.HashSize
 )
 
 var (

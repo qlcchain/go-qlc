@@ -692,7 +692,7 @@ func TestGetCDRStatus(t *testing.T) {
 	}
 
 	type args struct {
-		ctx  ledger.Store
+		ctx  *vmstore.VMContext
 		addr *types.Address
 		hash types.Hash
 	}
@@ -705,7 +705,7 @@ func TestGetCDRStatus(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx:  l,
+				ctx:  ctx,
 				addr: &contractAddr,
 				hash: h,
 			},
@@ -714,7 +714,7 @@ func TestGetCDRStatus(t *testing.T) {
 		}, {
 			name: "fail",
 			args: args{
-				ctx:  l,
+				ctx:  ctx,
 				addr: &contractAddr,
 				hash: mock.Hash(),
 			},
@@ -723,7 +723,7 @@ func TestGetCDRStatus(t *testing.T) {
 		}, {
 			name: "f2",
 			args: args{
-				ctx:  l,
+				ctx:  ctx,
 				addr: &contractAddr2,
 				hash: h,
 			},
@@ -915,7 +915,7 @@ func TestSaveCDRStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if s, err := GetCDRStatus(l, &a1, h); err != nil {
+	if s, err := GetCDRStatus(ctx, &a1, h); err != nil {
 		t.Fatal(err)
 	} else {
 		if !reflect.DeepEqual(cdr, s) {

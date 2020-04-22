@@ -147,9 +147,9 @@ func GetRewardsDetail(store ledger.Store, txId string) ([]*RewardsInfo, error) {
 		return nil, err
 	}
 	var result []*RewardsInfo
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.RewardsAddress)
 	if err := iterator.Next(contractaddress.RewardsAddress[:], func(key []byte, value []byte) error {
-		if bytes.HasPrefix(key[types.AddressSize+1:], id) && len(value) > 0 {
+		if bytes.HasPrefix(key[types.AddressSize:], id) && len(value) > 0 {
 			if info, err := ParseRewardsInfo(value); err == nil {
 				if isValidContract(store, info) {
 					if info.Type == uint8(Rewards) {
@@ -208,9 +208,9 @@ func GetConfidantRewordsDetail(store ledger.Store, confidant types.Address) (map
 	}()
 
 	result := make(map[string][]*RewardsInfo)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.RewardsAddress)
 	if err := iterator.Next(contractaddress.RewardsAddress[:], func(key []byte, value []byte) error {
-		k := key[types.AddressSize+1:]
+		k := key[types.AddressSize:]
 		if bytes.HasPrefix(k, confidant[:]) && len(value) > 0 {
 			if info, err := ParseRewardsInfo(value); err == nil {
 				if isValidContract(store, info) {

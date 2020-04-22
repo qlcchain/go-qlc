@@ -1089,7 +1089,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											if hash, err := cdr1.Params[0].ToHash(); err != nil {
 												t.Fatal(err)
 											} else {
-												if status, err := cabi.GetCDRStatus(l, &address, hash); err != nil {
+												if status, err := cabi.GetCDRStatus(ctx, &address, hash); err != nil {
 													t.Fatal(err)
 												} else {
 													t.Log(status)

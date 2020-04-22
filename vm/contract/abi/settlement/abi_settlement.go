@@ -144,7 +144,7 @@ const (
 
 var (
 	SettlementABI, _ = abi.JSONToABIContract(strings.NewReader(JsonSettlement))
-	keySize          = types.AddressSize*2 + 1
+	keySize          = types.AddressSize * 2
 	assetKeySize     = keySize + 1
 	contractKeySize  = keySize + 1
 	contractPrefix   = append(contractaddress.SettlementAddress[:], ContractFlag)
@@ -170,13 +170,12 @@ func GetContractParam(ctx *vmstore.VMContext, addr *types.Address) ([]byte, erro
 // GetCDRStatus
 // @param addr settlement contract address
 // @param CDR data hash
-func GetCDRStatus(store ledger.Store, addr *types.Address, hash types.Hash) (*CDRStatus, error) {
+func GetCDRStatus(ctx *vmstore.VMContext, addr *types.Address, hash types.Hash) (*CDRStatus, error) {
 	logger := log.NewLogger("GetCDRStatus")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
-	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
 	if storage, err := ctx.GetStorage(addr[:], hash[:]); err != nil {
 		return nil, err
 	} else {
@@ -693,6 +692,8 @@ func GetMultiPartySummaryReport(store ledger.Store, firstAddr, secondAddr *types
 		return nil, err
 	}
 
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
+
 	result := newMultiPartySummaryResult()
 	result.Contracts = []*ContractParam{c1, c2}
 
@@ -708,7 +709,7 @@ func GetMultiPartySummaryReport(store ledger.Store, firstAddr, secondAddr *types
 			continue
 		}
 
-		if stat2, err := GetCDRStatus(store, secondAddr, hash); err == nil {
+		if stat2, err := GetCDRStatus(ctx, secondAddr, hash); err == nil {
 			record.Merge(stat2)
 		} else {
 			logger.Errorf("%s[%s], err %s", secondAddr.String(), hash.String(), err)
@@ -743,13 +744,15 @@ func GenerateMultiPartyInvoice(store ledger.Store, firstAddr, secondAddr *types.
 		return nil, err
 	}
 
+	ctx := vmstore.NewVMContext(store, &contractaddress.SettlementAddress)
+
 	return generateInvoices(store, firstAddr, func(status *CDRStatus) (s string, err error) {
 		hash, err := status.ToHash()
 		if err != nil {
 			return "", fmt.Errorf("tohash: %s, %s", status.String(), err)
 		}
 
-		if stat2, err := GetCDRStatus(store, secondAddr, hash); err == nil {
+		if stat2, err := GetCDRStatus(ctx, secondAddr, hash); err == nil {
 			if stat2.Status == SettlementStatusSuccess {
 				_, sender, _, err := stat2.ExtractID()
 				if err != nil {

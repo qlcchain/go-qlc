@@ -11,12 +11,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/google/uuid"
 
-	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -92,7 +90,8 @@ func TestLedger_Storage(t *testing.T) {
 		t.Log(get, err)
 	}
 
-	err = l.SaveStorage(ToCache(ctx))
+	cache := ToCache(ctx)
+	err = l.SaveStorage(cache)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +100,7 @@ func TestLedger_Storage(t *testing.T) {
 		t.Fatal("invalid storage", err)
 	} else {
 		if !bytes.EqualFold(get, value) {
-			t.Fatal("invalid val")
+			t.Fatalf("invalid val,exp:%v, got:%v", value, get)
 		} else {
 			t.Log(get, err)
 		}
@@ -115,12 +114,13 @@ func TestLedger_Storage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if counter != 10 {
-		t.Fatal("failed to iterator context data")
+	const iteratorSize = 11
+	if counter != iteratorSize {
+		t.Fatalf("failed to iterator context data,exp: 11, got: %d", counter)
 	}
 
 	storage := ctx.cache.storage
-	if len(storage) != 10 {
+	if len(storage) != iteratorSize {
 		t.Fatal("failed to iterator cache data")
 	}
 	cacheTrie := ctx.cache.Trie()
@@ -137,36 +137,9 @@ func TestLedger_Storage(t *testing.T) {
 
 func getStorageKey(prefix []byte, key []byte) []byte {
 	var storageKey []byte
-	storageKey = append(storageKey, []byte{byte(storage.KeyPrefixVMStorage)}...)
 	storageKey = append(storageKey, prefix...)
 	storageKey = append(storageKey, key...)
 	return storageKey
-}
-
-func TestGetStorageKey(t *testing.T) {
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			prefix := make([]byte, 10)
-			key := make([]byte, 5)
-			storageKey := getStorageKey(prefix, key)
-			if storageKey[0] != storage.KeyPrefixVMStorage {
-				t.Errorf("invalid prefix 0x%x", storageKey[:1])
-			}
-			if !bytes.HasPrefix(storageKey[1:], prefix) {
-				t.Error("invalid prefix data")
-			}
-
-			if !bytes.HasSuffix(storageKey, key) {
-				t.Error("invalid key data")
-			}
-		}()
-	}
-
-	wg.Wait()
 }
 
 func TestVMCache_AppendLog(t *testing.T) {

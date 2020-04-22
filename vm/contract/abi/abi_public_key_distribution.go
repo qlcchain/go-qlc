@@ -114,8 +114,8 @@ const (
 )
 
 const (
-	// prefix(1) + contractAddr(32) + pkdType(1) + type(4) + account(32) => info + valid
-	VerifierTypeIndexS = 1 + types.AddressSize + 1
+	// contractAddr(32) + pkdType(1) + type(4) + account(32) => info + valid
+	VerifierTypeIndexS = 1 + types.AddressSize
 	VerifierTypeIndexE = VerifierTypeIndexS + 4
 	VerifierAccIndexS  = VerifierTypeIndexE
 	VerifierAccIndexE  = VerifierAccIndexS + 32
@@ -254,7 +254,7 @@ func GetAllVerifiers(store ledger.Store) ([]*VerifierRegInfo, error) {
 	vrs := make([]*VerifierRegInfo, 0)
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		var vs VerifierStorage
@@ -291,7 +291,7 @@ func GetVerifiersByType(store ledger.Store, vType uint32) ([]*VerifierRegInfo, e
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
 	itKey = append(itKey, util.BE_Uint32ToBytes(vType)...)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		var vs VerifierStorage
 		err := PublicKeyDistributionABI.UnpackVariable(&vs, VariableNamePKDVerifierInfo, value)
@@ -326,7 +326,7 @@ func GetVerifiersByAccount(store ledger.Store, account types.Address) ([]*Verifi
 	vrs := make([]*VerifierRegInfo, 0)
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeVerifier)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		if !bytes.Equal(key[VerifierAccIndexS:VerifierAccIndexE], account[:]) {
 			return nil
@@ -357,8 +357,8 @@ func GetVerifiersByAccount(store ledger.Store, account types.Address) ([]*Verifi
 }
 
 const (
-	// prefix(1) + contractAddr(32) + pkdType(1) + type(4) + id(32) + pk(32) + blockHash(32) + account(32) => code(16)
-	OracleTypeIndexS = 1 + types.AddressSize + 1
+	// contractAddr(32) + pkdType(1) + type(4) + id(32) + pk(32) + blockHash(32) + account(32) => code(16)
+	OracleTypeIndexS = 1 + types.AddressSize
 	OracleTypeIndexE = OracleTypeIndexS + 4
 	OracleIdIndexS   = OracleTypeIndexE
 	OracleIdIndexE   = OracleIdIndexS + sha256.Size
@@ -439,7 +439,7 @@ func GetAllOracleInfo(store ledger.Store) []*OracleInfo {
 	ois := make([]*OracleInfo, 0)
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		ot := util.BE_BytesToUint32(key[OracleTypeIndexS:OracleTypeIndexE])
 
@@ -489,7 +489,7 @@ func GetOracleInfoByType(store ledger.Store, ot uint32) []*OracleInfo {
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(ot)...)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		hash, err := types.BytesToHash(key[OracleHashIndexS:OracleHashIndexE])
 		if err != nil {
@@ -538,7 +538,7 @@ func GetOracleInfoByTypeAndID(store ledger.Store, ot uint32, id types.Hash) []*O
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(ot)...)
 	itKey = append(itKey, id[:]...)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		hash, err := types.BytesToHash(key[OracleHashIndexS:OracleHashIndexE])
 		if err != nil {
@@ -585,7 +585,7 @@ func GetOracleInfoByTypeAndIDAndPk(store ledger.Store, ot uint32, id types.Hash,
 	itKey = append(itKey, id[:]...)
 	itKey = append(itKey, kh...)
 
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		hash, err := types.BytesToHash(key[OracleHashIndexS:OracleHashIndexE])
 		if err != nil {
@@ -627,7 +627,7 @@ func GetOracleInfoByAccount(store ledger.Store, account types.Address) []*Oracle
 	ois := make([]*OracleInfo, 0)
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		if !bytes.Equal(account[:], key[OracleAccIndexS:OracleAccIndexE]) {
 			return nil
@@ -676,7 +676,7 @@ func GetOracleInfoByAccountAndType(store ledger.Store, account types.Address, ot
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypeOracle)
 	itKey = append(itKey, util.BE_Uint32ToBytes(ot)...)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		if !bytes.Equal(account[:], key[OracleAccIndexS:OracleAccIndexE]) {
 			return nil
@@ -742,7 +742,7 @@ func GetOracleInfoByHash(store ledger.Store, hash types.Hash) []*OracleInfo {
 	itKey = append(itKey, pi.PID[:]...)
 	itKey = append(itKey, kh...)
 	itKey = append(itKey, hash[:]...)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err = iterator.Next(itKey, func(key []byte, value []byte) error {
 		addr, err := types.BytesToAddress(key[OracleAccIndexS:OracleAccIndexE])
 		if err != nil {
@@ -794,8 +794,8 @@ func CheckOracleInfoExist(ctx *vmstore.VMContext, account types.Address, ot uint
 const (
 	// each accounts or different accounts can send type + id + pk multiple times, so we need a flag to distinguish,
 	// here we use previous block's hash
-	// prefix(1) + contractAddr(32) + pkdType(1) + type(4) + id(32) + pk(32) + prevHash(32) => account + verifiers + codes + fee
-	PublishTypeIndexS = 1 + types.AddressSize + 1
+	//  contractAddr(32) + pkdType(1) + type(4) + id(32) + pk(32) + prevHash(32) => account + verifiers + codes + fee
+	PublishTypeIndexS = 1 + types.AddressSize
 	PublishTypeIndexE = PublishTypeIndexS + 4
 	PublishIdIndexS   = PublishTypeIndexE
 	PublishIdIndexE   = PublishIdIndexS + sha256.Size
@@ -955,7 +955,7 @@ func GetPublishInfoByTypeAndId(store ledger.Store, pt uint32, id types.Hash) []*
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
 	itKey = append(itKey, util.BE_Uint32ToBytes(pt)...)
 	itKey = append(itKey, id[:]...)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		hash, err := types.BytesToHash(key[PublishHashIndexS:PublishHashIndexE])
 		if err != nil {
@@ -994,7 +994,7 @@ func GetAllPublishInfo(store ledger.Store) []*PublishInfo {
 	pis := make([]*PublishInfo, 0)
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		pt := util.BE_BytesToUint32(key[PublishTypeIndexS:PublishTypeIndexE])
 
@@ -1041,7 +1041,7 @@ func GetPublishInfoByType(store ledger.Store, pt uint32) []*PublishInfo {
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
 	itKey = append(itKey, util.BE_Uint32ToBytes(pt)...)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		var info PubKeyInfo
 		err := PublicKeyDistributionABI.UnpackVariable(&info, VariableNamePKDPublishInfo, value)
@@ -1085,7 +1085,7 @@ func GetPublishInfoByAccount(store ledger.Store, account types.Address) []*Publi
 	pis := make([]*PublishInfo, 0)
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		var info PubKeyInfo
 		err := PublicKeyDistributionABI.UnpackVariable(&info, VariableNamePKDPublishInfo, value)
@@ -1134,7 +1134,7 @@ func GetPublishInfoByAccountAndType(store ledger.Store, account types.Address, p
 
 	itKey := append(contractaddress.PubKeyDistributionAddress[:], PKDStorageTypePublisher)
 	itKey = append(itKey, util.BE_Uint32ToBytes(pt)...)
-	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
+	iterator := store.NewVMIterator(&contractaddress.PubKeyDistributionAddress)
 	err := iterator.Next(itKey, func(key []byte, value []byte) error {
 		var info PubKeyInfo
 		err := PublicKeyDistributionABI.UnpackVariable(&info, VariableNamePKDPublishInfo, value)

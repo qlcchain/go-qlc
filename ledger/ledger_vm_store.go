@@ -29,14 +29,16 @@ const (
 
 type Iterator struct {
 	address *types.Address
-	store   storage.Store
+	store   Store
 	logger  *zap.SugaredLogger
 }
 
 func (i *Iterator) Next(prefix []byte, fn func(key []byte, value []byte) error) error {
 	var storageKey []byte
 	storageKey = append(storageKey, []byte{byte(storage.KeyPrefixVMStorage)}...)
-	storageKey = append(storageKey, i.address[:]...)
+	if i.address != nil {
+		storageKey = append(storageKey, i.address[:]...)
+	}
 	storageKey = append(storageKey, prefix...)
 	err := i.store.Iterator(storageKey, nil, func(key []byte, val []byte) error {
 		if err := fn(key[prefixLen:], val); err != nil {
@@ -67,7 +69,7 @@ type vmStore interface {
 func (l *Ledger) NewVMIterator(address *types.Address) *Iterator {
 	return &Iterator{
 		address: address,
-		store:   l.DBStore(),
+		store:   l,
 		logger:  l.logger,
 	}
 }

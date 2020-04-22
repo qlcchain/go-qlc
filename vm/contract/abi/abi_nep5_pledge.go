@@ -43,6 +43,10 @@ var (
 	NEP5PledgeABI, _ = abi.JSONToABIContract(strings.NewReader(JsonNEP5Pledge))
 )
 
+const (
+	keySize = 2 * types.AddressSize
+)
+
 //go:generate stringer -type=PledgeType
 type PledgeType uint8
 
@@ -165,7 +169,7 @@ func GetTotalPledgeAmount(store ledger.Store) *big.Int {
 
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && len(value) > 0 {
+		if len(key) > keySize && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
 			} else {
@@ -190,7 +194,7 @@ func GetPledgeBeneficialAmount(store ledger.Store, beneficial types.Address, pTy
 
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[types.AddressSize:], beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == pType {
 					result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
@@ -217,7 +221,7 @@ func GetPledgeBeneficialTotalAmount(store ledger.Store, beneficial types.Address
 
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[types.AddressSize:], beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
 			} else {
@@ -246,7 +250,7 @@ func GetPledgeInfos(store ledger.Store, addr types.Address) ([]*NEP5PledgeInfo, 
 
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize*2+1):], addr[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[(types.AddressSize*2):], addr[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				piList = append(piList, pledgeInfo)
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
@@ -276,7 +280,7 @@ func GetBeneficialInfos(store ledger.Store, addr types.Address) ([]*NEP5PledgeIn
 
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], addr[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[types.AddressSize:], addr[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				piList = append(piList, pledgeInfo)
 				result, _ = util.SafeAdd(pledgeInfo.Amount.Uint64(), result)
@@ -306,7 +310,7 @@ func GetBeneficialPledgeInfos(store ledger.Store, beneficial types.Address, pTyp
 
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], beneficial[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[types.AddressSize:], beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == uint8(pType) {
 					piList = append(piList, pledgeInfo)
@@ -342,7 +346,7 @@ func SearchBeneficialPledgeInfo(store ledger.Store, param *WithdrawPledgeParam) 
 
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[types.AddressSize:], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType &&
 					pledgeInfo.Amount.String() == param.Amount.String() && now >= pledgeInfo.WithdrawTime {
@@ -372,7 +376,7 @@ func SearchPledgeInfoWithNEP5TxId(store ledger.Store, param *WithdrawPledgeParam
 	var result *PledgeResult
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[types.AddressSize:], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType &&
 					pledgeInfo.Amount.String() == param.Amount.String() && pledgeInfo.NEP5TxId == param.NEP5TxId {
@@ -401,7 +405,7 @@ func SearchBeneficialPledgeInfoByTxId(ctx *vmstore.VMContext, param *WithdrawPle
 	result := new(PledgeResult)
 	now := common.TimeNow().Unix()
 	err := ctx.Iterator(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[types.AddressSize:], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType && pledgeInfo.Amount.String() == param.Amount.String() &&
 					now >= pledgeInfo.WithdrawTime && pledgeInfo.NEP5TxId == param.NEP5TxId {
@@ -441,7 +445,7 @@ func SearchBeneficialPledgeInfoIgnoreWithdrawTime(store ledger.Store, param *Wit
 	var result []*PledgeResult
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && bytes.HasPrefix(key[(types.AddressSize+1):], param.Beneficial[:]) && len(value) > 0 {
+		if len(key) > keySize && bytes.HasPrefix(key[types.AddressSize:], param.Beneficial[:]) && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				if pledgeInfo.PType == param.PType && pledgeInfo.Amount.String() == param.Amount.String() {
 					result = append(result, &PledgeResult{Key: key, PledgeInfo: pledgeInfo})
@@ -464,7 +468,7 @@ func SearchAllPledgeInfos(store ledger.Store) ([]*NEP5PledgeInfo, error) {
 	var result []*NEP5PledgeInfo
 	iterator := store.NewVMIterator(&contractaddress.NEP5PledgeAddress)
 	err := iterator.Next(contractaddress.NEP5PledgeAddress[:], func(key []byte, value []byte) error {
-		if len(key) > 2*types.AddressSize && len(value) > 0 {
+		if len(key) > keySize && len(value) > 0 {
 			if pledgeInfo, err := ParsePledgeInfo(value); err == nil {
 				result = append(result, pledgeInfo)
 			}

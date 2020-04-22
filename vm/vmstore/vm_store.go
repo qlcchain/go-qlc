@@ -252,8 +252,9 @@ func (v *VMContext) GetStorage(prefix, key []byte) ([]byte, error) {
 	return nil, nil
 }
 
+//FIXME: pov height
 func (v *VMContext) GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error) {
-	panic("implement me")
+	return v.l.GetPovMinerStat(dayIndex)
 }
 
 func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
@@ -317,20 +318,13 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 
 func (v *VMContext) get(key []byte) ([]byte, error) {
 	rawKey := v.getRawStorageKey(key, nil)
-	i, val, err := v.l.GetObject(rawKey)
-	if err != nil {
-		if err == storage.KeyNotFound {
-			return nil, ErrStorageNotFound
-		}
+	if val, err := v.l.Get(rawKey); err == nil {
+		return val, err
+	} else if err == storage.KeyNotFound {
+		return nil, ErrStorageNotFound
+	} else {
 		return nil, err
 	}
-	if i != nil {
-		switch o := i.(type) {
-		case types.Serializer:
-			return o.Serialize()
-		}
-	}
-	return val, nil
 }
 
 func (v *VMContext) set(key []byte, value interface{}, batch ...storage.Batch) (err error) {
@@ -362,7 +356,12 @@ func (v *VMContext) PovGlobalState() *statedb.PovGlobalStateDB {
 }
 
 func (v *VMContext) PoVContractState() (*statedb.PovContractStateDB, error) {
-	return v.PovGlobalState().LookupContractStateDB(*v.contractAddr)
+	state := v.PovGlobalState()
+	if state != nil {
+		return state.LookupContractStateDB(*v.contractAddr)
+	} else {
+		return nil, errors.New("can not get pov global state")
+	}
 }
 
 func (v *VMContext) PovGlobalStateByHeight(h uint64) *statedb.PovGlobalStateDB {

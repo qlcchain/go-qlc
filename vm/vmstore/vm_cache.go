@@ -67,8 +67,8 @@ func (cache *VMCache) LogList() types.VmLogs {
 }
 
 func (cache *VMCache) Clear() {
-	//TODO: reset trie
 	cache.logList.Logs = cache.logList.Logs[:0]
+	cache.trie = trie.NewTrie(nil, nil, trie.NewSimpleTrieNodePool())
 	cache.trieDirty = false
 	cache.storage = make(map[string]interface{})
 }
