@@ -11,17 +11,17 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-type DoDCreateAccount struct {
+type DoDSetAccount struct {
 	BaseContract
 }
 
-func (ca *DoDCreateAccount) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+func (ca *DoDSetAccount) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	if block.GetToken() != cfg.ChainToken() {
 		return nil, nil, ErrToken
 	}
 
 	account := new(abi.DoDAccount)
-	err := abi.DoDBillingABI.UnpackMethod(account, abi.MethodNameDoDCreateAccount, block.Data)
+	err := abi.DoDBillingABI.UnpackMethod(account, abi.MethodNameDoDSetAccount, block.Data)
 	if err != nil {
 		return nil, nil, ErrUnpackMethod
 	}
@@ -34,7 +34,7 @@ func (ca *DoDCreateAccount) ProcessSend(ctx *vmstore.VMContext, block *types.Sta
 	return nil, nil, nil
 }
 
-func (ca *DoDCreateAccount) setStorage(ctx *vmstore.VMContext, account *abi.DoDAccount) error {
+func (ca *DoDSetAccount) setStorage(ctx *vmstore.VMContext, account *abi.DoDAccount) error {
 	var key []byte
 	ah := types.Sha256DHashData([]byte(account.AccountName))
 	key = append(key, abi.DoDDataTypeAccount)
@@ -48,56 +48,19 @@ func (ca *DoDCreateAccount) setStorage(ctx *vmstore.VMContext, account *abi.DoDA
 			return err
 		}
 
-		account.UUID = oa.UUID
-	}
-
-	val, err := account.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-
-	return ctx.SetStorage(contractaddress.DoDBillingAddress.Bytes(), key, val)
-}
-
-type DoDCoupleAccount struct {
-	BaseContract
-}
-
-func (ca *DoDCoupleAccount) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	if block.GetToken() != cfg.ChainToken() {
-		return nil, nil, ErrToken
-	}
-
-	account := new(abi.DoDAccount)
-	err := abi.DoDBillingABI.UnpackMethod(account, abi.MethodNameDoDCoupleAccount, block.Data)
-	if err != nil {
-		return nil, nil, ErrUnpackMethod
-	}
-
-	err = ca.setStorage(ctx, account)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return nil, nil, nil
-}
-
-func (ca *DoDCoupleAccount) setStorage(ctx *vmstore.VMContext, account *abi.DoDAccount) error {
-	var key []byte
-	ah := types.Sha256DHashData([]byte(account.AccountName))
-	key = append(key, abi.DoDDataTypeAccount)
-	key = append(key, ah.Bytes()...)
-
-	retVal, _ := ctx.GetStorage(contractaddress.DoDBillingAddress.Bytes(), key)
-	if len(retVal) > 0 {
-		oa := new(abi.DoDAccount)
-		_, err := oa.UnmarshalMsg(retVal)
-		if err != nil {
-			return err
+		if len(account.AccountType) == 0 {
+			account.AccountType = oa.AccountType
 		}
 
-		account.AccountInfo = oa.AccountInfo
-		account.AccountType = oa.AccountType
+		if len(account.UUID) == 0 {
+			account.UUID = oa.UUID
+		}
+
+		if len(account.AccountInfo) == 0 {
+			account.AccountInfo = oa.AccountInfo
+		}
+
+		account.Connections = oa.Connections
 	}
 
 	val, err := account.MarshalMsg(nil)

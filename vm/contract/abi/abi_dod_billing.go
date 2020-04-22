@@ -13,14 +13,11 @@ import (
 
 const (
 	JsonDoDBilling = `[
-		{"type":"function","name":"DoDCreateAccount","inputs":[
+		{"type":"function","name":"DoDSetAccount","inputs":[
 			{"name":"accountName","type":"string"},
 			{"name":"accountInfo","type":"string"},
-			{"name":"accountType","type":"string"}
-		]},
-		{"type":"function","name":"DoDCoupleAccount","inputs":[
-			{"name":"uuid","type":"string"},
-			{"name":"accountName","type":"string"}
+			{"name":"accountType","type":"string"},
+			{"name":"uuid","type":"string"}
 		]},
 		{"type":"function","name":"DoDSetService","inputs":[
 			{"name":"connectionID","type":"string"},
@@ -56,10 +53,9 @@ const (
 		]}
 	]`
 
-	MethodNameDoDCreateAccount = "DoDCreateAccount"
-	MethodNameDoDCoupleAccount = "DoDCoupleAccount"
-	MethodNameDoDSetService    = "DoDSetService"
-	MethodNameDoDUpdateUsage   = "DoDUpdateUsage"
+	MethodNameDoDSetAccount  = "DoDSetAccount"
+	MethodNameDoDSetService  = "DoDSetService"
+	MethodNameDoDUpdateUsage = "DoDUpdateUsage"
 )
 
 var (

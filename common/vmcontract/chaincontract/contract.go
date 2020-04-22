@@ -262,15 +262,7 @@ func InitChainContract() {
 
 	dod := vmcontract.NewChainContract(
 		map[string]vmcontract.Contract{
-			cabi.MethodNameDoDCreateAccount: &contract.DoDCreateAccount{
-				BaseContract: contract.BaseContract{
-					Describe: vmcontract.Describe{
-						SpecVer:   vmcontract.SpecVer2,
-						Signature: true,
-					},
-				},
-			},
-			cabi.MethodNameDoDCoupleAccount: &contract.DoDCoupleAccount{
+			cabi.MethodNameDoDSetAccount: &contract.DoDSetAccount{
 				BaseContract: contract.BaseContract{
 					Describe: vmcontract.Describe{
 						SpecVer:   vmcontract.SpecVer2,

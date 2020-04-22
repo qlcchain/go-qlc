@@ -1,5 +1,7 @@
 package abi
 
+import "github.com/qlcchain/go-qlc/common/types"
+
 const (
 	DoDPaidRulePrePaid uint8 = iota
 	DoDPaidRulePostPaid
@@ -59,11 +61,12 @@ func DoDString2BuyMode(s string) uint8 {
 
 //go:generate msgp
 type DoDAccount struct {
-	AccountName string   `msg:"-" json:"accountName"`
-	AccountInfo string   `msg:"ai" json:"accountInfo"`
-	AccountType string   `msg:"at" json:"accountType"`
-	UUID        string   `msg:"uu" json:"uuid"`
-	Connections []string `msg:"cs" json:"connections"`
+	Account     types.Address `msg:"-" json:"account"`
+	AccountName string        `msg:"-" json:"accountName"`
+	AccountInfo string        `msg:"ai" json:"accountInfo"`
+	AccountType string        `msg:"at" json:"accountType"`
+	UUID        string        `msg:"uu" json:"uuid"`
+	Connections []string      `msg:"cs" json:"connections"`
 }
 
 type DoDConnection struct {
@@ -74,7 +77,7 @@ type DoDConnection struct {
 	PaidRule        uint8   `msg:"pr" json:"paidRule"`
 	BuyMode         uint8   `msg:"bm" json:"buyMode"`
 	Location        string  `msg:"lo" json:"location"`
-	StartTime       uint64  `msg:"st" json:"startTime"`
+	StartTime       uint64  `msg:"sti" json:"startTime"`
 	EndTime         uint64  `msg:"et" json:"endTime"`
 	Price           float64 `msg:"p" json:"price"`
 	Unit            string  `msg:"u" json:"unit"`
@@ -92,13 +95,14 @@ type DoDConnection struct {
 }
 
 type DoDUsage struct {
-	ConnectionID string  `msg:"-" json:"connectionID"`
-	ChargeType   uint8   `msg:"c" json:"chargeType"`
-	SourceType   string  `msg:"st" json:"sourceType"`
-	SourceDevice string  `msg:"sd" json:"sourceDevice"`
-	IP           string  `msg:"i" json:"ip"`
-	Usage        float64 `msg:"u" json:"usage"`
-	Timestamp    uint64  `msg:"t" json:"timestamp"`
+	Account      types.Address `msg:"-" json:"account"`
+	ConnectionID string        `msg:"-" json:"connectionID"`
+	ChargeType   uint8         `msg:"c" json:"chargeType"`
+	SourceType   string        `msg:"st" json:"sourceType"`
+	SourceDevice string        `msg:"sd" json:"sourceDevice"`
+	IP           string        `msg:"i" json:"ip"`
+	Usage        float64       `msg:"u" json:"usage"`
+	Timestamp    uint64        `msg:"t" json:"timestamp"`
 }
 
 type DoDInvoice struct {
