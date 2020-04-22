@@ -76,8 +76,9 @@ func NewRelation(cfgFile string) (*Relation, error) {
 }
 
 func (r *Relation) Register(t types.Schema) error {
-	if _, ok := r.tables[t.IdentityID()]; ok {
-		return fmt.Errorf("table %s areadly exist", t.IdentityID())
+	identityID := getIdentityID(t)
+	if _, ok := r.tables[identityID]; ok {
+		return fmt.Errorf("table %s areadly exist", identityID)
 	}
 	var s schema
 	rt := reflect.TypeOf(t).Elem()
@@ -97,7 +98,7 @@ func (r *Relation) Register(t types.Schema) error {
 	s.tableName = rt.Name()
 	s.create = create(s.tableName, columnsMap, key)
 	s.insert = insert(s.tableName, columns)
-	r.tables[t.IdentityID()] = s
+	r.tables[identityID] = s
 	r.logger.Debug(s.create)
 
 	if _, err := r.db.Exec(s.create); err != nil {
@@ -149,7 +150,8 @@ func (r *Relation) batchAdd(txn *sqlx.Tx, objs []types.Schema) error {
 	//	}
 	//}
 	for _, obj := range objs {
-		sql := r.tables[obj.IdentityID()].insert
+		identityID := getIdentityID(obj)
+		sql := r.tables[identityID].insert
 		if _, err := txn.NamedExec(sql, obj); err != nil {
 			return fmt.Errorf("txn add exec: %s [%s]", err, sql)
 		}
@@ -308,4 +310,8 @@ func (r *Relation) EmptyStore() error {
 
 func (r *Relation) DB() *sqlx.DB {
 	return r.db
+}
+
+func getIdentityID(obj types.Schema) string {
+	return reflect.TypeOf(obj).String()
 }

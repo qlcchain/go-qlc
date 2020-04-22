@@ -8,12 +8,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/crypto/random"
 )
 
-var strLength = 10
-var suffix = []byte("qlcInterface")
-var identityLength = strLength + len(suffix)
+var suffix = []byte("qlc")
+var identityLength = 20
 var relationMap = make(map[string]structInfo)
 
 type structInfo struct {
@@ -35,7 +33,7 @@ func RegisterInterface(con interface{}) error {
 	}
 	sr := structInfo{
 		value:      t,
-		identityID: identityID(),
+		identityID: identityID(typ),
 	}
 	relationMap[typ] = sr
 	return nil
@@ -80,19 +78,9 @@ func ConvertToInterface(val []byte) (types.Convert, error) { //if val is not a C
 	return nil, nil
 }
 
-func identityID() []byte {
-	var id []byte
-	for {
-		id = make([]byte, 0)
-		b := make([]byte, strLength)
-		_ = random.Bytes(b)
-		id = append(id, b...)
-		id = append(id, suffix...)
-		if _, err := getStructById(id); err != nil {
-			break
-		}
-	}
-	return id
+func identityID(typ string) []byte {
+	h, _ := types.HashBytes([]byte(typ), suffix)
+	return h[:identityLength]
 }
 
 func getStructById(id []byte) (structInfo, error) {

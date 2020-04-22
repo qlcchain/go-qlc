@@ -373,10 +373,6 @@ type BlockHash struct {
 	Timestamp int64  `db:"timestamp" typ:"integer"`
 }
 
-func (s *BlockHash) IdentityID() string {
-	return "blockhash"
-}
-
 func (s *BlockHash) DeleteKey() string {
 	return fmt.Sprintf("DELETE FROM BlockHash WHERE Hash = '%s'", s.Hash)
 }

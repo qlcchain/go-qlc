@@ -10,6 +10,5 @@ type Convert interface {
 }
 
 type Schema interface {
-	IdentityID() string
 	DeleteKey() string
 }
