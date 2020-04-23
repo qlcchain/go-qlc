@@ -259,4 +259,30 @@ func InitChainContract() {
 		cabi.JsonPrivacyDemoKV,
 	)
 	vmcontract.RegisterContracts(contractaddress.PrivacyDemoKVAddress, pdkv)
+
+	ptmk := vmcontract.NewChainContract(
+		map[string]vmcontract.Contract{
+			cabi.MethodNamePtmKeyDelete: &contract.PtmKeyDelete{
+				BaseContract: contract.BaseContract{
+					Describe: vmcontract.Describe{
+						SpecVer:   vmcontract.SpecVer2,
+						Signature: true,
+						Work:      true,
+					},
+				},
+			},
+			cabi.MethodNamePtmKeyUpdate: &contract.PtmKeyUpdate{
+				BaseContract: contract.BaseContract{
+					Describe: vmcontract.Describe{
+						SpecVer:   vmcontract.SpecVer2,
+						Signature: true,
+						Work:      true,
+					},
+				},
+			},
+		},
+		cabi.PtmKeyABI,
+		cabi.JsonPtmKey,
+	)
+	vmcontract.RegisterContracts(contractaddress.PtmKeyKVAddress, ptmk)
 }

@@ -148,6 +148,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewPrivacyApi(r.config, r.ledger, r.eb, r.cc),
 			Public:    true,
 		}
+	case "ptmkey":
+		return rpc.API{
+			Namespace: "ptmkey",
+			Version:   "1.0",
+			Service:   api.NewPtmKeyApi(r.cfgFile, r.ledger),
+			Public:    true,
+		}
 	default:
 		return rpc.API{}
 	}
@@ -184,6 +191,6 @@ func (r *RPC) GetWSApis() []rpc.API {
 func (r *RPC) GetPublicApis() []rpc.API {
 	apiModules := []string{"ledger", "account", "net", "util", "mintage", "contract", "pledge",
 		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement",
-		"permission", "privacy"}
+		"permission", "privacy", "ptmkey"}
 	return r.GetApis(apiModules...)
 }
