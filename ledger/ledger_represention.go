@@ -14,8 +14,8 @@ type RepresentationStore interface {
 	GetRepresentations(fn func(types.Address, *types.Benefit) error) error
 	CountRepresentations() (uint64, error)
 
-	AddRepresentation(address types.Address, diff *types.Benefit, c *Cache) error
-	SubRepresentation(address types.Address, diff *types.Benefit, c *Cache) error
+	AddRepresentation(address types.Address, diff *types.Benefit, c storage.Cache) error
+	SubRepresentation(address types.Address, diff *types.Benefit, c storage.Cache) error
 	GetOnlineRepresentations() ([]types.Address, error)
 	SetOnlineRepresentations(addresses []*types.Address) error
 }
@@ -73,7 +73,7 @@ func (l *Ledger) CountRepresentations() (uint64, error) {
 	return l.store.Count([]byte{byte(storage.KeyPrefixRepresentation)})
 }
 
-func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, c *Cache) error {
+func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, c storage.Cache) error {
 	value, err := l.GetRepresentation(address, c)
 	if err != nil && err != ErrRepresentationNotFound {
 		return fmt.Errorf("GetRepresentation err: %s ,address: %s", err, address)
@@ -89,7 +89,7 @@ func (l *Ledger) AddRepresentation(address types.Address, diff *types.Benefit, c
 	return l.setRepresentation(address, value, c)
 }
 
-func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, c *Cache) error {
+func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, c storage.Cache) error {
 	value, err := l.GetRepresentation(address, c)
 	if err != nil {
 		return fmt.Errorf("GetRepresentation error: %s ,address: %s", err, address)
@@ -104,7 +104,7 @@ func (l *Ledger) SubRepresentation(address types.Address, diff *types.Benefit, c
 	return l.setRepresentation(address, value, c)
 }
 
-func (l *Ledger) setRepresentation(address types.Address, benefit *types.Benefit, cache *Cache) error {
+func (l *Ledger) setRepresentation(address types.Address, benefit *types.Benefit, cache storage.Cache) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixRepresentation, address)
 	if err != nil {
 		return err

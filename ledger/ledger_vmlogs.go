@@ -8,7 +8,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-type vmlogsStore interface {
+type VmlogsStore interface {
 	AddOrUpdateVmLogs(value *types.VmLogs, c storage.Cache) error
 	GetVmLogs(key types.Hash, c ...storage.Cache) (*types.VmLogs, error)
 	DeleteVmLogs(key types.Hash, c storage.Cache) error

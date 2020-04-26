@@ -54,7 +54,7 @@ func (i *Iterator) Next(prefix []byte, fn func(key []byte, value []byte) error) 
 	return nil
 }
 
-type vmStore interface {
+type VmStore interface {
 	// NewVMIterator new Iterator by contract address
 	NewVMIterator(address *types.Address) *Iterator
 	SetStorage(val map[string]interface{}) error

@@ -23,8 +23,8 @@ type AccountStore interface {
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error)
 
-	AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache *Cache) error
-	DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *Cache) error
+	AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, c storage.Cache) error
+	DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c storage.Cache) error
 	GetTokenMetaConfirmed(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 
 	AddAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error
@@ -40,8 +40,8 @@ type AccountStore interface {
 	Weight(account types.Address) types.Balance
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
 
-	AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache *Cache) error
-	UpdateAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache *Cache) error
+	AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, c storage.Cache) error
+	UpdateAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, c storage.Cache) error
 
 	GetAccountMetaByPovHeight(address types.Address, height uint64) (*types.AccountMeta, error)
 	GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error)
@@ -346,7 +346,7 @@ func (l *Ledger) GetTokenMetaConfirmed(address types.Address, tokenType types.Ha
 	return tm, nil
 }
 
-func (l *Ledger) AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache *Cache) error {
+func (l *Ledger) AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache storage.Cache) error {
 	am, err := l.GetAccountMeta(address)
 	if err != nil {
 		return err
@@ -360,7 +360,7 @@ func (l *Ledger) AddTokenMetaConfirmed(address types.Address, meta *types.TokenM
 	return l.UpdateAccountMeta(am, cache)
 }
 
-func (l *Ledger) DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *Cache) error {
+func (l *Ledger) DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c storage.Cache) error {
 	am, err := l.GetAccountMetaConfirmed(address)
 	if err != nil {
 		return err
@@ -442,7 +442,7 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	}
 }
 
-func (l *Ledger) AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache *Cache) error {
+func (l *Ledger) AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache storage.Cache) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccountBlockHash, block.GetHash())
 	if err != nil {
 		return err
@@ -457,7 +457,7 @@ func (l *Ledger) AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBl
 	return cache.Put(kp, tm.Clone())
 }
 
-func (l *Ledger) UpdateAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache *Cache) error {
+func (l *Ledger) UpdateAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache storage.Cache) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccountBlockHash, block.GetHash())
 	if err != nil {
 		return err

@@ -25,7 +25,7 @@ var (
 	//GlobalSuffix             = []byte("GLOBAL")
 )
 
-type contractValueStore interface {
+type ContractValueStore interface {
 	GetContractValue(key *types.ContractKey, c ...storage.Cache) (*types.ContractValue, error)
 	DeleteContractValue(key *types.ContractKey, c ...storage.Cache) error
 	AddOrUpdateContractValue(key *types.ContractKey, value *types.ContractValue, c ...storage.Cache) error

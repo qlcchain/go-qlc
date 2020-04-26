@@ -13,11 +13,11 @@ type PendingStore interface {
 	GetPendingsByAddress(address types.Address, fn func(key *types.PendingKey, value *types.PendingInfo) error) error
 	GetPendingsByToken(account types.Address, token types.Hash, fn func(key *types.PendingKey, value *types.PendingInfo) error) error
 	PendingAmount(address types.Address, token types.Hash) (types.Balance, error)
-	AddPending(key *types.PendingKey, value *types.PendingInfo, c *Cache) error
-	DeletePending(key *types.PendingKey, c *Cache) error
+	AddPending(key *types.PendingKey, value *types.PendingInfo, c storage.Cache) error
+	DeletePending(key *types.PendingKey, c storage.Cache) error
 }
 
-func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, c *Cache) error {
+func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, c storage.Cache) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixPending, key)
 	if err != nil {
 		return err
@@ -28,7 +28,7 @@ func (l *Ledger) AddPending(key *types.PendingKey, value *types.PendingInfo, c *
 	return l.rcache.UpdateAccountPending(key, value, true)
 }
 
-func (l *Ledger) DeletePending(key *types.PendingKey, c *Cache) error {
+func (l *Ledger) DeletePending(key *types.PendingKey, c storage.Cache) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixPending, key)
 	if err != nil {
 		return err
