@@ -448,18 +448,6 @@ func (node *QlcNode) findPeers() error {
 		return true
 	})
 	for _, p := range peers {
-		if node.cfg.WhiteList.Enable {
-			var in bool
-			for _, v := range node.protector.whiteList {
-				if v == p.ID.Pretty() {
-					in = true
-					break
-				}
-			}
-			if !in {
-				continue
-			}
-		}
 		var pi *types.PeerInfo
 		if v, ok := node.streamManager.onlinePeersInfo.Load(p.ID.Pretty()); ok {
 			pi = v.(*types.PeerInfo)
@@ -487,21 +475,7 @@ func (node *QlcNode) findPeers() error {
 
 func (node *QlcNode) handleStream(s network.Stream) {
 	node.logger.Infof("Got a new stream from %s!", s.Conn().RemotePeer().Pretty())
-	if node.cfg.WhiteList.Enable {
-		var count int
-		for _, v := range node.protector.whiteList {
-			if v == s.Conn().RemotePeer().Pretty() {
-				node.streamManager.Add(s)
-				break
-			}
-			count++
-		}
-		if count == len(node.protector.whiteList)-1 {
-			node.logger.Warnf("refuse connect from %s because it isn't in whitelist", s.Conn().RemotePeer().Pretty())
-		}
-	} else {
-		node.streamManager.Add(s)
-	}
+	node.streamManager.Add(s)
 }
 
 // ID return node ID.

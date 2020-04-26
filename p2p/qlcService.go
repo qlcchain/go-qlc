@@ -43,40 +43,6 @@ func NewQlcService(cfgFile string) (*QlcService, error) {
 	l := ledger.NewLedger(cfgFile)
 	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
-	if cfg.WhiteList.Enable {
-		ctx := vmstore.NewVMContext(l)
-		pn, err := abi.PermissionGetAllNodes(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, v := range pn {
-			if len(v.NodeId) != 0 {
-				node.protector.whiteList = append(node.protector.whiteList, v.NodeId)
-			}
-			node.protector.whiteList = append(node.protector.whiteList, v.NodeUrl)
-		}
-		var wls []string
-		for _, v := range cfg.WhiteList.WhiteListInfos {
-			if len(v.Addr) != 0 {
-				wls = append(wls, v.Addr)
-			}
-			if len(v.PeerId) != 0 {
-				wls = append(wls, v.PeerId)
-			}
-		}
-		for _, v := range wls {
-			var b bool
-			for _, value := range node.protector.whiteList {
-				if value == v {
-					b = true
-					break
-				}
-			}
-			if !b {
-				node.protector.whiteList = append(node.protector.whiteList, v)
-			}
-		}
-	}
 	return ns, nil
 }
 
@@ -98,10 +64,14 @@ func (ns *QlcService) Start() error {
 	ns.dispatcher.Start()
 
 	//set event
-	err := ns.setEvent()
-	if err != nil {
+	if err := ns.setEvent(); err != nil {
 		return err
 	}
+	// set whitelist
+	if err := ns.setWhiteList(); err != nil {
+		return err
+	}
+
 	// start node.
 	if err := ns.node.StartServices(); err != nil {
 		ns.dispatcher.Stop()
@@ -111,6 +81,45 @@ func (ns *QlcService) Start() error {
 	// start msgService
 	ns.msgService.Start()
 	ns.node.logger.Info("Started QlcService.")
+	return nil
+}
+
+func (ns *QlcService) setWhiteList() error {
+	cfg, _ := ns.cc.Config()
+	if cfg.WhiteList.Enable {
+		ctx := vmstore.NewVMContext(ns.msgService.ledger)
+		pn, err := abi.PermissionGetAllNodes(ctx)
+		if err != nil {
+			return err
+		}
+		for _, v := range pn {
+			if len(v.NodeId) != 0 {
+				ns.node.protector.whiteList = append(ns.node.protector.whiteList, v.NodeId)
+			}
+			ns.node.protector.whiteList = append(ns.node.protector.whiteList, v.NodeUrl)
+		}
+		var wls []string
+		for _, v := range cfg.WhiteList.WhiteListInfos {
+			if len(v.Addr) != 0 {
+				wls = append(wls, v.Addr)
+			}
+			if len(v.PeerId) != 0 {
+				wls = append(wls, v.PeerId)
+			}
+		}
+		for _, v := range wls {
+			var b bool
+			for _, value := range ns.node.protector.whiteList {
+				if value == v {
+					b = true
+					break
+				}
+			}
+			if !b {
+				ns.node.protector.whiteList = append(ns.node.protector.whiteList, v)
+			}
+		}
+	}
 	return nil
 }
 
