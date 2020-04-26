@@ -14,6 +14,23 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+var MinerContract = vmcontract.NewChainContract(
+	map[string]vmcontract.Contract{
+		cabi.MethodNameMinerReward: &MinerReward{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					Pending:   true,
+					Work:      true,
+				},
+			},
+		},
+	},
+	cabi.MinerABI,
+	cabi.JsonMiner,
+)
+
 type MinerReward struct {
 	BaseContract
 }

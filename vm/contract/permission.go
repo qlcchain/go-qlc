@@ -7,14 +7,40 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/qlcchain/go-qlc/common/statedb"
-
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+)
+
+var PermissionContract = vmcontract.NewChainContract(
+	map[string]vmcontract.Contract{
+		abi.MethodNamePermissionAdminHandOver: &AdminHandOver{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					Work:      true,
+					PovState:  true,
+				},
+			},
+		},
+		abi.MethodNamePermissionNodeUpdate: &NodeUpdate{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					Work:      true,
+					PovState:  true,
+				},
+			},
+		},
+	},
+	abi.PermissionABI,
+	abi.JsonPermission,
 )
 
 type AdminHandOver struct {

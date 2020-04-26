@@ -21,6 +21,31 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+var Nep5Contract = vmcontract.NewChainContract(
+	map[string]vmcontract.Contract{
+		cabi.MethodNEP5Pledge: &Nep5Pledge{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer1,
+					Signature: true,
+					Work:      true,
+				},
+			},
+		},
+		cabi.MethodWithdrawNEP5Pledge: &WithdrawNep5Pledge{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer1,
+					Signature: true,
+					Work:      true,
+				},
+			},
+		},
+	},
+	cabi.NEP5PledgeABI,
+	cabi.JsonNEP5Pledge,
+)
+
 type pledgeInfo struct {
 	pledgeTime   *timeSpan
 	pledgeAmount *big.Int

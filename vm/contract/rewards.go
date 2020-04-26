@@ -18,6 +18,29 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+var RewardsContract = vmcontract.NewChainContract(
+	map[string]vmcontract.Contract{
+		cabi.MethodNameAirdropRewards: &AirdropRewards{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer: vmcontract.SpecVer1,
+					Pending: true,
+				},
+			},
+		},
+		cabi.MethodNameConfidantRewards: &ConfidantRewards{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer: vmcontract.SpecVer1,
+					Pending: true,
+				},
+			},
+		},
+	},
+	cabi.RewardsABI,
+	cabi.JsonRewards,
+)
+
 type AirdropRewards struct {
 	BaseContract
 }

@@ -2,7 +2,6 @@ package vmcontract
 
 import (
 	"errors"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -93,7 +92,9 @@ func NewChainContract(m map[string]Contract, abi abi.ABIContract, abiJson string
 var qlcAllChainContracts = make(map[types.Address]*qlcChainContract)
 
 func RegisterContracts(addr types.Address, contract *qlcChainContract) {
-	qlcAllChainContracts[addr] = contract
+	if _, ok := qlcAllChainContracts[addr]; !ok {
+		qlcAllChainContracts[addr] = contract
+	}
 }
 
 func GetChainContract(addr types.Address, methodSelector []byte) (Contract, bool, error) {

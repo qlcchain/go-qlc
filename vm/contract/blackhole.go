@@ -19,6 +19,21 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+var BlackHoleContract = vmcontract.NewChainContract(
+	map[string]vmcontract.Contract{
+		cabi.MethodNameDestroy: &BlackHole{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer: vmcontract.SpecVer2,
+					Pending: true,
+				},
+			},
+		},
+	},
+	cabi.BlackHoleABI,
+	cabi.JsonDestroy,
+)
+
 type BlackHole struct {
 	BaseContract
 }

@@ -14,6 +14,23 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+var RepContract = vmcontract.NewChainContract(
+	map[string]vmcontract.Contract{
+		cabi.MethodNameRepReward: &RepReward{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					Pending:   true,
+					Work:      true,
+				},
+			},
+		},
+	},
+	cabi.RepABI,
+	cabi.JsonRep,
+)
+
 type RepReward struct {
 	BaseContract
 }

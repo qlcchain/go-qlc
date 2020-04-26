@@ -14,13 +14,13 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+	mintage2 "github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -28,6 +28,31 @@ import (
 type Mintage struct {
 	BaseContract
 }
+
+var MintageContract = vmcontract.NewChainContract(
+	map[string]vmcontract.Contract{
+		mintage2.MethodNameMintage: &Mintage{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer1,
+					Signature: true,
+					Work:      true,
+				},
+			},
+		},
+		mintage2.MethodNameMintageWithdraw: &WithdrawMintage{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer1,
+					Signature: true,
+					Work:      true,
+				},
+			},
+		},
+	},
+	mintage2.MintageABI,
+	mintage2.JsonMintage,
+)
 
 func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
 	param := new(mintage.ParamMintage)

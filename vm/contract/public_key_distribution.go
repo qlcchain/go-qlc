@@ -17,6 +17,76 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+var PKDContract = vmcontract.NewChainContract(
+	map[string]vmcontract.Contract{
+		abi.MethodNamePKDVerifierRegister: &VerifierRegister{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					Work:      true,
+				},
+			},
+		},
+		abi.MethodNamePKDVerifierUnregister: &VerifierUnregister{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					Work:      true,
+				},
+			},
+		},
+		abi.MethodNamePKDPublish: &Publish{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					PovState:  true,
+				},
+			},
+		},
+		abi.MethodNamePKDUnPublish: &UnPublish{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+				},
+			},
+		},
+		abi.MethodNamePKDOracle: &Oracle{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					PovState:  true,
+				},
+			},
+		},
+		abi.MethodNamePKDReward: &PKDReward{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					Pending:   true,
+					Work:      true,
+				},
+			},
+		},
+		abi.MethodNamePKDVerifierHeart: &VerifierHeart{
+			BaseContract: BaseContract{
+				Describe: vmcontract.Describe{
+					SpecVer:   vmcontract.SpecVer2,
+					Signature: true,
+					PovState:  true,
+				},
+			},
+		},
+	},
+	abi.PublicKeyDistributionABI,
+	abi.JsonPublicKeyDistribution,
+)
+
 type VerifierRegister struct {
 	BaseContract
 }
