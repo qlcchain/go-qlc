@@ -11,8 +11,9 @@ type WhiteList struct {
 }
 
 type WhiteListInfo struct {
-	PeerId string `json:"peerId"`
-	Addr   string `json:"addr"` //(for example, "192.0.2.1:25", "[2001:db8::1]:80")
+	PeerId  string `json:"peerId"`
+	Addr    string `json:"addr"` //(for example, "192.0.2.1:25", "[2001:db8::1]:80")
+	Comment string `json:"comment"`
 }
 
 func DefaultConfigV7(dir string) (*ConfigV7, error) {

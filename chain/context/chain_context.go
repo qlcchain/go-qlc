@@ -45,6 +45,7 @@ const (
 	LogService          = "logService"
 	ResendBlockService  = "resendBlockService"
 	PrivacyService      = "privacyService"
+	PermissionService   = "permissionService"
 )
 
 type serviceManager interface {

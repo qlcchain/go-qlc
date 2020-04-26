@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
