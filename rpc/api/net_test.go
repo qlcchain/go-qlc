@@ -251,3 +251,13 @@ func TestNetApi_OnlineRepsInfo(t *testing.T) {
 		t.Fatal("online info error")
 	}
 }
+
+func TestNetApi_GetPeerId(t *testing.T) {
+	teardownTestCase, _, netApi := setupTestCaseNet(t)
+	defer teardownTestCase(t)
+	cfg, _ := netApi.cc.Config()
+	p := netApi.GetPeerId()
+	if cfg.P2P.ID.PeerID != p {
+		t.Fatal("get peer id error")
+	}
+}
