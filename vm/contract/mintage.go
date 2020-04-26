@@ -17,7 +17,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	mintage2 "github.com/qlcchain/go-qlc/common/vmcontract/mintage"
@@ -29,23 +28,23 @@ type Mintage struct {
 	BaseContract
 }
 
-var MintageContract = vmcontract.NewChainContract(
-	map[string]vmcontract.Contract{
+var MintageContract = NewChainContract(
+	map[string]Contract{
 		mintage2.MethodNameMintage: &Mintage{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer1,
-					Signature: true,
-					Work:      true,
+				Describe: Describe{
+					specVer:   SpecVer1,
+					signature: true,
+					work:      true,
 				},
 			},
 		},
 		mintage2.MethodNameMintageWithdraw: &WithdrawMintage{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer1,
-					Signature: true,
-					Work:      true,
+				Describe: Describe{
+					specVer:   SpecVer1,
+					signature: true,
+					work:      true,
 				},
 			},
 		},
@@ -124,7 +123,7 @@ func (m *Mintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.
 		}, nil
 }
 
-func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(mintage.ParamMintage)
 	_ = mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.Data)
 	var tokenInfo []byte
@@ -184,7 +183,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 		}
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -252,7 +251,7 @@ func (m *WithdrawMintage) DoPending(block *types.StateBlock) (*types.PendingKey,
 		}, nil
 }
 
-func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
 	err := mintage.MintageABI.UnpackMethod(tokenId, mintage.MethodNameMintageWithdraw, input.Data)
 	if err != nil {
@@ -342,7 +341,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	}
 
 	if tokenInfo.PledgeAmount.Sign() > 0 {
-		return []*vmcontract.ContractBlock{
+		return []*ContractBlock{
 			{
 				VMContext: ctx,
 				Block:     block,

@@ -13,19 +13,18 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	config2 "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-var BlackHoleContract = vmcontract.NewChainContract(
-	map[string]vmcontract.Contract{
+var BlackHoleContract = NewChainContract(
+	map[string]Contract{
 		cabi.MethodNameDestroy: &BlackHole{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer: vmcontract.SpecVer2,
-					Pending: true,
+				Describe: Describe{
+					specVer: SpecVer2,
+					pending: true,
 				},
 			},
 		},
@@ -107,7 +106,7 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 }
 
 func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
-	input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+	input *types.StateBlock) ([]*ContractBlock, error) {
 	// verify send block data
 	if b, err := ctx.GetStorage(input.Address[:], input.Previous[:]); err == nil && len(b) > 0 {
 		if _, err := cabi.ParseDestroyInfo(b); err != nil {
@@ -136,7 +135,7 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 	block.Previous = rxToken.Header
 	block.Representative = input.Representative
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,

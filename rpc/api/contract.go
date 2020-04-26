@@ -22,11 +22,11 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -42,7 +42,7 @@ func NewContractApi(cc *chainctx.ChainContext, l ledger.Store) *ContractApi {
 }
 
 func (c *ContractApi) GetAbiByContractAddress(address types.Address) (string, error) {
-	return vmcontract.GetAbiByContractAddress(address)
+	return contract.GetAbiByContractAddress(address)
 }
 
 func (c *ContractApi) PackContractData(abiStr string, methodName string, params []string) ([]byte, error) {
@@ -152,7 +152,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 	}
 
 	// check contract method whether exist or not
-	cm, ok, err := vmcontract.GetChainContract(para.To, rawPayload)
+	cm, ok, err := contract.GetChainContract(para.To, rawPayload)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 	// pre-running contract method send action
 	vmCtx := vmstore.NewVMContext(c.l, &para.To)
 	cd := cm.GetDescribe()
-	if cd.GetVersion() == vmcontract.SpecVer1 {
+	if cd.GetVersion() == contract.SpecVer1 {
 		if err := cm.DoSend(vmCtx, sendBlk); err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 		if h != nil {
 			sendBlk.Extra = *h
 		}
-	} else if cd.GetVersion() == vmcontract.SpecVer2 {
+	} else if cd.GetVersion() == contract.SpecVer2 {
 		_, _, err := cm.ProcessSend(vmCtx, sendBlk)
 		if err != nil {
 			return nil, err
@@ -282,7 +282,7 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 	if err != nil {
 		return nil, err
 	}
-	cm, ok, err := vmcontract.GetChainContract(ca, sendBlk.GetPayload())
+	cm, ok, err := contract.GetChainContract(ca, sendBlk.GetPayload())
 	if err != nil {
 		return nil, err
 	}

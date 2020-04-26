@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
@@ -719,10 +719,10 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 			break
 		}
 
-		if c, ok, err := vmcontract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
-			case vmcontract.SpecVer2:
+			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(dps.ledger, bs.Block)
 				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
 				if err != nil || gapResult != common.ContractRewardGapPov {

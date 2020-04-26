@@ -17,7 +17,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -30,7 +29,6 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 	//t.Parallel()
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	//dir := filepath.Join(config.DefaultDataDir()) // if want to test rollback contract and remove time sleep
-	chaincontract.InitChainContract()
 
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)

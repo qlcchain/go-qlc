@@ -7,22 +7,21 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-var MinerContract = vmcontract.NewChainContract(
-	map[string]vmcontract.Contract{
+var MinerContract = NewChainContract(
+	map[string]Contract{
 		cabi.MethodNameMinerReward: &MinerReward{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer2,
-					Signature: true,
-					Pending:   true,
-					Work:      true,
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					pending:   true,
+					work:      true,
 				},
 			},
 		},
@@ -208,7 +207,7 @@ func (m *MinerReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, Rewar
 	return nil
 }
 
-func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.MinerRewardParam)
 
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, input.Data)
@@ -260,7 +259,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		block.Previous = types.ZeroHash
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,

@@ -10,6 +10,7 @@ package process
 import (
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"sync"
 
 	"go.uber.org/zap"
@@ -17,7 +18,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -336,15 +336,15 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			return nil
 		}
 
-		if c, ok, err := vmcontract.GetChainContract(types.Address(block.Link), block.GetPayload()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
-			case vmcontract.SpecVer1:
+			case contract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
 				}
-			case vmcontract.SpecVer2:
+			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
@@ -522,7 +522,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			}
 
 			address := types.Address(input.GetLink())
-			c, ok, err := vmcontract.GetChainContract(address, input.GetPayload())
+			c, ok, err := contract.GetChainContract(address, input.GetPayload())
 			if !ok || err != nil {
 				return fmt.Errorf("invaild contract %s", err)
 			}
@@ -553,11 +553,11 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				return nil
 			}
 
-			c, ok, err := vmcontract.GetChainContract(types.Address(block.Link), block.GetPayload())
+			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.GetPayload())
 			if ok && err == nil {
 				d := c.GetDescribe()
 				switch d.GetVersion() {
-				case vmcontract.SpecVer2:
+				case contract.SpecVer2:
 					vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
 						if err := lv.l.SaveStorage(vmstore.ToCache(vmCtx), cache); err != nil {

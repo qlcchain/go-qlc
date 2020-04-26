@@ -14,30 +14,29 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-var Nep5Contract = vmcontract.NewChainContract(
-	map[string]vmcontract.Contract{
+var Nep5Contract = NewChainContract(
+	map[string]Contract{
 		cabi.MethodNEP5Pledge: &Nep5Pledge{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer1,
-					Signature: true,
-					Work:      true,
+				Describe: Describe{
+					specVer:   SpecVer1,
+					signature: true,
+					work:      true,
 				},
 			},
 		},
 		cabi.MethodWithdrawNEP5Pledge: &WithdrawNep5Pledge{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer1,
-					Signature: true,
-					Work:      true,
+				Describe: Describe{
+					specVer:   SpecVer1,
+					signature: true,
+					work:      true,
 				},
 			},
 		},
@@ -117,7 +116,7 @@ func (*Nep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types
 		}, nil
 }
 
-func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param, err := cabi.ParsePledgeParam(input.Data)
 	if err != nil {
 		return nil, err
@@ -233,7 +232,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		break
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -300,7 +299,7 @@ func (m *WithdrawNep5Pledge) DoPending(block *types.StateBlock) (*types.PendingK
 	return nil, nil, errors.New("not implemented")
 }
 
-func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param, err := cabi.ParseWithdrawPledgeParam(input.GetData())
 	if err != nil {
 		return nil, err
@@ -323,7 +322,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 	amount, _ := ctx.CalculateAmount(input)
 
 	var pledgeData []byte
-	if pledgeData, err = ctx.GetStorage(nil, pledgeInfo.Key[1:]); err != nil && err != vmstore.ErrStorageNotFound {
+	if pledgeData, err = ctx.GetStorage(nil, pledgeInfo.Key); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	} else {
 		// already exist,verify data
@@ -339,7 +338,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 			}
 
 			// TODO: save data or change pledge info state
-			err = ctx.SetStorage(nil, pledgeInfo.Key[1:], nil)
+			err = ctx.SetStorage(nil, pledgeInfo.Key, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -367,7 +366,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		block.Representative = tm.Representative
 		block.Balance = am.CoinBalance.Add(amount)
 
-		return []*vmcontract.ContractBlock{
+		return []*ContractBlock{
 			{
 				VMContext: ctx,
 				Block:     block,

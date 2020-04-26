@@ -20,7 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -107,7 +106,7 @@ func (s *SettlementAPI) GetSettlementRewardsBlock(send *types.Hash) (*types.Stat
 
 	ctx := vmstore.NewVMContext(s.l, &contractaddress.SettlementAddress)
 
-	if c, ok, err := vmcontract.GetChainContract(contractaddress.SettlementAddress, blk.Data); c != nil && ok && err == nil {
+	if c, ok, err := contract.GetChainContract(contractaddress.SettlementAddress, blk.Data); c != nil && ok && err == nil {
 		if r, err := c.DoReceive(ctx, rev, blk); err == nil {
 			if len(r) > 0 {
 				return r[0].Block, nil
@@ -294,7 +293,7 @@ type UpdateStopParam struct {
 	Address types.Address
 }
 
-func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() error, abi func() ([]byte, error), c vmcontract.Contract) (*types.StateBlock, error) {
+func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() error, abi func() ([]byte, error), c contract.Contract) (*types.StateBlock, error) {
 	if !s.cc.IsPoVDone() {
 		return nil, context.ErrPoVNotFinish
 	}

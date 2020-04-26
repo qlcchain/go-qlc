@@ -3,6 +3,7 @@ package process
 import (
 	"bytes"
 	"fmt"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"sort"
 
 	"github.com/yireyun/go-queue"
@@ -11,7 +12,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	"github.com/qlcchain/go-qlc/config"
@@ -699,16 +699,16 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 	}
 
 	if blockCur.GetType() == types.ContractReward {
-		if c, ok, err := vmcontract.GetChainContract(types.Address(blockLink.Link), blockLink.GetPayload()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(blockLink.Link), blockLink.GetPayload()); ok && err == nil {
 			switch c.GetDescribe().GetVersion() {
-			case vmcontract.SpecVer1:
+			case contract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(blockLink); err == nil && pendingKey != nil {
 					lv.logger.Debug("add contract reward pending , ", pendingKey)
 					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
 						return fmt.Errorf("contract ver1 add pending: %s", err)
 					}
 				}
-			case vmcontract.SpecVer2:
+			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(lv.l, blockLink)
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, blockLink); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
@@ -748,14 +748,14 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 	}
 
 	if blockCur.GetType() == types.ContractSend {
-		if c, ok, err := vmcontract.GetChainContract(types.Address(blockCur.Link), blockCur.GetPayload()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(blockCur.Link), blockCur.GetPayload()); ok && err == nil {
 			switch c.GetDescribe().GetVersion() {
-			case vmcontract.SpecVer1:
+			case contract.SpecVer1:
 				if pendingKey, _, err := c.DoPending(blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
 					return lv.l.DeletePending(pendingKey, cache)
 				}
-			case vmcontract.SpecVer2:
+			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(lv.l, blockCur)
 				if pendingKey, _, err := c.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)

@@ -17,7 +17,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -213,7 +212,6 @@ func (n *Node) RunNode(i int) {
 
 	n.ctx = context.NewChainContext(n.cfgPath)
 	n.ctx.Init(func() error {
-		chaincontract.InitChainContract()
 		return nil
 	})
 

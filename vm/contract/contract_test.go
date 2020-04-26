@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	qcfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 )
@@ -46,12 +45,12 @@ func addLatestPovBlock(pb *types.PovBlock, td *types.PovTD, l *ledger.Ledger) er
 }
 
 func TestDescribe_GetVersion(t *testing.T) {
-	d := vmcontract.Describe{
-		SpecVer:   1,
-		Signature: true,
-		Pending:   true,
-		PovState:  true,
-		Work:      true,
+	d := Describe{
+		specVer:   1,
+		signature: true,
+		pending:   true,
+		povState:  true,
+		work:      true,
 	}
 	if d.GetVersion() != 1 {
 		t.Fatal()

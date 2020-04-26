@@ -16,15 +16,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/ledger/process"
-
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/sync"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -132,8 +129,11 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 			sb.PoVHeight = povHeader.GetHeight()
 			sb.Extra = *h
 		}
-		verifier := process.NewLedgerVerifier(l)
-		if err = verifier.BlockProcess(sb); err != nil {
+		//verifier := process.NewLedgerVerifier(l)
+		//if err = verifier.BlockProcess(sb); err != nil {
+		//	return
+		//}
+		if err = updateBlock(l, sb); err != nil {
 			return
 		}
 
@@ -162,7 +162,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 	a2 := account2.Address()
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
-	verifier := process.NewLedgerVerifier(l)
+	//verifier := process.NewLedgerVerifier(l)
 
 	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(l, &a1); err != nil {
 		t.Fatal(err)
@@ -212,7 +212,10 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 						sb.Extra = *h
 					}
 
-					if err := verifier.BlockProcess(sb); err != nil {
+					//if err := verifier.BlockProcess(sb); err != nil {
+					//	t.Fatal(err)
+					//}
+					if err := updateBlock(l, sb); err != nil {
 						t.Fatal(err)
 					}
 
@@ -263,7 +266,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 	a1 := account1.Address()
 	a2 := account2.Address()
 	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
-	verifier := process.NewLedgerVerifier(l)
+	//verifier := process.NewLedgerVerifier(l)
 	if contractParams, err := cabi.GetContractsIDByAddressAsPartyA(l, &a1); err != nil {
 		t.Fatal(err)
 	} else {
@@ -314,7 +317,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				sb.Extra = *h
 			}
 
-			if err := verifier.BlockProcess(sb); err != nil {
+			if err := updateBlock(l, sb); err != nil {
 				t.Fatal(err)
 			} else {
 				addNextStop := &AddNextStop{}
@@ -377,7 +380,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				sb.Extra = *h
 			}
 
-			if err := verifier.BlockProcess(sb); err != nil {
+			if err := updateBlock(l, sb); err != nil {
 				t.Fatal(err)
 			} else {
 				updateNextStop := UpdateNextStop{}
@@ -443,7 +446,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				sb.Extra = *h
 			}
 
-			if err := verifier.BlockProcess(sb); err != nil {
+			if err := updateBlock(l, sb); err != nil {
 				t.Fatal(err)
 			} else {
 				removeNextStop := RemoveNextStop{}
@@ -501,7 +504,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				sb.Extra = *h
 			}
 
-			if err := verifier.BlockProcess(sb); err != nil {
+			if err := updateBlock(l, sb); err != nil {
 				t.Fatal(err)
 			} else {
 				addPreStop := &AddPreStop{}
@@ -567,7 +570,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				sb.Extra = *h
 			}
 
-			if err := verifier.BlockProcess(sb); err != nil {
+			if err := updateBlock(l, sb); err != nil {
 				t.Fatal(err)
 			} else {
 				updatePreStop := &UpdatePreStop{}
@@ -632,7 +635,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				sb.Extra = *h
 			}
 
-			if err := verifier.BlockProcess(sb); err != nil {
+			if err := updateBlock(l, sb); err != nil {
 				t.Fatal(err)
 			} else {
 				removePreStop := &RemovePreStop{}
@@ -679,7 +682,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 	}
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
-	verifier := process.NewLedgerVerifier(l)
+	//verifier := process.NewLedgerVerifier(l)
 	tm, err := ctx.GetTokenMeta(a1, cfg.GasToken())
 	if err != nil {
 		t.Fatal(err)
@@ -727,7 +730,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 			sb.Extra = *h
 		}
 
-		if err := verifier.BlockProcess(sb); err != nil {
+		if err := updateBlock(l, sb); err != nil {
 			t.Fatal(err)
 		}
 
@@ -872,7 +875,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											sb.Extra = *h
 										}
 
-										if err := verifier.BlockProcess(sb); err != nil {
+										if err := updateBlock(l, sb); err != nil {
 											t.Fatal(err)
 										}
 										addNextStop := &AddNextStop{}
@@ -935,7 +938,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											sb2.Extra = *h
 										}
 
-										if err := verifier.BlockProcess(sb2); err != nil {
+										if err := updateBlock(l, sb2); err != nil {
 											t.Fatal(err)
 										}
 										addPreStop := &AddPreStop{}
@@ -1012,7 +1015,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											sb.Extra = *h
 										}
 
-										if err := verifier.BlockProcess(sb); err != nil {
+										if err := updateBlock(l, sb); err != nil {
 											t.Fatal(err)
 										}
 
@@ -1069,7 +1072,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											sb.Extra = *h
 										}
 
-										if err := verifier.BlockProcess(sb); err != nil {
+										if err := updateBlock(l, sb); err != nil {
 											t.Fatal(err)
 										}
 
@@ -1114,14 +1117,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 func TestCreateContract_GetDescribe(t *testing.T) {
 	tests := []struct {
 		name string
-		want vmcontract.Describe
+		want Describe
 	}{
 		{
 			name: "default",
-			want: vmcontract.Describe{
-				SpecVer:   vmcontract.SpecVer2,
-				Signature: true,
-				Pending:   true,
+			want: Describe{
+				specVer:   SpecVer2,
+				signature: true,
+				pending:   true,
 			},
 		},
 	}
@@ -1194,14 +1197,14 @@ func TestCreateContract_GetRefundData(t *testing.T) {
 func TestProcessCDR_GetDescribe(t *testing.T) {
 	tests := []struct {
 		name string
-		want vmcontract.Describe
+		want Describe
 	}{
 		{
 			name: "default",
-			want: vmcontract.Describe{
-				SpecVer:   vmcontract.SpecVer2,
-				Signature: true,
-				Pending:   true,
+			want: Describe{
+				specVer:   SpecVer2,
+				signature: true,
+				pending:   true,
 			},
 		},
 	}
@@ -1274,14 +1277,14 @@ func TestProcessCDR_GetRefundData(t *testing.T) {
 func TestSignContract_GetDescribe(t *testing.T) {
 	tests := []struct {
 		name string
-		want vmcontract.Describe
+		want Describe
 	}{
 		{
 			name: "",
-			want: vmcontract.Describe{
-				SpecVer:   vmcontract.SpecVer2,
-				Signature: true,
-				Pending:   true,
+			want: Describe{
+				specVer:   SpecVer2,
+				signature: true,
+				pending:   true,
 			},
 		},
 	}
@@ -1607,7 +1610,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
-	verifier := process.NewLedgerVerifier(l)
+	//verifier := process.NewLedgerVerifier(l)
 
 	a1 := account1.Address()
 	tm, err := ctx.GetTokenMeta(a1, cfg.GasToken())
@@ -1664,7 +1667,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 			sb.Extra = *h
 		}
 
-		if err := verifier.BlockProcess(sb); err != nil {
+		if err := updateBlock(l, sb); err != nil {
 			t.Fatal(err)
 		}
 

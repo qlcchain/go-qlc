@@ -18,7 +18,6 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -279,7 +278,7 @@ func (r *RewardsAPI) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 
 	rev := &types.StateBlock{Timestamp: common.TimeNow().Unix()}
 
-	var result []*vmcontract.ContractBlock
+	var result []*contract.ContractBlock
 
 	vmContext := vmstore.NewVMContext(r.ledger, &contractaddress.RewardsAddress)
 	if r.IsAirdropRewards(blk.Data) {
@@ -331,7 +330,7 @@ func (r *RewardsAPI) GetConfidantRewordsDetail(confidant types.Address) (map[str
 }
 
 func checkContractMethod(data []byte) (string, error) {
-	if name, b, err := vmcontract.GetChainContractName(contractaddress.RewardsAddress, data); b {
+	if name, b, err := contract.GetChainContractName(contractaddress.RewardsAddress, data); b {
 		return name, nil
 	} else {
 		return "", err

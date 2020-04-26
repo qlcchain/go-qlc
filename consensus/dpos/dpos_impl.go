@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -18,7 +19,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -772,7 +772,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 
 		dstAddr := types.ZeroAddress
 
-		if c, ok, err := vmcontract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
 			ctx := vmstore.NewVMContextWithBlock(dps.ledger, blk)
 			dstAddr, err = c.GetTargetReceiver(ctx, blk)
 			if err != nil {

@@ -110,8 +110,10 @@ func TestNewNEP5PledgeAPI(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if _, err := api.ParsePledgeInfo(txBlk.Data); err != nil {
+			if r, err := api.ParsePledgeInfo(txBlk.Data); err != nil {
 				t.Fatal(err)
+			} else {
+				t.Log(r)
 			}
 		}
 

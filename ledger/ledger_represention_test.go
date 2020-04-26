@@ -214,9 +214,9 @@ func TestLedger_UpdateRepresentation(t *testing.T) {
 
 func TestLedger_AddRepresentation(t *testing.T) {
 	am := new(types.AccountMeta)
-	fmt.Printf("=======%p \n", am)
+	fmt.Printf("%p \n", am)
 
 	am = am.Clone()
-	fmt.Printf("=======%p \n", am)
+	fmt.Printf("%p \n", am)
 
 }

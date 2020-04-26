@@ -9,7 +9,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
@@ -17,68 +16,68 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
-var PKDContract = vmcontract.NewChainContract(
-	map[string]vmcontract.Contract{
+var PKDContract = NewChainContract(
+	map[string]Contract{
 		abi.MethodNamePKDVerifierRegister: &VerifierRegister{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer2,
-					Signature: true,
-					Work:      true,
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
 				},
 			},
 		},
 		abi.MethodNamePKDVerifierUnregister: &VerifierUnregister{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer2,
-					Signature: true,
-					Work:      true,
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
 				},
 			},
 		},
 		abi.MethodNamePKDPublish: &Publish{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer2,
-					Signature: true,
-					PovState:  true,
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					povState:  true,
 				},
 			},
 		},
 		abi.MethodNamePKDUnPublish: &UnPublish{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer2,
-					Signature: true,
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
 				},
 			},
 		},
 		abi.MethodNamePKDOracle: &Oracle{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer2,
-					Signature: true,
-					PovState:  true,
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					povState:  true,
 				},
 			},
 		},
 		abi.MethodNamePKDReward: &PKDReward{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer2,
-					Signature: true,
-					Pending:   true,
-					Work:      true,
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					pending:   true,
+					work:      true,
 				},
 			},
 		},
 		abi.MethodNamePKDVerifierHeart: &VerifierHeart{
 			BaseContract: BaseContract{
-				Describe: vmcontract.Describe{
-					SpecVer:   vmcontract.SpecVer2,
-					Signature: true,
-					PovState:  true,
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					povState:  true,
 				},
 			},
 		},
@@ -682,7 +681,7 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		}, nil
 }
 
-func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(dpki.PKDRewardParam)
 
 	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, input.Data)
@@ -730,7 +729,7 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 		block.Previous = types.ZeroHash
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,

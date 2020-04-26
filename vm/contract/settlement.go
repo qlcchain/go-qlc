@@ -14,24 +14,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qlcchain/go-qlc/log"
-
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/sync"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	cfg "github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/log"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi/settlement"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 var (
 	ErrNotImplement    = errors.New("not implemented")
-	SettlementContract = vmcontract.NewChainContract(
-		map[string]vmcontract.Contract{
+	SettlementContract = NewChainContract(
+		map[string]Contract{
 			cabi.MethodNameCreateContract:    &CreateContract{},
 			cabi.MethodNameSignContract:      &SignContract{},
 			cabi.MethodNameProcessCDR:        &ProcessCDR{},
@@ -52,8 +50,8 @@ var (
 type internalContract struct {
 }
 
-func (i internalContract) GetDescribe() vmcontract.Describe {
-	return vmcontract.Describe{Pending: true, Signature: true, SpecVer: vmcontract.SpecVer2}
+func (i internalContract) GetDescribe() Describe {
+	return Describe{pending: true, signature: true, specVer: SpecVer2}
 }
 
 func (i internalContract) GetTargetReceiver(_ *vmstore.VMContext, _ *types.StateBlock) (types.Address, error) {
@@ -102,7 +100,7 @@ func (c *CreateContract) GetTargetReceiver(_ *vmstore.VMContext, blk *types.Stat
 	}
 }
 
-func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (c *CreateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify send block data
 		param := new(cabi.CreateContractParam)
@@ -199,7 +197,7 @@ type SignContract struct {
 	internalContract
 }
 
-func (s *SignContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (s *SignContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify send block data
 		param := new(cabi.SignContractParam)
@@ -282,7 +280,7 @@ type ProcessCDR struct {
 	internalContract
 }
 
-func (p *ProcessCDR) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (p *ProcessCDR) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		paramList := new(cabi.CDRParamList)
 		err := paramList.FromABI(data)
@@ -417,7 +415,7 @@ type AddPreStop struct {
 	internalContract
 }
 
-func (a *AddPreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (a *AddPreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		stopParam := new(cabi.StopParam)
 		return stopParam.FromABI(cabi.MethodNameAddPreStop, data)
@@ -450,7 +448,7 @@ type RemovePreStop struct {
 	internalContract
 }
 
-func (r *RemovePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (r *RemovePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		stopParam := new(cabi.StopParam)
 		return stopParam.FromABI(cabi.MethodNameRemovePreStop, data)
@@ -473,7 +471,7 @@ type UpdatePreStop struct {
 	internalContract
 }
 
-func (u *UpdatePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (u *UpdatePreStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify block data
 		param := new(cabi.UpdateStopParam)
@@ -514,7 +512,7 @@ type AddNextStop struct {
 	internalContract
 }
 
-func (a *AddNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (a *AddNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		stopParam := new(cabi.StopParam)
 		return stopParam.FromABI(cabi.MethodNameAddNextStop, data)
@@ -547,7 +545,7 @@ type RemoveNextStop struct {
 	internalContract
 }
 
-func (r *RemoveNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (r *RemoveNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		stopParam := new(cabi.StopParam)
 		return stopParam.FromABI(cabi.MethodNameRemoveNextStop, data)
@@ -570,7 +568,7 @@ type UpdateNextStop struct {
 	internalContract
 }
 
-func (u *UpdateNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (u *UpdateNextStop) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify block data
 		param := new(cabi.UpdateStopParam)
@@ -665,7 +663,7 @@ func verifyStopName(s []string, name string) (bool, int) {
 	return false, 0
 }
 
-func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock, fn func(data []byte) error) ([]*vmcontract.ContractBlock, error) {
+func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock, fn func(data []byte) error) ([]*ContractBlock, error) {
 	if err := fn(input.Data); err != nil {
 		return nil, err
 	}
@@ -688,7 +686,7 @@ func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types
 	block.Previous = txToken.Header
 	block.Representative = input.Representative
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -781,7 +779,7 @@ func (t *TerminateContract) GetTargetReceiver(ctx *vmstore.VMContext, blk *types
 	}
 }
 
-func (t *TerminateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (t *TerminateContract) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		// verify send block data
 		param := new(cabi.TerminateParam)
@@ -854,7 +852,7 @@ type RegisterAsset struct {
 	internalContract
 }
 
-func (r *RegisterAsset) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (r *RegisterAsset) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	return handleReceive(ctx, block, input, func(data []byte) error {
 		param, err := cabi.ParseAssertParam(input.GetData())
 		if err != nil {

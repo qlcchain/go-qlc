@@ -30,7 +30,6 @@ import (
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -236,7 +235,6 @@ func start() error {
 	chainContext.SetAccounts(accounts)
 	// start all services by chain context
 	err = chainContext.Init(func() error {
-		chaincontract.InitChainContract()
 		return chain.RegisterServices(chainContext)
 	})
 	if err != nil {

@@ -22,7 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -60,7 +59,6 @@ func setupTestCaseContractApi(t *testing.T) (func(t *testing.T), *mockDataContra
 
 	md.cc = qctx.NewChainContext(cm.ConfigFile)
 	md.cc.Init(func() error {
-		chaincontract.InitChainContract()
 		return nil
 	})
 

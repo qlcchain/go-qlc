@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/ledger/process"
-
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
@@ -76,8 +74,11 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		t.Fatalf("invalid target receiver, exp: %s, act: %s", addr2.String(), receiver.String())
 	}
 
-	verifier := process.NewLedgerVerifier(l)
-	if err = verifier.BlockProcess(send); err != nil {
+	//verifier := process.NewLedgerVerifier(l)
+	//if err = verifier.BlockProcess(send); err != nil {
+	//	t.Fatal(err)
+	//}
+	if err := updateBlock(l, send); err != nil {
 		t.Fatal(err)
 	}
 
@@ -89,7 +90,10 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		if len(r) > 0 {
-			verifier.BlockProcess(r[0].Block)
+			if err := updateBlock(l, r[0].Block); err != nil {
+				t.Fatal(err)
+			}
+			//verifier.BlockProcess(r[0].Block)
 		}
 	}
 
