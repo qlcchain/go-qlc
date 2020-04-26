@@ -130,7 +130,7 @@ func (node *QlcNode) setRepresentativeNode(isRepresentative bool) {
 }
 
 func (node *QlcNode) updateWhiteList(ip string) {
-	if node.cfg.P2P.WhiteListMode {
+	if node.cfg.WhiteList.Enable {
 		if node.protector != nil {
 			node.protector.whiteList = append(node.protector.whiteList, ip)
 		}
@@ -142,7 +142,7 @@ func (node *QlcNode) buildHost() error {
 	go node.getBootNode(node.cfg.P2P.BootNodes)
 	node.logger.Info("Start Qlc Host...")
 	sourceMultiAddr, _ := ma.NewMultiaddr(node.cfg.P2P.Listen)
-	if node.cfg.P2P.WhiteListMode {
+	if node.cfg.WhiteList.Enable {
 		node.host, err = libp2p.New(
 			node.ctx,
 			libp2p.ListenAddrs(sourceMultiAddr),
@@ -448,7 +448,7 @@ func (node *QlcNode) findPeers() error {
 		return true
 	})
 	for _, p := range peers {
-		if node.cfg.P2P.WhiteListMode {
+		if node.cfg.WhiteList.Enable {
 			var in bool
 			for _, v := range node.protector.whiteList {
 				if v == p.ID.Pretty() {
@@ -487,7 +487,7 @@ func (node *QlcNode) findPeers() error {
 
 func (node *QlcNode) handleStream(s network.Stream) {
 	node.logger.Infof("Got a new stream from %s!", s.Conn().RemotePeer().Pretty())
-	if node.cfg.P2P.WhiteListMode {
+	if node.cfg.WhiteList.Enable {
 		var count int
 		for _, v := range node.protector.whiteList {
 			if v == s.Conn().RemotePeer().Pretty() {

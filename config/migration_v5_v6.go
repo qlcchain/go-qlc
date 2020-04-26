@@ -41,7 +41,6 @@ func (m *MigrationV5ToV6) Migration(data []byte, version int) ([]byte, int, erro
 	cfg6.P2P.BootNodeHttpServer = bootNodeHttpServer
 	cfg6.P2P.BootNodes = bootNodes
 	cfg6.P2P.Discovery.MDNSEnabled = true
-	cfg6.P2P.ListeningIp = "127.0.0.1"
 
 	cfg6.PoV.AlgoName = types.ALGO_SHA256D.String()
 	if cfg6.PoV.ChainParams == nil {

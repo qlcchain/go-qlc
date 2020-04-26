@@ -9,14 +9,14 @@ import (
 	ic "github.com/libp2p/go-libp2p-core/crypto"
 )
 
-type Config ConfigV6
+type Config ConfigV7
 
 func DefaultConfig(dir string) (*Config, error) {
-	v6, err := DefaultConfigV6(dir)
+	v7, err := DefaultConfigV7(dir)
 	if err != nil {
 		return &Config{}, err
 	}
-	cfg := Config(*v6)
+	cfg := Config(*v7)
 
 	return &cfg, nil
 }

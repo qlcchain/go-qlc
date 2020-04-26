@@ -43,14 +43,38 @@ func NewQlcService(cfgFile string) (*QlcService, error) {
 	l := ledger.NewLedger(cfgFile)
 	msgService := NewMessageService(ns, l)
 	ns.msgService = msgService
-	ctx := vmstore.NewVMContext(l)
-	if cfg.P2P.WhiteListMode {
+	if cfg.WhiteList.Enable {
+		ctx := vmstore.NewVMContext(l)
 		pn, err := abi.PermissionGetAllNodes(ctx)
 		if err != nil {
 			return nil, err
 		}
 		for _, v := range pn {
+			if len(v.NodeId) != 0 {
+				node.protector.whiteList = append(node.protector.whiteList, v.NodeId)
+			}
 			node.protector.whiteList = append(node.protector.whiteList, v.NodeUrl)
+		}
+		var wls []string
+		for _, v := range cfg.WhiteList.WhiteListInfos {
+			if len(v.Addr) != 0 {
+				wls = append(wls, v.Addr)
+			}
+			if len(v.PeerId) != 0 {
+				wls = append(wls, v.PeerId)
+			}
+		}
+		for _, v := range wls {
+			var b bool
+			for _, value := range node.protector.whiteList {
+				if value == v {
+					b = true
+					break
+				}
+			}
+			if !b {
+				node.protector.whiteList = append(node.protector.whiteList, v)
+			}
 		}
 	}
 	return ns, nil

@@ -25,8 +25,7 @@ type P2PConfigV2 struct {
 	BootNodeHttpServer string   `json:"bootNodeHttpServer"`
 	Listen             string   `json:"listen"`
 	// if you are bootNode,should fill in the listening ip
-	ListeningIp   string `json:"listeningIp"`
-	WhiteListMode bool   `json:"whiteListMode"`
+	ListeningIp string `json:"listeningIp"`
 	//Time in seconds between sync block interval
 	SyncInterval int                `json:"syncInterval"`
 	Discovery    *DiscoveryConfigV2 `json:"discovery"`

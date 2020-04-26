@@ -28,7 +28,7 @@ func TestWhiteListMode(t *testing.T) {
 	cfg.LogLevel = "warn"
 	cfg.P2P.IsBootNode = true
 	cfg.P2P.BootNodes = []string{"127.0.0.1:18001/wlm"}
-	cfg.P2P.WhiteListMode = true
+	cfg.WhiteList.Enable = true
 	http.HandleFunc("/wlm/bootNode", func(w http.ResponseWriter, r *http.Request) {
 		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
 		_, _ = fmt.Fprintf(w, bootNode)
