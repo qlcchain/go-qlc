@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -132,7 +133,16 @@ func (node *QlcNode) setRepresentativeNode(isRepresentative bool) {
 func (node *QlcNode) updateWhiteList(ip string) {
 	if node.cfg.WhiteList.Enable {
 		if node.protector != nil {
-			node.protector.whiteList = append(node.protector.whiteList, ip)
+			var b bool
+			for _, v := range node.protector.whiteList {
+				if v == ip {
+					b = true
+					break
+				}
+			}
+			if !b {
+				node.protector.whiteList = append(node.protector.whiteList, ip)
+			}
 		}
 	}
 }
@@ -608,6 +618,11 @@ func (node *QlcNode) getBootNode(urls []string) {
 				boot, err := accessHttpServer(v)
 				if err != nil {
 					continue
+				}
+				if node.cfg.WhiteList.Enable {
+					ss := strings.Split(boot, "/")
+					wl := fmt.Sprintf("%s:%s", ss[2], ss[4])
+					node.updateWhiteList(wl)
 				}
 				if len(node.boostrapAddrs) == 0 {
 					node.boostrapAddrs = append(node.boostrapAddrs, boot)

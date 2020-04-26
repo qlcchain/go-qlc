@@ -141,7 +141,12 @@ func (ns *QlcService) setEvent() error {
 		case *topic.EventP2PSyncStateMsg:
 			ns.msgService.syncService.onConsensusSyncFinished()
 		case *topic.PermissionEvent:
-			ns.node.updateWhiteList(msg.NodeUrl)
+			if len(msg.NodeUrl) != 0 {
+				ns.node.updateWhiteList(msg.NodeUrl)
+			}
+			if len(msg.NodeId) != 0 {
+				ns.node.updateWhiteList(msg.NodeId)
+			}
 		}
 	}), ns.msgEvent)
 
