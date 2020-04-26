@@ -199,7 +199,7 @@ func (ps *PermissionService) addPermissionNode() {
 
 			for _, param := range ps.nodes {
 				blk := new(types.StateBlock)
-				err := ps.client.Call(&blk, "permission_getNodeUpdateBlock", &param)
+				err := ps.client.Call(&blk, "permission_getNodeUpdateBlock", param)
 				if err != nil {
 					ps.logger.Error(err)
 					continue
