@@ -27,7 +27,7 @@ import (
 )
 
 func setupRewardsTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *RewardsAPI) {
-	t.Parallel()
+	//t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)

@@ -774,6 +774,10 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 
 		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
 			ctx := vmstore.NewVMContextWithBlock(dps.ledger, blk)
+			if ctx == nil {
+				dps.logger.Error("dispatch: can not get vm context")
+				return
+			}
 			dstAddr, err = c.GetTargetReceiver(ctx, blk)
 			if err != nil {
 				dps.logger.Error(err)

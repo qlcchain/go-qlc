@@ -46,6 +46,8 @@ type AccountStore interface {
 	GetAccountMetaByPovHeight(address types.Address, height uint64) (*types.AccountMeta, error)
 	GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error)
 	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
+
+	ContractAddress(b *types.StateBlock) (*types.Address, error)
 }
 
 func (l *Ledger) GetAccountMeta(address types.Address, c ...storage.Cache) (*types.AccountMeta, error) {
@@ -588,4 +590,19 @@ func (l *Ledger) IsUserAccount(address types.Address) (bool, error) {
 			return false, fmt.Errorf("can not find user account %s", address)
 		}
 	}
+}
+
+func (l *Ledger) ContractAddress(b *types.StateBlock) (*types.Address, error) {
+	if b.IsSendBlock() {
+		addr := types.Address(b.Link)
+		return &addr, nil
+	} else if b.IsReceiveBlock() {
+		send, err := l.GetStateBlock(b.GetLink())
+		if err != nil {
+			return nil, err
+		}
+		addr := types.Address(send.Link)
+		return &addr, nil
+	}
+	return nil, errors.New("invalid block type")
 }

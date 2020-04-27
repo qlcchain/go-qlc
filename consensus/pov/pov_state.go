@@ -286,6 +286,9 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 	}
 
 	vmCtx := vmstore.NewVMContextWithBlock(bc.ledger, txBlock)
+	if vmCtx == nil {
+		return fmt.Errorf("update contract state: can not get vm context, %s", err)
+	}
 	if txBlock.GetType() == types.ContractSend {
 		err = cf.DoSendOnPov(vmCtx, csdb, height, txBlock)
 		if err != nil {

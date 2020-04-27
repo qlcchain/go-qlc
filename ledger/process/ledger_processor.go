@@ -10,7 +10,6 @@ package process
 import (
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"sync"
 
 	"go.uber.org/zap"
@@ -22,6 +21,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -346,6 +346,9 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 				}
 			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+				if vmCtx == nil {
+					return fmt.Errorf("can not get vm context, %s", block.GetHash())
+				}
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
@@ -528,6 +531,9 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			}
 			clone := block.Clone()
 			vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+			if vmCtx == nil {
+				return fmt.Errorf("update contract: can not get vm context, %s", block.GetHash())
+			}
 			g, err := c.DoReceive(vmCtx, clone, input)
 			if err != nil {
 				return fmt.Errorf("updateContract DoReceive error: %s ", err)
@@ -559,6 +565,9 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				switch d.GetVersion() {
 				case contract.SpecVer2:
 					vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+					if vmCtx == nil {
+						return fmt.Errorf("update contract data: can not get vm context, %s", block.GetHash())
+					}
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
 						if err := lv.l.SaveStorage(vmstore.ToCache(vmCtx), cache); err != nil {
 							return fmt.Errorf("send block save storage error: %s", err)

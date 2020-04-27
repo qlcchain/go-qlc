@@ -78,7 +78,7 @@ func InitNodes(count int, t *testing.T) ([]*Node, error) {
 		nodes = append(nodes, node)
 
 		node.RunNode(i)
-		node.InitLedger()
+		node.InitLedger(t)
 		node.InitStatus()
 	}
 
@@ -531,17 +531,24 @@ func (n *Node) CheckBlocksConfirmed(hashes []types.Hash) {
 	}
 }
 
-func (n *Node) InitLedger() {
+func (n *Node) InitLedger(t *testing.T) {
 	n.ProcessBlockLocal(&mock.TestSendBlock)
 	n.ProcessBlockLocal(&mock.TestReceiveBlock)
 	n.ProcessBlockLocal(&mock.TestSendGasBlock)
 	n.ProcessBlockLocal(&mock.TestReceiveGasBlock)
 	n.ProcessBlockLocal(&mock.TestChangeRepresentative)
 
-	pb, td := mock.GeneratePovBlock(nil, 0)
-	n.ledger.AddPovBlock(pb, td)
-	n.ledger.SetPovLatestHeight(pb.Header.BasHdr.Height)
-	n.ledger.AddPovBestHash(pb.Header.BasHdr.Height, pb.GetHash())
+	block, td := mock.GeneratePovBlock(nil, 0)
+	block.Header.BasHdr.Height = 0
+	if err := n.ledger.AddPovBlock(block, td); err != nil {
+		t.Fatal(err)
+	}
+	if err := n.ledger.AddPovBestHash(block.GetHeight(), block.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	if err := n.ledger.SetPovLatestHeight(block.GetHeight()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func (n *Node) VoteBlock(acc *types.Account, blk *types.StateBlock) {

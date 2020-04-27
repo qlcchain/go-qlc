@@ -1,6 +1,7 @@
 .PHONY: clean lint changelog snapshot release
 .PHONY: build build-test
 .PHONY: deps
+.PHONY: mockery
 
 # Check for required command tools to build or stop immediately
 EXECUTABLES = git go find pwd
@@ -21,6 +22,7 @@ deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 	go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
 	go get -u golang.org/x/tools/cmd/goimports
+	go get -u github.com/vektra/mockery/.../
 
 build:
 	go build -ldflags "-X github.com/qlcchain/go-qlc/chain/version.Version=${VERSION} \
@@ -66,3 +68,5 @@ release: changelog
 lint: 
 	golangci-lint run --fix
 
+mockery:
+	 mockery -name=Store -dir=./ledger -output ./mock/mocks/

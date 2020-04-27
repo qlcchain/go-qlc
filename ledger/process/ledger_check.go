@@ -3,12 +3,14 @@ package process
 import (
 	"bytes"
 	"fmt"
-	"github.com/qlcchain/go-qlc/vm/contract"
+
+	"github.com/pkg/errors"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -627,6 +629,9 @@ func (blockContractCheck) contract(lv *LedgerVerifier, block *types.StateBlock) 
 		if c, ok, err := contract.GetChainContract(address, input.GetPayload()); ok && err == nil {
 			clone := block.Clone()
 			vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+			if vmCtx == nil {
+				return errorP(block, Other, errors.New("check contract: can not get vm context"))
+			}
 			if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
 				if len(g) > 0 {
 					amount, err := lv.l.CalculateAmount(block)
@@ -689,6 +694,9 @@ func (cacheBlockContractCheck) contract(lv *LedgerVerifier, block *types.StateBl
 		if c, ok, err := contract.GetChainContract(address, input.GetPayload()); ok && err == nil {
 			clone := block.Clone()
 			vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+			if vmCtx == nil {
+				return errorP(block, Other, errors.New("contract: can not get vm context"))
+			}
 			if g, e := c.DoReceive(vmCtx, clone, input); e == nil {
 				if len(g) > 0 {
 					amount, err := lv.l.CalculateAmount(block)
@@ -742,6 +750,9 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 	if c, ok, err := contract.GetChainContract(address, block.GetPayload()); ok && err == nil {
 		clone := block.Clone()
 		vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+		if vmCtx == nil {
+			return errorP(block, Other, errors.New("can not get vm context"))
+		}
 		d := c.GetDescribe()
 		switch d.GetVersion() {
 		case contract.SpecVer1:

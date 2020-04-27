@@ -127,13 +127,19 @@ func NewVMContextWithBlock(l ledger.Store, block *types.StateBlock) *VMContext {
 		return nil
 	}
 
-	return &VMContext{
-		l:            l,
-		logger:       log.NewLogger("vm_context"),
-		cache:        NewVMCache(),
-		trie:         trie.NewTrie(l.DBStore(), nil, trie.NewSimpleTrieNodePool()),
-		contractAddr: block.ContractAddress(),
-		poVHeight:    povHdr.GetHeight(),
+	vm := &VMContext{
+		l:         l,
+		logger:    log.NewLogger("vm_context"),
+		cache:     NewVMCache(),
+		trie:      trie.NewTrie(l.DBStore(), nil, trie.NewSimpleTrieNodePool()),
+		poVHeight: povHdr.GetHeight(),
+	}
+	if contractAddr, err := l.ContractAddress(block); err != nil {
+		vm.logger.Error(err)
+		return nil
+	} else {
+		vm.contractAddr = contractAddr
+		return vm
 	}
 }
 
@@ -188,12 +194,6 @@ func (v *VMContext) GetRelation(dest interface{}, query string) error {
 func (v *VMContext) SelectRelation(dest interface{}, query string) error {
 	return v.l.SelectRelation(dest, query)
 }
-
-//func (v *VMContext) RemoveStorage(prefix, key []byte, batch ...storage.Batch) error {
-//	storageKey := v.getStorageKey(prefix, key)
-//	v.cache.RemoveStorage(storageKey)
-//	return v.remove(storageKey, batch...)
-//}
 
 func (v *VMContext) SetObjectStorage(prefix, key []byte, value interface{}) error {
 	storageKey := v.getStorageKey(prefix, key)
@@ -262,18 +262,6 @@ func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) er
 	return iterator.Next(prefix, fn)
 }
 
-//func (v *VMContext) GetStorageByKey(key []byte) ([]byte, error) {
-//	if s := v.cache.GetStorage(key); s == nil {
-//		if val, err := v.get(key); err == nil {
-//			return val, nil
-//		} else {
-//			return nil, err
-//		}
-//	} else {
-//		return s, nil
-//	}
-//}
-
 func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 	storageKey := v.getStorageKey(prefix, key)
 
@@ -281,40 +269,6 @@ func (v *VMContext) SetStorage(prefix, key []byte, value []byte) error {
 
 	return nil
 }
-
-//func (v *VMContext) IteratorAll(prefix []byte, fn func(key []byte, value []byte) error) error {
-//	pre := getStorageKey(prefix, nil)
-//	err := v.Ledger.Iterator(pre, nil, func(key []byte, val []byte) error {
-//		err := fn(key, val)
-//		if err != nil {
-//			v.logger.Error(err)
-//		}
-//		return nil
-//	})
-//
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
-
-//func (v *VMContext) Iterator(prefix []byte, fn func(key []byte, value []byte) error) error {
-//	pre := getStorageKey(prefix, nil)
-//	err := v.Ledger.DBStore().Iterator(pre, nil, func(key []byte, val []byte) error {
-//		err := fn(key, val)
-//		if err != nil {
-//			v.logger.Error(err)
-//		}
-//		return nil
-//	})
-//
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
 
 func (v *VMContext) get(key []byte) ([]byte, error) {
 	rawKey := v.getRawStorageKey(key, nil)
@@ -374,7 +328,11 @@ func (v *VMContext) PovGlobalStateByHeight(h uint64) *statedb.PovGlobalStateDB {
 }
 
 func (v *VMContext) PoVContractStateByHeight(h uint64) (*statedb.PovContractStateDB, error) {
-	return v.PovGlobalStateByHeight(h).LookupContractStateDB(*v.contractAddr)
+	status := v.PovGlobalStateByHeight(h)
+	if status == nil {
+		return nil, errors.New("can not get pov header")
+	}
+	return status.LookupContractStateDB(*v.contractAddr)
 }
 
 func (v *VMContext) ListTokens() ([]*types.TokenInfo, error) {
@@ -405,4 +363,8 @@ func (v *VMContext) getRawStorageKey(prefix, key []byte) []byte {
 	storageKey = append(storageKey, prefix...)
 	storageKey = append(storageKey, key...)
 	return storageKey
+}
+
+func (v *VMContext) GetRawKeyByTrie(key []byte) []byte {
+	return v.getRawStorageKey(key, nil)
 }

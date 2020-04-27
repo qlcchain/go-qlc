@@ -305,6 +305,9 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 
 	// pre-running contract method receive action
 	vmCtx := vmstore.NewVMContextWithBlock(c.l, sendBlk)
+	if vmCtx == nil {
+		return nil, errors.New("generate reward block: can not get vm context")
+	}
 	g, err := cm.DoReceive(vmCtx, recvBlk, sendBlk)
 	if err != nil {
 		return nil, err

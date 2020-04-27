@@ -3,7 +3,6 @@ package process
 import (
 	"bytes"
 	"fmt"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"sort"
 
 	"github.com/yireyun/go-queue"
@@ -17,6 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/trie"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -710,6 +710,9 @@ func (lv *LedgerVerifier) rollBackPendingAdd(blockCur *types.StateBlock, amount 
 				}
 			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(lv.l, blockLink)
+				if vmCtx == nil {
+					return fmt.Errorf("rollback: can not get vm context, %s", blockLink.GetHash())
+				}
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, blockLink); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					if err := lv.l.AddPending(pendingKey, pendingInfo, cache); err != nil {
@@ -757,6 +760,9 @@ func (lv *LedgerVerifier) rollBackPendingDel(blockCur *types.StateBlock, cache *
 				}
 			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(lv.l, blockCur)
+				if vmCtx == nil {
+					return fmt.Errorf("rollback pending: can not get vm context, %s", blockCur.GetHash())
+				}
 				if pendingKey, _, err := c.ProcessSend(vmCtx, blockCur); err == nil && pendingKey != nil {
 					lv.logger.Debug("delete contract send pending , ", pendingKey)
 					return lv.l.DeletePending(pendingKey, cache)
@@ -783,6 +789,10 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 
 	extra := block.GetExtra()
 	if !extra.IsZero() {
+		vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+		if vmCtx == nil {
+			return fmt.Errorf("rollback contract data: can not get vm context, %s", block.GetHash())
+		}
 		lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
 		t := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
 		iterator := t.NewIterator(nil)
@@ -791,7 +801,8 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 			if key, value, ok := iterator.Next(); !ok {
 				break
 			} else {
-				if contractData, err := lv.l.Get(key); err == nil {
+				key = vmCtx.GetRawKeyByTrie(key)
+				if contractData, err := lv.l.Get(key, cache); err == nil {
 					if !bytes.Equal(contractData, value) {
 						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
 					}
@@ -827,7 +838,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 						if key, value, ok := iter.Next(); !ok {
 							break
 						} else {
-							if err := lv.l.SaveStorageByConvert(key, value, cache); err != nil {
+							if err := lv.l.SaveStorageByConvert(vmCtx.GetRawKeyByTrie(key), value, cache); err != nil {
 								lv.logger.Errorf("set storage error: %s", err)
 							}
 						}

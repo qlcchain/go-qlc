@@ -724,6 +724,10 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 			switch d.GetVersion() {
 			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(dps.ledger, bs.Block)
+				if vmCtx == nil {
+					dps.logger.Errorf("enqueue unchecked: can not get vm context")
+					return
+				}
 				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
 				if err != nil || gapResult != common.ContractRewardGapPov {
 					dps.logger.Errorf("add gap pov block to ledger err %s", err)
