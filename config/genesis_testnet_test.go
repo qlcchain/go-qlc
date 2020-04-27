@@ -88,4 +88,32 @@ func TestGenesisInfo(t *testing.T) {
 	if !IsGenesisBlock(&gasMintageBlock) {
 		t.Fatal("this block should be genesis block: ", h4.String())
 	}
+	gs := GenesisInfos()
+	if len(gs) != 2 {
+		t.Fatal("get genesis infos error")
+	}
+	ck := ChainToken()
+	if ck != genesisBlock.Token {
+		t.Fatal("get chain token error")
+	}
+	gk := GasToken()
+	if gk != gasBlock.Token {
+		t.Fatal("get gas token error")
+	}
+	mh := GenesisMintageHash()
+	if mh != genesisMintageBlock.GetHash() {
+		t.Fatal("get genesis mintage block hash error")
+	}
+	gh := GenesisBlockHash()
+	if gh != genesisBlock.GetHash() {
+		t.Fatal("get genesis block hash error")
+	}
+	gasHash := GasBlockHash()
+	if gasHash != gasBlock.GetHash() {
+		t.Fatal("get gas block hash error")
+	}
+	ab := AllGenesisBlocks()
+	if len(ab) != 4 {
+		t.Fatal("get all block error")
+	}
 }

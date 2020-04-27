@@ -34,4 +34,10 @@ func TestMigrationV6ToV7_Migration(t *testing.T) {
 	if cfg7.WhiteList.Enable {
 		t.Fatal("default whitelist is false")
 	}
+	if m.startVersion != 6 {
+		t.Fatal("start version error")
+	}
+	if m.endVersion != 7 {
+		t.Fatal("end version error")
+	}
 }
