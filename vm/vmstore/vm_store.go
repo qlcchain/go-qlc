@@ -37,6 +37,7 @@ type ContractStore interface {
 	PoVContractState() (*statedb.PovContractStateDB, error)
 	PovGlobalStateByHeight(h uint64) *statedb.PovGlobalStateDB
 	PoVContractStateByHeight(h uint64) (*statedb.PovContractStateDB, error)
+	GetLatestPovBlock() (*types.PovBlock, error)
 
 	ListTokens() ([]*types.TokenInfo, error)
 	GetTokenById(tokenId types.Hash) (*types.TokenInfo, error)
@@ -47,7 +48,7 @@ type ContractStore interface {
 	GetBlockChild(hash types.Hash) (types.Hash, error)
 	GetStateBlock(hash types.Hash) (*types.StateBlock, error)
 	GetStateBlockConfirmed(hash types.Hash) (*types.StateBlock, error)
-	GetLatestPovBlock() (*types.PovBlock, error)
+	HasStateBlockConfirmed(hash types.Hash) (bool, error)
 
 	GetAccountMeta(address types.Address) (*types.AccountMeta, error)
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
@@ -157,6 +158,10 @@ func (v *VMContext) GetStateBlock(hash types.Hash) (*types.StateBlock, error) {
 
 func (v *VMContext) GetStateBlockConfirmed(hash types.Hash) (*types.StateBlock, error) {
 	return v.l.GetStateBlockConfirmed(hash, v.storageCache)
+}
+
+func (v *VMContext) HasStateBlockConfirmed(hash types.Hash) (bool, error) {
+	return v.l.HasStateBlockConfirmed(hash)
 }
 
 func (v *VMContext) GetLatestPovBlock() (*types.PovBlock, error) {

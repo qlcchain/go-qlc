@@ -118,7 +118,8 @@ func TestPermissionService(t *testing.T) {
 
 	am := mock.AccountMeta(adminAccount.Address())
 	am.Tokens[0].Type = config.ChainToken()
-	ps.vmCtx.Ledger.AddAccountMeta(am, ps.vmCtx.Ledger.Cache().GetCache())
+	//ps.vmCtx.Ledger.AddAccountMeta(am, ps.vmCtx.Ledger.Cache().GetCache())
+	l.AddAccountMeta(am, l.Cache().GetCache())
 
 	cc.SetAccounts([]*types.Account{adminAccount})
 	wli := &config.WhiteListInfo{

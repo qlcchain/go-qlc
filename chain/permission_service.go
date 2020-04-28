@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
@@ -49,7 +50,7 @@ func NewPermissionService(cfgFile string) *PermissionService {
 		cc:      context.NewChainContext(cfgFile),
 		work:    make(chan struct{}, 1),
 		exit:    make(chan struct{}, 1),
-		vmCtx:   vmstore.NewVMContext(l),
+		vmCtx:   vmstore.NewVMContext(l, &contractaddress.PermissionAddress),
 		nodes:   make([]*api.NodeParam, 0),
 	}
 
@@ -173,7 +174,7 @@ func (ps *PermissionService) addPermissionNode() {
 
 			nodes := make([]*api.NodeParam, 0)
 			for i, h := range ps.blkHash {
-				if has, _ := ps.vmCtx.Ledger.HasStateBlockConfirmed(h); !has {
+				if has, _ := ps.vmCtx.HasStateBlockConfirmed(h); !has {
 					nodes = append(nodes, ps.nodes[i])
 				}
 

@@ -86,8 +86,8 @@ func (ns *QlcService) Start() error {
 func (ns *QlcService) setWhiteList() error {
 	cfg, _ := ns.cc.Config()
 	if cfg.WhiteList.Enable {
-		ctx := vmstore.NewVMContext(ns.msgService.ledger)
-		pn, err := abi.PermissionGetAllNodes(ctx)
+		//ctx := vmstore.NewVMContext(ns.msgService.ledger)
+		pn, err := abi.PermissionGetAllNodes(ns.msgService.ledger)
 		if err != nil {
 			return err
 		}
