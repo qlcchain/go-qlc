@@ -14,7 +14,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/relation"
 	"github.com/qlcchain/go-qlc/log"
 )
 
@@ -255,11 +254,36 @@ func (lc *MemoryCache) prefixIterator(prefix []byte, fn func(k []byte, v []byte)
 			key := originalKey(k.(string))
 			if bytes.HasPrefix(key, prefix) {
 				if !contain(keys, key) && !isDeleteKey(v) {
-					keys = append(keys, key)
 					if err := fn(key, v.([]byte)); err != nil {
 						return nil, fmt.Errorf("ledger iterator: %s", err)
 					}
 				}
+				keys = append(keys, key)
+			}
+		}
+		index = (index - 1) % lc.cacheCount
+		if index < 0 {
+			index = lc.cacheCount - 1
+		}
+	}
+	return keys, nil
+}
+
+func (lc *MemoryCache) prefixIteratorObject(prefix []byte, fn func(k []byte, v interface{}) error) ([][]byte, error) {
+	keys := make([][]byte, 0)
+	index := lc.writeIndex
+	readIndex := lc.readIndex
+	for index != readIndex {
+		items := lc.caches[index].cache.GetALL(false)
+		for k, v := range items {
+			key := originalKey(k.(string))
+			if bytes.HasPrefix(key, prefix) {
+				if !contain(keys, key) && !isDeleteKey(v) {
+					if err := fn(key, v); err != nil {
+						return nil, fmt.Errorf("ledger iterator: %s", err)
+					}
+				}
+				keys = append(keys, key)
 			}
 		}
 		index = (index - 1) % lc.cacheCount
@@ -393,37 +417,31 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 			if err != nil {
 				return fmt.Errorf("serialize error,  %s", key[:1])
 			}
-			if err := b.Put(key, val); err != nil {
-				return err
-			}
+			return b.Put(key, val)
 		case []byte:
-			if err := b.Put(key, o); err != nil {
-				return err
-			}
+			return b.Put(key, o)
 		default:
 			return fmt.Errorf("missing method serialize: %s", key[:1])
 		}
 	} else {
-		if err := b.Delete(key); err != nil {
-			return err
-		}
+		return b.Delete(key)
 	}
-	return nil
 }
 
 func (c *Cache) dumpToRelation(key []byte, v interface{}, l *Ledger) error {
-	switch storage.KeyPrefix(key[0]) {
-	case storage.KeyPrefixBlock:
-		if !isDeleteKey(v) {
-			l.relation.Add(relation.TableConvert(v))
-		} else {
-			hash, err := types.BytesToHash(key[1:])
+	if !isDeleteKey(v) {
+		if val, ok := v.(types.Convert); ok {
+			objs, err := val.ConvertToSchema()
 			if err != nil {
-				return fmt.Errorf("key to hash: %s", err)
+				return fmt.Errorf("table convert: %s", err)
 			}
-			l.relation.Delete(&relation.BlockHash{Hash: hash.String()})
+			l.relation.Add(objs)
 		}
 	}
+	for _, obj := range l.deletedSchema {
+		l.relation.Delete(obj)
+	}
+	l.deletedSchema = l.deletedSchema[:0]
 	return nil
 }
 
@@ -460,16 +478,6 @@ func (c *Cache) Get(key []byte) (interface{}, error) {
 }
 
 func (c *Cache) Iterator(prefix []byte, end []byte, f func(k, v []byte) error) error {
-	//items := c.cache.GetALL(false)
-	//for k, v := range items {
-	//	key := originalKey(k.(string))
-	//	if bytes.HasPrefix(key, prefix) {
-	//		if err := f(key, v.([]byte)); err != nil {
-	//			return fmt.Errorf("cache iterator error: %s", err)
-	//		}
-	//	}
-	//}
-	//return nil
 	panic("not implemented")
 }
 

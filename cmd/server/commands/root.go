@@ -19,6 +19,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+
 	"github.com/abiosoft/ishell"
 	"github.com/abiosoft/readline"
 	"github.com/spf13/cobra"
@@ -28,12 +30,10 @@ import (
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract/chaincontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
@@ -235,7 +235,6 @@ func start() error {
 	chainContext.SetAccounts(accounts)
 	// start all services by chain context
 	err = chainContext.Init(func() error {
-		chaincontract.InitChainContract()
 		return chain.RegisterServices(chainContext)
 	})
 	if err != nil {
@@ -394,9 +393,9 @@ func generateChainTokenGenesisBlock(seedString string, cfg *config.Config) error
 	tokenSymbol := "QLC"
 	decimals := uint8(8)
 	address := account.Address()
-	tokenHash := cabi.NewTokenHash(address, types.ZeroHash, tokenName)
+	tokenHash := mintage.NewTokenHash(address, types.ZeroHash, tokenName)
 	var totalSupply = big.NewInt(6e16)
-	mintageData, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenHash, tokenName, tokenSymbol, totalSupply, decimals, address, "")
+	mintageData, err := mintage.MintageABI.PackMethod(mintage.MethodNameMintage, tokenHash, tokenName, tokenSymbol, totalSupply, decimals, address, "")
 	if err != nil {
 		return err
 	}
@@ -421,7 +420,7 @@ func generateChainTokenGenesisBlock(seedString string, cfg *config.Config) error
 	send.Signature = account.Sign(h1)
 	chainTokenInfos.Mintage = send
 
-	genesisData, err := cabi.MintageABI.PackVariable(cabi.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
+	genesisData, err := mintage.MintageABI.PackVariable(mintage.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
 		decimals, address, big.NewInt(0), int64(0), address, "")
 
 	if err != nil {
@@ -469,9 +468,9 @@ func generateGasTokenGenesisBlock(seedString string, cfg *config.Config) error {
 	decimals := uint8(8)
 	repAddress := repAccount.Address()
 	address := account.Address()
-	tokenHash := cabi.NewTokenHash(address, types.ZeroHash, tokenName)
+	tokenHash := mintage.NewTokenHash(address, types.ZeroHash, tokenName)
 	var totalSupply = big.NewInt(1e16)
-	mintageData, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenHash, tokenName, tokenSymbol, totalSupply, decimals, address, "")
+	mintageData, err := mintage.MintageABI.PackMethod(mintage.MethodNameMintage, tokenHash, tokenName, tokenSymbol, totalSupply, decimals, address, "")
 	if err != nil {
 		return err
 	}
@@ -496,7 +495,7 @@ func generateGasTokenGenesisBlock(seedString string, cfg *config.Config) error {
 	send.Signature = account.Sign(h1)
 	genesisGasTokenInfos.Mintage = send
 
-	genesisData, err := cabi.MintageABI.PackVariable(cabi.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
+	genesisData, err := mintage.MintageABI.PackVariable(mintage.VariableNameToken, tokenHash, tokenName, tokenSymbol, totalSupply,
 		decimals, address, big.NewInt(0), int64(0), address, "")
 
 	if err != nil {

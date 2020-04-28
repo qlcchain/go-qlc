@@ -16,6 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -52,7 +53,7 @@ func TestDestroyContract(t *testing.T) {
 		t.Fatal("invalid sign")
 	}
 
-	vmContext := vmstore.NewVMContext(l)
+	vmContext := vmstore.NewVMContext(l, &contractaddress.BlackHoleAddress)
 	b := &BlackHole{}
 	sendBlock, err := abi.PackSendBlock(vmContext, param)
 	if err != nil {
@@ -81,12 +82,12 @@ func TestDestroyContract(t *testing.T) {
 		}
 	}
 
-	err = vmContext.SaveStorage()
+	err = l.SaveStorage(vmstore.ToCache(vmContext))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if infos, err := abi.GetDestroyInfoDetail(vmContext, &addr); err == nil {
+	if infos, err := abi.GetDestroyInfoDetail(l, &addr); err == nil {
 		for idx, info := range infos {
 			t.Log(idx, util.ToIndentString(info))
 		}

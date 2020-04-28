@@ -7,11 +7,27 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+)
+
+var MinerContract = NewChainContract(
+	map[string]Contract{
+		cabi.MethodNameMinerReward: &MinerReward{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					pending:   true,
+					work:      true,
+				},
+			},
+		},
+	},
+	cabi.MinerABI,
+	cabi.JsonMiner,
 )
 
 type MinerReward struct {
@@ -42,7 +58,7 @@ func (m *MinerReward) GetRewardHistory(ctx *vmstore.VMContext, coinbase types.Ad
 }
 
 func (m *MinerReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
-	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
+	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return 0, errors.New("failed to get latest block")
 	}
@@ -106,7 +122,7 @@ func (m *MinerReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBloc
 	}
 
 	// check account exist
-	amCb, _ := ctx.Ledger.GetAccountMeta(param.Coinbase)
+	amCb, _ := ctx.GetAccountMeta(param.Coinbase)
 	if amCb == nil {
 		return nil, nil, ErrAccountNotExist
 	}
@@ -191,7 +207,7 @@ func (m *MinerReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, Rewar
 	return nil
 }
 
-func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.MinerRewardParam)
 
 	err := cabi.MinerABI.UnpackMethod(param, cabi.MethodNameMinerReward, input.Data)
@@ -221,7 +237,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	block.Storage = types.ZeroBalance
 	block.Network = types.ZeroBalance
 
-	amBnf, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
+	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
 		tmBnf := amBnf.Token(cfg.GasToken())
 		if tmBnf != nil {
@@ -243,7 +259,7 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 		block.Previous = types.ZeroHash
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -265,7 +281,7 @@ func (m *MinerReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (co
 
 	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
 
-	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
+	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return common.ContractRewardGapPov, needHeight, nil
 	}
@@ -310,7 +326,7 @@ func (m *MinerReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, coinbas
 
 	rewardAmount := types.NewBalance(0)
 	for dayIndex := startDayIndex; dayIndex <= endDayIndex; dayIndex++ {
-		dayStat, err := ctx.Ledger.GetPovMinerStat(dayIndex)
+		dayStat, err := ctx.GetPovMinerStat(dayIndex)
 		if err != nil {
 			return 0, types.NewBalance(0), fmt.Errorf("get pov miner state err[%d]", dayIndex)
 		}

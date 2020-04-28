@@ -3,12 +3,12 @@ package pov
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/vm/contract"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -265,7 +265,7 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 		return nil
 	}
 
-	cf, ok, err := vmcontract.GetChainContract(ca, methodSig)
+	cf, ok, err := contract.GetChainContract(ca, methodSig)
 	if err != nil {
 		bc.logger.Errorf("failed to get chain contract err %s", err)
 		return err
@@ -285,14 +285,16 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 		return err
 	}
 
+	vmCtx := vmstore.NewVMContextWithBlock(bc.ledger, txBlock)
+	if vmCtx == nil {
+		return fmt.Errorf("update contract state: can not get vm context, %s", err)
+	}
 	if txBlock.GetType() == types.ContractSend {
-		vmCtx := vmstore.NewVMContext(bc.ledger)
 		err = cf.DoSendOnPov(vmCtx, csdb, height, txBlock)
 		if err != nil {
 			return err
 		}
 	} else if txBlock.GetType() == types.ContractReward {
-		vmCtx := vmstore.NewVMContext(bc.ledger)
 		err = cf.DoReceiveOnPov(vmCtx, csdb, height, txBlock, sendBlk)
 		if err != nil {
 			return err

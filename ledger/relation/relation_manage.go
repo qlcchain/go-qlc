@@ -11,6 +11,7 @@ import (
 
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger/relation/db"
 	"github.com/qlcchain/go-qlc/log"
 )
@@ -20,8 +21,8 @@ type Relation struct {
 	eb         event.EventBus
 	subscriber *event.ActorSubscriber
 	dir        string
-	deleteChan chan Table
-	addChan    chan Table
+	deleteChan chan types.Schema
+	addChan    chan types.Schema
 	drive      string
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -53,17 +54,22 @@ func NewRelation(cfgFile string) (*Relation, error) {
 			drive:      cfg.DB.Driver,
 			eb:         cc.EventBus(),
 			dir:        cfgFile,
-			deleteChan: make(chan Table, 10240),
-			addChan:    make(chan Table, 10240),
+			deleteChan: make(chan types.Schema, 10240),
+			addChan:    make(chan types.Schema, 10240),
 			ctx:        ctx,
 			cancel:     cancel,
 			closedChan: make(chan bool),
 			tables:     make(map[string]schema),
 			logger:     log.NewLogger("relation"),
 		}
-		tables := []Table{new(BlockHash)}
-		if err := relation.init(tables); err != nil {
+		if err := relation.init(); err != nil {
 			return nil, fmt.Errorf("store init fail: %s", err)
+		}
+		tables := []types.Schema{new(types.BlockHash)}
+		for _, table := range tables {
+			if err := relation.Register(table); err != nil {
+				return nil, fmt.Errorf("store register fail: %s", err)
+			}
 		}
 		go relation.process()
 		cache[cfgFile] = relation
@@ -72,30 +78,35 @@ func NewRelation(cfgFile string) (*Relation, error) {
 	return cache[cfgFile], nil
 }
 
-func (r *Relation) init(tables []Table) error {
-	for _, t := range tables {
-		var s schema
-		rt := reflect.TypeOf(t).Elem()
-		var columns []string
-		columnsMap := make(map[string]string)
-		for i := 0; i < rt.NumField(); i++ {
-			column := rt.Field(i).Tag.Get("db")
-			if column != "" {
-				columns = append(columns, column)
-				columnsMap[column] = convertSchemaType(r.drive, rt.Field(i).Tag.Get("typ"))
+func (r *Relation) Register(t types.Schema) error {
+	identityID := getIdentityID(t)
+	if _, ok := r.tables[identityID]; ok {
+		return fmt.Errorf("table %s areadly exist", identityID)
+	}
+	var s schema
+	rt := reflect.TypeOf(t).Elem()
+	var columns []string
+	columnsMap := make(map[string]string)
+	key := ""
+	for i := 0; i < rt.NumField(); i++ {
+		tg := rt.Field(i).Tag
+		if column, b := tg.Lookup("db"); b {
+			if _, b := tg.Lookup("key"); b {
+				key = column
 			}
+			columns = append(columns, column)
+			columnsMap[column] = convertSchemaType(r.drive, tg.Get("typ"))
 		}
+	}
+	s.tableName = rt.Name()
+	s.create = create(s.tableName, columnsMap, key)
+	s.insert = insert(s.tableName, columns)
+	r.tables[identityID] = s
+	r.logger.Debug(s.create)
 
-		s.tableName = rt.Name()
-		s.create = create(s.tableName, columnsMap, "")
-		s.insert = insert(s.tableName, columns)
-		r.tables[t.TableID()] = s
-		//r.logger.Debug(s)
-
-		if _, err := r.db.Exec(s.create); err != nil {
-			r.logger.Errorf("exec error, sql: %s, err: %s", s.create, err.Error())
-			return err
-		}
+	if _, err := r.db.Exec(s.create); err != nil {
+		r.logger.Errorf("exec error, sql: %s, err: %s", s.create, err.Error())
+		return err
 	}
 	return nil
 }
@@ -117,15 +128,17 @@ func (r *Relation) Close() error {
 	return nil
 }
 
-func (r *Relation) Add(obj Table) {
-	r.addChan <- obj
+func (r *Relation) Add(obj []types.Schema) {
+	for _, o := range obj {
+		r.addChan <- o
+	}
 }
 
-func (r *Relation) Delete(obj Table) {
+func (r *Relation) Delete(obj types.Schema) {
 	r.deleteChan <- obj
 }
 
-func (r *Relation) batchAdd(txn *sqlx.Tx, objs []Table) error {
+func (r *Relation) batchAdd(txn *sqlx.Tx, objs []types.Schema) error {
 	//objsMap := make(map[string][]*BlockHash)
 	//for _, obj := range objs {
 	//	objsMap[obj.TableID()] = append(objsMap[obj.TableID()], obj.(*BlockHash))
@@ -140,7 +153,8 @@ func (r *Relation) batchAdd(txn *sqlx.Tx, objs []Table) error {
 	//	}
 	//}
 	for _, obj := range objs {
-		sql := r.tables[obj.TableID()].insert
+		identityID := getIdentityID(obj)
+		sql := r.tables[identityID].insert
 		if _, err := txn.NamedExec(sql, obj); err != nil {
 			return fmt.Errorf("txn add exec: %s [%s]", err, sql)
 		}
@@ -148,7 +162,7 @@ func (r *Relation) batchAdd(txn *sqlx.Tx, objs []Table) error {
 	return nil
 }
 
-func (r *Relation) batchDelete(txn *sqlx.Tx, objs []Table) error {
+func (r *Relation) batchDelete(txn *sqlx.Tx, objs []types.Schema) error {
 	for _, obj := range objs {
 		if _, err := txn.Exec(obj.DeleteKey()); err != nil {
 			return fmt.Errorf("txn delete exec: %s", err)
@@ -162,8 +176,8 @@ func (r *Relation) closed() {
 }
 
 func (r *Relation) process() {
-	addObjs := make([]Table, 0)
-	deleteObjs := make([]Table, 0)
+	addObjs := make([]types.Schema, 0)
+	deleteObjs := make([]types.Schema, 0)
 
 	for {
 		select {
@@ -231,14 +245,14 @@ func (r *Relation) process() {
 func (r *Relation) flush() {
 	//add chan
 	if len(r.addChan) > 0 {
-		addObjs := make([]Table, 0)
+		addObjs := make([]types.Schema, 0)
 		for b := range r.addChan {
 			addObjs = append(addObjs, b)
 			if len(r.addChan) == 0 {
 				break
 			}
 		}
-		objs := make([]Table, 0)
+		objs := make([]types.Schema, 0)
 		for _, obj := range addObjs {
 			objs = append(objs, obj)
 			if len(objs) == batchMaxCount {
@@ -259,14 +273,14 @@ func (r *Relation) flush() {
 
 	// delete chan
 	if len(r.deleteChan) > 0 {
-		deleteObjs := make([]Table, 0)
+		deleteObjs := make([]types.Schema, 0)
 		for b := range r.deleteChan {
 			deleteObjs = append(deleteObjs, b)
 			if len(r.deleteChan) == 0 {
 				break
 			}
 		}
-		objs := make([]Table, 0)
+		objs := make([]types.Schema, 0)
 		for _, obj := range deleteObjs {
 			objs = append(objs, obj)
 			if len(objs) == batchMaxCount {
@@ -295,4 +309,35 @@ func (r *Relation) EmptyStore() error {
 		}
 	}
 	return nil
+}
+
+func (r *Relation) DB() *sqlx.DB {
+	return r.db
+}
+
+func getIdentityID(obj types.Schema) string {
+	return reflect.TypeOf(obj).String()
+}
+
+const version = 1
+
+func (r *Relation) init() error {
+	var v int
+	err := r.db.Get(&v, fmt.Sprintf("select v from version"))
+	if err != nil {
+		if _, err := r.db.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS version (v int)`)); err != nil {
+			return fmt.Errorf("create table err: %s", err.Error())
+		}
+		if _, err := r.db.Exec(fmt.Sprintf(`INSERT INTO version (v) VALUES (0)`)); err != nil {
+			return fmt.Errorf("add version err: %s", err.Error())
+		}
+		if _, err := r.db.Exec("drop table if exists blockhash"); err != nil {
+			return fmt.Errorf("drop err: %s", err.Error())
+		}
+		r.logger.Info("update blockhash schema")
+		return nil
+	} else {
+		r.logger.Info("blockhash schema updated")
+		return nil
+	}
 }

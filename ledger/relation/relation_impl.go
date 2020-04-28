@@ -8,8 +8,8 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
-func (r *Relation) count(s Table) (uint64, error) {
-	sql := fmt.Sprintf("select count (*) as total from %s", r.tables[s.TableID()].tableName)
+func (r *Relation) count(s types.Schema) (uint64, error) {
+	sql := fmt.Sprintf("select count (*) as total from %s", r.tables[getIdentityID(s)].tableName)
 	r.logger.Debug(sql)
 	var i uint64
 	err := r.db.Get(&i, sql)
@@ -20,9 +20,9 @@ func (r *Relation) count(s Table) (uint64, error) {
 }
 
 func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
-	block := new(BlockHash)
-	var h []BlockHash
-	sql := fmt.Sprintf("select * from %s order by timestamp desc, type desc limit %d offset %d", r.tables[block.TableID()].tableName, limit, offset)
+	block := new(types.BlockHash)
+	var h []types.BlockHash
+	sql := fmt.Sprintf("select * from %s order by timestamp desc, type desc limit %d offset %d", r.tables[getIdentityID(block)].tableName, limit, offset)
 	err := r.db.Select(&h, sql)
 	if err != nil {
 		return nil, fmt.Errorf("read error, sql: %s, err: %s", sql, err.Error())
@@ -31,9 +31,9 @@ func (r *Relation) Blocks(limit int, offset int) ([]types.Hash, error) {
 }
 
 func (r *Relation) BlocksByAccount(address types.Address, limit int, offset int) ([]types.Hash, error) {
-	block := new(BlockHash)
-	var h []BlockHash
-	sql := fmt.Sprintf("select * from %s where address = '%s' order by timestamp desc, type desc limit %d offset %d", r.tables[block.TableID()].tableName, address.String(), limit, offset)
+	block := new(types.BlockHash)
+	var h []types.BlockHash
+	sql := fmt.Sprintf("select * from %s where address = '%s' order by timestamp desc, type desc limit %d offset %d", r.tables[getIdentityID(block)].tableName, address.String(), limit, offset)
 	err := r.db.Select(&h, sql)
 	if err != nil {
 		return nil, fmt.Errorf("read error, sql: %s, err: %s", sql, err.Error())
@@ -42,13 +42,13 @@ func (r *Relation) BlocksByAccount(address types.Address, limit int, offset int)
 }
 
 func (r *Relation) BlocksCount() (uint64, error) {
-	return r.count(new(BlockHash))
+	return r.count(new(types.BlockHash))
 }
 
 func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
-	block := new(BlockHash)
+	block := new(types.BlockHash)
 	var t []blocksType
-	sql := fmt.Sprintf("select type, count(*) as count from %s  group by type", r.tables[block.TableID()].tableName)
+	sql := fmt.Sprintf("select type, count(*) as count from %s  group by type", r.tables[getIdentityID(block)].tableName)
 	r.logger.Debug(sql)
 	err := r.db.Select(&t, sql)
 	if err != nil {
@@ -57,8 +57,19 @@ func (r *Relation) BlocksCountByType() (map[string]uint64, error) {
 	return blockType(t), nil
 }
 
-func (r *Relation) Select(dest interface{}, query string, args ...interface{}) error {
-	return r.db.Select(dest, query, args)
+func (r *Relation) Select(dest interface{}, query string) error {
+	r.logger.Debug(query)
+	return r.db.Select(dest, query)
+}
+
+func (r *Relation) Get(dest interface{}, query string) error {
+	r.logger.Debug(query)
+	return r.db.Get(dest, query)
+}
+
+func (r *Relation) Queryx(query string) (*sqlx.Rows, error) {
+	r.logger.Debug(query)
+	return r.db.Queryx(query)
 }
 
 type blocksType struct {
@@ -112,7 +123,7 @@ func (r *Relation) BatchUpdate(fn func(txn *sqlx.Tx) error) error {
 //	return nil
 //}
 
-func blockHash(bs []BlockHash) ([]types.Hash, error) {
+func blockHash(bs []types.BlockHash) ([]types.Hash, error) {
 	hs := make([]types.Hash, 0)
 	for _, b := range bs {
 		var h types.Hash

@@ -43,10 +43,7 @@ func (l *Ledger) CleanBlockVoteHistory(hash types.Hash) error {
 	err = l.store.Iterator(k, nil, func(key []byte, val []byte) error {
 		k := make([]byte, len(key))
 		copy(k[:], key)
-		if er := l.store.Delete(k); er != nil {
-			l.logger.Error(er)
-		}
-		return nil
+		return l.store.Delete(k)
 	})
 
 	return nil
@@ -61,10 +58,7 @@ func (l *Ledger) CleanAllVoteHistory() error {
 	err = l.store.Iterator(k, nil, func(key []byte, val []byte) error {
 		k := make([]byte, len(key))
 		copy(k[:], key)
-		if er := l.store.Delete(k); er != nil {
-			l.logger.Error(er)
-		}
-		return nil
+		return l.store.Delete(k)
 	})
 
 	return nil

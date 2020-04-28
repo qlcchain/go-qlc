@@ -27,7 +27,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 	l := NewLedger(cm.ConfigFile)
-	fmt.Println(t.Name())
+	fmt.Println("case: ", t.Name())
 	return func(t *testing.T) {
 		//err := l.DBStore.Erase()
 		err := l.Close()
@@ -415,16 +415,16 @@ func TestLedger_Cache(t *testing.T) {
 	if err := c.Put(key, []byte{4, 5, 6}); err != nil {
 		t.Fatal(err)
 	}
-	if i, r, err := l.Get(key, c); err != nil || i == nil || r != nil {
+	if i, r, err := l.GetObject(key, c); err != nil || i == nil || r != nil {
 		t.Fatal(err, i, r)
 	}
 	if err := c.Delete(key); err != nil {
 		t.Fatal(err)
 	}
-	if i, r, err := l.Get(key, c); err != storage.KeyNotFound || i != nil || r != nil {
+	if i, r, err := l.GetObject(key, c); err != storage.KeyNotFound || i != nil || r != nil {
 		t.Fatal(err, i, r)
 	}
-	if i, r, err := l.Get(key); err != storage.KeyNotFound || i != nil || r != nil {
+	if i, r, err := l.GetObject(key); err != storage.KeyNotFound || i != nil || r != nil {
 		t.Fatal(err, i, r)
 	}
 	// get from ledger cache
@@ -432,7 +432,7 @@ func TestLedger_Cache(t *testing.T) {
 	if err := l.store.Put(key2, []byte{4, 5, 6}); err != nil {
 		t.Fatal(err)
 	}
-	if i, r, err := l.Get(key2); err != nil || i != nil || r == nil {
+	if i, r, err := l.GetObject(key2); err != nil || i != nil || r == nil {
 		t.Fatal(err, i, r)
 	}
 
@@ -444,7 +444,7 @@ func TestLedger_Cache(t *testing.T) {
 	if err := l.Delete(key3); err != nil {
 		t.Fatal(err)
 	}
-	if i, r, err := l.Get(key3); err != storage.KeyNotFound || i != nil || r != nil {
+	if i, r, err := l.GetObject(key3); err != storage.KeyNotFound || i != nil || r != nil {
 		t.Fatal(err, i, r)
 	}
 
@@ -497,5 +497,39 @@ func TestLedger_Iterator(t *testing.T) {
 	t.Log(count)
 	if count != 200 {
 		t.Fatal()
+	}
+}
+
+func TestLedger_init(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	if err := l.setVersion(1); err != nil {
+		t.Fatal(err)
+	}
+	// upgrade
+	if err := l.upgrade(); err != nil {
+		t.Fatal(err)
+	}
+
+	//initRelation()
+	s := types.BlockHash{
+		Hash: mock.Hash().String(),
+	}
+	l.relation.Add([]types.Schema{&s})
+	time.Sleep(1 * time.Second)
+	if err := l.initRelation(); err != nil {
+		t.Fatal(err)
+	}
+
+	// removeBlockConfirmed()
+	blk := mock.StateBlockWithoutWork()
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddBlockCache(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.removeBlockConfirmed(); err != nil {
+		t.Fatal(err)
 	}
 }

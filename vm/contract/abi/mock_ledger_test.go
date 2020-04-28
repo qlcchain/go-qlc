@@ -53,6 +53,18 @@ func setupLedgerForTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 		}
 	}
 
+	// mock pov
+	//block, td := mock.GeneratePovBlock(nil, 0)
+	//if err := l.AddPovBlock(block, td); err != nil {
+	//	t.Fatal(err)
+	//}
+	//if err := l.AddPovBestHash(block.GetHeight(), block.GetHash()); err != nil {
+	//	t.Fatal(err)
+	//}
+	//if err := l.SetPovLatestHeight(block.GetHeight()); err != nil {
+	//	t.Fatal(err)
+	//}
+
 	return func(t *testing.T) {
 		//err := l.DBStore.Erase()
 		err := l.Close()

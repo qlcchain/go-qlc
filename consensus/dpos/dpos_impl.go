@@ -2,10 +2,13 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/bluele/gcache"
@@ -16,7 +19,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/consensus"
@@ -770,8 +772,12 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 
 		dstAddr := types.ZeroAddress
 
-		if c, ok, err := vmcontract.GetChainContract(types.Address(blk.GetLink()), blk.GetPayload()); ok && err == nil {
-			ctx := vmstore.NewVMContext(dps.ledger)
+		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+			ctx := vmstore.NewVMContextWithBlock(dps.ledger, blk)
+			if ctx == nil {
+				dps.logger.Error("dispatch: can not get vm context")
+				return
+			}
 			dstAddr, err = c.GetTargetReceiver(ctx, blk)
 			if err != nil {
 				dps.logger.Error(err)
@@ -808,8 +814,8 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 			}
 
 			if types.Address(input.GetLink()) == contractaddress.MintageAddress {
-				param := new(cabi.ParamMintage)
-				if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err == nil {
+				param := new(mintage.ParamMintage)
+				if err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.GetData()); err == nil {
 					index := dps.getProcessorIndex(input.Address)
 					if localIndex != index {
 						dps.processors[index].tokenCreateNotify(hash)

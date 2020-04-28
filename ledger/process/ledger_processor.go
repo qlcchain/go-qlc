@@ -17,10 +17,11 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/trie"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -335,16 +336,19 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 			return nil
 		}
 
-		if c, ok, err := vmcontract.GetChainContract(types.Address(block.Link), block.GetPayload()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(block.Link), block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
-			case vmcontract.SpecVer1:
+			case contract.SpecVer1:
 				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
 				}
-			case vmcontract.SpecVer2:
-				vmCtx := vmstore.NewVMContext(lv.l)
+			case contract.SpecVer2:
+				vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+				if vmCtx == nil {
+					return fmt.Errorf("can not get vm context, %s", block.GetHash())
+				}
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
@@ -477,6 +481,9 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 		} else {
 			am.Tokens = append(am.Tokens, tmNew)
 		}
+		if err := lv.l.AddAccountMetaHistory(am.Token(block.GetToken()), block, cache); err != nil {
+			return err
+		}
 		return lv.l.UpdateAccountMeta(am, cache)
 	} else {
 		account := types.AccountMeta{
@@ -490,6 +497,9 @@ func (lv *LedgerVerifier) updateAccountMeta(block *types.StateBlock, am *types.A
 			account.CoinNetwork = block.GetNetwork()
 			account.CoinVote = block.GetVote()
 			account.CoinStorage = block.GetStorage()
+		}
+		if err := lv.l.AddAccountMetaHistory(tmNew, block, cache); err != nil {
+			return err
 		}
 		return lv.l.AddAccountMeta(&account, cache)
 	}
@@ -515,12 +525,15 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			}
 
 			address := types.Address(input.GetLink())
-			c, ok, err := vmcontract.GetChainContract(address, input.GetPayload())
+			c, ok, err := contract.GetChainContract(address, input.GetPayload())
 			if !ok || err != nil {
 				return fmt.Errorf("invaild contract %s", err)
 			}
 			clone := block.Clone()
-			vmCtx := vmstore.NewVMContext(lv.l)
+			vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+			if vmCtx == nil {
+				return fmt.Errorf("update contract: can not get vm context, %s", block.GetHash())
+			}
 			g, err := c.DoReceive(vmCtx, clone, input)
 			if err != nil {
 				return fmt.Errorf("updateContract DoReceive error: %s ", err)
@@ -528,11 +541,11 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			if len(g) > 0 {
 				ctx := g[0].VMContext
 				if ctx != nil {
-					err := ctx.SaveStorage(cache)
+					err := lv.l.SaveStorage(vmstore.ToCache(ctx), cache)
 					if err != nil {
 						return fmt.Errorf("reward block save storage error: %s", err)
 					}
-					err = ctx.SaveTrie(cache)
+					err = lv.saveTrie(vmstore.Trie(ctx), cache)
 					if err != nil {
 						return fmt.Errorf("reward block save trie error: %s", err)
 					}
@@ -546,17 +559,21 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				return nil
 			}
 
-			c, ok, err := vmcontract.GetChainContract(types.Address(block.Link), block.GetPayload())
+			c, ok, err := contract.GetChainContract(types.Address(block.Link), block.GetPayload())
 			if ok && err == nil {
 				d := c.GetDescribe()
 				switch d.GetVersion() {
-				case vmcontract.SpecVer2:
-					vmCtx := vmstore.NewVMContext(lv.l)
+				case contract.SpecVer2:
+					vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
+					if vmCtx == nil {
+						return fmt.Errorf("update contract data: can not get vm context, %s", block.GetHash())
+					}
 					if _, _, err := c.ProcessSend(vmCtx, block); err == nil {
-						if err := vmCtx.SaveStorage(cache); err != nil {
+						if err := lv.l.SaveStorage(vmstore.ToCache(vmCtx), cache); err != nil {
 							return fmt.Errorf("send block save storage error: %s", err)
 						}
-						if err = vmCtx.SaveTrie(cache); err != nil {
+						err = lv.saveTrie(vmstore.Trie(vmCtx), cache)
+						if err != nil {
 							return fmt.Errorf("send block save trie error: %s", err)
 						}
 					} else {
@@ -566,5 +583,14 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 			}
 		}
 	}
+	return nil
+}
+
+func (lv *LedgerVerifier) saveTrie(t *trie.Trie, cache *ledger.Cache) error {
+	fn, err := t.Save(cache)
+	if err != nil {
+		return err
+	}
+	fn()
 	return nil
 }

@@ -41,8 +41,10 @@ func TestRelation_Blocks(t *testing.T) {
 
 	blk1 := mock.StateBlockWithoutWork()
 	blk2 := mock.StateBlockWithoutWork()
-	r.Add(TableConvert(blk1))
-	r.Add(TableConvert(blk2))
+	objs1, _ := blk1.ConvertToSchema()
+	r.Add(objs1)
+	objs2, _ := blk2.ConvertToSchema()
+	r.Add(objs2)
 	time.Sleep(1 * time.Second)
 	c, err := r.BlocksCount()
 	if err != nil {

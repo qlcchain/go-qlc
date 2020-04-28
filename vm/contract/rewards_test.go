@@ -18,7 +18,7 @@ func TestAirdropRewards(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RewardsAddress)
 
 	addr1 := account1.Address()
 	b := mock.Address()
@@ -67,7 +67,7 @@ func TestAirdropRewards(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := ctx.SaveStorage(); err != nil {
+			if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -104,7 +104,7 @@ func TestConfidantRewards(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.RewardsAddress)
 
 	addr1 := account1.Address()
 	b := account2.Address()
@@ -153,7 +153,7 @@ func TestConfidantRewards(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := ctx.SaveStorage(); err != nil {
+			if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 				t.Fatal(err)
 			}
 

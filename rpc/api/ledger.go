@@ -21,8 +21,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 var (
@@ -151,16 +149,16 @@ func checkOffset(count int, offset *int) (int, int, error) {
 	return count, o, nil
 }
 
-func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock, latestPov *types.PovHeader) (*APIBlock, error) {
+func generateAPIBlock(store ledger.Store, block *types.StateBlock, latestPov *types.PovHeader) (*APIBlock, error) {
 	ab := new(APIBlock)
 	ab.StateBlock = block
 	ab.Hash = block.GetHash()
-	if amount, err := ctx.Ledger.CalculateAmount(block); err != nil {
+	if amount, err := store.CalculateAmount(block); err != nil {
 		return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
 	} else {
 		ab.Amount = amount
 	}
-	token, err := abi.GetTokenById(ctx, block.GetToken())
+	token, err := store.GetTokenById(block.GetToken())
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +166,7 @@ func generateAPIBlock(ctx *vmstore.VMContext, block *types.StateBlock, latestPov
 
 	// pov tx lookup
 	if latestPov != nil {
-		povTxl, _ := ctx.Ledger.GetPovTxLookup(ab.Hash)
+		povTxl, _ := store.GetPovTxLookup(ab.Hash)
 		if povTxl != nil {
 			ab.PovConfirmHeight = povTxl.BlockHeight
 			if latestPov.GetHeight() > ab.PovConfirmHeight {
@@ -191,7 +189,6 @@ func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset 
 		return nil, err
 	}
 	bs := make([]*APIBlock, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
 
 	latestPov, err := l.ledger.GetLatestPovHeader()
 
@@ -200,7 +197,7 @@ func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset 
 		if err != nil {
 			return nil, fmt.Errorf("can not get block %s", block.GetHash().String())
 		}
-		b, err := generateAPIBlock(vmContext, block, latestPov)
+		b, err := generateAPIBlock(l.ledger, block, latestPov)
 		if err != nil {
 			return nil, err
 		}
@@ -227,7 +224,6 @@ func (l *LedgerAPI) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 
 func (l *LedgerAPI) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, error) {
 	aa := new(APIAccount)
-	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, t := range am.Tokens {
 		if t.Type == config.ChainToken() {
 			aa.CoinBalance = &t.Balance
@@ -237,7 +233,7 @@ func (l *LedgerAPI) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, 
 			aa.CoinOracle = &am.CoinOracle
 			aa.CoinStorage = &am.CoinStorage
 		}
-		info, err := abi.GetTokenById(vmContext, t.Type)
+		info, err := l.ledger.GetTokenById(t.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -284,7 +280,6 @@ func (l *LedgerAPI) AccountVotingWeight(addr types.Address) (types.Balance, erro
 
 func (l *LedgerAPI) AccountsBalance(addresses []types.Address) (map[types.Address]map[string]*APIAccountsBalance, error) {
 	as := make(map[types.Address]map[string]*APIAccountsBalance)
-	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
 		ac, err := l.ledger.GetAccountMetaConfirmed(addr)
 		if err != nil {
@@ -295,7 +290,7 @@ func (l *LedgerAPI) AccountsBalance(addresses []types.Address) (map[types.Addres
 		}
 		ts := make(map[string]*APIAccountsBalance)
 		for _, t := range ac.Tokens {
-			info, err := abi.GetTokenById(vmContext, t.Type)
+			info, err := l.ledger.GetTokenById(t.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -323,7 +318,6 @@ func (l *LedgerAPI) AccountsBalance(addresses []types.Address) (map[types.Addres
 
 func (l *LedgerAPI) AccountsFrontiers(addresses []types.Address) (map[types.Address]map[string]types.Hash, error) {
 	r := make(map[types.Address]map[string]types.Hash)
-	vmContext := vmstore.NewVMContext(l.ledger)
 	for _, addr := range addresses {
 		ac, err := l.ledger.GetAccountMetaConfirmed(addr)
 		if err != nil {
@@ -334,7 +328,7 @@ func (l *LedgerAPI) AccountsFrontiers(addresses []types.Address) (map[types.Addr
 		}
 		t := make(map[string]types.Hash)
 		for _, token := range ac.Tokens {
-			info, err := abi.GetTokenById(vmContext, token.Type)
+			info, err := l.ledger.GetTokenById(token.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -347,12 +341,11 @@ func (l *LedgerAPI) AccountsFrontiers(addresses []types.Address) (map[types.Addr
 
 func (l *LedgerAPI) AccountsPending(addresses []types.Address, n int) (map[types.Address][]*APIPending, error) {
 	apMap := make(map[types.Address][]*APIPending)
-	vmContext := vmstore.NewVMContext(l.ledger)
 
 	for _, addr := range addresses {
 		ps := make([]*APIPending, 0)
 		err := l.ledger.GetPendingsByAddress(addr, func(key *types.PendingKey, info *types.PendingInfo) error {
-			token, err := abi.GetTokenById(vmContext, info.Type)
+			token, err := l.ledger.GetTokenById(info.Type)
 			if err != nil {
 				return err
 			}
@@ -502,8 +495,6 @@ func (l *LedgerAPI) BlocksCountByType() (map[string]uint64, error) {
 
 func (l *LedgerAPI) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	bs := make([]*APIBlock, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
-
 	latestPov, _ := l.ledger.GetLatestPovHeader()
 
 	for _, h := range hash {
@@ -514,7 +505,7 @@ func (l *LedgerAPI) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b, err := generateAPIBlock(vmContext, block, latestPov)
+		b, err := generateAPIBlock(l.ledger, block, latestPov)
 		if err != nil {
 			return nil, err
 		}
@@ -525,8 +516,6 @@ func (l *LedgerAPI) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 
 func (l *LedgerAPI) ConfirmedBlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 	bs := make([]*APIBlock, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
-
 	latestPov, _ := l.ledger.GetLatestPovHeader()
 
 	for _, h := range hash {
@@ -537,7 +526,7 @@ func (l *LedgerAPI) ConfirmedBlocksInfo(hash []types.Hash) ([]*APIBlock, error) 
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b, err := generateAPIBlock(vmContext, block, latestPov)
+		b, err := generateAPIBlock(l.ledger, block, latestPov)
 		if err != nil {
 			return nil, err
 		}
@@ -556,7 +545,6 @@ func (l *LedgerAPI) Blocks(count int, offset *int) ([]*APIBlock, error) {
 		return nil, err
 	}
 	bs := make([]*APIBlock, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
 
 	latestPov, err := l.ledger.GetLatestPovHeader()
 
@@ -566,7 +554,7 @@ func (l *LedgerAPI) Blocks(count int, offset *int) ([]*APIBlock, error) {
 			return nil, err
 		}
 		if block != nil {
-			b, err := generateAPIBlock(vmContext, block, latestPov)
+			b, err := generateAPIBlock(l.ledger, block, latestPov)
 			if err != nil {
 				return nil, err
 			}
@@ -663,8 +651,7 @@ func (l *LedgerAPI) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 			return nil, err
 		}
 	}
-	vmContext := vmstore.NewVMContext(l.ledger)
-	info, err := abi.GetTokenByName(vmContext, para.TokenName)
+	info, err := l.ledger.GetTokenByName(para.TokenName)
 	if err != nil {
 		return nil, err
 	}
@@ -746,9 +733,8 @@ func (l *LedgerAPI) GenerateChangeBlock(account types.Address, representative ty
 
 func (l *LedgerAPI) Pendings() ([]*APIPending, error) {
 	aps := make([]*APIPending, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
 	err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
-		token, err := abi.GetTokenById(vmContext, pendingInfo.Type)
+		token, err := l.ledger.GetTokenById(pendingInfo.Type)
 		if err != nil {
 			return err
 		}
@@ -949,8 +935,7 @@ func (l *LedgerAPI) Representatives(sorting *bool) ([]*APIRepresentative, error)
 }
 
 func (l *LedgerAPI) Tokens() ([]*types.TokenInfo, error) {
-	vmContext := vmstore.NewVMContext(l.ledger)
-	return abi.ListTokens(vmContext)
+	return l.ledger.ListTokens()
 }
 
 // BlocksCount returns the number of blocks (not include smartcontrant block) in the ctx and unchecked synchronizing blocks
@@ -970,8 +955,7 @@ func (l *LedgerAPI) TransactionsCount() (map[string]uint64, error) {
 }
 
 func (l *LedgerAPI) TokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
-	vmContext := vmstore.NewVMContext(l.ledger)
-	token, err := abi.GetTokenById(vmContext, tokenId)
+	token, err := l.ledger.GetTokenById(tokenId)
 	if err != nil {
 		return nil, err
 	}
@@ -979,8 +963,7 @@ func (l *LedgerAPI) TokenInfoById(tokenId types.Hash) (*ApiTokenInfo, error) {
 }
 
 func (l *LedgerAPI) TokenInfoByName(tokenName string) (*ApiTokenInfo, error) {
-	vmContext := vmstore.NewVMContext(l.ledger)
-	token, err := abi.GetTokenByName(vmContext, tokenName)
+	token, err := l.ledger.GetTokenByName(tokenName)
 	if err != nil {
 		return nil, err
 	}
@@ -1019,11 +1002,10 @@ func (l *LedgerAPI) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 						continue
 					}
 
-					vmContext := vmstore.NewVMContext(l.ledger)
 					latestPov, _ := l.ledger.GetLatestPovHeader()
 
 					for _, block := range blocks {
-						apiBlk, err := generateAPIBlock(vmContext, block, latestPov)
+						apiBlk, err := generateAPIBlock(l.ledger, block, latestPov)
 						if err != nil {
 							l.logger.Errorf("generateAPIBlock error: %s", err)
 							continue
@@ -1063,11 +1045,10 @@ func (l *LedgerAPI) NewAccountBlock(ctx context.Context, address types.Address) 
 						continue
 					}
 
-					vmContext := vmstore.NewVMContext(l.ledger)
 					latestPov, _ := l.ledger.GetLatestPovHeader()
 
 					for _, block := range blocks {
-						apiBlk, err := generateAPIBlock(vmContext, block, latestPov)
+						apiBlk, err := generateAPIBlock(l.ledger, block, latestPov)
 						if err != nil {
 							l.logger.Errorf("generateAPIBlock error: %s", err)
 							continue
@@ -1157,8 +1138,7 @@ func (l *LedgerAPI) NewPending(ctx context.Context, address types.Address) (*rpc
 								Hash:    block.GetHash(),
 							}
 							if pi, _ := l.ledger.GetPending(pk); pi != nil {
-								vmContext := vmstore.NewVMContext(l.ledger)
-								token, err := abi.GetTokenById(vmContext, pi.Type)
+								token, err := l.ledger.GetTokenById(pi.Type)
 								if err != nil {
 									l.logger.Errorf("get token info: %s", err)
 									return

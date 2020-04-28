@@ -13,6 +13,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -44,7 +45,7 @@ func TestDestroyParam_Signature(t *testing.T) {
 func TestPackSendBlock(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.BlackHoleAddress)
 	a1 := account1.Address()
 
 	if tm, err := l.GetTokenMeta(a1, config.GasToken()); err != nil {
@@ -71,7 +72,7 @@ func TestPackSendBlock(t *testing.T) {
 func TestGetTotalDestroyInfo(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.BlackHoleAddress)
 
 	a := mock.Address()
 	h := mock.Hash()
@@ -85,18 +86,18 @@ func TestGetTotalDestroyInfo(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	exp := types.Balance{Int: big.NewInt(10)}
 
-	if balance, err := GetTotalDestroyInfo(ctx, &a); err != nil {
+	if balance, err := GetTotalDestroyInfo(l, &a); err != nil {
 		t.Fatal(err)
 	} else if balance.Compare(exp) != types.BalanceCompEqual {
 		t.Fatalf("exp:%s, act: %s", exp.String(), balance.String())
 	}
-	if balance, err := GetTotalDestroyInfo(ctx, &a); err != nil {
+	if balance, err := GetTotalDestroyInfo(l, &a); err != nil {
 		t.Fatal(err)
 	} else if balance.Compare(exp) != types.BalanceCompEqual {
 		t.Fatalf("exp:%s, act: %s", exp.String(), balance.String())
@@ -106,7 +107,7 @@ func TestGetTotalDestroyInfo(t *testing.T) {
 func TestGetDestroyInfoDetail(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.BlackHoleAddress)
 
 	a := mock.Address()
 	h := mock.Hash()
@@ -120,11 +121,11 @@ func TestGetDestroyInfoDetail(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
-	if details, err := GetDestroyInfoDetail(ctx, &a); err != nil {
+	if details, err := GetDestroyInfoDetail(l, &a); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(details) != 1 {

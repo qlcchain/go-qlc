@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
-
 	"github.com/google/uuid"
 	rpc "github.com/qlcchain/jsonrpc2"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -37,6 +38,7 @@ func setupDefaultLedgerAPI(t *testing.T) (func(t *testing.T), ledger.Store, *Led
 	l := ledger.NewLedger(cm.ConfigFile)
 	setPovStatus(l, cc, t)
 	setLedgerStatus(l, t)
+	fmt.Println("case: ", t.Name())
 
 	ledgerApi := NewLedgerApi(context.Background(), l, cc.EventBus(), cc)
 	verifier := process.NewLedgerVerifier(l)

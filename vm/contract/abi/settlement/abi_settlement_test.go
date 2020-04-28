@@ -8,72 +8,25 @@
 package settlement
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
-	cfg "github.com/qlcchain/go-qlc/config"
-	"github.com/qlcchain/go-qlc/ledger"
-	"github.com/qlcchain/go-qlc/ledger/process"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
-
-func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
-	t.Parallel()
-	dir := filepath.Join(cfg.QlcTestDataDir(), "settlement", uuid.New().String())
-	_ = os.RemoveAll(dir)
-	cm := cfg.NewCfgManager(dir)
-	_, err := cm.Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	l := ledger.NewLedger(cm.ConfigFile)
-
-	var blocks []*types.StateBlock
-	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
-		t.Fatal(err)
-	}
-
-	verifier := process.NewLedgerVerifier(l)
-
-	for i := range blocks {
-		block := blocks[i]
-
-		if err := verifier.BlockProcess(block); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	return func(t *testing.T) {
-		//err := l.DBStore.Erase()
-		err := l.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		//CloseLedger()
-		err = os.RemoveAll(dir)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}, l
-}
 
 func TestGetContractsByAddress(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 	var contracts []*ContractParam
 
 	for i := 0; i < 4; i++ {
@@ -85,7 +38,7 @@ func TestGetContractsByAddress(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -103,7 +56,7 @@ func TestGetContractsByAddress(t *testing.T) {
 	a := contracts[0].PartyA.Address
 
 	type args struct {
-		ctx  *vmstore.VMContext
+		ctx  ledger.Store
 		addr *types.Address
 	}
 	tests := []struct {
@@ -115,7 +68,7 @@ func TestGetContractsByAddress(t *testing.T) {
 		{
 			name: "1st",
 			args: args{
-				ctx:  ctx,
+				ctx:  l,
 				addr: &a,
 			},
 			want:    []*ContractParam{contracts[0]},
@@ -181,7 +134,8 @@ func mockContractData(size int) []*ContractParam {
 func TestGetAllSettlementContract(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	for i := 0; i < 4; i++ {
 		param := buildContractParam()
@@ -191,12 +145,12 @@ func TestGetAllSettlementContract(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	type args struct {
-		ctx  *vmstore.VMContext
+		ctx  ledger.Store
 		size int
 	}
 	tests := []struct {
@@ -208,7 +162,7 @@ func TestGetAllSettlementContract(t *testing.T) {
 		{
 			name: "",
 			args: args{
-				ctx:  ctx,
+				ctx:  l,
 				size: 4,
 			},
 			want:    nil,
@@ -242,7 +196,7 @@ func TestGetContracts(t *testing.T) {
 		t.Fatalf("invalid mock data, %v", data)
 	}
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 	for _, d := range data {
 		a, _ := d.Address()
 		abi, _ := d.ToABI()
@@ -252,7 +206,7 @@ func TestGetContracts(t *testing.T) {
 			//t.Log(hex.EncodeToString(abi))
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -274,7 +228,8 @@ func TestGetContracts(t *testing.T) {
 func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 	data := mockContractData(2)
 
 	if len(data) != 2 {
@@ -288,14 +243,14 @@ func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	a1 := data[0].PartyA.Address
 
 	type args struct {
-		ctx  *vmstore.VMContext
+		ctx  ledger.Store
 		addr *types.Address
 	}
 	tests := []struct {
@@ -307,7 +262,7 @@ func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx:  ctx,
+				ctx:  l,
 				addr: &a1,
 			},
 			want:    []*ContractParam{data[0]},
@@ -339,7 +294,8 @@ func TestGetContractsIDByAddressAsPartyA(t *testing.T) {
 func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 	data := mockContractData(2)
 
 	if len(data) != 2 {
@@ -353,14 +309,14 @@ func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	a2 := data[0].PartyB.Address
 
 	type args struct {
-		ctx  *vmstore.VMContext
+		ctx  ledger.Store
 		addr *types.Address
 	}
 	tests := []struct {
@@ -372,7 +328,7 @@ func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx:  ctx,
+				ctx:  l,
 				addr: &a2,
 			},
 			want:    []*ContractParam{data[0]},
@@ -405,7 +361,8 @@ func TestGetContractsIDByAddressAsPartyB(t *testing.T) {
 func TestGetContractsAddressByPartyANextStop(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 	data := mockContractData(2)
 	data[0].NextStops = append(data[0].NextStops, "PCCWG")
 
@@ -420,14 +377,14 @@ func TestGetContractsAddressByPartyANextStop(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	a1 := data[0].PartyA.Address
 
 	type args struct {
-		ctx  *vmstore.VMContext
+		ctx  ledger.Store
 		addr *types.Address
 	}
 	tests := []struct {
@@ -439,7 +396,7 @@ func TestGetContractsAddressByPartyANextStop(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx:  ctx,
+				ctx:  l,
 				addr: &a1,
 			},
 			want:    []*ContractParam{data[0]},
@@ -465,7 +422,8 @@ func TestGetContractsAddressByPartyANextStop(t *testing.T) {
 func TestGetContractsAddressByPartyBPreStop(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 	data := mockContractData(2)
 	data[0].PreStops = append(data[0].PreStops, "CSL")
 	if len(data) != 2 {
@@ -479,14 +437,14 @@ func TestGetContractsAddressByPartyBPreStop(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	a2 := data[0].PartyB.Address
 
 	type args struct {
-		ctx  *vmstore.VMContext
+		ctx  ledger.Store
 		addr *types.Address
 	}
 	tests := []struct {
@@ -498,7 +456,7 @@ func TestGetContractsAddressByPartyBPreStop(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx:  ctx,
+				ctx:  l,
 				addr: &a2,
 			},
 			want:    []*ContractParam{data[0]},
@@ -525,7 +483,7 @@ func TestGetSettlementContract(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	var contracts []*ContractParam
 
@@ -544,7 +502,7 @@ func TestGetSettlementContract(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -555,20 +513,20 @@ func TestGetSettlementContract(t *testing.T) {
 	cdr := cdrParam
 	cdr.NextStop = "HKTCSL"
 
-	if c, err := FindSettlementContract(ctx, &a1, &cdr); err != nil {
+	if c, err := FindSettlementContract(l, &a1, &cdr); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(c)
 	}
 	a2 := mock.Address()
-	if _, err := FindSettlementContract(ctx, &a2, &cdr); err == nil {
+	if _, err := FindSettlementContract(l, &a2, &cdr); err == nil {
 		t.Fatal("should find nothing...")
 	}
 
 	a3 := contracts[0].PartyB.Address
 	cdr3 := cdrParam
 	cdr3.PreStop = "PCCWG"
-	if _, err := FindSettlementContract(ctx, &a3, &cdr3); err != nil {
+	if _, err := FindSettlementContract(l, &a3, &cdr3); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -591,7 +549,8 @@ func buildCDRStatus() *CDRStatus {
 func TestGetAllCDRStatus(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	contractAddr := mock.Address()
 
@@ -616,12 +575,12 @@ func TestGetAllCDRStatus(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	type args struct {
-		ctx  *vmstore.VMContext
+		ctx  ledger.Store
 		addr *types.Address
 		size int
 	}
@@ -634,7 +593,7 @@ func TestGetAllCDRStatus(t *testing.T) {
 		{
 			name: "ok",
 			args: args{
-				ctx:  ctx,
+				ctx:  l,
 				addr: &contractAddr,
 				size: len(data),
 			},
@@ -659,7 +618,8 @@ func TestGetAllCDRStatus(t *testing.T) {
 func TestGetCDRStatus(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	contractAddr := mock.Address()
 	contractAddr2 := mock.Address()
@@ -678,7 +638,7 @@ func TestGetCDRStatus(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -739,7 +699,8 @@ func TestGetCDRStatus(t *testing.T) {
 func TestGetSummaryReport(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	// mock settlement contract
 	ac1 := mock.Account()
@@ -759,7 +720,7 @@ func TestGetSummaryReport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -792,17 +753,17 @@ func TestGetSummaryReport(t *testing.T) {
 			}
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
-	if report, err := GetSummaryReport(ctx, &contractAddr, 0, 0); err != nil {
+	if report, err := GetSummaryReport(l, &contractAddr, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(report)
 	}
 
-	if invoices, err := GenerateInvoices(ctx, &a1, 0, 0); err != nil {
+	if invoices, err := GenerateInvoices(l, &a1, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(invoices) == 0 {
@@ -813,7 +774,7 @@ func TestGetSummaryReport(t *testing.T) {
 		}
 	}
 
-	if invoices, err := GenerateInvoicesByContract(ctx, &contractAddr, 0, 0); err != nil {
+	if invoices, err := GenerateInvoicesByContract(l, &contractAddr, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(invoices) == 0 {
@@ -826,7 +787,8 @@ func TestGetSummaryReport(t *testing.T) {
 func TestGetStopNames(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	// mock settlement contract
 	ac1 := mock.Account()
@@ -858,7 +820,7 @@ func TestGetStopNames(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -890,7 +852,8 @@ func TestGetStopNames(t *testing.T) {
 func TestSaveCDRStatus(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	a1 := mock.Address()
 	cdr := buildCDRStatus()
@@ -927,7 +890,8 @@ func TestSaveCDRStatus(t *testing.T) {
 func TestGetCDRMapping(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	a1 := mock.Address()
 	a2 := mock.Address()
@@ -954,7 +918,8 @@ func TestGetCDRMapping(t *testing.T) {
 func TestGenerateMultiPartyInvoice(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	a1 := mock.Address()
 	a2 := mock.Address()
@@ -1096,19 +1061,19 @@ func TestGenerateMultiPartyInvoice(t *testing.T) {
 	}
 
 	// save to db
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	// generate summary report
-	if report, err := GetMultiPartySummaryReport(ctx, &ca1, &ca2, 0, 0); err != nil {
+	if report, err := GetMultiPartySummaryReport(l, &ca1, &ca2, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Log(report.String())
 	}
 
 	// generate invoice
-	if invoice, err := GenerateMultiPartyInvoice(ctx, &ca1, &ca2, 0, 0); err != nil {
+	if invoice, err := GenerateMultiPartyInvoice(l, &ca1, &ca2, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(invoice) == 0 {
@@ -1116,7 +1081,7 @@ func TestGenerateMultiPartyInvoice(t *testing.T) {
 		}
 		t.Log(util.ToIndentString(invoice))
 	}
-	if cdrs, err := GetMultiPartyCDRStatus(ctx, &ca1, &ca2); err != nil {
+	if cdrs, err := GetMultiPartyCDRStatus(l, &ca1, &ca2); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(cdrs) != 2 {
@@ -1135,7 +1100,7 @@ func TestGetContractsByStatus(t *testing.T) {
 		t.Fatalf("invalid mock data, %v", data)
 	}
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 	for _, d := range data {
 		d.Status = ContractStatusActivated
 		a, _ := d.Address()
@@ -1146,13 +1111,13 @@ func TestGetContractsByStatus(t *testing.T) {
 			//t.Log(hex.EncodeToString(abi))
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
 	addr := data[0].PartyA.Address
 
-	if contracts, err := GetContractsByStatus(ctx, &addr, ContractStatusActivated); err != nil {
+	if contracts, err := GetContractsByStatus(l, &addr, ContractStatusActivated); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(contracts) != 2 {
@@ -1171,7 +1136,7 @@ func TestGetExpiredContracts(t *testing.T) {
 		t.Fatalf("invalid mock data, %v", data)
 	}
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 	for _, d := range data {
 		d.Status = ContractStatusActivated
 		d.EndDate = time.Now().AddDate(0, 0, -1).Unix()
@@ -1183,12 +1148,13 @@ func TestGetExpiredContracts(t *testing.T) {
 			//t.Log(hex.EncodeToString(abi))
 		}
 	}
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
+
 	addr := data[0].PartyA.Address
 
-	if contracts, err := GetExpiredContracts(ctx, &addr); err != nil {
+	if contracts, err := GetExpiredContracts(l, &addr); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(contracts) != 2 {
@@ -1200,7 +1166,7 @@ func TestGetExpiredContracts(t *testing.T) {
 func TestGetAllAssert(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	addr1 := mock.Address()
 	size := 10
@@ -1222,17 +1188,17 @@ func TestGetAllAssert(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
-	if asserts, err := GetAllAsserts(ctx); err != nil {
+	if asserts, err := GetAllAsserts(l); err != nil {
 		t.Fatal(err)
 	} else if len(asserts) != size {
 		t.Fatalf("invalid assert size, exp: %d, act: %d", size, len(asserts))
 	}
 
-	if asserts, err := GetAssertsByAddress(ctx, &addr1); err != nil {
+	if asserts, err := GetAssertsByAddress(l, &addr1); err != nil {
 		t.Fatal(err)
 	} else if len(asserts) != size/2 {
 		t.Fatalf("invalid assert size, exp: %d, act: %d", size/2, len(asserts))
@@ -1242,7 +1208,7 @@ func TestGetAllAssert(t *testing.T) {
 func TestGetAssetParam(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	template := assetParam
 	template.Owner.Address = mock.Address()
@@ -1261,9 +1227,10 @@ func TestGetAssetParam(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
+
 	if hash, err := a.ToAddress(); err != nil {
 		t.Fatal(err)
 	} else {
@@ -1278,7 +1245,7 @@ func TestGetAssetParam(t *testing.T) {
 func TestGetContractParam(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	a1 := mock.Address()
 	a2 := mock.Address()
@@ -1304,7 +1271,7 @@ func TestGetContractParam(t *testing.T) {
 func TestGetSummaryReportByAccount(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	a1 := mock.Address()
 	a2 := mock.Address()
@@ -1360,11 +1327,11 @@ func TestGetSummaryReportByAccount(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
-	if report, err := GetSummaryReportByAccount(ctx, &contractAddr, account, 0, 0); err != nil {
+	if report, err := GetSummaryReportByAccount(l, &contractAddr, account, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		if v, ok := report.Records[account]; !ok {
@@ -1374,7 +1341,7 @@ func TestGetSummaryReportByAccount(t *testing.T) {
 		}
 	}
 
-	if invoice, err := GenerateInvoicesByAccount(ctx, &contractAddr, account, 0, 0); err != nil {
+	if invoice, err := GenerateInvoicesByAccount(l, &contractAddr, account, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(invoice) == 0 {
@@ -1388,7 +1355,7 @@ func TestGetSummaryReportByAccount(t *testing.T) {
 func TestGetSummaryReportByCustomer(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.SettlementAddress)
 
 	a1 := mock.Address()
 	a2 := mock.Address()
@@ -1445,11 +1412,11 @@ func TestGetSummaryReportByCustomer(t *testing.T) {
 		}
 	}
 
-	if err := ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
-	if report, err := GetSummaryReportByCustomer(ctx, &contractAddr, customer, 0, 0); err != nil {
+	if report, err := GetSummaryReportByCustomer(l, &contractAddr, customer, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		if v, ok := report.Records[customer]; !ok {
@@ -1459,7 +1426,7 @@ func TestGetSummaryReportByCustomer(t *testing.T) {
 		}
 	}
 
-	if invoice, err := GenerateInvoicesByCustomer(ctx, &contractAddr, customer, 0, 0); err != nil {
+	if invoice, err := GenerateInvoicesByCustomer(l, &contractAddr, customer, 0, 0); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(invoice) == 0 {

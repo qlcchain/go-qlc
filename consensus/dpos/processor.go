@@ -2,16 +2,18 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/vm/contract"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 
 	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
@@ -691,7 +693,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 		}
 
 		tokenId := new(types.Hash)
-		err = cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.GetData())
+		err = mintage.MintageABI.UnpackMethod(tokenId, mintage.MethodNameMintageWithdraw, input.GetData())
 		if err != nil {
 			dps.logger.Errorf("get token info err %s", err)
 			return
@@ -717,11 +719,15 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 			break
 		}
 
-		if c, ok, err := vmcontract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
 			d := c.GetDescribe()
 			switch d.GetVersion() {
-			case vmcontract.SpecVer2:
-				vmCtx := vmstore.NewVMContext(dps.ledger)
+			case contract.SpecVer2:
+				vmCtx := vmstore.NewVMContextWithBlock(dps.ledger, bs.Block)
+				if vmCtx == nil {
+					dps.logger.Errorf("enqueue unchecked: can not get vm context")
+					return
+				}
 				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
 				if err != nil || gapResult != common.ContractRewardGapPov {
 					dps.logger.Errorf("add gap pov block to ledger err %s", err)
@@ -839,8 +845,8 @@ func (p *Processor) dequeueGapToken(hash types.Hash) {
 		return
 	}
 
-	param := new(cabi.ParamMintage)
-	if err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.GetData()); err != nil {
+	param := new(mintage.ParamMintage)
+	if err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.GetData()); err != nil {
 		return
 	}
 

@@ -31,7 +31,7 @@ var (
 func setupLedgerForTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	t.Parallel()
 
-	dir := filepath.Join(cfg.QlcTestDataDir(), "settlement", uuid.New().String())
+	dir := filepath.Join(cfg.QlcTestDataDir(), "contract", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := cfg.NewCfgManager(dir)
 	_, err := cm.Load()
@@ -44,7 +44,7 @@ func setupLedgerForTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger) {
 	if err := json.Unmarshal([]byte(mock.MockBlocks), &blocks); err != nil {
 		t.Fatal(err)
 	}
-
+	//verifier := process.NewLedgerVerifier(l)
 	for i := range blocks {
 		block := blocks[i]
 		//if err := verifier.BlockProcess(block); err != nil {

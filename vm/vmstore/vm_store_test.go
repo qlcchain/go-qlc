@@ -11,21 +11,17 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
-
-	"github.com/qlcchain/go-qlc/common/storage"
-
-	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 )
 
-func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
+func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext, ledger.Store) {
 	t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "vm", uuid.New().String())
@@ -35,7 +31,18 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
 	cm.Load()
 	l := ledger.NewLedger(cm.ConfigFile)
 
-	v := NewVMContext(l)
+	block, td := mock.GeneratePovBlock(nil, 0)
+	if err := l.AddPovBlock(block, td); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddPovBestHash(block.GetHeight(), block.GetHash()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.SetPovLatestHeight(block.GetHeight()); err != nil {
+		t.Fatal(err)
+	}
+
+	v := NewVMContext(l, nil)
 
 	return func(t *testing.T) {
 		//err := v.db.Erase()
@@ -48,27 +55,27 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	}, v
+	}, v, l
 }
 
 func TestLedger_Storage(t *testing.T) {
-	teardownTestCase, context := setupTestCase(t)
+	teardownTestCase, ctx, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	prefix := mock.Hash()
 	key := []byte{10, 20, 30}
 	value := []byte{10, 20, 30, 40}
-	if err := context.SetStorage(prefix[:], key, value); err != nil {
+	if err := ctx.SetStorage(prefix[:], key, value); err != nil {
 		t.Fatal(err)
 	}
 
 	for i := 0; i < 10; i++ {
-		if err := context.SetStorage(prefix[:], []byte{10, 20, 40, byte(i)}, value); err != nil {
+		if err := ctx.SetStorage(prefix[:], []byte{10, 20, 40, byte(i)}, value); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	v, err := context.GetStorage(prefix[:], key)
+	v, err := ctx.GetStorage(prefix[:], key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,52 +84,48 @@ func TestLedger_Storage(t *testing.T) {
 	}
 
 	storageKey := getStorageKey(prefix[:], key)
-	if get, err := context.get(storageKey); err == nil {
+	if get, err := ctx.get(storageKey); err == nil {
 		t.Fatal("invalid storage", err)
 	} else {
 		t.Log(get, err)
 	}
 
-	err = context.SaveStorage()
+	cache := ToCache(ctx)
+	err = l.SaveStorage(cache)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if get, err := context.get(storageKey); get == nil {
+	if get, err := ctx.get(storageKey); get == nil {
 		t.Fatal("invalid storage", err)
 	} else {
 		if !bytes.EqualFold(get, value) {
-			t.Fatal("invalid val")
+			t.Fatalf("invalid val,exp:%v, got:%v", value, get)
 		} else {
 			t.Log(get, err)
 		}
 	}
 
-	if err := context.RemoveStorage(prefix[:], key); err != nil {
-		t.Fatal(err)
-	}
-
-	if storage, err := context.GetStorage(prefix[:], key); err == nil && storage != nil {
-		t.Fatal("failed to delete storage")
-	}
-
 	counter := 0
-	if err = context.Iterator(prefix[:], func(key []byte, value []byte) error {
+	if err = ctx.Iterator(prefix[:], func(key []byte, value []byte) error {
 		counter++
 		return nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	if counter != 10 {
-		t.Fatal("failed to iterator context data")
+	const iteratorSize = 11
+	if counter != iteratorSize {
+		t.Fatalf("failed to iterator context data,exp: 11, got: %d", counter)
 	}
 
-	storage := context.Cache.Storage()
-	if len(storage) != 10 {
+	storage := ctx.cache.storage
+	if len(storage) != iteratorSize {
 		t.Fatal("failed to iterator cache data")
 	}
-	cacheTrie := context.Cache.Trie()
+	cacheTrie := ctx.cache.Trie(func(bytes []byte) []byte {
+		return ctx.getRawStorageKey(bytes, nil)
+	})
 	if cacheTrie == nil {
 		t.Fatal("invalid trie")
 	}
@@ -132,102 +135,43 @@ func TestLedger_Storage(t *testing.T) {
 	} else {
 		t.Log(hash.String())
 	}
-	if err = context.SaveTrie(); err != nil {
-		t.Fatal(err)
-	}
 }
 
-func TestGetStorageKey(t *testing.T) {
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			prefix := make([]byte, 10)
-			key := make([]byte, 5)
-			storageKey := getStorageKey(prefix, key)
-			if storageKey[0] != storage.KeyPrefixTrieVMStorage {
-				t.Errorf("invalid prefix 0x%x", storageKey[:1])
-			}
-			if !bytes.HasPrefix(storageKey[1:], prefix) {
-				t.Error("invalid prefix data")
-			}
-
-			if !bytes.HasSuffix(storageKey, key) {
-				t.Error("invalid key data")
-			}
-		}()
-	}
-
-	wg.Wait()
+func getStorageKey(prefix []byte, key []byte) []byte {
+	var storageKey []byte
+	storageKey = append(storageKey, prefix...)
+	storageKey = append(storageKey, key...)
+	return storageKey
 }
 
 func TestVMCache_AppendLog(t *testing.T) {
-	teardownTestCase, ctx := setupTestCase(t)
+	teardownTestCase, ctx, _ := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx.Cache.AppendLog(&types.VmLog{
+	ctx.cache.AppendLog(&types.VmLog{
 		Topics: []types.Hash{mock.Hash()},
 		Data:   []byte{10, 20, 30, 40},
 	})
 
-	ctx.Cache.AppendLog(&types.VmLog{
+	ctx.cache.AppendLog(&types.VmLog{
 		Topics: []types.Hash{mock.Hash()},
 		Data:   []byte{10, 20, 30, 50},
 	})
 
-	logs := ctx.Cache.LogList()
+	logs := ctx.cache.LogList()
 	for idx, l := range logs.Logs {
 		t.Log(idx, " >>>", l.Topics, ":", l.Data)
 	}
 
-	ctx.Cache.Clear()
+	ctx.cache.Clear()
 
-	if len(ctx.Cache.logList.Logs) != 0 {
+	if len(ctx.cache.logList.Logs) != 0 {
 		t.Fatal("invalid logs ")
 	}
 }
 
-func TestVMContext_GetStorageByKey(t *testing.T) {
-	teardownTestCase, ctx := setupTestCase(t)
-	defer teardownTestCase(t)
-
-	prefix := mock.Hash()
-	key := []byte{10, 20, 30}
-	value := []byte{10, 20, 30, 40}
-
-	if err := ctx.SetStorage(prefix[:], key, value); err != nil {
-		t.Fatal(err)
-	}
-
-	storageKey := getStorageKey(prefix[:], key)
-
-	if v, err := ctx.GetStorageByKey(storageKey); err != nil {
-		t.Fatal(err)
-	} else if !bytes.Equal(v, value) {
-		t.Fatalf("exp: %v, act: %v", value, v)
-	}
-
-	if err := ctx.RemoveStorageByKey(storageKey); err != nil {
-		t.Fatal(err)
-	}
-
-	if v, err := ctx.GetStorageByKey(storageKey); err == nil {
-		t.Fatal(err)
-	} else {
-		if err != ErrStorageNotFound {
-			t.Fatal(err)
-		}
-
-		if v != nil {
-			t.Fatal(v)
-		}
-	}
-}
-
 func TestVMContext_IsUserAccount(t *testing.T) {
-	teardownTestCase, ctx := setupTestCase(t)
+	teardownTestCase, ctx, _ := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	if b, err := ctx.IsUserAccount(mock.Address()); err == nil || b {

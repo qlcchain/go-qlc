@@ -18,7 +18,6 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -279,9 +278,9 @@ func (r *RewardsAPI) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 
 	rev := &types.StateBlock{Timestamp: common.TimeNow().Unix()}
 
-	var result []*vmcontract.ContractBlock
+	var result []*contract.ContractBlock
 
-	vmContext := vmstore.NewVMContext(r.ledger)
+	vmContext := vmstore.NewVMContext(r.ledger, &contractaddress.RewardsAddress)
 	if r.IsAirdropRewards(blk.Data) {
 		result, err = r.rewards.DoReceive(vmContext, rev, blk)
 	} else {
@@ -294,7 +293,7 @@ func (r *RewardsAPI) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 				return nil, fmt.Errorf("get pov header error: %s", err)
 			}
 			rev.PoVHeight = povHeader.GetHeight()
-			h := result[0].VMContext.Cache.Trie().Hash()
+			h := vmstore.TrieHash(result[0].VMContext)
 			if h != nil {
 				rev.Extra = *h
 			}
@@ -315,23 +314,23 @@ func (r *RewardsAPI) IsAirdropRewards(data []byte) bool {
 }
 
 func (r *RewardsAPI) GetTotalRewards(txId string) (*big.Int, error) {
-	return cabi.GetTotalRewards(vmstore.NewVMContext(r.ledger), txId)
+	return cabi.GetTotalRewards(r.ledger, txId)
 }
 
 func (r *RewardsAPI) GetRewardsDetail(txId string) ([]*cabi.RewardsInfo, error) {
-	return cabi.GetRewardsDetail(vmstore.NewVMContext(r.ledger), txId)
+	return cabi.GetRewardsDetail(r.ledger, txId)
 }
 
 func (r *RewardsAPI) GetConfidantRewards(confidant types.Address) (map[string]*big.Int, error) {
-	return cabi.GetConfidantRewords(vmstore.NewVMContext(r.ledger), confidant)
+	return cabi.GetConfidantRewords(r.ledger, confidant)
 }
 
 func (r *RewardsAPI) GetConfidantRewordsDetail(confidant types.Address) (map[string][]*cabi.RewardsInfo, error) {
-	return cabi.GetConfidantRewordsDetail(vmstore.NewVMContext(r.ledger), confidant)
+	return cabi.GetConfidantRewordsDetail(r.ledger, confidant)
 }
 
 func checkContractMethod(data []byte) (string, error) {
-	if name, b, err := vmcontract.GetChainContractName(contractaddress.RewardsAddress, data); b {
+	if name, b, err := contract.GetChainContractName(contractaddress.RewardsAddress, data); b {
 		return name, nil
 	} else {
 		return "", err

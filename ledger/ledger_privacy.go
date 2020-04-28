@@ -30,10 +30,7 @@ func (l *Ledger) DeleteBlockPrivatePayload(hash types.Hash) error {
 	if err != nil {
 		return err
 	}
-	if err := l.store.Delete(k); err != nil {
-		return err
-	}
-	return nil
+	return l.store.Delete(k)
 }
 
 func (l *Ledger) GetBlockPrivatePayload(hash types.Hash) ([]byte, error) {

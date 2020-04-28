@@ -9,12 +9,81 @@ import (
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/contract/dpki"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+)
+
+var PKDContract = NewChainContract(
+	map[string]Contract{
+		abi.MethodNamePKDVerifierRegister: &VerifierRegister{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
+				},
+			},
+		},
+		abi.MethodNamePKDVerifierUnregister: &VerifierUnregister{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
+				},
+			},
+		},
+		abi.MethodNamePKDPublish: &Publish{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					povState:  true,
+				},
+			},
+		},
+		abi.MethodNamePKDUnPublish: &UnPublish{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+				},
+			},
+		},
+		abi.MethodNamePKDOracle: &Oracle{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					povState:  true,
+				},
+			},
+		},
+		abi.MethodNamePKDReward: &PKDReward{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					pending:   true,
+					work:      true,
+				},
+			},
+		},
+		abi.MethodNamePKDVerifierHeart: &VerifierHeart{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					povState:  true,
+				},
+			},
+		},
+	},
+	abi.PublicKeyDistributionABI,
+	abi.JsonPublicKeyDistribution,
 )
 
 type VerifierRegister struct {
@@ -149,7 +218,7 @@ func (vh *VerifierHeart) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 		}
 	}
 
-	amount, err := ctx.Ledger.CalculateAmount(block)
+	amount, err := ctx.CalculateAmount(block)
 	if err != nil {
 		return nil, nil, ErrCalcAmount
 	}
@@ -213,7 +282,7 @@ func (p *Publish) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (
 		return nil, nil, ErrCheckParam
 	}
 
-	amount, err := ctx.Ledger.CalculateAmount(block)
+	amount, err := ctx.CalculateAmount(block)
 	if err != nil {
 		return nil, nil, ErrCalcAmount
 	}
@@ -382,7 +451,7 @@ func (o *Oracle) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*
 		return nil, nil, ErrCheckParam
 	}
 
-	amount, err := ctx.Ledger.CalculateAmount(block)
+	amount, err := ctx.CalculateAmount(block)
 	if err != nil {
 		return nil, nil, ErrCalcAmount
 	}
@@ -547,7 +616,7 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	}
 
 	// check account exist
-	am, _ := ctx.Ledger.GetAccountMeta(param.Account)
+	am, _ := ctx.GetAccountMeta(param.Account)
 	if am == nil {
 		return nil, nil, errors.New("verifier account not exist")
 	}
@@ -612,7 +681,7 @@ func (r *PKDReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 		}, nil
 }
 
-func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(dpki.PKDRewardParam)
 
 	err := abi.PublicKeyDistributionABI.UnpackMethod(param, abi.MethodNamePKDReward, input.Data)
@@ -638,7 +707,7 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 	block.Storage = types.NewBalance(0)
 	block.Network = types.NewBalance(0)
 
-	amBnf, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
+	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
 		tmBnf := amBnf.Token(cfg.GasToken())
 		if tmBnf != nil {
@@ -660,7 +729,7 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 		block.Previous = types.ZeroHash
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -682,7 +751,7 @@ func (r *PKDReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (comm
 
 	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
 
-	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
+	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return common.ContractRewardGapPov, needHeight, nil
 	}
@@ -735,13 +804,7 @@ func (r *PKDReward) GetRewardInfo(ctx *vmstore.VMContext, address types.Address)
 }
 
 func (r *PKDReward) GetVerifierState(ctx *vmstore.VMContext, povHeight uint64, address types.Address) (*types.PovVerifierState, error) {
-	povHdr, err := ctx.Ledger.GetPovHeaderByHeight(povHeight)
-	if err != nil {
-		return nil, err
-	}
-
-	gsdb := statedb.NewPovGlobalStateDB(ctx.Ledger.DBStore(), povHdr.GetStateHash())
-	csdb, err := gsdb.LookupContractStateDB(contractaddress.PubKeyDistributionAddress)
+	csdb, err := ctx.PoVContractStateByHeight(povHeight)
 	if err != nil {
 		return nil, err
 	}

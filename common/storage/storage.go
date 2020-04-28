@@ -80,14 +80,19 @@ const (
 	KeyPrefixPeerInfo    //prefix+peerID => peerInfo
 	KeyPrefixGapPublish
 	KeyPrefixDPoS
+	KeyPrefixAccountBlockHash
+	KeyPrefixAccountPovHeight
 	KeyPrefixPrivatePayload
 
 	// Trie key space should be different
-	KeyPrefixTrieVMStorage = 100 // vm_store.go, idPrefixStorage
+	KeyPrefixTrieVMStorage = 100 // Deprecated vm_store.go, idPrefixStorage
 	KeyPrefixTrie          = 101 // 101 is used for trie intermediate node, trie.go, idPrefixTrie
 	KeyPrefixTriePovState  = 102
-
-	KeyPrefixGenericType = 255
+	KeyPrefixContractValue = 103 // idPrefixContractValue ledger.go
+	KeyPrefixVmLogs        = 104 // vm_store.go
+	KeyPrefixVMStorage     = 105 // vm_store.go
+	KeyPrefixGenericType   = 254
+	KeyPrefixGenericTypeC  = 255
 )
 
 func GetKeyOfParts(t KeyPrefix, partList ...interface{}) ([]byte, error) {

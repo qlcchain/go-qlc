@@ -9,6 +9,7 @@ package chain
 
 import (
 	"errors"
+	"fmt"
 
 	"go.uber.org/zap"
 
@@ -64,7 +65,7 @@ func (ls *LedgerService) Init() error {
 			}
 		}
 	}
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MintageAddress)
 	for _, v := range genesisInfos {
 		mb := v.Mintage
 		gb := v.Genesis
@@ -93,8 +94,7 @@ func (ls *LedgerService) Init() error {
 			}
 		}
 	}
-	_ = ctx.SaveStorage()
-	return nil
+	return l.SetStorage(vmstore.ToCache(ctx))
 }
 
 func (ls *LedgerService) Start() error {
@@ -102,7 +102,9 @@ func (ls *LedgerService) Start() error {
 		return errors.New("pre start fail")
 	}
 	defer ls.PostStart()
-
+	if err := ls.registerRelation(); err != nil {
+		return fmt.Errorf("ledger start: %s", err)
+	}
 	return nil
 }
 
@@ -121,4 +123,11 @@ func (ls *LedgerService) Stop() error {
 
 func (ls *LedgerService) Status() int32 {
 	return ls.State()
+}
+
+func (ls *LedgerService) registerRelation() error {
+	//if err := ls.Ledger.RegisterInterface(new(StructA),new(StructB));err !=nil{
+	//	return err
+	//}
+	return nil
 }

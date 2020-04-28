@@ -18,11 +18,11 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -60,12 +60,12 @@ func (m *MintageAPI) GetMintageData(param *MintageParams) ([]byte, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
-	tokenId := cabi.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
+	tokenId := mintage.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
 	totalSupply, err := util.StringToBigInt(&param.TotalSupply)
 	if err != nil {
 		return nil, err
 	}
-	return cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol,
+	return mintage.MintageABI.PackMethod(mintage.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol,
 		totalSupply, param.Decimals, param.Beneficial, param.NEP5TxId)
 }
 
@@ -77,12 +77,12 @@ func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
-	tokenId := cabi.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
+	tokenId := mintage.NewTokenHash(param.SelfAddr, param.PrevHash, param.TokenName)
 	totalSupply, err := util.StringToBigInt(&param.TotalSupply)
 	if err != nil {
 		return nil, err
 	}
-	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol,
+	data, err := mintage.MintageABI.PackMethod(mintage.MethodNameMintage, tokenId, param.TokenName, param.TokenSymbol,
 		totalSupply, param.Decimals, param.Beneficial, param.NEP5TxId)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (m *MintageAPI) GetMintageBlock(param *MintageParams) (*types.StateBlock, e
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(m.l)
+	vmContext := vmstore.NewVMContext(m.l, &contractaddress.MintageAddress)
 	err = m.mintage.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (m *MintageAPI) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 	}
 
 	reward := &types.StateBlock{}
-	vmContext := vmstore.NewVMContext(m.l)
+	vmContext := vmstore.NewVMContext(m.l, &contractaddress.MintageAddress)
 	blocks, err := m.mintage.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
@@ -150,7 +150,7 @@ func (m *MintageAPI) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 		}
 		reward.PoVHeight = povHeader.GetHeight()
 		reward.Timestamp = common.TimeNow().Unix()
-		h := blocks[0].VMContext.Cache.Trie().Hash()
+		h := vmstore.TrieHash(blocks[0].VMContext)
 		if h == nil {
 			return nil, errors.New("trie hash is nil")
 		}
@@ -162,11 +162,11 @@ func (m *MintageAPI) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 }
 
 func (m *MintageAPI) GetWithdrawMintageData(tokenId types.Hash) ([]byte, error) {
-	return cabi.MintageABI.PackMethod(cabi.MethodNameMintageWithdraw, tokenId)
+	return mintage.MintageABI.PackMethod(mintage.MethodNameMintageWithdraw, tokenId)
 }
 
 func (p *MintageAPI) ParseTokenInfo(data []byte) (*types.TokenInfo, error) {
-	return cabi.ParseTokenInfo(data)
+	return mintage.ParseTokenInfo(data)
 }
 
 type WithdrawParams struct {
@@ -185,7 +185,7 @@ func (m *MintageAPI) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 	if tm == nil {
 		return nil, fmt.Errorf("%s do not hava any chain token", param.SelfAddr.String())
 	}
-	data, err := cabi.MintageABI.PackMethod(cabi.MethodNameMintageWithdraw, param.TokenId)
+	data, err := mintage.MintageABI.PackMethod(mintage.MethodNameMintageWithdraw, param.TokenId)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (m *MintageAPI) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		PoVHeight:      povHeader.GetHeight(),
 		Timestamp:      common.TimeNow().Unix(),
 	}
-	vmContext := vmstore.NewVMContext(m.l)
+	vmContext := vmstore.NewVMContext(m.l, &contractaddress.MintageAddress)
 	err = m.withdraw.DoSend(vmContext, send)
 	if err != nil {
 		return nil, err
@@ -226,7 +226,7 @@ func (m *MintageAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 		return nil, chainctx.ErrPoVNotFinish
 	}
 	reward := &types.StateBlock{}
-	vmContext := vmstore.NewVMContext(m.l)
+	vmContext := vmstore.NewVMContext(m.l, &contractaddress.MintageAddress)
 	blocks, err := m.withdraw.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
@@ -239,7 +239,7 @@ func (m *MintageAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 		}
 		reward.PoVHeight = povHeader.GetHeight()
 		reward.Timestamp = common.TimeNow().Unix()
-		h := blocks[0].VMContext.Cache.Trie().Hash()
+		h := vmstore.TrieHash(blocks[0].VMContext)
 		reward.Extra = *h
 		return reward, nil
 	}

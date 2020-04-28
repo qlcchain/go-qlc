@@ -16,6 +16,7 @@ import (
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -45,8 +46,8 @@ func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock
 		return nil, context.ErrPoVNotFinish
 	}
 
-	vmContext := vmstore.NewVMContext(b.l)
-	sb, err := cabi.PackSendBlock(vmContext, param)
+	vmCtx := vmstore.NewVMContext(b.l, &contractaddress.BlackHoleAddress)
+	sb, err := cabi.PackSendBlock(vmCtx, param)
 	if err != nil {
 		return nil, err
 	}
@@ -55,11 +56,11 @@ func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock
 		return nil, fmt.Errorf("get pov header error: %s", err)
 	}
 	sb.PoVHeight = povHeader.GetHeight()
-	if _, _, err := b.blackHoleContract.ProcessSend(vmContext, sb); err != nil {
+	if _, _, err := b.blackHoleContract.ProcessSend(vmCtx, sb); err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmCtx)
 	if h != nil {
 		sb.Extra = *h
 	}
@@ -82,7 +83,7 @@ func (b *BlackHoleAPI) GetRewardsBlock(send *types.Hash) (*types.StateBlock, err
 	rev := &types.StateBlock{
 		Timestamp: common.TimeNow().Unix(),
 	}
-	vmContext := vmstore.NewVMContext(b.l)
+	vmContext := vmstore.NewVMContext(b.l, &contractaddress.BlackHoleAddress)
 	if r, err := b.blackHoleContract.DoReceive(vmContext, rev, blk); err == nil {
 		if len(r) > 0 {
 			povHeader, err := b.l.GetLatestPovHeader()
@@ -104,8 +105,7 @@ func (b *BlackHoleAPI) GetTotalDestroyInfo(addr *types.Address) (types.Balance, 
 		return types.ZeroBalance, ErrParameterNil
 	}
 
-	vmContext := vmstore.NewVMContext(b.l)
-	return cabi.GetTotalDestroyInfo(vmContext, addr)
+	return cabi.GetTotalDestroyInfo(b.l, addr)
 }
 
 func (b *BlackHoleAPI) GetDestroyInfoDetail(addr *types.Address) ([]*cabi.DestroyInfo, error) {
@@ -113,6 +113,5 @@ func (b *BlackHoleAPI) GetDestroyInfoDetail(addr *types.Address) ([]*cabi.Destro
 		return nil, ErrParameterNil
 	}
 
-	vmContext := vmstore.NewVMContext(b.l)
-	return cabi.GetDestroyInfoDetail(vmContext, addr)
+	return cabi.GetDestroyInfoDetail(b.l, addr)
 }

@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/statedb"
-	"github.com/qlcchain/go-qlc/ledger"
-
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -77,7 +76,7 @@ func TestAdminUpdate_ProcessSend(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	blk := mock.StateBlockWithoutWork()
 	a := new(AdminHandOver)
 
@@ -134,7 +133,7 @@ func TestAdminHandOver_DoSendOnPov(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	blk := mock.StateBlockWithoutWork()
 	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
 	a := new(AdminHandOver)
@@ -193,7 +192,7 @@ func TestNodeUpdate_ProcessSend(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	blk := mock.StateBlockWithoutWork()
 	n := new(NodeUpdate)
 
@@ -273,7 +272,7 @@ func TestNodeUpdate_DoSendOnPov(t *testing.T) {
 	}
 	defer clear()
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	blk := mock.StateBlockWithoutWork()
 	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
 	n := new(NodeUpdate)

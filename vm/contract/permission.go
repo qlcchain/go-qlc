@@ -7,14 +7,39 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/qlcchain/go-qlc/common/statedb"
-
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+)
+
+var PermissionContract = NewChainContract(
+	map[string]Contract{
+		abi.MethodNamePermissionAdminHandOver: &AdminHandOver{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
+					povState:  true,
+				},
+			},
+		},
+		abi.MethodNamePermissionNodeUpdate: &NodeUpdate{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
+					povState:  true,
+				},
+			},
+		},
+	},
+	abi.PermissionABI,
+	abi.JsonPermission,
 )
 
 type AdminHandOver struct {
@@ -181,7 +206,7 @@ func (n *NodeUpdate) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContra
 		NodeId:    node.NodeId,
 		NodeUrl:   node.NodeUrl,
 	}
-	ctx.Ledger.EventBus().Publish(topic.EventPermissionNodeUpdate, pe)
+	ctx.EventBus().Publish(topic.EventPermissionNodeUpdate, pe)
 
 	trieKey := statedb.PovCreateContractLocalStateKey(abi.PermissionDataNode, []byte(node.NodeId))
 

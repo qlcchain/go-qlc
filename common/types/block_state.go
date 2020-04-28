@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -342,6 +343,28 @@ func (bs *StateBlockList) Deserialize(text []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (b *StateBlock) ConvertToSchema() ([]Schema, error) {
+	return []Schema{
+		&BlockHash{
+			Type:      b.Type.String(),
+			Address:   b.Address.String(),
+			Timestamp: b.Timestamp,
+			Hash:      b.GetHash().String(),
+		}}, nil
+}
+
+type BlockHash struct {
+	Id        int64  `db:"id" typ:"integer"`
+	Hash      string `db:"hash" typ:"char(64)"`
+	Type      string `db:"type"  typ:"varchar(15)"`
+	Address   string `db:"address" typ:"char(64)"`
+	Timestamp int64  `db:"timestamp" typ:"integer"`
+}
+
+func (s *BlockHash) DeleteKey() string {
+	return fmt.Sprintf("DELETE FROM BlockHash WHERE Hash = '%s'", s.Hash)
 }
 
 //

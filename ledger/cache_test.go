@@ -255,7 +255,7 @@ InfLoop:
 			if err := cache.Put(k, block); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, err := l.Get(k); err != nil {
+			if _, _, err := l.GetObject(k); err != nil {
 				t.Fatal(err)
 			}
 		}

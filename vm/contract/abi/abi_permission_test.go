@@ -6,10 +6,9 @@ import (
 
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger"
-
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -136,7 +135,7 @@ func TestPermissionIsAdmin(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	account := cfg.GenesisAddress()
 
 	if PermissionIsAdmin(ctx, account) {
@@ -183,7 +182,7 @@ func TestPermissionGetAdmin(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 
 	_, err := PermissionGetAdmin(ctx)
 	if err == nil {
@@ -219,7 +218,7 @@ func TestPermissionUpdateNode(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
 	csdb, err := gsdb.LookupContractStateDB(contractaddress.PermissionAddress)
 	if err != nil {
@@ -277,7 +276,7 @@ func TestPermissionGetNode(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PermissionAddress)
 	nodeId := "123"
 	_, err := PermissionGetNode(ctx, nodeId)
 	if err == nil {
@@ -328,9 +327,7 @@ func TestPermissionGetAllNodes(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
-
-	_, err := PermissionGetAllNodes(ctx)
+	_, err := PermissionGetAllNodes(l)
 	if err == nil {
 		t.Fatal()
 	}
@@ -343,7 +340,7 @@ func TestPermissionGetAllNodes(t *testing.T) {
 	}
 	addTestNode(t, l, pn, 10)
 
-	pns, err := PermissionGetAllNodes(ctx)
+	pns, err := PermissionGetAllNodes(l)
 	if err != nil || len(pns) != 0 {
 		t.Fatal()
 	}
@@ -356,7 +353,7 @@ func TestPermissionGetAllNodes(t *testing.T) {
 	}
 	addTestNode(t, l, pn, 10)
 
-	pns, err = PermissionGetAllNodes(ctx)
+	pns, err = PermissionGetAllNodes(l)
 	if err != nil || len(pns) != 1 {
 		t.Fatal()
 	}

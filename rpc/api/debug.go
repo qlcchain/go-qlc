@@ -22,8 +22,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 type DebugApi struct {
@@ -224,7 +222,6 @@ type APIPendingInfo struct {
 }
 
 func (l *DebugApi) AccountPending(address types.Address, hash types.Hash) (*APIPendingInfo, error) {
-	vmContext := vmstore.NewVMContext(l.ledger)
 	ap := new(APIPendingInfo)
 	key := &types.PendingKey{
 		Address: address,
@@ -235,7 +232,7 @@ func (l *DebugApi) AccountPending(address types.Address, hash types.Hash) (*APIP
 		return nil, err
 	}
 
-	token, err := abi.GetTokenById(vmContext, info.Type)
+	token, err := l.ledger.GetTokenById(info.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -256,9 +253,8 @@ func (l *DebugApi) AccountPending(address types.Address, hash types.Hash) (*APIP
 
 func (l *DebugApi) PendingsAmount() (map[types.Address]map[string]types.Balance, error) {
 	abs := make(map[types.Address]map[string]types.Balance, 0)
-	vmContext := vmstore.NewVMContext(l.ledger)
 	err := l.ledger.GetPendings(func(pendingKey *types.PendingKey, pendingInfo *types.PendingInfo) error {
-		token, err := abi.GetTokenById(vmContext, pendingInfo.Type)
+		token, err := l.ledger.GetTokenById(pendingInfo.Type)
 		if err != nil {
 			return err
 		}
@@ -361,10 +357,10 @@ func (l *DebugApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 
 func (l *DebugApi) ContractCount() (map[string]int64, error) {
 	r := make(map[string]int64)
-	ctx := vmstore.NewVMContext(l.ledger)
 	for _, addr := range contractaddress.ChainContractAddressList {
 		var n int64 = 0
-		if err := ctx.Iterator(addr[:], func(key []byte, value []byte) error {
+		iterator := l.ledger.NewVMIterator(&addr)
+		if err := iterator.Next(nil, func(key []byte, value []byte) error {
 			n++
 			return nil
 		}); err != nil {

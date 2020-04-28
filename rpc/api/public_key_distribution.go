@@ -48,7 +48,7 @@ func NewPublicKeyDistributionApi(cfgFile string, l ledger.Store) *PublicKeyDistr
 		pu:     &contract.Publish{},
 		up:     &contract.UnPublish{},
 		or:     &contract.Oracle{},
-		ctx:    vmstore.NewVMContext(l),
+		ctx:    vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress),
 	}
 	return api
 }
@@ -131,13 +131,13 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.vr.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmContext)
 	if h != nil {
 		send.Extra = *h
 	}
@@ -202,13 +202,13 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.vu.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmContext)
 	if h != nil {
 		send.Extra = *h
 	}
@@ -219,7 +219,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 func (p *PublicKeyDistributionApi) GetAllVerifiers() ([]*VerifierRegParam, error) {
 	vrs := make([]*VerifierRegParam, 0)
 
-	rawVr, err := abi.GetAllVerifiers(p.ctx)
+	rawVr, err := abi.GetAllVerifiers(p.l)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (p *PublicKeyDistributionApi) GetVerifiersByType(vType string) ([]*Verifier
 		return nil, fmt.Errorf("verifier type err")
 	}
 
-	rawVr, err := abi.GetVerifiersByType(p.ctx, vt)
+	rawVr, err := abi.GetVerifiersByType(p.l, vt)
 	if err != nil {
 		return nil, err
 	}
@@ -275,12 +275,12 @@ func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*Verifier
 		return nil, chainctx.ErrPoVNotFinish
 	}
 
-	rawVr, err := abi.GetVerifiersByType(p.ctx, vt)
+	rawVr, err := abi.GetVerifiersByType(p.l, vt)
 	if err != nil {
 		return nil, err
 	}
 
-	pb, err := p.ctx.Ledger.GetLatestPovBlock()
+	pb, err := p.l.GetLatestPovBlock()
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +329,7 @@ func (p *PublicKeyDistributionApi) GetActiveVerifiers(vType string) ([]*Verifier
 func (p *PublicKeyDistributionApi) GetVerifiersByAccount(account types.Address) ([]*VerifierRegParam, error) {
 	vrs := make([]*VerifierRegParam, 0)
 
-	rawVr, err := abi.GetVerifiersByAccount(p.ctx, account)
+	rawVr, err := abi.GetVerifiersByAccount(p.l, account)
 	if err != nil {
 		return nil, err
 	}
@@ -523,13 +523,13 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.pu.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmContext)
 	if h != nil {
 		send.Extra = *h
 	}
@@ -601,13 +601,13 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.up.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmContext)
 	if h != nil {
 		send.Extra = *h
 	}
@@ -698,7 +698,7 @@ func (p *PublicKeyDistributionApi) GetPubKeyByTypeAndID(pType string, pID string
 
 	csDB := p.getCSDB(true, 0)
 
-	infos := abi.GetPublishInfoByTypeAndId(p.ctx, pt, id)
+	infos := abi.GetPublishInfoByTypeAndId(p.l, pt, id)
 	if infos != nil {
 		for _, i := range infos {
 			pis := p.fillPublishInfoState(csDB, i)
@@ -729,9 +729,9 @@ func (p *PublicKeyDistributionApi) GetPublishInfosByType(pType string) ([]*Publi
 	var infos []*abi.PublishInfo
 
 	if pType == "" {
-		infos = abi.GetAllPublishInfo(p.ctx)
+		infos = abi.GetAllPublishInfo(p.l)
 	} else {
-		infos = abi.GetPublishInfoByType(p.ctx, pt)
+		infos = abi.GetPublishInfoByType(p.l, pt)
 	}
 
 	if infos != nil {
@@ -753,9 +753,9 @@ func (p *PublicKeyDistributionApi) GetPublishInfosByAccountAndType(account types
 	var infos []*abi.PublishInfo
 
 	if pType == "" {
-		infos = abi.GetPublishInfoByAccount(p.ctx, account)
+		infos = abi.GetPublishInfoByAccount(p.l, account)
 	} else {
-		infos = abi.GetPublishInfoByAccountAndType(p.ctx, account, pt)
+		infos = abi.GetPublishInfoByAccountAndType(p.l, account, pt)
 	}
 
 	if infos != nil {
@@ -850,13 +850,13 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 		Timestamp:      common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.or.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmContext)
 	if h != nil {
 		send.Extra = *h
 	}
@@ -882,9 +882,9 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByType(oType string) ([]*Oracle
 	var infos []*abi.OracleInfo
 
 	if oType == "" {
-		infos = abi.GetAllOracleInfo(p.ctx)
+		infos = abi.GetAllOracleInfo(p.l)
 	} else {
-		infos = abi.GetOracleInfoByType(p.ctx, ot)
+		infos = abi.GetOracleInfoByType(p.l, ot)
 	}
 
 	if infos != nil {
@@ -906,7 +906,7 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByTypeAndID(oType string, id st
 		return nil, err
 	}
 
-	infos := abi.GetOracleInfoByTypeAndID(p.ctx, ot, idHash)
+	infos := abi.GetOracleInfoByTypeAndID(p.l, ot, idHash)
 	if infos != nil {
 		for _, i := range infos {
 			or := p.oracleParamConvert(i)
@@ -923,9 +923,9 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByAccountAndType(account types.
 	var infos []*abi.OracleInfo
 
 	if oType == "" {
-		infos = abi.GetOracleInfoByAccount(p.ctx, account)
+		infos = abi.GetOracleInfoByAccount(p.l, account)
 	} else {
-		infos = abi.GetOracleInfoByAccountAndType(p.ctx, account, ot)
+		infos = abi.GetOracleInfoByAccountAndType(p.l, account, ot)
 	}
 
 	if infos != nil {
@@ -945,7 +945,7 @@ func (p *PublicKeyDistributionApi) GetOracleInfosByHash(hash string) ([]*OracleP
 		return nil, err
 	}
 
-	infos := abi.GetOracleInfoByHash(p.ctx, h)
+	infos := abi.GetOracleInfoByHash(p.l, h)
 	if infos != nil {
 		for _, i := range infos {
 			or := p.oracleParamConvert(i)
@@ -1040,13 +1040,13 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 		PoVHeight: latestPovHeader.GetHeight(),
 	}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	_, _, err = p.reward.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmContext)
 	if h != nil {
 		send.Extra = *h
 	}
@@ -1068,7 +1068,7 @@ func (p *PublicKeyDistributionApi) GetRewardRecvBlock(input *types.StateBlock) (
 
 	reward := &types.StateBlock{}
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	blocks, err := p.reward.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
@@ -1102,7 +1102,7 @@ type PKDHistoryRewardInfo struct {
 
 func (p *PublicKeyDistributionApi) GetRewardHistory(account types.Address) (*PKDHistoryRewardInfo, error) {
 	history := new(PKDHistoryRewardInfo)
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 	info, err := p.reward.GetRewardInfo(vmContext, account)
 	if err != nil {
 		return nil, err
@@ -1138,7 +1138,7 @@ func (p *PublicKeyDistributionApi) GetAvailRewardInfo(account types.Address) (*P
 	}
 	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
 
-	vmContext := vmstore.NewVMContext(p.l)
+	vmContext := vmstore.NewVMContext(p.l, &contractaddress.PubKeyDistributionAddress)
 
 	lastRwdInfo, _ := p.GetRewardHistory(account)
 	if lastRwdInfo != nil {

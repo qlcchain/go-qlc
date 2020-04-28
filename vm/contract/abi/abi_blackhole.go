@@ -18,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -52,7 +53,7 @@ const (
 
 	MethodNameDestroy   = "Destroy"
 	VariableDestroyInfo = "destroyInfo"
-	KeySize             = types.AddressSize + types.HashSize + 1
+	KeySize             = types.AddressSize + types.HashSize
 )
 
 var (
@@ -134,7 +135,7 @@ func PackSendBlock(ctx *vmstore.VMContext, param *DestroyParam) (*types.StateBlo
 		return nil, errors.New("invalid sign of param")
 	}
 
-	if tm, err := ctx.Ledger.GetTokenMeta(param.Owner, param.Token); err != nil {
+	if tm, err := ctx.GetTokenMeta(param.Owner, param.Token); err != nil {
 		return nil, err
 	} else {
 		if tm.Balance.Compare(types.Balance{Int: param.Amount}) == types.BalanceCompSmaller {
@@ -179,14 +180,15 @@ func ParseDestroyInfo(data []byte) (*DestroyInfo, error) {
 }
 
 // GetTotalDestroyInfo query all destroyed GQAS by account
-func GetTotalDestroyInfo(ctx *vmstore.VMContext, addr *types.Address) (types.Balance, error) {
+func GetTotalDestroyInfo(store ledger.Store, addr *types.Address) (types.Balance, error) {
 	logger := log.NewLogger("GetRewardsDetail")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
 	result := types.ZeroBalance
-	if err := ctx.IteratorAll(addr[:], func(key []byte, value []byte) error {
+	iterator := store.NewVMIterator(&contractaddress.BlackHoleAddress)
+	if err := iterator.Next(addr[:], func(key []byte, value []byte) error {
 		if len(key) == KeySize && len(value) > 0 {
 			if di, err := ParseDestroyInfo(value); err == nil {
 				result = result.Add(types.Balance{Int: di.Amount})
@@ -203,14 +205,15 @@ func GetTotalDestroyInfo(ctx *vmstore.VMContext, addr *types.Address) (types.Bal
 }
 
 // GetDestroyInfoDetail query destroyed GQAS detail by account
-func GetDestroyInfoDetail(ctx *vmstore.VMContext, addr *types.Address) ([]*DestroyInfo, error) {
+func GetDestroyInfoDetail(store ledger.Store, addr *types.Address) ([]*DestroyInfo, error) {
 	logger := log.NewLogger("GetRewardsDetail")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
 	var result []*DestroyInfo
-	if err := ctx.IteratorAll(addr[:], func(key []byte, value []byte) error {
+	iterator := store.NewVMIterator(&contractaddress.BlackHoleAddress)
+	if err := iterator.Next(addr[:], func(key []byte, value []byte) error {
 		if len(key) == KeySize && len(value) > 0 {
 			if di, err := ParseDestroyInfo(value); err == nil {
 				result = append(result, di)

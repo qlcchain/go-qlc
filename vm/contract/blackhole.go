@@ -13,10 +13,24 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	config2 "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+)
+
+var BlackHoleContract = NewChainContract(
+	map[string]Contract{
+		cabi.MethodNameDestroy: &BlackHole{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer: SpecVer2,
+					pending: true,
+				},
+			},
+		},
+	},
+	cabi.BlackHoleABI,
+	cabi.JsonDestroy,
 )
 
 type BlackHole struct {
@@ -80,7 +94,7 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 	if block.Token != config2.GasToken() {
 		return fmt.Errorf("invalid token: %s", block.Token.String())
 	}
-	if amount, err := ctx.Ledger.CalculateAmount(block); err == nil {
+	if amount, err := ctx.CalculateAmount(block); err == nil {
 		if amount.Compare(types.Balance{Int: param.Amount}) != types.BalanceCompEqual {
 			return fmt.Errorf("amount mistmatch, exp: %s,act:%s", param.Amount.String(), amount.String())
 		}
@@ -92,7 +106,7 @@ func (b *BlackHole) verify(ctx *vmstore.VMContext, param *cabi.DestroyParam, blo
 }
 
 func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
-	input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+	input *types.StateBlock) ([]*ContractBlock, error) {
 	// verify send block data
 	if b, err := ctx.GetStorage(input.Address[:], input.Previous[:]); err == nil && len(b) > 0 {
 		if _, err := cabi.ParseDestroyInfo(b); err != nil {
@@ -102,7 +116,7 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 		return nil, fmt.Errorf("invalid send block[%s] data", input.GetHash().String())
 	}
 
-	rxMeta, _ := ctx.Ledger.GetAccountMeta(input.Address)
+	rxMeta, _ := ctx.GetAccountMeta(input.Address)
 	// qgas token should be exist
 	rxToken := rxMeta.Token(input.Token)
 	txHash := input.GetHash()
@@ -121,7 +135,7 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 	block.Previous = rxToken.Header
 	block.Representative = input.Representative
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,

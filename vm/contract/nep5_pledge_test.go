@@ -18,7 +18,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 
 	addr1 := account1.Address()
 	addr2 := account2.Address()
@@ -74,7 +74,11 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		t.Fatalf("invalid target receiver, exp: %s, act: %s", addr2.String(), receiver.String())
 	}
 
-	if err = updateBlock(l, send); err != nil {
+	//verifier := process.NewLedgerVerifier(l)
+	//if err = verifier.BlockProcess(send); err != nil {
+	//	t.Fatal(err)
+	//}
+	if err := updateBlock(l, send); err != nil {
 		t.Fatal(err)
 	}
 
@@ -86,7 +90,10 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		if len(r) > 0 {
-			_ = updateBlock(l, r[0].Block)
+			if err := updateBlock(l, r[0].Block); err != nil {
+				t.Fatal(err)
+			}
+			//verifier.BlockProcess(r[0].Block)
 		}
 	}
 
@@ -94,7 +101,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		t.Fatal()
 	}
 
-	if err = ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -125,7 +132,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		}
 	}
 
-	if err = ctx.SaveStorage(); err != nil {
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -199,7 +206,7 @@ func TestNep5Pledge_DoSend(t *testing.T) {
 	testCase, l := setupLedgerForTestCase(t)
 	defer testCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.NEP5PledgeAddress)
 
 	addr1 := account1.Address()
 	addr2 := account2.Address()

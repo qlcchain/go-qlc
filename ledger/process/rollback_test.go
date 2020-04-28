@@ -277,7 +277,6 @@ func TestRollback_ContractData(t *testing.T) {
 	if int(c) != len(bs) {
 		t.Fatal("block count error")
 	}
-	fmt.Println("block count === ", c)
 
 	nodeCount = nodesCount(lv.l.DBStore(), bs[2].GetExtra())
 	if nodeCount == 0 {

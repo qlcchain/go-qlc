@@ -17,10 +17,10 @@ import (
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+	mintage2 "github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	cfg "github.com/qlcchain/go-qlc/config"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -28,9 +28,34 @@ type Mintage struct {
 	BaseContract
 }
 
+var MintageContract = NewChainContract(
+	map[string]Contract{
+		mintage2.MethodNameMintage: &Mintage{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer1,
+					signature: true,
+					work:      true,
+				},
+			},
+		},
+		mintage2.MethodNameMintageWithdraw: &WithdrawMintage{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer1,
+					signature: true,
+					work:      true,
+				},
+			},
+		},
+	},
+	mintage2.MintageABI,
+	mintage2.JsonMintage,
+)
+
 func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
-	param := new(cabi.ParamMintage)
-	err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, block.Data)
+	param := new(mintage.ParamMintage)
+	err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, block.Data)
 	if err != nil {
 		return err
 	}
@@ -38,12 +63,12 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 		return err
 	}
 
-	tokenId := cabi.NewTokenHash(block.Address, block.Previous, param.TokenName)
-	if _, err = cabi.GetTokenById(ctx, tokenId); err == nil {
+	tokenId := mintage.NewTokenHash(block.Address, block.Previous, param.TokenName)
+	if _, err = ctx.GetTokenById(tokenId); err == nil {
 		return fmt.Errorf("token Id[%s] already exist", tokenId.String())
 	}
 
-	if infos, err := cabi.ListTokens(ctx); err == nil {
+	if infos, err := ctx.ListTokens(); err == nil {
 		for _, v := range infos {
 			if v.TokenName == param.TokenName || v.TokenSymbol == param.TokenSymbol {
 				return fmt.Errorf("invalid token name(%s) or token symbol(%s)", param.TokenName, param.TokenSymbol)
@@ -51,8 +76,8 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 		}
 	}
 
-	if block.Data, err = cabi.MintageABI.PackMethod(
-		cabi.MethodNameMintage,
+	if block.Data, err = mintage.MintageABI.PackMethod(
+		mintage.MethodNameMintage,
 		tokenId,
 		param.TokenName,
 		param.TokenSymbol,
@@ -65,7 +90,7 @@ func (m *Mintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error 
 	return nil
 }
 
-func verifyToken(param cabi.ParamMintage) error {
+func verifyToken(param mintage.ParamMintage) error {
 	if param.TotalSupply.Cmp(util.Tt256m1) > 0 ||
 		//param.TotalSupply.Cmp(new(big.Int).Exp(util.Big10, new(big.Int).SetUint64(uint64(param.Decimals)), nil)) < 0 ||
 		len(param.TokenName) == 0 || len(param.TokenName) > tokenNameLengthMax ||
@@ -82,8 +107,8 @@ func verifyToken(param cabi.ParamMintage) error {
 }
 
 func (m *Mintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param := new(cabi.ParamMintage)
-	err := cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, block.Data)
+	param := new(mintage.ParamMintage)
+	err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, block.Data)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -98,17 +123,17 @@ func (m *Mintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.
 		}, nil
 }
 
-func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
-	param := new(cabi.ParamMintage)
-	_ = cabi.MintageABI.UnpackMethod(param, cabi.MethodNameMintage, input.Data)
+func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
+	param := new(mintage.ParamMintage)
+	_ = mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.Data)
 	var tokenInfo []byte
-	amount, _ := ctx.Ledger.CalculateAmount(input)
+	amount, _ := ctx.CalculateAmount(input)
 	if amount.Sign() > 0 &&
 		amount.Compare(types.Balance{Int: MinPledgeAmount}) != types.BalanceCompSmaller &&
 		input.Token == cfg.ChainToken() {
 		var err error
-		tokenInfo, err = cabi.MintageABI.PackVariable(
-			cabi.VariableNameToken,
+		tokenInfo, err = mintage.MintageABI.PackVariable(
+			mintage.VariableNameToken,
 			param.TokenId,
 			param.TokenName,
 			param.TokenSymbol,
@@ -158,7 +183,7 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 		}
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -175,9 +200,9 @@ func (m *Mintage) GetTargetReceiver(ctx *vmstore.VMContext, block *types.StateBl
 	data := block.GetData()
 	tr := types.ZeroAddress
 
-	if method, err := cabi.MintageABI.MethodById(data[0:4]); err == nil {
-		if method.Name == cabi.MethodNameMintage {
-			param := new(cabi.ParamMintage)
+	if method, err := mintage.MintageABI.MethodById(data[0:4]); err == nil {
+		if method.Name == mintage.MethodNameMintage {
+			param := new(mintage.ParamMintage)
 			if err = method.Inputs.Unpack(param, data[4:]); err == nil {
 				tr = param.Beneficial
 				return tr, nil
@@ -197,12 +222,12 @@ type WithdrawMintage struct {
 }
 
 func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
-	if amount, err := ctx.Ledger.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
+	if amount, err := ctx.CalculateAmount(block); block.Type != types.ContractSend || err != nil ||
 		amount.Compare(types.ZeroBalance) != types.BalanceCompEqual {
 		return errors.New("invalid block ")
 	}
 	tokenId := new(types.Hash)
-	if err := cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, block.Data); err != nil {
+	if err := mintage.MintageABI.UnpackMethod(tokenId, mintage.MethodNameMintageWithdraw, block.Data); err != nil {
 		return errors.New("invalid input data")
 	}
 	return nil
@@ -210,7 +235,7 @@ func (m *WithdrawMintage) DoSend(ctx *vmstore.VMContext, block *types.StateBlock
 
 func (m *WithdrawMintage) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
 	tokenId := new(types.Hash)
-	err := cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, block.Data)
+	err := mintage.MintageABI.UnpackMethod(tokenId, mintage.MethodNameMintageWithdraw, block.Data)
 
 	if err != nil {
 		return nil, nil, err
@@ -226,9 +251,9 @@ func (m *WithdrawMintage) DoPending(block *types.StateBlock) (*types.PendingKey,
 		}, nil
 }
 
-func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	tokenId := new(types.Hash)
-	err := cabi.MintageABI.UnpackMethod(tokenId, cabi.MethodNameMintageWithdraw, input.Data)
+	err := mintage.MintageABI.UnpackMethod(tokenId, mintage.MethodNameMintageWithdraw, input.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +263,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	}
 
 	tokenInfo := new(types.TokenInfo)
-	err = cabi.MintageABI.UnpackVariable(tokenInfo, cabi.VariableNameToken, tokenInfoData)
+	err = mintage.MintageABI.UnpackVariable(tokenInfo, mintage.VariableNameToken, tokenInfoData)
 	if err != nil {
 		return nil, err
 	}
@@ -250,8 +275,8 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		return nil, errors.New("cannot withdraw mintage pledge, status error")
 	}
 
-	newTokenInfo, err := cabi.MintageABI.PackVariable(
-		cabi.VariableNameToken,
+	newTokenInfo, err := mintage.MintageABI.PackVariable(
+		mintage.VariableNameToken,
 		tokenInfo.TokenId,
 		tokenInfo.TokenName,
 		tokenInfo.TokenSymbol,
@@ -267,7 +292,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		return nil, err
 	}
 	var tm *types.TokenMeta
-	am, _ := ctx.Ledger.GetAccountMeta(tokenInfo.PledgeAddress)
+	am, _ := ctx.GetAccountMeta(tokenInfo.PledgeAddress)
 	if am != nil {
 		tm = am.Token(cfg.ChainToken())
 		if tm == nil {
@@ -297,7 +322,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 		// already exist,verify data
 		if len(pledgeData) > 0 {
 			oldPledge := new(types.TokenInfo)
-			err := cabi.MintageABI.UnpackVariable(oldPledge, cabi.VariableNameToken, pledgeData)
+			err := mintage.MintageABI.UnpackVariable(oldPledge, mintage.VariableNameToken, pledgeData)
 			if err != nil {
 				return nil, err
 			}
@@ -316,7 +341,7 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	}
 
 	if tokenInfo.PledgeAmount.Sign() > 0 {
-		return []*vmcontract.ContractBlock{
+		return []*ContractBlock{
 			{
 				VMContext: ctx,
 				Block:     block,

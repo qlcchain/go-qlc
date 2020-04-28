@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -400,4 +401,126 @@ func TestLedger_CalculateAmount(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(r)
+}
+
+func TestLedger_GetTokenMetaByBlockHash(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	am := mock.AccountMeta(addr)
+	tm := mock.TokenMeta(addr)
+	am.Tokens = append(am.Tokens, tm)
+	blk := mock.StateBlockWithoutWork()
+	blk.PoVHeight = 10
+	blk.Address = addr
+	blk.Token = tm.Type
+	if err := l.AddAccountMetaHistory(tm, blk, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := l.GetTokenMetaByBlockHash(blk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	r, err = l.GetTokenMetaByBlockHash(blk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err = l.GetTokenMetaByBlockHash(mock.Hash())
+	if err == nil {
+		t.Fatal(r)
+	}
+}
+
+func TestLedger_GetTokenMetaByPovHeight(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	am := mock.AccountMeta(addr)
+	tm1 := mock.TokenMeta(addr)
+	tm1.Type = config.ChainToken()
+	tm2 := mock.TokenMeta(addr)
+	am.Tokens = []*types.TokenMeta{tm1, tm2}
+
+	blk := mock.StateBlockWithoutWork()
+	height := uint64(10)
+	blk.PoVHeight = height
+	blk.Address = addr
+	blk.Token = tm1.Type
+
+	tm1.Header = blk.GetHash()
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := l.AddAccountMetaHistory(tm1, blk, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := l.GetTokenMetaByPovHeight(addr, tm1.Type, height)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	r, err = l.GetTokenMetaByPovHeight(addr, tm1.Type, height)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// higher height
+	_, err = l.GetTokenMetaByPovHeight(addr, tm1.Type, height+10)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// lower height
+	_, err = l.GetTokenMetaByPovHeight(addr, tm1.Type, height-1)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// not found
+	_, err = l.GetTokenMetaByPovHeight(addr, tm2.Type, height)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// get account
+	rm1, err := l.GetAccountMetaByPovHeight(addr, height)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(rm1)
+	fmt.Println(tm1)
+	if rt := rm1.Token(tm1.Type); rt == nil {
+		t.Fatal()
+	}
+
+	// higher height
+	rm2, err := l.GetAccountMetaByPovHeight(addr, height+10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rt := rm2.Token(tm1.Type); rt == nil {
+		t.Fatal()
+	}
+
+	// lower height
+	_, err = l.GetAccountMetaByPovHeight(addr, height-1)
+	if err == nil {
+		t.Fatal(err)
+	}
 }

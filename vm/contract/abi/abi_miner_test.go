@@ -68,7 +68,7 @@ func TestGetLastMinerRewardHeightByAccount(t *testing.T) {
 	param.Beneficial = mock.Address()
 	param.StartHeight = common.PovMinerRewardHeightStart
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.MinerAddress)
 	data, _ := MinerABI.PackVariable(VariableNameMinerReward, param.EndHeight,
 		param.RewardBlocks, time.Now().Unix(), param.RewardAmount)
 	err := ctx.SetStorage(contractaddress.MinerAddress.Bytes(), param.Coinbase[:], data)

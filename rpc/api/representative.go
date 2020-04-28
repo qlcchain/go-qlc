@@ -96,7 +96,7 @@ func (r *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo,
 	}
 	rsp.LatestBlockHeight = latestPovHeader.GetHeight()
 
-	vmContext := vmstore.NewVMContext(r.ledger)
+	vmContext := vmstore.NewVMContext(r.ledger, &contractaddress.RepAddress)
 	lastRewardHeight, err := r.reward.GetLastRewardHeight(vmContext, account)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (r *RepApi) GetAvailRewardInfo(account types.Address) (*RepAvailRewardInfo,
 }
 
 func (r *RepApi) checkParamExistInOldRewardInfos(param *RepRewardParam) error {
-	ctx := vmstore.NewVMContext(r.ledger)
+	ctx := vmstore.NewVMContext(r.ledger, &contractaddress.RepAddress)
 
 	lastRewardHeight, err := cabi.GetLastRepRewardHeightByAccount(ctx, param.Account)
 	if err != nil && err != vmstore.ErrStorageNotFound {
@@ -213,13 +213,13 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		PoVHeight: latestPovHeader.GetHeight(),
 	}
 
-	vmContext := vmstore.NewVMContext(r.ledger)
+	vmContext := vmstore.NewVMContext(r.ledger, &contractaddress.RepAddress)
 	_, _, err = r.reward.ProcessSend(vmContext, send)
 	if err != nil {
 		return nil, err
 	}
 
-	h := vmContext.Cache.Trie().Hash()
+	h := vmstore.TrieHash(vmContext)
 	if h != nil {
 		send.Extra = *h
 	}
@@ -241,7 +241,7 @@ func (r *RepApi) GetRewardRecvBlock(input *types.StateBlock) (*types.StateBlock,
 
 	reward := &types.StateBlock{}
 
-	vmContext := vmstore.NewVMContext(r.ledger)
+	vmContext := vmstore.NewVMContext(r.ledger, &contractaddress.RepAddress)
 	blocks, err := r.reward.DoReceive(vmContext, reward, input)
 	if err != nil {
 		return nil, err
@@ -272,14 +272,13 @@ type RepStateParams struct {
 }
 
 func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepState, error) {
-	ctx := vmstore.NewVMContext(r.ledger)
-	block, err := ctx.Ledger.GetPovHeaderByHeight(params.Height)
+	block, err := r.ledger.GetPovHeaderByHeight(params.Height)
 	if block == nil {
 		return nil, fmt.Errorf("get pov block with height[%d] err", params.Height)
 	}
 
 	stateHash := block.GetStateHash()
-	stateTrie := trie.NewTrie(ctx.Ledger.DBStore(), &stateHash, nil)
+	stateTrie := trie.NewTrie(r.ledger.DBStore(), &stateHash, nil)
 	keyBytes := statedb.PovCreateRepStateKey(params.Account)
 
 	valBytes := stateTrie.GetValue(keyBytes)
@@ -298,7 +297,7 @@ func (r *RepApi) GetRepStateWithHeight(params *RepStateParams) (*types.PovRepSta
 
 func (r *RepApi) GetRewardHistory(account types.Address) (*RepHistoryRewardInfo, error) {
 	history := new(RepHistoryRewardInfo)
-	vmContext := vmstore.NewVMContext(r.ledger)
+	vmContext := vmstore.NewVMContext(r.ledger, &contractaddress.RepAddress)
 	info, err := r.reward.GetRewardHistory(vmContext, account)
 	if err != nil {
 		return nil, err

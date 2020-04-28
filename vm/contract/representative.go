@@ -7,11 +7,27 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+)
+
+var RepContract = NewChainContract(
+	map[string]Contract{
+		cabi.MethodNameRepReward: &RepReward{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					pending:   true,
+					work:      true,
+				},
+			},
+		},
+	},
+	cabi.RepABI,
+	cabi.JsonRep,
 )
 
 type RepReward struct {
@@ -42,7 +58,7 @@ func (r *RepReward) GetRewardHistory(ctx *vmstore.VMContext, account types.Addre
 }
 
 func (r *RepReward) GetNodeRewardHeight(ctx *vmstore.VMContext) (uint64, error) {
-	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
+	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return 0, errors.New("failed to get latest block")
 	}
@@ -106,7 +122,7 @@ func (r *RepReward) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock)
 	}
 
 	// check account exist
-	am, _ := ctx.Ledger.GetAccountMeta(param.Account)
+	am, _ := ctx.GetAccountMeta(param.Account)
 	if am == nil {
 		return nil, nil, ErrAccountNotExist
 	}
@@ -191,7 +207,7 @@ func (r *RepReward) SetStorage(ctx *vmstore.VMContext, endHeight uint64, RewardA
 	return nil
 }
 
-func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(cabi.RepRewardParam)
 
 	err := cabi.RepABI.UnpackMethod(param, cabi.MethodNameRepReward, input.Data)
@@ -221,7 +237,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 	block.Storage = types.NewBalance(0)
 	block.Network = types.NewBalance(0)
 
-	amBnf, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
+	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
 		tmBnf := amBnf.Token(cfg.GasToken())
 		if tmBnf != nil {
@@ -243,7 +259,7 @@ func (r *RepReward) DoReceive(ctx *vmstore.VMContext, block, input *types.StateB
 		block.Previous = types.ZeroHash
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -265,7 +281,7 @@ func (r *RepReward) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (comm
 
 	needHeight := param.EndHeight + common.PovMinerRewardHeightGapToLatest
 
-	latestBlock, err := ctx.Ledger.GetLatestPovBlock()
+	latestBlock, err := ctx.GetLatestPovBlock()
 	if err != nil || latestBlock == nil {
 		return common.ContractRewardGapPov, needHeight, nil
 	}
@@ -310,7 +326,7 @@ func (r *RepReward) calcRewardBlocksByDayStats(ctx *vmstore.VMContext, account t
 
 	rewardAmount := types.NewBalance(0)
 	for dayIndex := startDayIndex; dayIndex <= endDayIndex; dayIndex++ {
-		dayStat, err := ctx.Ledger.GetPovMinerStat(dayIndex)
+		dayStat, err := ctx.GetPovMinerStat(dayIndex)
 		if err != nil {
 			return 0, types.NewBalance(0), fmt.Errorf("get pov miner state err[%d]", dayIndex)
 		}

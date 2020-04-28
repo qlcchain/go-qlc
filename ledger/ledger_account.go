@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -22,8 +23,8 @@ type AccountStore interface {
 	GetTokenMeta(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 	HasTokenMeta(address types.Address, tokenType types.Hash) (bool, error)
 
-	AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache *Cache) error
-	DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *Cache) error
+	AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, c storage.Cache) error
+	DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c storage.Cache) error
 	GetTokenMetaConfirmed(address types.Address, tokenType types.Hash) (*types.TokenMeta, error)
 
 	AddAccountMetaCache(value *types.AccountMeta, batch ...storage.Batch) error
@@ -38,6 +39,15 @@ type AccountStore interface {
 
 	Weight(account types.Address) types.Balance
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
+
+	AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, c storage.Cache) error
+	UpdateAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, c storage.Cache) error
+
+	GetAccountMetaByPovHeight(address types.Address, height uint64) (*types.AccountMeta, error)
+	GetTokenMetaByPovHeight(address types.Address, token types.Hash, height uint64) (*types.TokenMeta, error)
+	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
+
+	ContractAddress(b *types.StateBlock) (*types.Address, error)
 }
 
 func (l *Ledger) GetAccountMeta(address types.Address, c ...storage.Cache) (*types.AccountMeta, error) {
@@ -338,7 +348,7 @@ func (l *Ledger) GetTokenMetaConfirmed(address types.Address, tokenType types.Ha
 	return tm, nil
 }
 
-func (l *Ledger) AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache *Cache) error {
+func (l *Ledger) AddTokenMetaConfirmed(address types.Address, meta *types.TokenMeta, cache storage.Cache) error {
 	am, err := l.GetAccountMeta(address)
 	if err != nil {
 		return err
@@ -352,7 +362,7 @@ func (l *Ledger) AddTokenMetaConfirmed(address types.Address, meta *types.TokenM
 	return l.UpdateAccountMeta(am, cache)
 }
 
-func (l *Ledger) DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c *Cache) error {
+func (l *Ledger) DeleteTokenMetaConfirmed(address types.Address, tokenType types.Hash, c storage.Cache) error {
 	am, err := l.GetAccountMetaConfirmed(address)
 	if err != nil {
 		return err
@@ -432,4 +442,167 @@ func (l *Ledger) CalculateAmount(block *types.StateBlock) (types.Balance, error)
 	default:
 		return types.ZeroBalance, errors.New("invalid block type")
 	}
+}
+
+func (l *Ledger) AddAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache storage.Cache) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccountBlockHash, block.GetHash())
+	if err != nil {
+		return err
+	}
+	if err := cache.Put(k, tm.Clone()); err != nil {
+		return err
+	}
+	kp, err := storage.GetKeyOfParts(storage.KeyPrefixAccountPovHeight, tm.BelongTo, block.PoVHeight, tm.Type)
+	if err != nil {
+		return err
+	}
+	return cache.Put(kp, tm.Clone())
+}
+
+func (l *Ledger) UpdateAccountMetaHistory(tm *types.TokenMeta, block *types.StateBlock, cache storage.Cache) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccountBlockHash, block.GetHash())
+	if err != nil {
+		return err
+	}
+	if err := cache.Delete(k); err != nil {
+		return err
+	}
+	kp, err := storage.GetKeyOfParts(storage.KeyPrefixAccountPovHeight, block.Address, block.PoVHeight, block.Token)
+	if err != nil {
+		return err
+	}
+	if !block.Previous.IsZero() {
+		preBlk, err := l.GetStateBlock(block.Previous)
+		if err != nil {
+			return fmt.Errorf("get block previous: %s", err)
+		}
+		if block.PoVHeight != preBlk.PoVHeight {
+			return cache.Delete(kp)
+		} else {
+			return cache.Put(kp, tm.Clone())
+		}
+	} else {
+		return cache.Delete(kp)
+	}
+}
+
+func (l *Ledger) GetAccountMetaByPovHeight(address types.Address, height uint64) (*types.AccountMeta, error) {
+	accountMeta, err := l.GetAccountMeta(address)
+	if err != nil {
+		return nil, err
+	}
+	am := new(types.AccountMeta)
+	for _, t := range accountMeta.Tokens {
+		tm, err := l.GetTokenMetaByPovHeight(address, t.Type, height)
+		if err != nil {
+			if err != ErrTokenNotFound {
+				return nil, err
+			}
+		}
+		if tm != nil {
+			am.Tokens = append(am.Tokens, tm)
+			if tm.Type == config.ChainToken() {
+				b, err := l.GetStateBlock(tm.Header)
+				if err != nil {
+					return nil, fmt.Errorf("get header block :%s", err)
+				}
+				am.CoinBalance = b.GetBalance()
+				am.CoinOracle = b.GetOracle()
+				am.CoinNetwork = b.GetNetwork()
+				am.CoinStorage = b.GetStorage()
+				am.CoinOracle = b.GetOracle()
+			}
+		}
+	}
+	if len(am.Tokens) == 0 {
+		return nil, ErrAccountNotFound
+	}
+	return am, nil
+}
+
+func (l *Ledger) GetTokenMetaByPovHeight(address types.Address, hash types.Hash, height uint64) (*types.TokenMeta, error) {
+	tm := new(types.TokenMeta)
+	for {
+		k, err := storage.GetKeyOfParts(storage.KeyPrefixAccountPovHeight, address, height)
+		if err != nil {
+			return nil, err
+		}
+		found := false
+		if err := l.IteratorObject(k, nil, func(k []byte, v interface{}) error {
+			if t, ok := v.(*types.TokenMeta); ok {
+				if t.Type == hash {
+					tm = t.Clone()
+					found = true
+				}
+			} else {
+				t := new(types.TokenMeta)
+				if err := t.Deserialize(v.([]byte)); err != nil {
+					return fmt.Errorf("tm deserialize: %s", err)
+				}
+				if t.Type == hash {
+					tm = t
+					found = true
+				}
+			}
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		if found {
+			break
+		} else {
+			if height == 0 {
+				return nil, ErrTokenNotFound
+			}
+			height = height - 1
+		}
+	}
+	return tm, nil
+}
+
+func (l *Ledger) GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixAccountBlockHash, hash)
+	if err != nil {
+		return nil, err
+	}
+	i, r, err := l.GetObject(k)
+	if err != nil {
+		return nil, err
+	}
+	if i != nil {
+		return i.(*types.TokenMeta).Clone(), nil
+	} else {
+		tm := new(types.TokenMeta)
+		if err := tm.Deserialize(r); err != nil {
+			return nil, err
+		}
+		return tm, nil
+	}
+}
+
+func (l *Ledger) IsUserAccount(address types.Address) (bool, error) {
+	if b, err := l.HasAccountMetaConfirmed(address); b {
+		return true, nil
+	} else {
+		if err != nil {
+			return false, err
+		} else {
+			return false, fmt.Errorf("can not find user account %s", address)
+		}
+	}
+}
+
+func (l *Ledger) ContractAddress(b *types.StateBlock) (*types.Address, error) {
+	if b.IsSendBlock() {
+		addr := types.Address(b.Link)
+		return &addr, nil
+	} else if b.IsReceiveBlock() {
+		send, err := l.GetStateBlock(b.GetLink())
+		if err != nil {
+			return nil, err
+		}
+		addr := types.Address(send.Link)
+		return &addr, nil
+	}
+	return nil, errors.New("invalid block type")
 }

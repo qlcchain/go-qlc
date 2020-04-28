@@ -13,6 +13,7 @@ import (
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
@@ -102,7 +103,7 @@ func TestPackAndUnpack(t *testing.T) {
 	}
 }
 
-func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+func addTestVerifierInfo(ctx *vmstore.VMContext, store ledger.Store, account types.Address, vType uint32, vInfo string, vKey []byte) error {
 	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, vKey, true)
 	if err != nil {
 		return err
@@ -117,15 +118,14 @@ func addTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType ui
 		return err
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := store.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func delTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType uint32, vInfo string, vKey []byte) error {
+func delTestVerifierInfo(ctx *vmstore.VMContext, store ledger.Store, account types.Address, vType uint32, vInfo string, vKey []byte) error {
 	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDVerifierInfo, vInfo, vKey, false)
 	if err != nil {
 		return err
@@ -140,8 +140,7 @@ func delTestVerifierInfo(ctx *vmstore.VMContext, account types.Address, vType ui
 		return err
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := store.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		return err
 	}
 
@@ -152,7 +151,7 @@ func TestCheckVerifierExist(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
@@ -162,7 +161,7 @@ func TestCheckVerifierExist(t *testing.T) {
 		t.Fatal()
 	}
 
-	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err := addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +175,7 @@ func TestCheckVerifierInfoExist(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
@@ -187,7 +186,7 @@ func TestCheckVerifierInfoExist(t *testing.T) {
 		t.Fatal()
 	}
 
-	err := addTestVerifierInfo(ctx, account, vt, vi, vk2[:])
+	err := addTestVerifierInfo(ctx, l, account, vt, vi, vk2[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +195,7 @@ func TestCheckVerifierInfoExist(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = addTestVerifierInfo(ctx, account, vt, vi, vk1[:])
+	err = addTestVerifierInfo(ctx, l, account, vt, vi, vk1[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,24 +209,24 @@ func TestGetAllVerifiers(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
 	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err := addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account2 := mock.Address()
-	err = addTestVerifierInfo(ctx, account2, vt, vi, vk[:])
+	err = addTestVerifierInfo(ctx, l, account2, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	vs, err := GetAllVerifiers(ctx)
+	vs, err := GetAllVerifiers(l)
 	if err != nil || len(vs) != 2 {
 		t.Fatal()
 	}
@@ -245,32 +244,32 @@ func TestGetVerifiersByType(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
 	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err := addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	vt2 := common.OracleTypeWeChat
 	vi2 := "1234"
-	err = addTestVerifierInfo(ctx, account, vt2, vi2, vk[:])
+	err = addTestVerifierInfo(ctx, l, account, vt2, vi2, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account3 := mock.Address()
 	vi3 := "1234123"
-	err = addTestVerifierInfo(ctx, account3, vt2, vi3, vk[:])
+	err = addTestVerifierInfo(ctx, l, account3, vt2, vi3, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	vs, err := GetVerifiersByType(ctx, common.OracleTypeWeChat)
+	vs, err := GetVerifiersByType(l, common.OracleTypeWeChat)
 	if err != nil || len(vs) != 2 {
 		t.Fatal()
 	}
@@ -284,24 +283,24 @@ func TestGetVerifiersByAccount(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
 	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err := addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account2 := mock.Address()
-	err = addTestVerifierInfo(ctx, account2, vt, vi, vk[:])
+	err = addTestVerifierInfo(ctx, l, account2, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	vs, err := GetVerifiersByAccount(ctx, account2)
+	vs, err := GetVerifiersByAccount(l, account2)
 	if err != nil || len(vs) != 1 {
 		t.Fatal(err)
 	}
@@ -315,13 +314,13 @@ func TestGetVerifierInfoByAccountAndType(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
 	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err := addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,13 +335,13 @@ func TestDeleteVerifier(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeEmail
 	vi := "123@gmail.com"
 	vk := mock.Hash()
 
-	err := addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err := addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +350,7 @@ func TestDeleteVerifier(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = delTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err = delTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +360,7 @@ func TestDeleteVerifier(t *testing.T) {
 	}
 }
 
-func addTestOracleInfo(ctx *vmstore.VMContext, account types.Address, ot uint32, id types.Hash, kt uint16, pk []byte, code string, hash types.Hash) error {
+func addTestOracleInfo(ctx *vmstore.VMContext, store ledger.Store, account types.Address, ot uint32, id types.Hash, kt uint16, pk []byte, code string, hash types.Hash) error {
 	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDOracleInfo, code, kt, pk)
 	if err != nil {
 		return err
@@ -380,8 +379,7 @@ func addTestOracleInfo(ctx *vmstore.VMContext, account types.Address, ot uint32,
 		return err
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := store.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		return err
 	}
 
@@ -392,7 +390,7 @@ func TestGetAllOracleInfo(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeEmail
 	id := mock.Hash()
@@ -405,7 +403,7 @@ func TestGetAllOracleInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,12 +419,12 @@ func TestGetAllOracleInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account2, ot2, id2, kt, pk2, code2, hash2)
+	err = addTestOracleInfo(ctx, l, account2, ot2, id2, kt, pk2, code2, hash2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetAllOracleInfo(ctx)
+	info := GetAllOracleInfo(l)
 	if len(info) != 2 {
 		t.Fatal()
 	}
@@ -436,7 +434,7 @@ func TestGetOracleInfoByAccount(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeEmail
 	id := mock.Hash()
@@ -449,18 +447,18 @@ func TestGetOracleInfoByAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	account2 := mock.Address()
-	err = addTestOracleInfo(ctx, account2, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account2, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetOracleInfoByAccount(ctx, account2)
+	info := GetOracleInfoByAccount(l, account2)
 	if len(info) != 1 || info[0].Account != account2 {
 		t.Fatal()
 	}
@@ -470,7 +468,7 @@ func TestGetOracleInfoByType(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeEmail
 	id := mock.Hash()
@@ -483,18 +481,18 @@ func TestGetOracleInfoByType(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	ot2 := common.OracleTypeWeChat
-	err = addTestOracleInfo(ctx, account, ot2, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot2, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetOracleInfoByType(ctx, ot2)
+	info := GetOracleInfoByType(l, ot2)
 	if len(info) != 1 || info[0].OType != ot2 {
 		t.Fatal()
 	}
@@ -504,7 +502,7 @@ func TestGetOracleInfoByAccountAndType(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeEmail
 	id := mock.Hash()
@@ -517,12 +515,12 @@ func TestGetOracleInfoByAccountAndType(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetOracleInfoByAccountAndType(ctx, account, ot)
+	info := GetOracleInfoByAccountAndType(l, account, ot)
 	if len(info) != 1 || info[0].Account != account || info[0].OType != ot {
 		t.Fatal()
 	}
@@ -532,7 +530,7 @@ func TestGetOracleInfoByTypeAndID(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeEmail
 	id := mock.Hash()
@@ -545,12 +543,12 @@ func TestGetOracleInfoByTypeAndID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetOracleInfoByTypeAndID(ctx, ot, id)
+	info := GetOracleInfoByTypeAndID(l, ot, id)
 	if len(info) != 1 || info[0].OID != id || info[0].OType != ot {
 		t.Fatal()
 	}
@@ -560,7 +558,7 @@ func TestGetOracleInfoByTypeAndIDAndPk(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeEmail
 	id := mock.Hash()
@@ -573,12 +571,12 @@ func TestGetOracleInfoByTypeAndIDAndPk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetOracleInfoByTypeAndIDAndPk(ctx, ot, id, kt, pk)
+	info := GetOracleInfoByTypeAndIDAndPk(l, ot, id, kt, pk)
 	if len(info) != 1 || info[0].OID != id || info[0].OType != ot || !bytes.Equal(pk, info[0].PubKey) {
 		t.Fatal()
 	}
@@ -595,7 +593,7 @@ func TestGetOracleInfoByHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeEmail
 	id := mock.Hash()
@@ -608,7 +606,7 @@ func TestGetOracleInfoByHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -624,13 +622,13 @@ func TestGetOracleInfoByHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	info := GetOracleInfoByHash(ctx, hash)
+	info := GetOracleInfoByHash(l, hash)
 	if len(info) != 1 || info[0].OID != id || info[0].OType != ot || !bytes.Equal(pk, info[0].PubKey) {
 		t.Fatal()
 	}
 }
 
-func addTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte,
+func addTestPublishInfo(ctx *vmstore.VMContext, store ledger.Store, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte,
 	vs []types.Address, cs []types.Hash, fee types.Balance, hash types.Hash) error {
 	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDPublishInfo, account, vs, cs, fee.Int, true, kt, pk)
 	if err != nil {
@@ -649,15 +647,14 @@ func addTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32
 		return err
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := store.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func delTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte,
+func delTestPublishInfo(ctx *vmstore.VMContext, store ledger.Store, account types.Address, pt uint32, id types.Hash, kt uint16, pk []byte,
 	vs []types.Address, cs []types.Hash, fee types.Balance, hash types.Hash) error {
 	data, err := PublicKeyDistributionABI.PackVariable(VariableNamePKDPublishInfo, account, vs, cs, fee.Int, false, kt, pk)
 	if err != nil {
@@ -676,8 +673,7 @@ func delTestPublishInfo(ctx *vmstore.VMContext, account types.Address, pt uint32
 		return err
 	}
 
-	err = ctx.SaveStorage()
-	if err != nil {
+	if err := store.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		return err
 	}
 
@@ -688,7 +684,7 @@ func TestPublishInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	pk := make([]byte, ed25519.PublicKeySize)
 	kt := common.PublicKeyTypeInvalid
 	err := PublishInfoCheck(ctx, mock.Address(), common.OracleTypeInvalid, mock.Hash(), kt, pk, common.PublishCost)
@@ -737,7 +733,7 @@ func TestUnPublishInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeInvalid
 	id := mock.Hash()
@@ -778,7 +774,7 @@ func TestUnPublishInfoCheck(t *testing.T) {
 	vs := []types.Address{mock.Address()}
 	cs := []types.Hash{mock.Hash()}
 	fee := common.PublishCost
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -793,7 +789,7 @@ func TestCheckPublishInfoExist(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -813,7 +809,7 @@ func TestCheckPublishInfoExist(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -827,7 +823,7 @@ func TestGetPublishInfoByTypeAndId(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -843,18 +839,18 @@ func TestGetPublishInfoByTypeAndId(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id2 := mock.Hash()
-	err = addTestPublishInfo(ctx, account, pt, id2, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetPublishInfoByTypeAndId(ctx, pt, id)
+	info := GetPublishInfoByTypeAndId(l, pt, id)
 	if len(info) != 1 {
 		t.Fatal()
 	}
@@ -863,7 +859,7 @@ func TestGetPublishInfoByTypeAndId(t *testing.T) {
 		t.Fatal()
 	}
 
-	info2 := GetPublishInfoByTypeAndId(ctx, pt, id2)
+	info2 := GetPublishInfoByTypeAndId(l, pt, id2)
 	if len(info) != 1 {
 		t.Fatal()
 	}
@@ -877,7 +873,7 @@ func TestGetAllPublishInfo(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -893,19 +889,19 @@ func TestGetAllPublishInfo(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	pt2 := common.OracleTypeWeChat
 	id2 := mock.Hash()
-	err = addTestPublishInfo(ctx, account, pt2, id2, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt2, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetAllPublishInfo(ctx)
+	info := GetAllPublishInfo(l)
 	if len(info) != 2 {
 		t.Fatal()
 	}
@@ -941,7 +937,7 @@ func TestGetPublishInfoByType(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -957,19 +953,19 @@ func TestGetPublishInfoByType(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	pt2 := common.OracleTypeWeChat
 	id2 := mock.Hash()
-	err = addTestPublishInfo(ctx, account, pt2, id2, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt2, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetPublishInfoByType(ctx, common.OracleTypeWeChat)
+	info := GetPublishInfoByType(l, common.OracleTypeWeChat)
 	if len(info) != 1 {
 		t.Fatal()
 	}
@@ -983,7 +979,7 @@ func TestGetPublishInfoByAccount(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -999,25 +995,25 @@ func TestGetPublishInfoByAccount(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id2 := mock.Hash()
 	account2 := mock.Address()
-	err = addTestPublishInfo(ctx, account2, pt, id2, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account2, pt, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id3 := mock.Hash()
-	err = addTestPublishInfo(ctx, account2, pt, id3, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account2, pt, id3, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetPublishInfoByAccount(ctx, account2)
+	info := GetPublishInfoByAccount(l, account2)
 	if len(info) != 2 {
 		t.Fatal()
 	}
@@ -1031,7 +1027,7 @@ func TestGetPublishInfoByAccountAndType(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -1047,7 +1043,7 @@ func TestGetPublishInfoByAccountAndType(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1055,19 +1051,19 @@ func TestGetPublishInfoByAccountAndType(t *testing.T) {
 	id2 := mock.Hash()
 	pt2 := common.OracleTypeWeChat
 	account2 := mock.Address()
-	err = addTestPublishInfo(ctx, account2, pt2, id2, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account2, pt2, id2, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	id3 := mock.Hash()
 	pt3 := common.OracleTypeEmail
-	err = addTestPublishInfo(ctx, account2, pt3, id3, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account2, pt3, id3, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	info := GetPublishInfoByAccountAndType(ctx, account2, common.OracleTypeEmail)
+	info := GetPublishInfoByAccountAndType(l, account2, common.OracleTypeEmail)
 	if len(info) != 1 {
 		t.Fatal()
 	}
@@ -1081,7 +1077,7 @@ func TestDeletePublishInfo(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -1097,7 +1093,7 @@ func TestDeletePublishInfo(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := types.NewBalance(5e8)
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1106,7 +1102,7 @@ func TestDeletePublishInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = delTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = delTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1120,7 +1116,7 @@ func TestVerifierRegInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeInvalid
 	vi := "123@test.com"
@@ -1132,7 +1128,7 @@ func TestVerifierRegInfoCheck(t *testing.T) {
 	}
 
 	vt = common.OracleTypeEmail
-	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err = addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
@@ -1149,7 +1145,7 @@ func TestVerifierRegInfoCheck(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err = addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
@@ -1164,7 +1160,7 @@ func TestVerifierUnRegInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	vt := common.OracleTypeInvalid
 
@@ -1181,7 +1177,7 @@ func TestVerifierUnRegInfoCheck(t *testing.T) {
 
 	vi := "123456"
 	vk := mock.Hash()
-	err = addTestVerifierInfo(ctx, account, vt, vi, vk[:])
+	err = addTestVerifierInfo(ctx, l, account, vt, vi, vk[:])
 	if err != nil {
 		t.Fatal()
 	}
@@ -1196,7 +1192,7 @@ func TestVerifierPledgeCheck(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 
 	err := VerifierPledgeCheck(ctx, account)
@@ -1221,7 +1217,7 @@ func TestOracleInfoCheck(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeInvalid
 	id := mock.Hash()
@@ -1261,7 +1257,7 @@ func TestOracleInfoCheck(t *testing.T) {
 	code1 := util.RandomFixedStringWithSeed(common.RandomCodeLen, time.Now().UnixNano())
 	vs := []types.Address{account1}
 	cs := []types.Hash{codeHash}
-	err = addTestPublishInfo(ctx, account, ot, id, kt, pk, vs, cs, common.PublishCost, hash)
+	err = addTestPublishInfo(ctx, l, account, ot, id, kt, pk, vs, cs, common.PublishCost, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -1272,7 +1268,7 @@ func TestOracleInfoCheck(t *testing.T) {
 	}
 
 	vs = []types.Address{account}
-	err = addTestPublishInfo(ctx, account, ot, id, kt, pk, vs, cs, common.PublishCost, hash)
+	err = addTestPublishInfo(ctx, l, account, ot, id, kt, pk, vs, cs, common.PublishCost, hash)
 	if err != nil {
 		t.Fatal()
 	}
@@ -1292,7 +1288,7 @@ func TestCheckOracleInfoExist(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	ot := common.OracleTypeEmail
 	id := mock.Hash()
@@ -1305,7 +1301,7 @@ func TestCheckOracleInfoExist(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = addTestOracleInfo(ctx, account, ot, id, kt, pk, code, hash)
+	err = addTestOracleInfo(ctx, l, account, ot, id, kt, pk, code, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1319,7 +1315,7 @@ func TestGetPublishInfoByKey(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -1335,7 +1331,7 @@ func TestGetPublishInfoByKey(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1350,7 +1346,7 @@ func TestGetPublishInfo(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
-	ctx := vmstore.NewVMContext(l)
+	ctx := vmstore.NewVMContext(l, &contractaddress.PubKeyDistributionAddress)
 	account := mock.Address()
 	pt := common.OracleTypeEmail
 	id := mock.Hash()
@@ -1366,7 +1362,7 @@ func TestGetPublishInfo(t *testing.T) {
 	cs := []types.Hash{mock.Hash(), mock.Hash()}
 	fee := common.PublishCost
 
-	err = addTestPublishInfo(ctx, account, pt, id, kt, pk, vs, cs, fee, hash)
+	err = addTestPublishInfo(ctx, l, account, pt, id, kt, pk, vs, cs, fee, hash)
 	if err != nil {
 		t.Fatal(err)
 	}

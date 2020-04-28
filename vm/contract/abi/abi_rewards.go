@@ -18,9 +18,9 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/abi"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 const (
@@ -135,7 +135,7 @@ func GetConfidantKey(address types.Address, txId, txHeader, rxHeader []byte) []b
 	return result
 }
 
-func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, error) {
+func GetRewardsDetail(store ledger.Store, txId string) ([]*RewardsInfo, error) {
 	logger := log.NewLogger("GetRewardsDetail")
 	defer func() {
 		_ = logger.Sync()
@@ -146,10 +146,11 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 		return nil, err
 	}
 	var result []*RewardsInfo
-	if err := ctx.IteratorAll(contractaddress.RewardsAddress[:], func(key []byte, value []byte) error {
-		if bytes.HasPrefix(key[types.AddressSize+1:], id) && len(value) > 0 {
+	iterator := store.NewVMIterator(&contractaddress.RewardsAddress)
+	if err := iterator.Next(contractaddress.RewardsAddress[:], func(key []byte, value []byte) error {
+		if bytes.HasPrefix(key[types.AddressSize:], id) && len(value) > 0 {
 			if info, err := ParseRewardsInfo(value); err == nil {
-				if isValidContract(ctx, info) {
+				if isValidContract(store, info) {
 					if info.Type == uint8(Rewards) {
 						result = append(result, info)
 					} else {
@@ -168,27 +169,27 @@ func GetRewardsDetail(ctx *vmstore.VMContext, txId string) ([]*RewardsInfo, erro
 	}
 }
 
-func isValidContract(ctx *vmstore.VMContext, reward *RewardsInfo) bool {
+func isValidContract(store ledger.Store, reward *RewardsInfo) bool {
 	//txHeader := key[0:types.HashSize]
 	//rxHeader := key[types.HashSize : types.HashSize+types.HashSize]
 	//txHash, err := types.BytesToHash(txHeader)
 	//if err != nil {
 	//	return false
 	//}
-	_, err := ctx.Ledger.GetStateBlock(reward.RxHeader)
+	_, err := store.GetStateBlock(reward.RxHeader)
 	if err != nil {
 		return false
 	}
-	_, err = ctx.Ledger.GetStateBlock(reward.TxHeader)
+	_, err = store.GetStateBlock(reward.TxHeader)
 	if err != nil {
 		return false
 	}
 	return true
 }
 
-func GetTotalRewards(ctx *vmstore.VMContext, txId string) (*big.Int, error) {
+func GetTotalRewards(store ledger.Store, txId string) (*big.Int, error) {
 	var result uint64
-	if infos, err := GetRewardsDetail(ctx, txId); err == nil {
+	if infos, err := GetRewardsDetail(store, txId); err == nil {
 		for _, info := range infos {
 			result, _ = util.SafeAdd(result, info.Amount.Uint64())
 		}
@@ -199,19 +200,19 @@ func GetTotalRewards(ctx *vmstore.VMContext, txId string) (*big.Int, error) {
 	return new(big.Int).SetUint64(result), nil
 }
 
-func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) (map[string][]*RewardsInfo, error) {
+func GetConfidantRewordsDetail(store ledger.Store, confidant types.Address) (map[string][]*RewardsInfo, error) {
 	logger := log.NewLogger("GetConfidantRewordsDetail")
 	defer func() {
 		_ = logger.Sync()
 	}()
 
 	result := make(map[string][]*RewardsInfo)
-
-	if err := ctx.IteratorAll(contractaddress.RewardsAddress[:], func(key []byte, value []byte) error {
-		k := key[types.AddressSize+1:]
+	iterator := store.NewVMIterator(&contractaddress.RewardsAddress)
+	if err := iterator.Next(contractaddress.RewardsAddress[:], func(key []byte, value []byte) error {
+		k := key[types.AddressSize:]
 		if bytes.HasPrefix(k, confidant[:]) && len(value) > 0 {
 			if info, err := ParseRewardsInfo(value); err == nil {
-				if isValidContract(ctx, info) {
+				if isValidContract(store, info) {
 					if info.Type == uint8(Confidant) {
 						s := hex.EncodeToString(k[types.AddressSize : types.AddressSize+types.HashSize])
 						if infos, ok := result[s]; ok {
@@ -235,8 +236,8 @@ func GetConfidantRewordsDetail(ctx *vmstore.VMContext, confidant types.Address) 
 	}
 }
 
-func GetConfidantRewords(ctx *vmstore.VMContext, confidant types.Address) (map[string]*big.Int, error) {
-	if infos, err := GetConfidantRewordsDetail(ctx, confidant); err != nil {
+func GetConfidantRewords(store ledger.Store, confidant types.Address) (map[string]*big.Int, error) {
+	if infos, err := GetConfidantRewordsDetail(store, confidant); err != nil {
 		return nil, err
 	} else {
 		result := make(map[string]*big.Int)

@@ -9,8 +9,8 @@ import (
 )
 
 type FrontierStore interface {
-	AddFrontier(frontier *types.Frontier, c *Cache) error
-	DeleteFrontier(key types.Hash, c *Cache) error
+	AddFrontier(frontier *types.Frontier, c storage.Cache) error
+	DeleteFrontier(key types.Hash, c storage.Cache) error
 	GetFrontier(hash types.Hash, cache ...storage.Cache) (*types.Frontier, error)
 	GetFrontiers() ([]*types.Frontier, error)
 	CountFrontiers() (uint64, error)
@@ -73,7 +73,7 @@ func (l *Ledger) CountFrontiers() (uint64, error) {
 	return l.store.Count([]byte{byte(storage.KeyPrefixFrontier)})
 }
 
-func (l *Ledger) AddFrontier(frontier *types.Frontier, c *Cache) error {
+func (l *Ledger) AddFrontier(frontier *types.Frontier, c storage.Cache) error {
 	v := frontier.OpenBlock
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixFrontier, frontier.HeaderBlock)
 	if err != nil {
@@ -83,7 +83,7 @@ func (l *Ledger) AddFrontier(frontier *types.Frontier, c *Cache) error {
 	return c.Put(k, &v)
 }
 
-func (l *Ledger) DeleteFrontier(key types.Hash, c *Cache) error {
+func (l *Ledger) DeleteFrontier(key types.Hash, c storage.Cache) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixFrontier, key)
 	if err != nil {
 		return err

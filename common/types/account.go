@@ -135,6 +135,25 @@ func (am *AccountMeta) Deserialize(text []byte) error {
 	return nil
 }
 
+func (tm *TokenMeta) Serialize() ([]byte, error) {
+	return tm.MarshalMsg(nil)
+}
+
+func (tm *TokenMeta) Deserialize(text []byte) error {
+	_, err := tm.UnmarshalMsg(text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tm *TokenMeta) Clone() *TokenMeta {
+	t := TokenMeta{}
+	bytes, _ := tm.Serialize()
+	_ = t.Deserialize(bytes)
+	return &t
+}
+
 func (am *AccountMeta) Clone() *AccountMeta {
 	clone := AccountMeta{}
 	clone.Address = am.Address

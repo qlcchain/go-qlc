@@ -384,6 +384,11 @@ func (l *Ledger) deleteBlockLink(blk *types.StateBlock, c storage.Cache) error {
 	if err := c.Delete(k); err != nil {
 		return err
 	}
+	sc, err := blk.ConvertToSchema()
+	if err != nil {
+		return err
+	}
+	l.deletedSchema = append(l.deletedSchema, sc...)
 	return nil
 }
 

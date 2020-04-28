@@ -14,11 +14,35 @@ import (
 	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
+)
+
+var Nep5Contract = NewChainContract(
+	map[string]Contract{
+		cabi.MethodNEP5Pledge: &Nep5Pledge{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer1,
+					signature: true,
+					work:      true,
+				},
+			},
+		},
+		cabi.MethodWithdrawNEP5Pledge: &WithdrawNep5Pledge{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer1,
+					signature: true,
+					work:      true,
+				},
+			},
+		},
+	},
+	cabi.NEP5PledgeABI,
+	cabi.JsonNEP5Pledge,
 )
 
 type pledgeInfo struct {
@@ -36,7 +60,7 @@ type Nep5Pledge struct {
 // transfer quota to beneficial address
 func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
 	// check pledge amount
-	amount, err := ctx.Ledger.CalculateAmount(block)
+	amount, err := ctx.CalculateAmount(block)
 	if err != nil {
 		return err
 	}
@@ -48,7 +72,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 	}
 
 	if block.Token != cfg.ChainToken() || amount.IsZero() || !b {
-		return errors.New("invalid block data")
+		return fmt.Errorf("invalid block data, %t, %t, %t (chain token %s)", block.Token != cfg.ChainToken(), amount.IsZero(), !b, cfg.ChainToken())
 	}
 
 	param, err := cabi.ParsePledgeParam(block.GetData())
@@ -92,12 +116,12 @@ func (*Nep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types
 		}, nil
 }
 
-func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param, err := cabi.ParsePledgeParam(input.Data)
 	if err != nil {
 		return nil, err
 	}
-	a, _ := ctx.Ledger.CalculateAmount(input)
+	a, _ := ctx.CalculateAmount(input)
 	amount := a.Copy()
 
 	var withdrawTime int64
@@ -164,7 +188,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	//	}
 	//}
 
-	am, _ := ctx.Ledger.GetAccountMeta(param.Beneficial)
+	am, _ := ctx.GetAccountMeta(param.Beneficial)
 	if am != nil {
 		tm := am.Token(cfg.ChainToken())
 		block.Balance = am.CoinBalance
@@ -208,7 +232,7 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 		break
 	}
 
-	return []*vmcontract.ContractBlock{
+	return []*ContractBlock{
 		{
 			VMContext: ctx,
 			Block:     block,
@@ -251,7 +275,7 @@ type WithdrawNep5Pledge struct {
 }
 
 func (*WithdrawNep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error {
-	if amount, err := ctx.Ledger.CalculateAmount(block); err != nil {
+	if amount, err := ctx.CalculateAmount(block); err != nil {
 		return err
 	} else {
 		if block.Type != types.ContractSend || amount.Compare(types.ZeroBalance) == types.BalanceCompEqual {
@@ -275,7 +299,7 @@ func (m *WithdrawNep5Pledge) DoPending(block *types.StateBlock) (*types.PendingK
 	return nil, nil, errors.New("not implemented")
 }
 
-func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*vmcontract.ContractBlock, error) {
+func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
 	param, err := cabi.ParseWithdrawPledgeParam(input.GetData())
 	if err != nil {
 		return nil, err
@@ -295,10 +319,10 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 
 	pledgeInfo := pledgeResult
 
-	amount, _ := ctx.Ledger.CalculateAmount(input)
+	amount, _ := ctx.CalculateAmount(input)
 
 	var pledgeData []byte
-	if pledgeData, err = ctx.GetStorage(nil, pledgeInfo.Key[1:]); err != nil && err != vmstore.ErrStorageNotFound {
+	if pledgeData, err = ctx.GetStorage(nil, pledgeInfo.Key); err != nil && err != vmstore.ErrStorageNotFound {
 		return nil, err
 	} else {
 		// already exist,verify data
@@ -314,7 +338,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 			}
 
 			// TODO: save data or change pledge info state
-			err = ctx.SetStorage(nil, pledgeInfo.Key[1:], nil)
+			err = ctx.SetStorage(nil, pledgeInfo.Key, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -323,7 +347,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		}
 	}
 
-	am, _ := ctx.Ledger.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
+	am, _ := ctx.GetAccountMeta(pledgeInfo.PledgeInfo.PledgeAddress)
 	if am == nil {
 		return nil, fmt.Errorf("can not find %s", pledgeInfo.PledgeInfo.PledgeAddress.String())
 	}
@@ -342,7 +366,7 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		block.Representative = tm.Representative
 		block.Balance = am.CoinBalance.Add(amount)
 
-		return []*vmcontract.ContractBlock{
+		return []*ContractBlock{
 			{
 				VMContext: ctx,
 				Block:     block,

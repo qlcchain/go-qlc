@@ -18,6 +18,7 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
+	typelation "github.com/qlcchain/go-qlc/common/relation"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -32,14 +33,18 @@ type LedgerStore interface {
 	Close() error
 	DBStore() storage.Store
 	EventBus() event.EventBus
-	Get(k []byte, c ...storage.Cache) (interface{}, []byte, error)
+	Get(k []byte, c ...storage.Cache) ([]byte, error)
+	GetObject(k []byte, c ...storage.Cache) (interface{}, []byte, error)
 	Iterator([]byte, []byte, func([]byte, []byte) error) error
+	IteratorObject(prefix []byte, end []byte, fn func([]byte, interface{}) error) error
 	GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateChangeBlock(account types.Address, representative types.Address, prk ed25519.PrivateKey) (*types.StateBlock, error)
 	GenerateOnlineBlock(account types.Address, prk ed25519.PrivateKey, povHeight uint64) (*types.StateBlock, error)
 	GetVerifiedData() map[types.Hash]int
 	Action(at storage.ActionType, t int) (interface{}, error)
+	GetRelation(dest interface{}, query string) error
+	SelectRelation(dest interface{}, query string) error
 	Flush() error
 }
 
@@ -56,7 +61,9 @@ type Ledger struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	verifiedData   map[types.Hash]int
+	deletedSchema  []types.Schema
 	logger         *zap.SugaredLogger
+	tokenCache     sync.Map
 }
 
 var (
@@ -85,55 +92,12 @@ var (
 	ErrPeerNotFound    = errors.New("peer not found")
 )
 
-//const (
-//	idPrefixBlock byte = iota
-//	idPrefixSmartContractBlock
-//	idPrefixUncheckedBlockPrevious
-//	idPrefixUncheckedBlockLink
-//	idPrefixAccount
-//	//idPrefixToken
-//	idPrefixFrontier
-//	idPrefixPending
-//	idPrefixRepresentation
-//	idPrefixPerformance
-//	idPrefixChild
-//	idPrefixVersion
-//	idPrefixStorage
-//	idPrefixToken    //discard
-//	idPrefixSender   //discard
-//	idPrefixReceiver //discard
-//	idPrefixMessage  //discard
-//	idPrefixMessageInfo
-//	idPrefixOnlineReps
-//	idPrefixPovHeader   // prefix + height + hash => header
-//	idPrefixPovBody     // prefix + height + hash => body
-//	idPrefixPovHeight   // prefix + hash => height (uint64)
-//	idPrefixPovTxLookup // prefix + txHash => TxLookup
-//	idPrefixPovBestHash // prefix + height => hash
-//	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
-//	idPrefixLink
-//	idPrefixBlockCache //block store this table before consensus complete
-//	idPrefixRepresentationCache
-//	idPrefixUncheckedTokenInfo
-//	idPrefixBlockCacheAccount
-//	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
-//	idPrefixUnconfirmedSync
-//	idPrefixUncheckedSync
-//	idPrefixSyncCacheBlock
-//	idPrefixUncheckedPovHeight
-//	idPrefixPovLatestHeight  // prefix => height
-//	idPrefixPovTxlScanCursor // prefix => height
-//	idPrefixVoteHistory
-//	idPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
-//	idPrefixPeerInfo    //prefix+peerID => peerInfo
-//)
-
 var (
 	lcache = make(map[string]*Ledger)
 	lock   = sync.RWMutex{}
 )
 
-const version = 14
+const version = 15
 
 func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
@@ -150,7 +114,9 @@ func NewLedger(cfgFile string) *Ledger {
 			ctx:            ctx,
 			cancel:         cancel,
 			blockConfirmed: make(chan *types.StateBlock, 1024),
+			deletedSchema:  make([]types.Schema, 0),
 			logger:         log.NewLogger("ledger"),
+			tokenCache:     sync.Map{},
 		}
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
@@ -290,6 +256,7 @@ func (l *Ledger) upgrade() error {
 			new(migration.MigrationV11ToV12),
 			new(migration.MigrationV12ToV13),
 			new(migration.MigrationV13ToV14),
+			new(migration.MigrationV14ToV15),
 		}
 
 		err = migration.Upgrade(ms, l.store)
@@ -303,31 +270,27 @@ func (l *Ledger) upgrade() error {
 func (l *Ledger) initRelation() error {
 	count1, err := l.relation.BlocksCount()
 	if err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("get relation block count, %s ", err)
 	}
 
 	count2, err := l.CountStateBlocks()
 	if err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("get block count, %s ", err)
 	}
 
 	if count1 != count2 {
 		if err := l.relation.EmptyStore(); err != nil {
-			l.logger.Error(err)
-			return err
+			return fmt.Errorf("relation emptystore, %s ", err)
 		}
-		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
-			l.relation.Add(relation.TableConvert(block))
+		return l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
+			c, err := block.ConvertToSchema()
+			if err != nil {
+				return fmt.Errorf("relation convert, %s ", err)
+			}
+			l.relation.Add(c)
 			return nil
 		})
-		if err != nil {
-			l.logger.Error(err)
-			return err
-		}
 	}
-
 	return nil
 }
 
@@ -620,12 +583,34 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 	return &sb, nil
 }
 
-//func (l *Ledger) Flush() error {
-//	return nil
-//}
+func (l *Ledger) Get(k []byte, c ...storage.Cache) ([]byte, error) {
+	if len(c) > 0 && c[0] != nil {
+		if r, err := c[0].Get(k); r != nil {
+			return r.([]byte), nil
+		} else {
+			if err == ErrKeyDeleted {
+				return nil, storage.KeyNotFound
+			}
+		}
+	}
 
-func (l *Ledger) Get(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
-	if len(c) > 0 {
+	if r, err := l.cache.Get(k); r != nil {
+		return r.([]byte), nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, storage.KeyNotFound
+		}
+	}
+
+	v, err := l.store.Get(k)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+func (l *Ledger) GetObject(k []byte, c ...storage.Cache) (interface{}, []byte, error) {
+	if len(c) > 0 && c[0] != nil {
 		if r, err := c[0].Get(k); r != nil {
 			return r, nil, nil
 		} else {
@@ -674,7 +659,7 @@ func (l *Ledger) getFromStore(key []byte, batch ...storage.Batch) ([]byte, error
 }
 
 func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error) {
-	if len(c) > 0 {
+	if len(c) > 0 && c[0] != nil {
 		if r, err := c[0].Get(k); r != nil {
 			return r, nil
 		} else {
@@ -695,6 +680,25 @@ func (l *Ledger) getFromCache(k []byte, c ...storage.Cache) (interface{}, error)
 
 func (l *Ledger) Iterator(prefix []byte, end []byte, fn func(k []byte, v []byte) error) error {
 	keys, err := l.cache.prefixIterator(prefix, fn)
+	if err != nil {
+		return fmt.Errorf("cache iterator : %s", err)
+	}
+	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
+		if !contain(keys, k) {
+			if err := fn(k, v); err != nil {
+				return fmt.Errorf("ledger iterator: %s", err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("ledger store iterator: %s", err)
+	}
+
+	return nil
+}
+
+func (l *Ledger) IteratorObject(prefix []byte, end []byte, fn func(k []byte, v interface{}) error) error {
+	keys, err := l.cache.prefixIteratorObject(prefix, fn)
 	if err != nil {
 		return fmt.Errorf("cache iterator : %s", err)
 	}
@@ -757,4 +761,15 @@ func (l *Ledger) Flush() error {
 	lock.Lock()
 	defer lock.Unlock()
 	return l.cache.rebuild()
+}
+
+func (l *Ledger) RegisterRelation(obj types.Schema) error {
+	return l.relation.Register(obj)
+}
+
+func (l *Ledger) RegisterInterface(con types.Convert, obj types.Schema) error {
+	if err := typelation.RegisterInterface(con); err != nil {
+		return err
+	}
+	return l.RegisterRelation(obj)
 }
