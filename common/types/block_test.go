@@ -8,9 +8,6 @@
 package types
 
 import (
-	"bytes"
-	"encoding/hex"
-	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -330,37 +327,5 @@ func TestNewBlock(t *testing.T) {
 				t.Errorf("NewBlock() got = %v, want %v", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestStateBlock_RelatedAddress(t *testing.T) {
-	b := StateBlock{}
-	err := json.Unmarshal([]byte(testBlk), &b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b.Type = Send
-	data, _ := hex.DecodeString("7d35650e78d8d7037c90390357f8a59bf17eff82cbc03c94f0b6267335a8dcb3")
-	addr, _ := BytesToAddress(data)
-	if address := b.ContractAddress(); address == nil {
-		t.Fatal("")
-	} else {
-		if !bytes.EqualFold(address[:], addr[:]) {
-			t.Fatalf("exp:%s ,act: %s", addr, address)
-		} else {
-			t.Log(address)
-		}
-	}
-
-	b.Type = Receive
-	addr2, _ := HexToAddress("qlc_1c47tsj9cipsda74no7iugu44zjrae4doc8yu3m6qwkrtywnf9z1qa3badby")
-	if address := b.ContractAddress(); address == nil {
-		t.Fatal("")
-	} else {
-		if !bytes.EqualFold(address[:], addr2[:]) {
-			t.Fatalf("exp:%s ,act: %s", addr2, address)
-		} else {
-			t.Log(address)
-		}
 	}
 }

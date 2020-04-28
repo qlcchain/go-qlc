@@ -123,7 +123,9 @@ func TestLedger_Storage(t *testing.T) {
 	if len(storage) != iteratorSize {
 		t.Fatal("failed to iterator cache data")
 	}
-	cacheTrie := ctx.cache.Trie()
+	cacheTrie := ctx.cache.Trie(func(bytes []byte) []byte {
+		return ctx.getRawStorageKey(bytes, nil)
+	})
 	if cacheTrie == nil {
 		t.Fatal("invalid trie")
 	}

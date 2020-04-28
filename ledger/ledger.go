@@ -92,49 +92,6 @@ var (
 	ErrPeerNotFound    = errors.New("peer not found")
 )
 
-//const (
-//	idPrefixBlock byte = iota
-//	idPrefixSmartContractBlock
-//	idPrefixUncheckedBlockPrevious
-//	idPrefixUncheckedBlockLink
-//	idPrefixAccount
-//	//idPrefixToken
-//	idPrefixFrontier
-//	idPrefixPending
-//	idPrefixRepresentation
-//	idPrefixPerformance
-//	idPrefixChild
-//	idPrefixVersion
-//	idPrefixStorage
-//	idPrefixToken    //discard
-//	idPrefixSender   //discard
-//	idPrefixReceiver //discard
-//	idPrefixMessage  //discard
-//	idPrefixMessageInfo
-//	idPrefixOnlineReps
-//	idPrefixPovHeader   // prefix + height + hash => header
-//	idPrefixPovBody     // prefix + height + hash => body
-//	idPrefixPovHeight   // prefix + hash => height (uint64)
-//	idPrefixPovTxLookup // prefix + txHash => TxLookup
-//	idPrefixPovBestHash // prefix + height => hash
-//	idPrefixPovTD       // prefix + height + hash => total difficulty (big int)
-//	idPrefixLink
-//	idPrefixBlockCache //block store this table before consensus complete
-//	idPrefixRepresentationCache
-//	idPrefixUncheckedTokenInfo
-//	idPrefixBlockCacheAccount
-//	idPrefixPovMinerStat // prefix + day index => miners of best blocks per day
-//	idPrefixUnconfirmedSync
-//	idPrefixUncheckedSync
-//	idPrefixSyncCacheBlock
-//	idPrefixUncheckedPovHeight
-//	idPrefixPovLatestHeight  // prefix => height
-//	idPrefixPovTxlScanCursor // prefix => height
-//	idPrefixVoteHistory
-//	idPrefixPovDiffStat // prefix + dayIndex => average diff statistics per day
-//	idPrefixPeerInfo    //prefix+peerID => peerInfo
-//)
-
 var (
 	lcache = make(map[string]*Ledger)
 	lock   = sync.RWMutex{}

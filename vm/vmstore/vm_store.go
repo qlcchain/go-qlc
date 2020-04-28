@@ -72,11 +72,15 @@ var (
 )
 
 func TrieHash(ctx *VMContext) *types.Hash {
-	return ctx.cache.Trie().Hash()
+	return ctx.cache.Trie(func(bytes []byte) []byte {
+		return ctx.getRawStorageKey(bytes, nil)
+	}).Hash()
 }
 
 func Trie(ctx *VMContext) *trie.Trie {
-	return ctx.cache.Trie()
+	return ctx.cache.Trie(func(bytes []byte) []byte {
+		return ctx.getRawStorageKey(bytes, nil)
+	})
 }
 
 func ToCache(ctx *VMContext) map[string]interface{} {
@@ -363,8 +367,4 @@ func (v *VMContext) getRawStorageKey(prefix, key []byte) []byte {
 	storageKey = append(storageKey, prefix...)
 	storageKey = append(storageKey, key...)
 	return storageKey
-}
-
-func (v *VMContext) GetRawKeyByTrie(key []byte) []byte {
-	return v.getRawStorageKey(key, nil)
 }

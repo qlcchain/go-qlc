@@ -72,7 +72,7 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 	}
 
 	if block.Token != cfg.ChainToken() || amount.IsZero() || !b {
-		return fmt.Errorf("invalid block data, %t, %t, %t", block.Token != cfg.ChainToken(), amount.IsZero(), !b)
+		return fmt.Errorf("invalid block data, %t, %t, %t (chain token %s)", block.Token != cfg.ChainToken(), amount.IsZero(), !b, cfg.ChainToken())
 	}
 
 	param, err := cabi.ParsePledgeParam(block.GetData())

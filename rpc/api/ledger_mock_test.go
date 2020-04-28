@@ -71,7 +71,7 @@ func setLedgerStatus(l *ledger.Ledger, t *testing.T) {
 			}
 		}
 	}
-	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+	if err := l.SetStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 }

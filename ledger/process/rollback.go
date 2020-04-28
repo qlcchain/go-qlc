@@ -789,10 +789,6 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 
 	extra := block.GetExtra()
 	if !extra.IsZero() {
-		vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
-		if vmCtx == nil {
-			return fmt.Errorf("rollback contract data: can not get vm context, %s", block.GetHash())
-		}
 		lv.logger.Warnf("rollback contract data, block:%s, extra:%s", block.GetHash().String(), extra.String())
 		t := trie.NewTrie(lv.l.DBStore(), &extra, trie.NewSimpleTrieNodePool())
 		iterator := t.NewIterator(nil)
@@ -801,7 +797,6 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 			if key, value, ok := iterator.Next(); !ok {
 				break
 			} else {
-				key = vmCtx.GetRawKeyByTrie(key)
 				if contractData, err := lv.l.Get(key, cache); err == nil {
 					if !bytes.Equal(contractData, value) {
 						return fmt.Errorf("contract data is invalid, act: %v, exp: %v", contractData, value)
@@ -838,7 +833,7 @@ func (lv *LedgerVerifier) rollBackContractData(block *types.StateBlock, cache *l
 						if key, value, ok := iter.Next(); !ok {
 							break
 						} else {
-							if err := lv.l.SaveStorageByConvert(vmCtx.GetRawKeyByTrie(key), value, cache); err != nil {
+							if err := lv.l.SaveStorageByConvert(key, value, cache); err != nil {
 								lv.logger.Errorf("set storage error: %s", err)
 							}
 						}

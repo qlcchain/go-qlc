@@ -85,7 +85,7 @@ func (l *Ledger) SetStorage(val map[string]interface{}) error {
 	return l.store.PutBatch(batch)
 }
 
-// save storage to cache
+// save storage to cache, value can be slice and interface
 func (l *Ledger) SaveStorage(val map[string]interface{}, c ...storage.Cache) error {
 	if len(c) > 0 && c[0] != nil {
 		for k, v := range val {
@@ -108,6 +108,7 @@ func (l *Ledger) SaveStorage(val map[string]interface{}, c ...storage.Cache) err
 	return nil
 }
 
+// use for rollback, if val is a interface struct
 func (l *Ledger) SaveStorageByConvert(key []byte, val []byte, c storage.Cache) error {
 	r, err := relation.ConvertToInterface(val)
 	if err != nil {

@@ -29,11 +29,15 @@ func NewVMCache() *VMCache {
 	}
 }
 
-func (cache *VMCache) Trie() *trie.Trie {
+func (cache *VMCache) Trie(fn func([]byte) []byte) *trie.Trie {
 	if cache.trieDirty {
 		for key, value := range cache.storage {
 			if data, err := relation.ConvertToBytes(value); err == nil {
-				cache.trie.SetValue([]byte(key), data)
+				if fn != nil {
+					cache.trie.SetValue(fn([]byte(key)), data)
+				} else {
+					cache.trie.SetValue([]byte(key), data)
+				}
 			}
 		}
 
