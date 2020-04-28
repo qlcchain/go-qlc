@@ -55,7 +55,7 @@ func setupPrivacyTestCase(t *testing.T, scheme string) (func(t *testing.T), *moc
 	if err != nil {
 		t.Fatal(err)
 	}
-	md.privacy.ptm.client.transport.SetFakeMode(true)
+	md.privacy.ptm.SetFakeMode(true)
 
 	return func(t *testing.T) {
 		err := md.l.Close()
@@ -124,6 +124,33 @@ func TestController_Receive(t *testing.T) {
 		t.Log("got recv response", msgRsp)
 	case <-time.After(time.Second):
 		t.Fatal("timeout to get recv response")
+	}
+
+	err = md.privacy.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestController_Debug(t *testing.T) {
+	tearDown, md := setupPrivacyTestCase(t, "http")
+	defer tearDown(t)
+
+	err := md.privacy.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	feb := md.cc.FeedEventBus()
+	msgReq := &topic.EventRPCSyncCallMsg{Name: "Debug.PrivacyInfo"}
+	msgReq.In = make(map[string]interface{})
+	msgReq.Out = make(map[string]interface{})
+	msgRsp := feb.RpcSyncCall(msgReq)
+	time.Sleep(10 * time.Millisecond)
+
+	if msgRsp == nil {
+		t.Fatal("msgRsp is nil")
 	}
 
 	err = md.privacy.Stop()

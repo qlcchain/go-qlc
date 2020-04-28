@@ -510,7 +510,7 @@ func (dps *DPoS) processPrivateBlocks() {
 				break
 			}
 			if recvRsp.Err != nil {
-				dps.logger.Errorf("EventPrivacyRecvRspMsg got err %s", recvRsp.Err)
+				dps.logger.Info("EventPrivacyRecvRspMsg got err %s", recvRsp.Err)
 				break
 			}
 
@@ -522,7 +522,7 @@ func (dps *DPoS) processPrivateBlocks() {
 
 				err := dps.ledger.AddBlockPrivatePayload(blkHash, recvRsp.RawPayload)
 				if err != nil {
-					dps.logger.Infof("block[%s] save private payload err[%s]", blkHash, err.Error())
+					dps.logger.Errorf("block[%s] save private payload err[%s]", blkHash, err.Error())
 					break
 				}
 
