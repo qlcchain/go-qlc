@@ -147,3 +147,8 @@ func (q *NetApi) Syncing() bool {
 	}
 	return false
 }
+
+func (q *NetApi) GetPeerId() string {
+	cfg, _ := q.cc.Config()
+	return cfg.P2P.ID.PeerID
+}
