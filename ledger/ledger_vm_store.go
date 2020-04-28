@@ -40,18 +40,12 @@ func (i *Iterator) Next(prefix []byte, fn func(key []byte, value []byte) error) 
 		storageKey = append(storageKey, i.address[:]...)
 	}
 	storageKey = append(storageKey, prefix...)
-	err := i.store.Iterator(storageKey, nil, func(key []byte, val []byte) error {
+	return i.store.Iterator(storageKey, nil, func(key []byte, val []byte) error {
 		if err := fn(key[prefixLen:], val); err != nil {
 			i.logger.Error(err)
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 type VmStore interface {
@@ -93,19 +87,17 @@ func (l *Ledger) SaveStorage(val map[string]interface{}, c ...storage.Cache) err
 				return err
 			}
 		}
+		return nil
 	} else {
-		if err := l.cache.BatchUpdate(func(c *Cache) error {
+		return l.cache.BatchUpdate(func(c *Cache) error {
 			for k, v := range val {
 				if err := c.Put([]byte(k), v); err != nil {
 					return err
 				}
 			}
 			return nil
-		}); err != nil {
-			return err
-		}
+		})
 	}
-	return nil
 }
 
 // use for rollback, if val is a interface struct

@@ -33,10 +33,7 @@ func (l *Ledger) AddPeerInfo(info *types.PeerInfo) error {
 	} else if err != storage.KeyNotFound {
 		return err
 	}
-	if err := l.store.Put(k, v); err != nil {
-		return err
-	}
-	return nil
+	return l.store.Put(k, v)
 }
 
 func (l *Ledger) GetPeerInfo(peerID string) (*types.PeerInfo, error) {
@@ -108,10 +105,7 @@ func (l *Ledger) UpdatePeerInfo(value *types.PeerInfo) error {
 		}
 		return err
 	}
-	if err := l.store.Put(k, v); err != nil {
-		return err
-	}
-	return nil
+	return l.store.Put(k, v)
 }
 
 func (l *Ledger) AddOrUpdatePeerInfo(value *types.PeerInfo) error {
@@ -123,8 +117,5 @@ func (l *Ledger) AddOrUpdatePeerInfo(value *types.PeerInfo) error {
 	if err != nil {
 		return err
 	}
-	if err := l.store.Put(k, v); err != nil {
-		return err
-	}
-	return nil
+	return l.store.Put(k, v)
 }

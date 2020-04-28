@@ -46,6 +46,13 @@ func TestLedger_GetVmLogs(t *testing.T) {
 		t.Fatal(v, value)
 	}
 	t.Log(value)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = l.GetVmLogs(*v.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestLedger_DeleteVmLogs(t *testing.T) {
@@ -108,6 +115,10 @@ func TestLedger_HasVmLogs(t *testing.T) {
 	k := addVmLogs(t, l)
 	b, err := l.HasVmLogs(*k.Hash())
 	if err != nil || !b {
+		t.Fatal(err)
+	}
+	_, err = l.HasVmLogs(mock.Hash())
+	if err == nil {
 		t.Fatal(err)
 	}
 }

@@ -57,7 +57,7 @@ func TestLedger_Relation(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
-	if err := l.RegisterRelation(new(StructB)); err != nil {
+	if err := l.RegisterInterface(new(StructA), new(StructB)); err != nil {
 		t.Fatal(err)
 	}
 

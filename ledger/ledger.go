@@ -18,7 +18,7 @@ import (
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
-	typrelation "github.com/qlcchain/go-qlc/common/relation"
+	typelation "github.com/qlcchain/go-qlc/common/relation"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -270,35 +270,27 @@ func (l *Ledger) upgrade() error {
 func (l *Ledger) initRelation() error {
 	count1, err := l.relation.BlocksCount()
 	if err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("get relation block count, %s ", err)
 	}
 
 	count2, err := l.CountStateBlocks()
 	if err != nil {
-		l.logger.Error(err)
-		return err
+		return fmt.Errorf("get block count, %s ", err)
 	}
 
 	if count1 != count2 {
 		if err := l.relation.EmptyStore(); err != nil {
-			l.logger.Error(err)
-			return err
+			return fmt.Errorf("relation emptystore, %s ", err)
 		}
-		err := l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
+		return l.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 			c, err := block.ConvertToSchema()
 			if err != nil {
-				return err
+				return fmt.Errorf("relation convert, %s ", err)
 			}
 			l.relation.Add(c)
 			return nil
 		})
-		if err != nil {
-			l.logger.Error(err)
-			return err
-		}
 	}
-
 	return nil
 }
 
@@ -776,7 +768,7 @@ func (l *Ledger) RegisterRelation(obj types.Schema) error {
 }
 
 func (l *Ledger) RegisterInterface(con types.Convert, obj types.Schema) error {
-	if err := typrelation.RegisterInterface(con); err != nil {
+	if err := typelation.RegisterInterface(con); err != nil {
 		return err
 	}
 	return l.RegisterRelation(obj)

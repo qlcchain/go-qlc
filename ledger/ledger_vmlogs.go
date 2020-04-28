@@ -89,10 +89,7 @@ func (l *Ledger) SearchVmLogs(fn func(key types.Hash, value *types.VmLogs) error
 		if err := value.Deserialize(v); err != nil {
 			return fmt.Errorf("vmlogs deserialize: %s", err)
 		}
-		if err := fn(key, value); err != nil {
-			return fmt.Errorf("vmlogs fn: %s", err)
-		}
-		return nil
+		return fn(key, value)
 	})
 }
 

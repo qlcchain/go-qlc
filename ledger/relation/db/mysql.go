@@ -25,8 +25,7 @@ func openMysql(cfg *config.Config) (*sqlx.DB, error) {
 	//db, err := sqlx.Connect(cfg.DB.Driver, cfg.DB.ConnectionString)
 	db, err := sqlx.Connect("mysql", donnctionString)
 	if err != nil {
-		fmt.Println("connect mysql error: ", err)
-		return nil, err
+		return nil, fmt.Errorf("connect mysql error: %s", err)
 	}
 
 	return db, nil

@@ -417,22 +417,15 @@ func (c *Cache) dumpToLevelDb(key []byte, v interface{}, b storage.Batch) error 
 			if err != nil {
 				return fmt.Errorf("serialize error,  %s", key[:1])
 			}
-			if err := b.Put(key, val); err != nil {
-				return err
-			}
+			return b.Put(key, val)
 		case []byte:
-			if err := b.Put(key, o); err != nil {
-				return err
-			}
+			return b.Put(key, o)
 		default:
 			return fmt.Errorf("missing method serialize: %s", key[:1])
 		}
 	} else {
-		if err := b.Delete(key); err != nil {
-			return err
-		}
+		return b.Delete(key)
 	}
-	return nil
 }
 
 func (c *Cache) dumpToRelation(key []byte, v interface{}, l *Ledger) error {
@@ -485,16 +478,6 @@ func (c *Cache) Get(key []byte) (interface{}, error) {
 }
 
 func (c *Cache) Iterator(prefix []byte, end []byte, f func(k, v []byte) error) error {
-	//items := c.cache.GetALL(false)
-	//for k, v := range items {
-	//	key := originalKey(k.(string))
-	//	if bytes.HasPrefix(key, prefix) {
-	//		if err := f(key, v.([]byte)); err != nil {
-	//			return fmt.Errorf("cache iterator error: %s", err)
-	//		}
-	//	}
-	//}
-	//return nil
 	panic("not implemented")
 }
 

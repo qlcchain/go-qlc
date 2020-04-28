@@ -17,8 +17,7 @@ func openPostgres(cfg *config.Config) (*sqlx.DB, error) {
 
 	db, err := sqlx.Connect(cfg.DB.Driver, cfg.DB.ConnectionString)
 	if err != nil {
-		fmt.Println("connect postgres error: ", err)
-		return nil, err
+		return nil, fmt.Errorf("connect postgres error: %s", err)
 	}
 	//DBStore.SetMaxOpenConns(200)
 	//DBStore.SetMaxIdleConns(100)

@@ -499,3 +499,37 @@ func TestLedger_Iterator(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestLedger_init(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+	if err := l.setVersion(1); err != nil {
+		t.Fatal(err)
+	}
+	// upgrade
+	if err := l.upgrade(); err != nil {
+		t.Fatal(err)
+	}
+
+	//initRelation()
+	s := types.BlockHash{
+		Hash: mock.Hash().String(),
+	}
+	l.relation.Add([]types.Schema{&s})
+	time.Sleep(1 * time.Second)
+	if err := l.initRelation(); err != nil {
+		t.Fatal(err)
+	}
+
+	// removeBlockConfirmed()
+	blk := mock.StateBlockWithoutWork()
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddBlockCache(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.removeBlockConfirmed(); err != nil {
+		t.Fatal(err)
+	}
+}

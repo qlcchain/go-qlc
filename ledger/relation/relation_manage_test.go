@@ -90,6 +90,7 @@ func TestRelation_flush(t *testing.T) {
 	if len(r.addChan) > 0 || len(r.deleteChan) > 0 {
 		t.Fatal(len(r.addChan), len(r.deleteChan))
 	}
+	r.DB()
 }
 
 func TestRelation_Close(t *testing.T) {
