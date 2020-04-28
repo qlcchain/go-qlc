@@ -62,10 +62,13 @@ func NewRelation(cfgFile string) (*Relation, error) {
 			tables:     make(map[string]schema),
 			logger:     log.NewLogger("relation"),
 		}
+		if err := relation.init(); err != nil {
+			return nil, fmt.Errorf("store init fail: %s", err)
+		}
 		tables := []types.Schema{new(types.BlockHash)}
 		for _, table := range tables {
 			if err := relation.Register(table); err != nil {
-				return nil, fmt.Errorf("store init fail: %s", err)
+				return nil, fmt.Errorf("store register fail: %s", err)
 			}
 		}
 		go relation.process()
@@ -314,4 +317,27 @@ func (r *Relation) DB() *sqlx.DB {
 
 func getIdentityID(obj types.Schema) string {
 	return reflect.TypeOf(obj).String()
+}
+
+const version = 1
+
+func (r *Relation) init() error {
+	var v int
+	err := r.db.Get(&v, fmt.Sprintf("select v from version"))
+	if err != nil {
+		if _, err := r.db.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS version (v int)`)); err != nil {
+			return fmt.Errorf("create table err: %s", err.Error())
+		}
+		if _, err := r.db.Exec(fmt.Sprintf(`INSERT INTO version (v) VALUES (0)`)); err != nil {
+			return fmt.Errorf("add version err: %s", err.Error())
+		}
+		if _, err := r.db.Exec("drop table if exists blockhash"); err != nil {
+			return fmt.Errorf("drop err: %s", err.Error())
+		}
+		r.logger.Info("update blockhash schema")
+		return nil
+	} else {
+		r.logger.Info("blockhash schema updated")
+		return nil
+	}
 }

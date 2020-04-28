@@ -97,7 +97,7 @@ var (
 	lock   = sync.RWMutex{}
 )
 
-const version = 14
+const version = 15
 
 func NewLedger(cfgFile string) *Ledger {
 	lock.Lock()
@@ -256,6 +256,7 @@ func (l *Ledger) upgrade() error {
 			new(migration.MigrationV11ToV12),
 			new(migration.MigrationV12ToV13),
 			new(migration.MigrationV13ToV14),
+			new(migration.MigrationV14ToV15),
 		}
 
 		err = migration.Upgrade(ms, l.store)
