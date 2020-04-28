@@ -10,6 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -20,8 +23,6 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
 )
 
 var (

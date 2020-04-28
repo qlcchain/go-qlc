@@ -79,5 +79,10 @@ func RegisterServices(cc *context.ChainContext) error {
 		_ = cc.Register(context.PrivacyService, privacyService)
 	}
 
+	if cfg.WhiteList.Enable {
+		permService := NewPermissionService(cfgFile)
+		_ = cc.Register(context.PermissionService, permService)
+	}
+
 	return nil
 }

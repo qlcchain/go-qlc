@@ -28,7 +28,12 @@ func TestWhiteListMode(t *testing.T) {
 	cfg.LogLevel = "warn"
 	cfg.P2P.IsBootNode = true
 	cfg.P2P.BootNodes = []string{"127.0.0.1:18001/wlm"}
-	cfg.P2P.WhiteListMode = true
+	cfg.WhiteList.Enable = true
+	w1 := &config.WhiteListInfo{
+		PeerId: "Qmc5VuY4Bys47oyJM1tPoN784ViNDYrh2vEQwGqZBMK5RX",
+		Addr:   "127.0.0.1:18002",
+	}
+	cfg.WhiteList.WhiteListInfos = append(cfg.WhiteList.WhiteListInfos, w1)
 	http.HandleFunc("/wlm/bootNode", func(w http.ResponseWriter, r *http.Request) {
 		bootNode := cfg.P2P.Listen + "/p2p/" + cfg.P2P.ID.PeerID
 		_, _ = fmt.Fprintf(w, bootNode)
@@ -45,23 +50,30 @@ func TestWhiteListMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pm := &topic.PermissionEvent{
+		NodeId:  "Qmc5VuY4Bys47oyJM1tPoN784ViNDYrh2vEQwGqZBMK5RX",
+		NodeUrl: "127.0.0.1:18002",
+	}
+	node.msgEvent.Publish(topic.EventPermissionNodeUpdate, pm)
 	node.node.updateWhiteList("127.0.0.1:18002")
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("bootNode id is :", node.Node().ID.Pretty())
 	//node1 config
 	dir1 := filepath.Join(config.QlcTestDataDir(), "whiteListMode", uuid.New().String(), config.QlcConfigFile)
 	cc1 := context.NewChainContext(dir1)
 	cfg1, _ := cc1.Config()
 	cfg1.P2P.Listen = "/ip4/127.0.0.1/tcp/18002"
-	cfg1.P2P.BootNodes = []string{"127.0.0.1:18001/wlm"}
+	cfg1.P2P.BootNodes = []string{"http://127.0.0.1:18001/wlm/bootNode"}
 	cfg1.P2P.Discovery.MDNSEnabled = false
 	cfg1.P2P.Discovery.DiscoveryInterval = 1
 	cfg1.LogLevel = "warn"
+	cfg1.WhiteList.Enable = true
 
 	node.node.boostrapAddrs = append(node.node.boostrapAddrs, cfg1.P2P.Listen+"/p2p/"+cfg1.P2P.ID.PeerID)
+	//start bootNode
+	setPovStatus(cc1, t)
 	//start1 node
 	node1, err := NewQlcService(dir1)
 	if err != nil {
