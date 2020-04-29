@@ -23,7 +23,7 @@ func addPtmKeyGetPubkeyCmdByShell(parentCmd *ishell.Cmd) {
 	btype := util.Flag{
 		Name:  "btype",
 		Must:  false,
-		Usage: "bussiness type",
+		Usage: "business type",
 		Value: "default",
 	}
 	args := []util.Flag{address, btype}

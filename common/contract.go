@@ -103,9 +103,14 @@ const (
 	PtmKeyVBtypeInvaild
 )
 
+const (
+	PtmKeyVBtypeStrDefault = "default"
+	PtmKeyVBtypeStrInvaild = "invalid"
+)
+
 func PtmKeyBtypeFromString(t string) uint16 {
 	switch t {
-	case "default":
+	case PtmKeyVBtypeStrDefault:
 		return PtmKeyVBtypeDefault
 	default:
 		return PtmKeyVBtypeInvaild
@@ -115,8 +120,8 @@ func PtmKeyBtypeFromString(t string) uint16 {
 func PtmKeyBtypeToString(t uint16) string {
 	switch t {
 	case PtmKeyVBtypeDefault:
-		return "default"
+		return PtmKeyVBtypeStrDefault
 	default:
-		return "invalid"
+		return PtmKeyVBtypeStrInvaild
 	}
 }

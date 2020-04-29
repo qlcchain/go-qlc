@@ -23,7 +23,7 @@ func addPtmKeyDeleteByAccountByShell(parentCmd *ishell.Cmd) {
 	btype := util.Flag{
 		Name:  "btype",
 		Must:  false,
-		Usage: "ptmkey bussiness type(default/invalid)",
+		Usage: "ptmkey business type(default/invalid)",
 		Value: "",
 	}
 	args := []util.Flag{account, btype}

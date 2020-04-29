@@ -1,7 +1,6 @@
 package abi
 
 import (
-	_ "errors"
 	"fmt"
 	_ "github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -112,7 +111,7 @@ func GetPtmKeyByAccount(ctx *vmstore.VMContext, account types.Address) ([]*PtmKe
 		if err != nil {
 			return err
 		}
-		if info.Valid == true {
+		if info.Valid {
 			pk := &PtmKeyInfo{
 				Account: account,
 				Btype:   btype,
@@ -125,6 +124,9 @@ func GetPtmKeyByAccount(ctx *vmstore.VMContext, account types.Address) ([]*PtmKe
 	})
 	if err != nil {
 		return nil, err
+	}
+	if len(pks) == 0 {
+		return nil, fmt.Errorf("no result")
 	}
 	return pks, nil
 }

@@ -23,7 +23,7 @@ func addPtmKeyUpdateCmdByShell(parentCmd *ishell.Cmd) {
 	btype := util.Flag{
 		Name:  "btype",
 		Must:  true,
-		Usage: "ptmkey bussiness type(default/invalid)",
+		Usage: "ptmkey business type(default/invalid)",
 		Value: "",
 	}
 	key := util.Flag{

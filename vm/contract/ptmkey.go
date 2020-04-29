@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/qlcchain/go-qlc/common/topic"
 
+	"github.com/qlcchain/go-qlc/common"
 	_ "github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
@@ -45,16 +46,21 @@ func (pku *PtmKeyUpdate) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 	return nil, nil, nil
 }
 
-func (pku *PtmKeyUpdate) SetStorage(ctx *vmstore.VMContext, account types.Address, VBtype uint16, vKey []byte) error {
+func (pku *PtmKeyUpdate) SetStorage(ctx *vmstore.VMContext, account types.Address, vBtype uint16, vKey []byte) error {
 	data, err := abi.PtmKeyABI.PackVariable(abi.VariableNamePtmKeyStorageVar, string(vKey[:]), true)
 	if err != nil {
 		//fmt.Printf("SetStorage:PackVariable err(%s)\n", err)
 		return err
 	}
-
+	if vBtype != common.PtmKeyVBtypeDefault {
+		return ErrCheckParam
+	}
+	if len(vKey) < 44 {
+		return ErrCheckParam
+	}
 	var key []byte
 	key = append(key, account[:]...)
-	key = append(key, util.BE_Uint16ToBytes(VBtype)...)
+	key = append(key, util.BE_Uint16ToBytes(vBtype)...)
 	//fmt.Printf("SetStorage:get key(%s) data(%s)\n", string(key[:]), data)
 	err = ctx.SetStorage(contractaddress.PtmKeyKVAddress[:], key, data)
 	if err != nil {
@@ -87,6 +93,8 @@ func (pkd *PtmKeyDelete) ProcessSend(ctx *vmstore.VMContext, block *types.StateB
 				return nil, nil, ErrSetStorage
 			}
 		}
+	} else {
+		return nil, nil, ErrCheckParam
 	}
 
 	return nil, nil, nil
@@ -97,7 +105,12 @@ func (pkd *PtmKeyDelete) SetStorage(ctx *vmstore.VMContext, account types.Addres
 	if err != nil {
 		return err
 	}
-
+	if vBtype != common.PtmKeyVBtypeDefault {
+		return ErrCheckParam
+	}
+	if len(vKey) < 44 {
+		return ErrCheckParam
+	}
 	var key []byte
 	key = append(key, account[:]...)
 	key = append(key, util.BE_Uint16ToBytes(vBtype)...)
