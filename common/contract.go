@@ -97,3 +97,31 @@ func PublicKeyWithTypeHash(t uint16, k []byte) []byte {
 	h, _ := types.Sha256HashData(d)
 	return h.Bytes()
 }
+
+const (
+	PtmKeyVBtypeDefault uint16 = iota
+	PtmKeyVBtypeInvaild
+)
+
+const (
+	PtmKeyVBtypeStrDefault = "default"
+	PtmKeyVBtypeStrInvaild = "invalid"
+)
+
+func PtmKeyBtypeFromString(t string) uint16 {
+	switch t {
+	case PtmKeyVBtypeStrDefault:
+		return PtmKeyVBtypeDefault
+	default:
+		return PtmKeyVBtypeInvaild
+	}
+}
+
+func PtmKeyBtypeToString(t uint16) string {
+	switch t {
+	case PtmKeyVBtypeDefault:
+		return PtmKeyVBtypeStrDefault
+	default:
+		return PtmKeyVBtypeStrInvaild
+	}
+}
