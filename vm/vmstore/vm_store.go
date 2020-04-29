@@ -38,6 +38,8 @@ type ContractStore interface {
 	PovGlobalStateByHeight(h uint64) *statedb.PovGlobalStateDB
 	PoVContractStateByHeight(h uint64) (*statedb.PovContractStateDB, error)
 	GetLatestPovBlock() (*types.PovBlock, error)
+	GetLatestPovHeader() (*types.PovHeader, error)
+	GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error)
 
 	ListTokens() ([]*types.TokenInfo, error)
 	GetTokenById(tokenId types.Hash) (*types.TokenInfo, error)
@@ -57,9 +59,6 @@ type ContractStore interface {
 	GetAccountMetaByPovHeight(address types.Address) (*types.AccountMeta, error)
 	GetTokenMetaByPovHeight(address types.Address, token types.Hash) (*types.TokenMeta, error)
 	GetTokenMetaByBlockHash(hash types.Hash) (*types.TokenMeta, error)
-
-	GetLatestPovHeader() (*types.PovHeader, error)
-	GetPovMinerStat(dayIndex uint32) (*types.PovMinerDayStat, error)
 
 	IsUserAccount(address types.Address) (bool, error)
 	CalculateAmount(block *types.StateBlock) (types.Balance, error)
@@ -288,21 +287,6 @@ func (v *VMContext) get(key []byte) ([]byte, error) {
 	} else {
 		return nil, err
 	}
-}
-
-func (v *VMContext) set(key []byte, value interface{}, batch ...storage.Batch) (err error) {
-	var b storage.Batch
-	if len(batch) > 0 {
-		b = batch[0]
-	} else {
-		b = v.l.DBStore().Batch(true)
-		defer func() {
-			if err := v.l.DBStore().PutBatch(b); err != nil {
-				v.logger.Error(err)
-			}
-		}()
-	}
-	return b.Put(key, value)
 }
 
 func (v *VMContext) EventBus() event.EventBus {

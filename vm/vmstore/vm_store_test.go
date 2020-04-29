@@ -9,13 +9,16 @@ package vmstore
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
 
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/mock"
@@ -32,6 +35,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext, ledger.Store) 
 	l := ledger.NewLedger(cm.ConfigFile)
 
 	block, td := mock.GeneratePovBlock(nil, 0)
+	block.Header.BasHdr.Height = 0
 	if err := l.AddPovBlock(block, td); err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +62,14 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *VMContext, ledger.Store) 
 	}, v, l
 }
 
-func TestLedger_Storage(t *testing.T) {
+func getStorageKey(prefix []byte, key []byte) []byte {
+	var storageKey []byte
+	storageKey = append(storageKey, prefix...)
+	storageKey = append(storageKey, key...)
+	return storageKey
+}
+
+func TestVMContext_Storage(t *testing.T) {
 	teardownTestCase, ctx, l := setupTestCase(t)
 	defer teardownTestCase(t)
 
@@ -137,11 +148,39 @@ func TestLedger_Storage(t *testing.T) {
 	}
 }
 
-func getStorageKey(prefix []byte, key []byte) []byte {
-	var storageKey []byte
-	storageKey = append(storageKey, prefix...)
-	storageKey = append(storageKey, key...)
-	return storageKey
+func TestVMContext_SetObjectStorage(t *testing.T) {
+	teardownTestCase, ctx, _ := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := mock.StateBlockWithoutWork()
+	key := []byte{10, 20, 30}
+	if err := ctx.SetObjectStorage(blk.GetHash().Bytes(), key, blk); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ctx.GetStorageByRaw(key); err == nil {
+		t.Fatal()
+	}
+
+}
+
+func TestNewVMContext_Trie(t *testing.T) {
+	teardownTestCase, ctx, _ := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	prefix := mock.Hash()
+	value := []byte{10, 20, 30, 40}
+	if err := ctx.SetStorage(prefix[:], []byte{10, 20, 30}, value); err != nil {
+		t.Fatal(err)
+	}
+	if err := ctx.SetStorage(prefix[:], []byte{10, 20, 40}, value); err != nil {
+		t.Fatal(err)
+	}
+	if trie := Trie(ctx); trie == nil {
+		t.Fatal()
+	}
+	if r := TrieHash(ctx); r == nil {
+		t.Fatal()
+	}
 }
 
 func TestVMCache_AppendLog(t *testing.T) {
@@ -170,11 +209,222 @@ func TestVMCache_AppendLog(t *testing.T) {
 	}
 }
 
+func TestVMContext_Block(t *testing.T) {
+	teardownTestCase, ctx, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	b1 := mock.StateBlockWithoutWork()
+	b2 := mock.StateBlockWithoutWork()
+	b2.Previous = b1.GetHash()
+	b2.Type = types.Send
+
+	if err := l.AddStateBlock(b1); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddStateBlock(b2); err != nil {
+		t.Fatal(err)
+	}
+
+	if r, err := ctx.GetBlockChild(b1.GetHash()); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+	if r, err := ctx.GetStateBlock(b2.GetHash()); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r.String())
+	}
+	if r, err := ctx.GetStateBlockConfirmed(b2.GetHash()); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r.String())
+	}
+	if r, err := ctx.HasStateBlockConfirmed(b2.GetHash()); err != nil || !r {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+	ctx.EventBus().Publish(topic.EventAddRelation, b1)
+}
+
+func TestVMContext_Account(t *testing.T) {
+	teardownTestCase, ctx, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	acc := mock.AccountMeta(addr)
+	token := mock.TokenMeta(addr)
+	acc.Tokens = append(acc.Tokens, token)
+	if err := l.AddAccountMeta(acc, l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := ctx.GetAccountMeta(addr); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+	if r, err := ctx.HasAccountMetaConfirmed(addr); err != nil || !r {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+	if r, err := ctx.GetTokenMeta(addr, token.Type); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+}
+
+func TestVMContext_AccountHistory(t *testing.T) {
+	teardownTestCase, ctx, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	addr := mock.Address()
+	am := mock.AccountMeta(addr)
+	tm1 := mock.TokenMeta(addr)
+	tm1.Type = config.ChainToken()
+	tm2 := mock.TokenMeta(addr)
+	am.Tokens = []*types.TokenMeta{tm1, tm2}
+
+	blk := mock.StateBlockWithoutWork()
+	height := uint64(10)
+	blk.PoVHeight = height
+	blk.Address = addr
+	blk.Token = tm1.Type
+
+	tm1.Header = blk.GetHash()
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddAccountMeta(am, l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.AddAccountMetaHistory(tm1, blk, l.Cache().GetCache()); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := ctx.GetAccountMetaByPovHeight(addr); err == nil {
+		t.Fatal(err)
+	}
+
+	ctx.poVHeight = height
+	if r, err := ctx.GetAccountMetaByPovHeight(addr); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+
+	if r, err := ctx.GetTokenMetaByPovHeight(addr, tm1.Type); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+
+	if r, err := ctx.GetTokenMetaByBlockHash(blk.GetHash()); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+}
+
+func TestVMContext_POV(t *testing.T) {
+	teardownTestCase, ctx, _ := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx.contractAddr = &contractaddress.NEP5PledgeAddress
+	t.Log(ctx.PovGlobalState())
+	if r, err := ctx.PoVContractState(); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+	if r := ctx.PovGlobalStateByHeight(0); r == nil {
+		t.Fatal()
+	} else {
+		t.Log(r)
+	}
+	if r, err := ctx.PoVContractStateByHeight(0); err != nil {
+		t.Fatal()
+	} else {
+		t.Log(r)
+	}
+	if r, err := ctx.GetLatestPovBlock(); err != nil {
+		t.Fatal()
+	} else {
+		t.Log(r)
+	}
+	if r, err := ctx.GetLatestPovHeader(); err != nil {
+		t.Fatal()
+	} else {
+		t.Log(r)
+	}
+	if _, err := ctx.GetPovMinerStat(0); err == nil {
+		t.Fatal()
+	}
+}
+
 func TestVMContext_IsUserAccount(t *testing.T) {
 	teardownTestCase, ctx, _ := setupTestCase(t)
 	defer teardownTestCase(t)
 
 	if b, err := ctx.IsUserAccount(mock.Address()); err == nil || b {
+		t.Fatal()
+	}
+}
+
+func TestVMContext_CalculateAmount(t *testing.T) {
+	teardownTestCase, ctx, _ := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := mock.StateBlockWithoutWork()
+	r, err := ctx.CalculateAmount(blk)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+}
+
+func TestVMContext_Relation(t *testing.T) {
+	teardownTestCase, ctx, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	blk := mock.StateBlockWithoutWork()
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	var b types.BlockHash
+	if err := ctx.GetRelation(&b, fmt.Sprintf("select * from blockhash where hash = '%s'", blk.GetHash())); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(b)
+	}
+	var bs []types.BlockHash
+	if err := ctx.SelectRelation(&bs, "select * from blockhash"); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(bs)
+	}
+}
+
+func TestVMContext_NewVmContext(t *testing.T) {
+	teardownTestCase, ctx, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx = ctx.WithCache(l.Cache().GetCache())
+
+	blk := mock.StateBlockWithoutWork()
+	if c := NewVMContextWithBlock(l, blk); c != nil {
+		t.Fatal()
+	}
+
+	blk.Type = types.ContractSend
+	blk.Link = contractaddress.NEP5PledgeAddress.ToHash()
+	if c := NewVMContextWithBlock(l, blk); c == nil {
 		t.Fatal()
 	}
 }
