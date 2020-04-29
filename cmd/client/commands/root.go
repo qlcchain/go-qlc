@@ -93,4 +93,5 @@ func addcommands() {
 	addPKDCmd()
 	addPermissionCmd()
 	addPrivacyCmd()
+	addPtmKeyCmd()
 }
