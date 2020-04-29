@@ -47,7 +47,7 @@ func TestNewPtmKeyApi(t *testing.T) {
 		})
 	}
 }
-func addTestPtmKey(t *testing.T, store ledger.Store, ctx *vmstore.VMContext, account types.Address, vBtype uint16, vKey []byte) error {
+func addTestPtmKey(store ledger.Store, ctx *vmstore.VMContext, account types.Address, vBtype uint16, vKey []byte) error {
 	data, err := abi.PtmKeyABI.PackVariable(abi.VariableNamePtmKeyStorageVar, string(vKey[:]), true)
 	if err != nil {
 		//fmt.Printf("SetStorage:PackVariable err(%s)\n", err)
@@ -238,7 +238,7 @@ func TestPtmKeyApi_GetPtmKeyDeleteBlock(t *testing.T) {
 				am.Tokens[0].Type = config.ChainToken()
 				l.UpdateAccountMeta(am, l.Cache().GetCache())
 			case 5:
-				addTestPtmKey(t, l, pa.ctx, addr1, btypeint, []byte(key))
+				addTestPtmKey(l, pa.ctx, addr1, btypeint, []byte(key))
 			}
 			step = step + 1
 			_, err := p.GetPtmKeyDeleteBlock(tt.args.param)
@@ -293,7 +293,7 @@ func TestPtmKeyApi_GetPtmKeyByAccount(t *testing.T) {
 		{"OK", fields{pa.logger, pa.l, pa.cc, pa.ctx, pa.pu, pa.pdb}, args{account}, pks, false},
 		{"badaccount", fields{pa.logger, pa.l, pa.cc, pa.ctx, pa.pu, pa.pdb}, args{account2}, nil, true},
 	}
-	addTestPtmKey(t, l, pa.ctx, account, btypeint, []byte(key))
+	addTestPtmKey(l, pa.ctx, account, btypeint, []byte(key))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PtmKeyApi{
@@ -360,7 +360,7 @@ func TestPtmKeyApi_GetPtmKeyByAccountAndBtype(t *testing.T) {
 		{"OK", fields{pa.logger, pa.l, pa.cc, pa.ctx, pa.pu, pa.pdb}, args{account, btype}, pks, false},
 		{"badaccount", fields{pa.logger, pa.l, pa.cc, pa.ctx, pa.pu, pa.pdb}, args{account2, btype}, nil, true},
 	}
-	addTestPtmKey(t, l, pa.ctx, account, btypeint, []byte(key))
+	addTestPtmKey(l, pa.ctx, account, btypeint, []byte(key))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &PtmKeyApi{

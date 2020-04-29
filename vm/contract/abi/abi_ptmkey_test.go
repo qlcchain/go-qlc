@@ -120,7 +120,7 @@ func TestGetPtmKeyByAccount(t *testing.T) {
 	account2 := mock.Address()
 	pks := make([]*PtmKeyInfo, 0)
 	btype := common.PtmKeyVBtypeDefault
-	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0M="
+	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0D="
 	pk := &PtmKeyInfo{
 		account,
 		btype,
