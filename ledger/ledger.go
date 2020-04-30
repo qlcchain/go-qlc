@@ -763,13 +763,18 @@ func (l *Ledger) Flush() error {
 	return l.cache.rebuild()
 }
 
-func (l *Ledger) RegisterRelation(obj types.Schema) error {
-	return l.relation.Register(obj)
+func (l *Ledger) RegisterRelation(objs []types.Schema) error {
+	for _, obj := range objs {
+		if err := l.relation.Register(obj); err != nil {
+			return fmt.Errorf("relation register fail: %s", err)
+		}
+	}
+	return nil
 }
 
-func (l *Ledger) RegisterInterface(con types.Convert, obj types.Schema) error {
+func (l *Ledger) RegisterInterface(con types.Convert, objs []types.Schema) error {
 	if err := typelation.RegisterInterface(con); err != nil {
 		return err
 	}
-	return l.RegisterRelation(obj)
+	return l.RegisterRelation(objs)
 }
