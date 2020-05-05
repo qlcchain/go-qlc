@@ -19,6 +19,32 @@ import (
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
+// PtmkeyContract  contract define
+var PtmkeyContract = NewChainContract(
+	map[string]Contract{
+		abi.MethodNamePtmKeyDelete: &PtmKeyDelete{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
+				},
+			},
+		},
+		abi.MethodNamePtmKeyUpdate: &PtmKeyUpdate{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
+				},
+			},
+		},
+	},
+	abi.PtmKeyABI,
+	abi.JsonPtmKey,
+)
+
 type PtmKeyUpdate struct {
 	BaseContract
 }
