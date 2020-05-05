@@ -1,11 +1,12 @@
 package migration
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger/v2"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -13,34 +14,37 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
+	"strings"
+
+	"github.com/dgraph-io/badger/v2"
 )
 
 func MigrationTo20(dir string) error {
-	toolPath := filepath.Join(filepath.Dir(dir), "gqlc_migration_data_tool")
+	toolPath := filepath.Join(filepath.Dir(dir), toolName)
+	fmt.Println("migrate badger to v2.0 ")
 	if _, err := os.Stat(toolPath); err != nil {
 		if err := downloadTool(toolPath); err != nil {
 			return err
 		}
-		if err := md5Check(toolPath); err != nil {
-			return err
-		}
+		defer os.Remove(toolPath)
 	}
 
-	fmt.Println("migrate badger to v2.0")
-	backpath := filepath.Join(filepath.Dir(dir), "ledger16.backup")
-	os.Remove(backpath)
-	command := []string{"", "backup", "--dir", dir, "-f", backpath}
+	backup := filepath.Join(filepath.Dir(dir), "ledger16.backup")
+	os.Remove(backup)
+	command := []string{"", "backup", "--dir", dir, "-f", backup}
 	cmd := exec.Command(toolPath, command...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("execute command failed: %s", err.Error())
+		return fmt.Errorf("execute command failed: %s (%s, %s)", err, runtime.GOOS, runtime.GOARCH)
 	}
-	if err := os.RemoveAll(dir); err != nil {
-		return fmt.Errorf("remove ledger error: %s", err)
-	}
+	os.RemoveAll(dir)
 	os.RemoveAll(filepath.Join(filepath.Dir(dir), "wallet"))
-	if err := doRestore(dir, dir, backpath); err != nil {
+	if err := doRestore(dir, dir, backup); err != nil {
 		return fmt.Errorf("doRestore error: %s", err)
 	}
+	os.Remove(backup)
 	return nil
 }
 
@@ -75,20 +79,45 @@ func doRestore(sstDir, vlogDir, restoreFile string) error {
 }
 
 func downloadTool(dir string) error {
-	url := "https://github.com/qlcchain/qlc-go-sdk/releases/download/v1.3.5/gqlc_migration_data_tool"
-	res, err := http.Get(url)
+	url := "https://github.com/qlcchain/qlc-go-sdk/releases/download/v1.3.5"
+
+	// get tool
+	toolUrl := fmt.Sprintf("%s/%s", url, toolName)
+	resTool, err := http.Get(toolUrl)
 	if err != nil {
-		return err
+		return fmt.Errorf("get tool: %s (%s, %s)", err, runtime.GOOS, runtime.GOARCH)
+	}
+	defer resTool.Body.Close()
+	data, err := ioutil.ReadAll(resTool.Body)
+	if err != nil {
+		return fmt.Errorf("read data: %s", err)
+	}
+	if err := ioutil.WriteFile(dir, data, 0777); err != nil {
+		return fmt.Errorf("write file: %s", err)
+	}
+
+	// get tool hash
+	checkUrl := fmt.Sprintf("%s/checksums.txt", url)
+	res, err := http.Get(checkUrl)
+	if err != nil {
+		return fmt.Errorf("get checksum: %s (%s, %s)", err, runtime.GOOS, runtime.GOARCH)
 	}
 	defer res.Body.Close()
-	data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
+	var toolHash string
+	r := bufio.NewReader(res.Body)
+	for {
+		r, _, err := r.ReadLine()
+		if err != nil {
+			break
+		}
+		checkValue := strings.Split(string(r), " ")
+		if checkValue[1] == toolName {
+			toolHash = checkValue[0]
+			break
+		}
 	}
-	return ioutil.WriteFile(dir, data, 0777)
-}
 
-func md5Check(dir string) error {
+	// check tool hash
 	f, err := os.Open(dir)
 	if err != nil {
 		return err
@@ -99,9 +128,35 @@ func md5Check(dir string) error {
 		return err
 	}
 	md5Str := hex.EncodeToString(md5.Sum(nil))
-	m := "7c0c8b4bc225c52bf9c38d70a23a5dbe"
-	if md5Str != m {
-		return fmt.Errorf("md5 check fail: %s, %s", md5Str, m)
+	if md5Str != toolHash {
+		return fmt.Errorf("md5 check fail: %s, %s", md5Str, toolHash)
 	}
 	return nil
+}
+
+var (
+	toolName string
+)
+
+func init() {
+	prefix := "gqlc_migration_data_tool"
+	toolName = fmt.Sprintf("%s_%s_%s", prefix, runtime.GOOS, runtime.GOARCH)
+
+	if runtime.GOOS == "darwin" {
+		if runtime.GOARCH == "amd64" {
+			toolName = prefix + "_darwin_x64"
+		}
+	} else if runtime.GOOS == "windows" {
+		if runtime.GOARCH == "amd64" {
+			toolName = prefix + "_windows_x64.exe"
+		} else {
+			toolName = prefix + "_windows_386.exe"
+		}
+	} else {
+		if runtime.GOARCH == "amd64" {
+			toolName = prefix + "_linux_x64"
+		} else {
+			toolName = prefix + "_linux_arm"
+		}
+	}
 }
