@@ -100,11 +100,17 @@ func PublicKeyWithTypeHash(t uint16, k []byte) []byte {
 
 const (
 	PtmKeyVBtypeDefault uint16 = iota
+	PtmKeyVBtypeA2p
+	PtmKeyVBtypeDod
+	PtmKeyVBtypeCloud
 	PtmKeyVBtypeInvaild
 )
 
 const (
 	PtmKeyVBtypeStrDefault = "default"
+	PtmKeyVBtypeStrA2p     = "a2p"
+	PtmKeyVBtypeStrDod     = "dod"
+	PtmKeyVBtypeStrCloud   = "cloud"
 	PtmKeyVBtypeStrInvaild = "invalid"
 )
 
@@ -112,6 +118,12 @@ func PtmKeyBtypeFromString(t string) uint16 {
 	switch t {
 	case PtmKeyVBtypeStrDefault:
 		return PtmKeyVBtypeDefault
+	case PtmKeyVBtypeStrA2p:
+		return PtmKeyVBtypeA2p
+	case PtmKeyVBtypeStrDod:
+		return PtmKeyVBtypeDod
+	case PtmKeyVBtypeStrCloud:
+		return PtmKeyVBtypeCloud
 	default:
 		return PtmKeyVBtypeInvaild
 	}
@@ -121,6 +133,12 @@ func PtmKeyBtypeToString(t uint16) string {
 	switch t {
 	case PtmKeyVBtypeDefault:
 		return PtmKeyVBtypeStrDefault
+	case PtmKeyVBtypeA2p:
+		return PtmKeyVBtypeStrA2p
+	case PtmKeyVBtypeDod:
+		return PtmKeyVBtypeStrDod
+	case PtmKeyVBtypeCloud:
+		return PtmKeyVBtypeStrCloud
 	default:
 		return PtmKeyVBtypeStrInvaild
 	}

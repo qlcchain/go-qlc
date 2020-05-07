@@ -64,7 +64,7 @@ type PtmKeyStorage struct {
 
 func PtmKeyInfoCheck(ctx *vmstore.VMContext, pt uint16, pk []byte) error {
 	switch pt {
-	case common.PtmKeyVBtypeDefault:
+	case common.PtmKeyVBtypeDefault, common.PtmKeyVBtypeA2p, common.PtmKeyVBtypeDod, common.PtmKeyVBtypeCloud:
 		if len(pk) != 44 {
 			return fmt.Errorf("pk len err")
 		}
@@ -104,8 +104,8 @@ func GetPtmKeyByAccount(ctx *vmstore.VMContext, account types.Address) ([]*PtmKe
 	pks := make([]*PtmKeyInfo, 0)
 
 	itKey := append(contractaddress.PtmKeyKVAddress[:], account[:]...)
+	btype := common.PtmKeyVBtypeDefault
 	err := ctx.Iterator(itKey, func(key []byte, value []byte) error {
-		btype := util.BE_BytesToUint16(key[PtmKeyBtypeIndexS:PtmKeyBtypeIndexE])
 		var info PtmKeyStorage
 		err := PtmKeyABI.UnpackVariable(&info, VariableNamePtmKeyStorageVar, value)
 		if err != nil {
@@ -119,7 +119,7 @@ func GetPtmKeyByAccount(ctx *vmstore.VMContext, account types.Address) ([]*PtmKe
 			}
 			pks = append(pks, pk)
 		}
-
+		btype++
 		return nil
 	})
 	if err != nil {

@@ -78,7 +78,7 @@ func (pku *PtmKeyUpdate) SetStorage(ctx *vmstore.VMContext, account types.Addres
 		//fmt.Printf("SetStorage:PackVariable err(%s)\n", err)
 		return err
 	}
-	if vBtype != common.PtmKeyVBtypeDefault {
+	if vBtype < common.PtmKeyVBtypeDefault || vBtype >= common.PtmKeyVBtypeInvaild {
 		return ErrCheckParam
 	}
 	if len(vKey) < 44 {
@@ -131,7 +131,7 @@ func (pkd *PtmKeyDelete) SetStorage(ctx *vmstore.VMContext, account types.Addres
 	if err != nil {
 		return err
 	}
-	if vBtype != common.PtmKeyVBtypeDefault {
+	if vBtype < common.PtmKeyVBtypeDefault || vBtype >= common.PtmKeyVBtypeInvaild {
 		return ErrCheckParam
 	}
 	if len(vKey) < 44 {
