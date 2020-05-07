@@ -30,7 +30,12 @@ func TestPtmKeyUpdate_ProcessSend(t *testing.T) {
 	defer clear()
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.PtmKeyKVAddress)
+	account := mock.Address()
 	blk := mock.StateBlockWithoutWork()
+	blk.Address = account
+	account2 := mock.Address()
+	blk2 := mock.StateBlockWithoutWork()
+	blk2.Address = account2
 	pbc := new(PtmKeyUpdate)
 	btype := common.PtmKeyVBtypeDefault
 	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hygbb="
@@ -58,6 +63,7 @@ func TestPtmKeyUpdate_ProcessSend(t *testing.T) {
 		{"badbtype", fields{pbc.BaseContract}, args{ctx, blk}, nil, nil, true},
 		{"badvkey", fields{pbc.BaseContract}, args{ctx, blk}, nil, nil, true},
 		{"OK", fields{pbc.BaseContract}, args{ctx, blk}, nil, nil, false},
+		{"badaccount", fields{pbc.BaseContract}, args{ctx, blk2}, nil, nil, true},
 	}
 	step := 0
 	for _, tt := range tests {
@@ -98,6 +104,7 @@ func TestPtmKeyUpdate_SetStorage(t *testing.T) {
 		t.Fatal()
 	}
 	defer clear()
+
 	ctx := vmstore.NewVMContext(l, &contractaddress.PtmKeyKVAddress)
 	account := mock.Address()
 	pbc := new(PtmKeyUpdate)
@@ -105,6 +112,7 @@ func TestPtmKeyUpdate_SetStorage(t *testing.T) {
 	btype2 := common.PtmKeyVBtypeInvaild
 	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hygaa="
 	key2 := "/vkgO5TfnsvKZGDc2Kaa"
+	key3 := ""
 
 	type fields struct {
 		BaseContract BaseContract
@@ -124,7 +132,8 @@ func TestPtmKeyUpdate_SetStorage(t *testing.T) {
 		// TODO: Add test cases.
 		{"OK", fields{pbc.BaseContract}, args{ctx, account, btype, []byte(key)}, false},
 		{"badbyte", fields{pbc.BaseContract}, args{ctx, account, btype2, []byte(key)}, true},
-		{"badkey", fields{pbc.BaseContract}, args{ctx, account, btype, []byte(key2)}, true},
+		{"badkeyshort", fields{pbc.BaseContract}, args{ctx, account, btype, []byte(key2)}, true},
+		{"badkeynil", fields{pbc.BaseContract}, args{ctx, account, btype, []byte(key3)}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -169,6 +178,9 @@ func TestPtmKeyDelete_ProcessSend(t *testing.T) {
 	account := mock.Address()
 	blk := mock.StateBlockWithoutWork()
 	blk.Address = account
+	account2 := mock.Address()
+	blk2 := mock.StateBlockWithoutWork()
+	blk2.Address = account2
 	pbc := new(PtmKeyDelete)
 	btype := common.PtmKeyVBtypeDefault
 	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hygdd="
@@ -193,6 +205,7 @@ func TestPtmKeyDelete_ProcessSend(t *testing.T) {
 		{"baddata", fields{pbc.BaseContract}, args{ctx, blk}, nil, nil, true},
 		{"nofound", fields{pbc.BaseContract}, args{ctx, blk}, nil, nil, true},
 		{"OK", fields{pbc.BaseContract}, args{ctx, blk}, nil, nil, false},
+		{"badaccount", fields{pbc.BaseContract}, args{ctx, blk2}, nil, nil, true},
 	}
 	step := 0
 	for _, tt := range tests {
@@ -238,6 +251,7 @@ func TestPtmKeyDelete_SetStorage(t *testing.T) {
 	btype2 := common.PtmKeyVBtypeInvaild
 	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0M="
 	key2 := "/vkgO5TfnsvKZGDc2K"
+	key3 := ""
 
 	type fields struct {
 		BaseContract BaseContract
@@ -258,6 +272,7 @@ func TestPtmKeyDelete_SetStorage(t *testing.T) {
 		{"OK", fields{pbc.BaseContract}, args{ctx, account, btype, []byte(key)}, false},
 		{"badbyte", fields{pbc.BaseContract}, args{ctx, account, btype2, []byte(key)}, true},
 		{"badkey", fields{pbc.BaseContract}, args{ctx, account, btype, []byte(key2)}, true},
+		{"badkeynil", fields{pbc.BaseContract}, args{ctx, account, btype, []byte(key3)}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

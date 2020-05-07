@@ -47,8 +47,8 @@ func TestPublicKeyTypeToString(t *testing.T) {
 }
 
 func TestPtmKeyBtypeFromString(t *testing.T) {
-	src := []string{PtmKeyVBtypeStrDefault, PtmKeyVBtypeStrInvaild}
-	expect := []uint16{PtmKeyVBtypeDefault, PtmKeyVBtypeInvaild}
+	src := []string{PtmKeyVBtypeStrDefault, PtmKeyVBtypeStrA2p, PtmKeyVBtypeStrDod, PtmKeyVBtypeStrCloud, PtmKeyVBtypeStrInvaild}
+	expect := []uint16{PtmKeyVBtypeDefault, PtmKeyVBtypeA2p, PtmKeyVBtypeDod, PtmKeyVBtypeCloud, PtmKeyVBtypeInvaild}
 
 	for i, s := range src {
 		if PtmKeyBtypeFromString(s) != expect[i] {
@@ -58,8 +58,8 @@ func TestPtmKeyBtypeFromString(t *testing.T) {
 }
 
 func TestPtmKeyBtypeToString(t *testing.T) {
-	src := []uint16{PtmKeyVBtypeDefault, PtmKeyVBtypeInvaild}
-	expect := []string{PtmKeyVBtypeStrDefault, PtmKeyVBtypeStrInvaild}
+	src := []uint16{PtmKeyVBtypeDefault, PtmKeyVBtypeA2p, PtmKeyVBtypeDod, PtmKeyVBtypeCloud, PtmKeyVBtypeInvaild}
+	expect := []string{PtmKeyVBtypeStrDefault, PtmKeyVBtypeStrA2p, PtmKeyVBtypeStrDod, PtmKeyVBtypeStrCloud, PtmKeyVBtypeStrInvaild}
 
 	for i, s := range src {
 		if PtmKeyBtypeToString(s) != expect[i] {

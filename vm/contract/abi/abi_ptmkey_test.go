@@ -30,7 +30,7 @@ func TestPtmKeyInfoCheck(t *testing.T) {
 		// TODO: Add test cases.
 		{"OK", args{nil, common.PtmKeyVBtypeDefault, []byte("/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0M=")}, false},
 		{"bad pklen", args{nil, common.PtmKeyVBtypeDefault, []byte("/vkgO5TfnsvKZGDc2KT1yxD5fx")}, true},
-		{"bad ptype", args{nil, 2, []byte("/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0M=")}, true},
+		{"bad ptype", args{nil, common.PtmKeyVBtypeInvaild, []byte("/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0M=")}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,6 +95,7 @@ func TestGetPtmKeyByAccountAndBtype(t *testing.T) {
 		// TODO: Add test cases.
 		{"OK", args{ctx, account, common.PtmKeyVBtypeDefault}, pks, false},
 		{"badaccount", args{ctx, account2, common.PtmKeyVBtypeDefault}, nil, true},
+		{"badbtype", args{ctx, account, common.PtmKeyVBtypeInvaild}, nil, true},
 	}
 	addTestPtmKey(l, ctx, account, btype, []byte(key))
 	for _, tt := range tests {

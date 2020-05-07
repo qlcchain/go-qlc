@@ -45,6 +45,8 @@ var PtmkeyContract = NewChainContract(
 	abi.JsonPtmKey,
 )
 
+const PtmkeyDefaultLength = 44
+
 type PtmKeyUpdate struct {
 	BaseContract
 }
@@ -78,10 +80,10 @@ func (pku *PtmKeyUpdate) SetStorage(ctx *vmstore.VMContext, account types.Addres
 		//fmt.Printf("SetStorage:PackVariable err(%s)\n", err)
 		return err
 	}
-	if vBtype != common.PtmKeyVBtypeDefault {
+	if vBtype < common.PtmKeyVBtypeDefault || vBtype >= common.PtmKeyVBtypeInvaild {
 		return ErrCheckParam
 	}
-	if len(vKey) < 44 {
+	if len(vKey) != PtmkeyDefaultLength {
 		return ErrCheckParam
 	}
 	var key []byte
@@ -131,10 +133,10 @@ func (pkd *PtmKeyDelete) SetStorage(ctx *vmstore.VMContext, account types.Addres
 	if err != nil {
 		return err
 	}
-	if vBtype != common.PtmKeyVBtypeDefault {
+	if vBtype < common.PtmKeyVBtypeDefault || vBtype >= common.PtmKeyVBtypeInvaild {
 		return ErrCheckParam
 	}
-	if len(vKey) < 44 {
+	if len(vKey) != PtmkeyDefaultLength {
 		return ErrCheckParam
 	}
 	var key []byte
