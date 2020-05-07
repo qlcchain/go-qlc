@@ -60,6 +60,9 @@ func (c *Client) formatPath(path string) string {
 
 func (c *Client) Upcheck() (bool, error) {
 	res, err := c.httpClient.Get(c.formatPath("/upcheck"))
+	if res != nil {
+		defer res.Body.Close()
+	}
 	if err != nil {
 		return false, err
 	}
