@@ -69,7 +69,7 @@ func (c *Client) Upcheck() (bool, error) {
 	if res.StatusCode == 200 {
 		return true, nil
 	}
-
+	defer res.Body.Close()
 	return false, errors.New("PTM did not respond to upcheck request")
 }
 

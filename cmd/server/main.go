@@ -7,12 +7,11 @@
 
 package main
 
-import (
-	"os"
-
-	cmd "github.com/qlcchain/go-qlc/cmd/server/commands"
-)
+import "github.com/qlcchain/go-qlc/rpc/grpc/server"
 
 func main() {
-	cmd.Execute(os.Args)
+	server.Listen()
+	server.Listen2()
+	select {}
+	//cmd.Execute(os.Args)
 }

@@ -43,9 +43,21 @@ type RPCConfigV2 struct {
 	WSEnabled  bool   `json:"webSocketEnabled" mapstructure:"webSocketEnabled"`
 	WSEndpoint string `json:"webSocketEndpoint" mapstructure:"webSocketEndpoint"`
 
-	IPCEndpoint   string   `json:"ipcEndpoint"`
-	IPCEnabled    bool     `json:"ipcEnabled"`
-	PublicModules []string `json:"publicModules"`
+	IPCEndpoint   string     `json:"ipcEndpoint"`
+	IPCEnabled    bool       `json:"ipcEnabled"`
+	PublicModules []string   `json:"publicModules"`
+	GRPCConfig    GRPCConfig `json:"gRPCConfig"`
+}
+
+type GRPCConfig struct {
+	Enable bool `json:"enabled"`
+
+	// TCP or UNIX socket address for the RPC server to listen on
+	ListenAddress string `json:"listenAddress"`
+
+	// TCP or UNIX socket address for the gRPC server to listen on
+	GRPCListenAddress  string   `json:"gRPCListenAddress"`
+	CORSAllowedOrigins []string `json:"httpCors"`
 }
 
 type DiscoveryConfigV2 struct {
