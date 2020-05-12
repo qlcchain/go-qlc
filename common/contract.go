@@ -20,6 +20,8 @@ const (
 	ContractRewardGapPov
 	ContractDPKIGapPublish
 	ContractPermGapAdmin
+	ContractDoDRequest
+	ContractDoDOrderState
 )
 
 const (

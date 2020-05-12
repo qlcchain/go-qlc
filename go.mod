@@ -3,6 +3,7 @@ module github.com/qlcchain/go-qlc
 require (
 	github.com/AsynkronIT/protoactor-go v0.0.0-20191118225719-e21ff1a235dd
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
+	github.com/abice/go-enum v0.2.3 // indirect
 	github.com/abiosoft/ishell v0.0.0-20190613190920-79d20b1325a4
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db
 	github.com/awnumar/memguard v0.16.2
