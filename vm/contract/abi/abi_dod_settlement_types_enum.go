@@ -9,61 +9,66 @@ import (
 )
 
 const (
-	// DoDBillingTypePAYG is a DoDBillingType of type PAYG
-	DoDBillingTypePAYG DoDBillingType = iota + 1
-	// DoDBillingTypeDOD is a DoDBillingType of type DOD
-	DoDBillingTypeDOD
+	// DoDSettleBillingTypeNull is a DoDSettleBillingType of type Null
+	DoDSettleBillingTypeNull DoDSettleBillingType = iota
+	// DoDSettleBillingTypePAYG is a DoDSettleBillingType of type PAYG
+	DoDSettleBillingTypePAYG
+	// DoDSettleBillingTypeDOD is a DoDSettleBillingType of type DOD
+	DoDSettleBillingTypeDOD
 )
 
-const _DoDBillingTypeName = "PAYGDOD"
+const _DoDSettleBillingTypeName = "nullPAYGDOD"
 
-var _DoDBillingTypeNames = []string{
-	_DoDBillingTypeName[0:4],
-	_DoDBillingTypeName[4:7],
+var _DoDSettleBillingTypeNames = []string{
+	_DoDSettleBillingTypeName[0:4],
+	_DoDSettleBillingTypeName[4:8],
+	_DoDSettleBillingTypeName[8:11],
 }
 
-// DoDBillingTypeNames returns a list of possible string values of DoDBillingType.
-func DoDBillingTypeNames() []string {
-	tmp := make([]string, len(_DoDBillingTypeNames))
-	copy(tmp, _DoDBillingTypeNames)
+// DoDSettleBillingTypeNames returns a list of possible string values of DoDSettleBillingType.
+func DoDSettleBillingTypeNames() []string {
+	tmp := make([]string, len(_DoDSettleBillingTypeNames))
+	copy(tmp, _DoDSettleBillingTypeNames)
 	return tmp
 }
 
-var _DoDBillingTypeMap = map[DoDBillingType]string{
-	1: _DoDBillingTypeName[0:4],
-	2: _DoDBillingTypeName[4:7],
+var _DoDSettleBillingTypeMap = map[DoDSettleBillingType]string{
+	0: _DoDSettleBillingTypeName[0:4],
+	1: _DoDSettleBillingTypeName[4:8],
+	2: _DoDSettleBillingTypeName[8:11],
 }
 
 // String implements the Stringer interface.
-func (x DoDBillingType) String() string {
-	if str, ok := _DoDBillingTypeMap[x]; ok {
+func (x DoDSettleBillingType) String() string {
+	if str, ok := _DoDSettleBillingTypeMap[x]; ok {
 		return str
 	}
-	return fmt.Sprintf("DoDBillingType(%d)", x)
+	return fmt.Sprintf("DoDSettleBillingType(%d)", x)
 }
 
-var _DoDBillingTypeValue = map[string]DoDBillingType{
-	_DoDBillingTypeName[0:4]: 1,
-	_DoDBillingTypeName[4:7]: 2,
+var _DoDSettleBillingTypeValue = map[string]DoDSettleBillingType{
+	_DoDSettleBillingTypeName[0:4]:  0,
+	_DoDSettleBillingTypeName[4:8]:  1,
+	_DoDSettleBillingTypeName[8:11]: 2,
 }
 
-// ParseDoDBillingType attempts to convert a string to a DoDBillingType
-func ParseDoDBillingType(name string) (DoDBillingType, error) {
-	if x, ok := _DoDBillingTypeValue[name]; ok {
+// ParseDoDSettleBillingType attempts to convert a string to a DoDSettleBillingType
+func ParseDoDSettleBillingType(name string) (DoDSettleBillingType, error) {
+	if x, ok := _DoDSettleBillingTypeValue[name]; ok {
 		return x, nil
 	}
-	return DoDBillingType(0), fmt.Errorf("%s is not a valid DoDBillingType, try [%s]", name, strings.Join(_DoDBillingTypeNames, ", "))
+	return DoDSettleBillingType(0), fmt.Errorf("%s is not a valid DoDSettleBillingType, try [%s]", name, strings.Join(_DoDSettleBillingTypeNames, ", "))
 }
 
 // MarshalText implements the text marshaller method
-func (x DoDBillingType) MarshalText() ([]byte, error) {
+func (x DoDSettleBillingType) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
 // UnmarshalText implements the text unmarshaller method
-func (x *DoDBillingType) UnmarshalText(text []byte) error {
+func (x *DoDSettleBillingType) UnmarshalText(text []byte) error {
 	name := string(text)
-	tmp, err := ParseDoDBillingType(name)
+	tmp, err := ParseDoDSettleBillingType(name)
 	if err != nil {
 		return err
 	}
@@ -72,71 +77,91 @@ func (x *DoDBillingType) UnmarshalText(text []byte) error {
 }
 
 const (
-	// DoDOrderOperationCreate is a DoDOrderOperation of type Create
-	DoDOrderOperationCreate DoDOrderOperation = iota + 1
-	// DoDOrderOperationChange is a DoDOrderOperation of type Change
-	DoDOrderOperationChange
-	// DoDOrderOperationTerminate is a DoDOrderOperation of type Terminate
-	DoDOrderOperationTerminate
-	// DoDOrderOperationFail is a DoDOrderOperation of type Fail
-	DoDOrderOperationFail
+	// DoDSettleBillingUnitNull is a DoDSettleBillingUnit of type Null
+	DoDSettleBillingUnitNull DoDSettleBillingUnit = iota
+	// DoDSettleBillingUnitYear is a DoDSettleBillingUnit of type Year
+	DoDSettleBillingUnitYear
+	// DoDSettleBillingUnitMonth is a DoDSettleBillingUnit of type Month
+	DoDSettleBillingUnitMonth
+	// DoDSettleBillingUnitWeek is a DoDSettleBillingUnit of type Week
+	DoDSettleBillingUnitWeek
+	// DoDSettleBillingUnitDay is a DoDSettleBillingUnit of type Day
+	DoDSettleBillingUnitDay
+	// DoDSettleBillingUnitHour is a DoDSettleBillingUnit of type Hour
+	DoDSettleBillingUnitHour
+	// DoDSettleBillingUnitMinute is a DoDSettleBillingUnit of type Minute
+	DoDSettleBillingUnitMinute
+	// DoDSettleBillingUnitSecond is a DoDSettleBillingUnit of type Second
+	DoDSettleBillingUnitSecond
 )
 
-const _DoDOrderOperationName = "createchangeterminatefail"
+const _DoDSettleBillingUnitName = "nullyearmonthweekdayhourminutesecond"
 
-var _DoDOrderOperationNames = []string{
-	_DoDOrderOperationName[0:6],
-	_DoDOrderOperationName[6:12],
-	_DoDOrderOperationName[12:21],
-	_DoDOrderOperationName[21:25],
+var _DoDSettleBillingUnitNames = []string{
+	_DoDSettleBillingUnitName[0:4],
+	_DoDSettleBillingUnitName[4:8],
+	_DoDSettleBillingUnitName[8:13],
+	_DoDSettleBillingUnitName[13:17],
+	_DoDSettleBillingUnitName[17:20],
+	_DoDSettleBillingUnitName[20:24],
+	_DoDSettleBillingUnitName[24:30],
+	_DoDSettleBillingUnitName[30:36],
 }
 
-// DoDOrderOperationNames returns a list of possible string values of DoDOrderOperation.
-func DoDOrderOperationNames() []string {
-	tmp := make([]string, len(_DoDOrderOperationNames))
-	copy(tmp, _DoDOrderOperationNames)
+// DoDSettleBillingUnitNames returns a list of possible string values of DoDSettleBillingUnit.
+func DoDSettleBillingUnitNames() []string {
+	tmp := make([]string, len(_DoDSettleBillingUnitNames))
+	copy(tmp, _DoDSettleBillingUnitNames)
 	return tmp
 }
 
-var _DoDOrderOperationMap = map[DoDOrderOperation]string{
-	1: _DoDOrderOperationName[0:6],
-	2: _DoDOrderOperationName[6:12],
-	3: _DoDOrderOperationName[12:21],
-	4: _DoDOrderOperationName[21:25],
+var _DoDSettleBillingUnitMap = map[DoDSettleBillingUnit]string{
+	0: _DoDSettleBillingUnitName[0:4],
+	1: _DoDSettleBillingUnitName[4:8],
+	2: _DoDSettleBillingUnitName[8:13],
+	3: _DoDSettleBillingUnitName[13:17],
+	4: _DoDSettleBillingUnitName[17:20],
+	5: _DoDSettleBillingUnitName[20:24],
+	6: _DoDSettleBillingUnitName[24:30],
+	7: _DoDSettleBillingUnitName[30:36],
 }
 
 // String implements the Stringer interface.
-func (x DoDOrderOperation) String() string {
-	if str, ok := _DoDOrderOperationMap[x]; ok {
+func (x DoDSettleBillingUnit) String() string {
+	if str, ok := _DoDSettleBillingUnitMap[x]; ok {
 		return str
 	}
-	return fmt.Sprintf("DoDOrderOperation(%d)", x)
+	return fmt.Sprintf("DoDSettleBillingUnit(%d)", x)
 }
 
-var _DoDOrderOperationValue = map[string]DoDOrderOperation{
-	_DoDOrderOperationName[0:6]:   1,
-	_DoDOrderOperationName[6:12]:  2,
-	_DoDOrderOperationName[12:21]: 3,
-	_DoDOrderOperationName[21:25]: 4,
+var _DoDSettleBillingUnitValue = map[string]DoDSettleBillingUnit{
+	_DoDSettleBillingUnitName[0:4]:   0,
+	_DoDSettleBillingUnitName[4:8]:   1,
+	_DoDSettleBillingUnitName[8:13]:  2,
+	_DoDSettleBillingUnitName[13:17]: 3,
+	_DoDSettleBillingUnitName[17:20]: 4,
+	_DoDSettleBillingUnitName[20:24]: 5,
+	_DoDSettleBillingUnitName[24:30]: 6,
+	_DoDSettleBillingUnitName[30:36]: 7,
 }
 
-// ParseDoDOrderOperation attempts to convert a string to a DoDOrderOperation
-func ParseDoDOrderOperation(name string) (DoDOrderOperation, error) {
-	if x, ok := _DoDOrderOperationValue[name]; ok {
+// ParseDoDSettleBillingUnit attempts to convert a string to a DoDSettleBillingUnit
+func ParseDoDSettleBillingUnit(name string) (DoDSettleBillingUnit, error) {
+	if x, ok := _DoDSettleBillingUnitValue[name]; ok {
 		return x, nil
 	}
-	return DoDOrderOperation(0), fmt.Errorf("%s is not a valid DoDOrderOperation, try [%s]", name, strings.Join(_DoDOrderOperationNames, ", "))
+	return DoDSettleBillingUnit(0), fmt.Errorf("%s is not a valid DoDSettleBillingUnit, try [%s]", name, strings.Join(_DoDSettleBillingUnitNames, ", "))
 }
 
 // MarshalText implements the text marshaller method
-func (x DoDOrderOperation) MarshalText() ([]byte, error) {
+func (x DoDSettleBillingUnit) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
 // UnmarshalText implements the text unmarshaller method
-func (x *DoDOrderOperation) UnmarshalText(text []byte) error {
+func (x *DoDSettleBillingUnit) UnmarshalText(text []byte) error {
 	name := string(text)
-	tmp, err := ParseDoDOrderOperation(name)
+	tmp, err := ParseDoDSettleBillingUnit(name)
 	if err != nil {
 		return err
 	}
@@ -145,61 +170,71 @@ func (x *DoDOrderOperation) UnmarshalText(text []byte) error {
 }
 
 const (
-	// DoDPaymentTypeInvoice is a DoDPaymentType of type Invoice
-	DoDPaymentTypeInvoice DoDPaymentType = iota + 1
-	// DoDPaymentTypeStableCoin is a DoDPaymentType of type StableCoin
-	DoDPaymentTypeStableCoin
+	// DoDSettleContractStateNull is a DoDSettleContractState of type Null
+	DoDSettleContractStateNull DoDSettleContractState = iota
+	// DoDSettleContractStateRequest is a DoDSettleContractState of type Request
+	DoDSettleContractStateRequest
+	// DoDSettleContractStateConfirmed is a DoDSettleContractState of type Confirmed
+	DoDSettleContractStateConfirmed
+	// DoDSettleContractStateRejected is a DoDSettleContractState of type Rejected
+	DoDSettleContractStateRejected
 )
 
-const _DoDPaymentTypeName = "invoicestableCoin"
+const _DoDSettleContractStateName = "nullrequestconfirmedrejected"
 
-var _DoDPaymentTypeNames = []string{
-	_DoDPaymentTypeName[0:7],
-	_DoDPaymentTypeName[7:17],
+var _DoDSettleContractStateNames = []string{
+	_DoDSettleContractStateName[0:4],
+	_DoDSettleContractStateName[4:11],
+	_DoDSettleContractStateName[11:20],
+	_DoDSettleContractStateName[20:28],
 }
 
-// DoDPaymentTypeNames returns a list of possible string values of DoDPaymentType.
-func DoDPaymentTypeNames() []string {
-	tmp := make([]string, len(_DoDPaymentTypeNames))
-	copy(tmp, _DoDPaymentTypeNames)
+// DoDSettleContractStateNames returns a list of possible string values of DoDSettleContractState.
+func DoDSettleContractStateNames() []string {
+	tmp := make([]string, len(_DoDSettleContractStateNames))
+	copy(tmp, _DoDSettleContractStateNames)
 	return tmp
 }
 
-var _DoDPaymentTypeMap = map[DoDPaymentType]string{
-	1: _DoDPaymentTypeName[0:7],
-	2: _DoDPaymentTypeName[7:17],
+var _DoDSettleContractStateMap = map[DoDSettleContractState]string{
+	0: _DoDSettleContractStateName[0:4],
+	1: _DoDSettleContractStateName[4:11],
+	2: _DoDSettleContractStateName[11:20],
+	3: _DoDSettleContractStateName[20:28],
 }
 
 // String implements the Stringer interface.
-func (x DoDPaymentType) String() string {
-	if str, ok := _DoDPaymentTypeMap[x]; ok {
+func (x DoDSettleContractState) String() string {
+	if str, ok := _DoDSettleContractStateMap[x]; ok {
 		return str
 	}
-	return fmt.Sprintf("DoDPaymentType(%d)", x)
+	return fmt.Sprintf("DoDSettleContractState(%d)", x)
 }
 
-var _DoDPaymentTypeValue = map[string]DoDPaymentType{
-	_DoDPaymentTypeName[0:7]:  1,
-	_DoDPaymentTypeName[7:17]: 2,
+var _DoDSettleContractStateValue = map[string]DoDSettleContractState{
+	_DoDSettleContractStateName[0:4]:   0,
+	_DoDSettleContractStateName[4:11]:  1,
+	_DoDSettleContractStateName[11:20]: 2,
+	_DoDSettleContractStateName[20:28]: 3,
 }
 
-// ParseDoDPaymentType attempts to convert a string to a DoDPaymentType
-func ParseDoDPaymentType(name string) (DoDPaymentType, error) {
-	if x, ok := _DoDPaymentTypeValue[name]; ok {
+// ParseDoDSettleContractState attempts to convert a string to a DoDSettleContractState
+func ParseDoDSettleContractState(name string) (DoDSettleContractState, error) {
+	if x, ok := _DoDSettleContractStateValue[name]; ok {
 		return x, nil
 	}
-	return DoDPaymentType(0), fmt.Errorf("%s is not a valid DoDPaymentType, try [%s]", name, strings.Join(_DoDPaymentTypeNames, ", "))
+	return DoDSettleContractState(0), fmt.Errorf("%s is not a valid DoDSettleContractState, try [%s]", name, strings.Join(_DoDSettleContractStateNames, ", "))
 }
 
 // MarshalText implements the text marshaller method
-func (x DoDPaymentType) MarshalText() ([]byte, error) {
+func (x DoDSettleContractState) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
 // UnmarshalText implements the text unmarshaller method
-func (x *DoDPaymentType) UnmarshalText(text []byte) error {
+func (x *DoDSettleContractState) UnmarshalText(text []byte) error {
 	name := string(text)
-	tmp, err := ParseDoDPaymentType(name)
+	tmp, err := ParseDoDSettleContractState(name)
 	if err != nil {
 		return err
 	}
@@ -208,178 +243,23 @@ func (x *DoDPaymentType) UnmarshalText(text []byte) error {
 }
 
 const (
-	// DoDResponseActionConfirm is a DoDResponseAction of type Confirm
-	DoDResponseActionConfirm DoDResponseAction = iota + 1
-	// DoDResponseActionReject is a DoDResponseAction of type Reject
-	DoDResponseActionReject
-)
-
-const _DoDResponseActionName = "confirmreject"
-
-var _DoDResponseActionNames = []string{
-	_DoDResponseActionName[0:7],
-	_DoDResponseActionName[7:13],
-}
-
-// DoDResponseActionNames returns a list of possible string values of DoDResponseAction.
-func DoDResponseActionNames() []string {
-	tmp := make([]string, len(_DoDResponseActionNames))
-	copy(tmp, _DoDResponseActionNames)
-	return tmp
-}
-
-var _DoDResponseActionMap = map[DoDResponseAction]string{
-	1: _DoDResponseActionName[0:7],
-	2: _DoDResponseActionName[7:13],
-}
-
-// String implements the Stringer interface.
-func (x DoDResponseAction) String() string {
-	if str, ok := _DoDResponseActionMap[x]; ok {
-		return str
-	}
-	return fmt.Sprintf("DoDResponseAction(%d)", x)
-}
-
-var _DoDResponseActionValue = map[string]DoDResponseAction{
-	_DoDResponseActionName[0:7]:  1,
-	_DoDResponseActionName[7:13]: 2,
-}
-
-// ParseDoDResponseAction attempts to convert a string to a DoDResponseAction
-func ParseDoDResponseAction(name string) (DoDResponseAction, error) {
-	if x, ok := _DoDResponseActionValue[name]; ok {
-		return x, nil
-	}
-	return DoDResponseAction(0), fmt.Errorf("%s is not a valid DoDResponseAction, try [%s]", name, strings.Join(_DoDResponseActionNames, ", "))
-}
-
-// MarshalText implements the text marshaller method
-func (x DoDResponseAction) MarshalText() ([]byte, error) {
-	return []byte(x.String()), nil
-}
-
-// UnmarshalText implements the text unmarshaller method
-func (x *DoDResponseAction) UnmarshalText(text []byte) error {
-	name := string(text)
-	tmp, err := ParseDoDResponseAction(name)
-	if err != nil {
-		return err
-	}
-	*x = tmp
-	return nil
-}
-
-const (
-	// DoDServiceClassGold is a DoDServiceClass of type Gold
-	DoDServiceClassGold DoDServiceClass = iota + 1
-	// DoDServiceClassSilver is a DoDServiceClass of type Silver
-	DoDServiceClassSilver
-	// DoDServiceClassBronze is a DoDServiceClass of type Bronze
-	DoDServiceClassBronze
-)
-
-const _DoDServiceClassName = "GoldSilverBronze"
-
-var _DoDServiceClassNames = []string{
-	_DoDServiceClassName[0:4],
-	_DoDServiceClassName[4:10],
-	_DoDServiceClassName[10:16],
-}
-
-// DoDServiceClassNames returns a list of possible string values of DoDServiceClass.
-func DoDServiceClassNames() []string {
-	tmp := make([]string, len(_DoDServiceClassNames))
-	copy(tmp, _DoDServiceClassNames)
-	return tmp
-}
-
-var _DoDServiceClassMap = map[DoDServiceClass]string{
-	1: _DoDServiceClassName[0:4],
-	2: _DoDServiceClassName[4:10],
-	3: _DoDServiceClassName[10:16],
-}
-
-// String implements the Stringer interface.
-func (x DoDServiceClass) String() string {
-	if str, ok := _DoDServiceClassMap[x]; ok {
-		return str
-	}
-	return fmt.Sprintf("DoDServiceClass(%d)", x)
-}
-
-var _DoDServiceClassValue = map[string]DoDServiceClass{
-	_DoDServiceClassName[0:4]:   1,
-	_DoDServiceClassName[4:10]:  2,
-	_DoDServiceClassName[10:16]: 3,
-}
-
-// ParseDoDServiceClass attempts to convert a string to a DoDServiceClass
-func ParseDoDServiceClass(name string) (DoDServiceClass, error) {
-	if x, ok := _DoDServiceClassValue[name]; ok {
-		return x, nil
-	}
-	return DoDServiceClass(0), fmt.Errorf("%s is not a valid DoDServiceClass, try [%s]", name, strings.Join(_DoDServiceClassNames, ", "))
-}
-
-// MarshalText implements the text marshaller method
-func (x DoDServiceClass) MarshalText() ([]byte, error) {
-	return []byte(x.String()), nil
-}
-
-// UnmarshalText implements the text unmarshaller method
-func (x *DoDServiceClass) UnmarshalText(text []byte) error {
-	name := string(text)
-	tmp, err := ParseDoDServiceClass(name)
-	if err != nil {
-		return err
-	}
-	*x = tmp
-	return nil
-}
-
-const (
-	// DoDSettleOrderStateCreateRequest is a DoDSettleOrderState of type CreateRequest
-	DoDSettleOrderStateCreateRequest DoDSettleOrderState = iota + 1
-	// DoDSettleOrderStateCreateConfirmed is a DoDSettleOrderState of type CreateConfirmed
-	DoDSettleOrderStateCreateConfirmed
-	// DoDSettleOrderStateCreateSend is a DoDSettleOrderState of type CreateSend
-	DoDSettleOrderStateCreateSend
-	// DoDSettleOrderStateChangeRequest is a DoDSettleOrderState of type ChangeRequest
-	DoDSettleOrderStateChangeRequest
-	// DoDSettleOrderStateChangeConfirmed is a DoDSettleOrderState of type ChangeConfirmed
-	DoDSettleOrderStateChangeConfirmed
-	// DoDSettleOrderStateChangeSend is a DoDSettleOrderState of type ChangeSend
-	DoDSettleOrderStateChangeSend
-	// DoDSettleOrderStateTerminateRequest is a DoDSettleOrderState of type TerminateRequest
-	DoDSettleOrderStateTerminateRequest
-	// DoDSettleOrderStateTerminateConfirmed is a DoDSettleOrderState of type TerminateConfirmed
-	DoDSettleOrderStateTerminateConfirmed
-	// DoDSettleOrderStateTerminateSend is a DoDSettleOrderState of type TerminateSend
-	DoDSettleOrderStateTerminateSend
-	// DoDSettleOrderStateRejected is a DoDSettleOrderState of type Rejected
-	DoDSettleOrderStateRejected
-	// DoDSettleOrderStateFailed is a DoDSettleOrderState of type Failed
-	DoDSettleOrderStateFailed
+	// DoDSettleOrderStateNull is a DoDSettleOrderState of type Null
+	DoDSettleOrderStateNull DoDSettleOrderState = iota
+	// DoDSettleOrderStateSuccess is a DoDSettleOrderState of type Success
+	DoDSettleOrderStateSuccess
 	// DoDSettleOrderStateComplete is a DoDSettleOrderState of type Complete
 	DoDSettleOrderStateComplete
+	// DoDSettleOrderStateFail is a DoDSettleOrderState of type Fail
+	DoDSettleOrderStateFail
 )
 
-const _DoDSettleOrderStateName = "CreateRequestCreateConfirmedCreateSendChangeRequestChangeConfirmedChangeSendTerminateRequestTerminateConfirmedTerminateSendRejectedFailedComplete"
+const _DoDSettleOrderStateName = "nullsuccesscompletefail"
 
 var _DoDSettleOrderStateNames = []string{
-	_DoDSettleOrderStateName[0:13],
-	_DoDSettleOrderStateName[13:28],
-	_DoDSettleOrderStateName[28:38],
-	_DoDSettleOrderStateName[38:51],
-	_DoDSettleOrderStateName[51:66],
-	_DoDSettleOrderStateName[66:76],
-	_DoDSettleOrderStateName[76:92],
-	_DoDSettleOrderStateName[92:110],
-	_DoDSettleOrderStateName[110:123],
-	_DoDSettleOrderStateName[123:131],
-	_DoDSettleOrderStateName[131:137],
-	_DoDSettleOrderStateName[137:145],
+	_DoDSettleOrderStateName[0:4],
+	_DoDSettleOrderStateName[4:11],
+	_DoDSettleOrderStateName[11:19],
+	_DoDSettleOrderStateName[19:23],
 }
 
 // DoDSettleOrderStateNames returns a list of possible string values of DoDSettleOrderState.
@@ -390,18 +270,10 @@ func DoDSettleOrderStateNames() []string {
 }
 
 var _DoDSettleOrderStateMap = map[DoDSettleOrderState]string{
-	1:  _DoDSettleOrderStateName[0:13],
-	2:  _DoDSettleOrderStateName[13:28],
-	3:  _DoDSettleOrderStateName[28:38],
-	4:  _DoDSettleOrderStateName[38:51],
-	5:  _DoDSettleOrderStateName[51:66],
-	6:  _DoDSettleOrderStateName[66:76],
-	7:  _DoDSettleOrderStateName[76:92],
-	8:  _DoDSettleOrderStateName[92:110],
-	9:  _DoDSettleOrderStateName[110:123],
-	10: _DoDSettleOrderStateName[123:131],
-	11: _DoDSettleOrderStateName[131:137],
-	12: _DoDSettleOrderStateName[137:145],
+	0: _DoDSettleOrderStateName[0:4],
+	1: _DoDSettleOrderStateName[4:11],
+	2: _DoDSettleOrderStateName[11:19],
+	3: _DoDSettleOrderStateName[19:23],
 }
 
 // String implements the Stringer interface.
@@ -413,18 +285,10 @@ func (x DoDSettleOrderState) String() string {
 }
 
 var _DoDSettleOrderStateValue = map[string]DoDSettleOrderState{
-	_DoDSettleOrderStateName[0:13]:    1,
-	_DoDSettleOrderStateName[13:28]:   2,
-	_DoDSettleOrderStateName[28:38]:   3,
-	_DoDSettleOrderStateName[38:51]:   4,
-	_DoDSettleOrderStateName[51:66]:   5,
-	_DoDSettleOrderStateName[66:76]:   6,
-	_DoDSettleOrderStateName[76:92]:   7,
-	_DoDSettleOrderStateName[92:110]:  8,
-	_DoDSettleOrderStateName[110:123]: 9,
-	_DoDSettleOrderStateName[123:131]: 10,
-	_DoDSettleOrderStateName[131:137]: 11,
-	_DoDSettleOrderStateName[137:145]: 12,
+	_DoDSettleOrderStateName[0:4]:   0,
+	_DoDSettleOrderStateName[4:11]:  1,
+	_DoDSettleOrderStateName[11:19]: 2,
+	_DoDSettleOrderStateName[19:23]: 3,
 }
 
 // ParseDoDSettleOrderState attempts to convert a string to a DoDSettleOrderState
@@ -452,86 +316,280 @@ func (x *DoDSettleOrderState) UnmarshalText(text []byte) error {
 }
 
 const (
-	// DodBillingUnitYear is a DodBillingUnit of type Year
-	DodBillingUnitYear DodBillingUnit = iota + 1
-	// DodBillingUnitMonth is a DodBillingUnit of type Month
-	DodBillingUnitMonth
-	// DodBillingUnitWeek is a DodBillingUnit of type Week
-	DodBillingUnitWeek
-	// DodBillingUnitDay is a DodBillingUnit of type Day
-	DodBillingUnitDay
-	// DodBillingUnitHour is a DodBillingUnit of type Hour
-	DodBillingUnitHour
-	// DodBillingUnitMinute is a DodBillingUnit of type Minute
-	DodBillingUnitMinute
-	// DodBillingUnitSecond is a DodBillingUnit of type Second
-	DodBillingUnitSecond
+	// DoDSettleOrderTypeNull is a DoDSettleOrderType of type Null
+	DoDSettleOrderTypeNull DoDSettleOrderType = iota
+	// DoDSettleOrderTypeCreate is a DoDSettleOrderType of type Create
+	DoDSettleOrderTypeCreate
+	// DoDSettleOrderTypeChange is a DoDSettleOrderType of type Change
+	DoDSettleOrderTypeChange
+	// DoDSettleOrderTypeTerminate is a DoDSettleOrderType of type Terminate
+	DoDSettleOrderTypeTerminate
 )
 
-const _DodBillingUnitName = "yearmonthweekdayhourminutesecond"
+const _DoDSettleOrderTypeName = "nullcreatechangeterminate"
 
-var _DodBillingUnitNames = []string{
-	_DodBillingUnitName[0:4],
-	_DodBillingUnitName[4:9],
-	_DodBillingUnitName[9:13],
-	_DodBillingUnitName[13:16],
-	_DodBillingUnitName[16:20],
-	_DodBillingUnitName[20:26],
-	_DodBillingUnitName[26:32],
+var _DoDSettleOrderTypeNames = []string{
+	_DoDSettleOrderTypeName[0:4],
+	_DoDSettleOrderTypeName[4:10],
+	_DoDSettleOrderTypeName[10:16],
+	_DoDSettleOrderTypeName[16:25],
 }
 
-// DodBillingUnitNames returns a list of possible string values of DodBillingUnit.
-func DodBillingUnitNames() []string {
-	tmp := make([]string, len(_DodBillingUnitNames))
-	copy(tmp, _DodBillingUnitNames)
+// DoDSettleOrderTypeNames returns a list of possible string values of DoDSettleOrderType.
+func DoDSettleOrderTypeNames() []string {
+	tmp := make([]string, len(_DoDSettleOrderTypeNames))
+	copy(tmp, _DoDSettleOrderTypeNames)
 	return tmp
 }
 
-var _DodBillingUnitMap = map[DodBillingUnit]string{
-	1: _DodBillingUnitName[0:4],
-	2: _DodBillingUnitName[4:9],
-	3: _DodBillingUnitName[9:13],
-	4: _DodBillingUnitName[13:16],
-	5: _DodBillingUnitName[16:20],
-	6: _DodBillingUnitName[20:26],
-	7: _DodBillingUnitName[26:32],
+var _DoDSettleOrderTypeMap = map[DoDSettleOrderType]string{
+	0: _DoDSettleOrderTypeName[0:4],
+	1: _DoDSettleOrderTypeName[4:10],
+	2: _DoDSettleOrderTypeName[10:16],
+	3: _DoDSettleOrderTypeName[16:25],
 }
 
 // String implements the Stringer interface.
-func (x DodBillingUnit) String() string {
-	if str, ok := _DodBillingUnitMap[x]; ok {
+func (x DoDSettleOrderType) String() string {
+	if str, ok := _DoDSettleOrderTypeMap[x]; ok {
 		return str
 	}
-	return fmt.Sprintf("DodBillingUnit(%d)", x)
+	return fmt.Sprintf("DoDSettleOrderType(%d)", x)
 }
 
-var _DodBillingUnitValue = map[string]DodBillingUnit{
-	_DodBillingUnitName[0:4]:   1,
-	_DodBillingUnitName[4:9]:   2,
-	_DodBillingUnitName[9:13]:  3,
-	_DodBillingUnitName[13:16]: 4,
-	_DodBillingUnitName[16:20]: 5,
-	_DodBillingUnitName[20:26]: 6,
-	_DodBillingUnitName[26:32]: 7,
+var _DoDSettleOrderTypeValue = map[string]DoDSettleOrderType{
+	_DoDSettleOrderTypeName[0:4]:   0,
+	_DoDSettleOrderTypeName[4:10]:  1,
+	_DoDSettleOrderTypeName[10:16]: 2,
+	_DoDSettleOrderTypeName[16:25]: 3,
 }
 
-// ParseDodBillingUnit attempts to convert a string to a DodBillingUnit
-func ParseDodBillingUnit(name string) (DodBillingUnit, error) {
-	if x, ok := _DodBillingUnitValue[name]; ok {
+// ParseDoDSettleOrderType attempts to convert a string to a DoDSettleOrderType
+func ParseDoDSettleOrderType(name string) (DoDSettleOrderType, error) {
+	if x, ok := _DoDSettleOrderTypeValue[name]; ok {
 		return x, nil
 	}
-	return DodBillingUnit(0), fmt.Errorf("%s is not a valid DodBillingUnit, try [%s]", name, strings.Join(_DodBillingUnitNames, ", "))
+	return DoDSettleOrderType(0), fmt.Errorf("%s is not a valid DoDSettleOrderType, try [%s]", name, strings.Join(_DoDSettleOrderTypeNames, ", "))
 }
 
 // MarshalText implements the text marshaller method
-func (x DodBillingUnit) MarshalText() ([]byte, error) {
+func (x DoDSettleOrderType) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
 // UnmarshalText implements the text unmarshaller method
-func (x *DodBillingUnit) UnmarshalText(text []byte) error {
+func (x *DoDSettleOrderType) UnmarshalText(text []byte) error {
 	name := string(text)
-	tmp, err := ParseDodBillingUnit(name)
+	tmp, err := ParseDoDSettleOrderType(name)
+	if err != nil {
+		return err
+	}
+	*x = tmp
+	return nil
+}
+
+const (
+	// DoDSettlePaymentTypeNull is a DoDSettlePaymentType of type Null
+	DoDSettlePaymentTypeNull DoDSettlePaymentType = iota
+	// DoDSettlePaymentTypeInvoice is a DoDSettlePaymentType of type Invoice
+	DoDSettlePaymentTypeInvoice
+	// DoDSettlePaymentTypeStableCoin is a DoDSettlePaymentType of type StableCoin
+	DoDSettlePaymentTypeStableCoin
+)
+
+const _DoDSettlePaymentTypeName = "nullinvoicestableCoin"
+
+var _DoDSettlePaymentTypeNames = []string{
+	_DoDSettlePaymentTypeName[0:4],
+	_DoDSettlePaymentTypeName[4:11],
+	_DoDSettlePaymentTypeName[11:21],
+}
+
+// DoDSettlePaymentTypeNames returns a list of possible string values of DoDSettlePaymentType.
+func DoDSettlePaymentTypeNames() []string {
+	tmp := make([]string, len(_DoDSettlePaymentTypeNames))
+	copy(tmp, _DoDSettlePaymentTypeNames)
+	return tmp
+}
+
+var _DoDSettlePaymentTypeMap = map[DoDSettlePaymentType]string{
+	0: _DoDSettlePaymentTypeName[0:4],
+	1: _DoDSettlePaymentTypeName[4:11],
+	2: _DoDSettlePaymentTypeName[11:21],
+}
+
+// String implements the Stringer interface.
+func (x DoDSettlePaymentType) String() string {
+	if str, ok := _DoDSettlePaymentTypeMap[x]; ok {
+		return str
+	}
+	return fmt.Sprintf("DoDSettlePaymentType(%d)", x)
+}
+
+var _DoDSettlePaymentTypeValue = map[string]DoDSettlePaymentType{
+	_DoDSettlePaymentTypeName[0:4]:   0,
+	_DoDSettlePaymentTypeName[4:11]:  1,
+	_DoDSettlePaymentTypeName[11:21]: 2,
+}
+
+// ParseDoDSettlePaymentType attempts to convert a string to a DoDSettlePaymentType
+func ParseDoDSettlePaymentType(name string) (DoDSettlePaymentType, error) {
+	if x, ok := _DoDSettlePaymentTypeValue[name]; ok {
+		return x, nil
+	}
+	return DoDSettlePaymentType(0), fmt.Errorf("%s is not a valid DoDSettlePaymentType, try [%s]", name, strings.Join(_DoDSettlePaymentTypeNames, ", "))
+}
+
+// MarshalText implements the text marshaller method
+func (x DoDSettlePaymentType) MarshalText() ([]byte, error) {
+	return []byte(x.String()), nil
+}
+
+// UnmarshalText implements the text unmarshaller method
+func (x *DoDSettlePaymentType) UnmarshalText(text []byte) error {
+	name := string(text)
+	tmp, err := ParseDoDSettlePaymentType(name)
+	if err != nil {
+		return err
+	}
+	*x = tmp
+	return nil
+}
+
+const (
+	// DoDSettleResponseActionNull is a DoDSettleResponseAction of type Null
+	DoDSettleResponseActionNull DoDSettleResponseAction = iota
+	// DoDSettleResponseActionConfirm is a DoDSettleResponseAction of type Confirm
+	DoDSettleResponseActionConfirm
+	// DoDSettleResponseActionReject is a DoDSettleResponseAction of type Reject
+	DoDSettleResponseActionReject
+)
+
+const _DoDSettleResponseActionName = "nullconfirmreject"
+
+var _DoDSettleResponseActionNames = []string{
+	_DoDSettleResponseActionName[0:4],
+	_DoDSettleResponseActionName[4:11],
+	_DoDSettleResponseActionName[11:17],
+}
+
+// DoDSettleResponseActionNames returns a list of possible string values of DoDSettleResponseAction.
+func DoDSettleResponseActionNames() []string {
+	tmp := make([]string, len(_DoDSettleResponseActionNames))
+	copy(tmp, _DoDSettleResponseActionNames)
+	return tmp
+}
+
+var _DoDSettleResponseActionMap = map[DoDSettleResponseAction]string{
+	0: _DoDSettleResponseActionName[0:4],
+	1: _DoDSettleResponseActionName[4:11],
+	2: _DoDSettleResponseActionName[11:17],
+}
+
+// String implements the Stringer interface.
+func (x DoDSettleResponseAction) String() string {
+	if str, ok := _DoDSettleResponseActionMap[x]; ok {
+		return str
+	}
+	return fmt.Sprintf("DoDSettleResponseAction(%d)", x)
+}
+
+var _DoDSettleResponseActionValue = map[string]DoDSettleResponseAction{
+	_DoDSettleResponseActionName[0:4]:   0,
+	_DoDSettleResponseActionName[4:11]:  1,
+	_DoDSettleResponseActionName[11:17]: 2,
+}
+
+// ParseDoDSettleResponseAction attempts to convert a string to a DoDSettleResponseAction
+func ParseDoDSettleResponseAction(name string) (DoDSettleResponseAction, error) {
+	if x, ok := _DoDSettleResponseActionValue[name]; ok {
+		return x, nil
+	}
+	return DoDSettleResponseAction(0), fmt.Errorf("%s is not a valid DoDSettleResponseAction, try [%s]", name, strings.Join(_DoDSettleResponseActionNames, ", "))
+}
+
+// MarshalText implements the text marshaller method
+func (x DoDSettleResponseAction) MarshalText() ([]byte, error) {
+	return []byte(x.String()), nil
+}
+
+// UnmarshalText implements the text unmarshaller method
+func (x *DoDSettleResponseAction) UnmarshalText(text []byte) error {
+	name := string(text)
+	tmp, err := ParseDoDSettleResponseAction(name)
+	if err != nil {
+		return err
+	}
+	*x = tmp
+	return nil
+}
+
+const (
+	// DoDSettleServiceClassNull is a DoDSettleServiceClass of type Null
+	DoDSettleServiceClassNull DoDSettleServiceClass = iota
+	// DoDSettleServiceClassGold is a DoDSettleServiceClass of type Gold
+	DoDSettleServiceClassGold
+	// DoDSettleServiceClassSilver is a DoDSettleServiceClass of type Silver
+	DoDSettleServiceClassSilver
+	// DoDSettleServiceClassBronze is a DoDSettleServiceClass of type Bronze
+	DoDSettleServiceClassBronze
+)
+
+const _DoDSettleServiceClassName = "nullgoldsilverbronze"
+
+var _DoDSettleServiceClassNames = []string{
+	_DoDSettleServiceClassName[0:4],
+	_DoDSettleServiceClassName[4:8],
+	_DoDSettleServiceClassName[8:14],
+	_DoDSettleServiceClassName[14:20],
+}
+
+// DoDSettleServiceClassNames returns a list of possible string values of DoDSettleServiceClass.
+func DoDSettleServiceClassNames() []string {
+	tmp := make([]string, len(_DoDSettleServiceClassNames))
+	copy(tmp, _DoDSettleServiceClassNames)
+	return tmp
+}
+
+var _DoDSettleServiceClassMap = map[DoDSettleServiceClass]string{
+	0: _DoDSettleServiceClassName[0:4],
+	1: _DoDSettleServiceClassName[4:8],
+	2: _DoDSettleServiceClassName[8:14],
+	3: _DoDSettleServiceClassName[14:20],
+}
+
+// String implements the Stringer interface.
+func (x DoDSettleServiceClass) String() string {
+	if str, ok := _DoDSettleServiceClassMap[x]; ok {
+		return str
+	}
+	return fmt.Sprintf("DoDSettleServiceClass(%d)", x)
+}
+
+var _DoDSettleServiceClassValue = map[string]DoDSettleServiceClass{
+	_DoDSettleServiceClassName[0:4]:   0,
+	_DoDSettleServiceClassName[4:8]:   1,
+	_DoDSettleServiceClassName[8:14]:  2,
+	_DoDSettleServiceClassName[14:20]: 3,
+}
+
+// ParseDoDSettleServiceClass attempts to convert a string to a DoDSettleServiceClass
+func ParseDoDSettleServiceClass(name string) (DoDSettleServiceClass, error) {
+	if x, ok := _DoDSettleServiceClassValue[name]; ok {
+		return x, nil
+	}
+	return DoDSettleServiceClass(0), fmt.Errorf("%s is not a valid DoDSettleServiceClass, try [%s]", name, strings.Join(_DoDSettleServiceClassNames, ", "))
+}
+
+// MarshalText implements the text marshaller method
+func (x DoDSettleServiceClass) MarshalText() ([]byte, error) {
+	return []byte(x.String()), nil
+}
+
+// UnmarshalText implements the text unmarshaller method
+func (x *DoDSettleServiceClass) UnmarshalText(text []byte) error {
+	name := string(text)
+	tmp, err := ParseDoDSettleServiceClass(name)
 	if err != nil {
 		return err
 	}

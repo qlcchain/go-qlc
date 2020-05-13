@@ -143,12 +143,7 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 		return err
 	}
 
-	billingType, err := abi.ParseDoDBillingType(billingTypeP)
-	if err != nil {
-		return err
-	}
-
-	billingUnit, err := abi.ParseDodBillingUnit(billingUnitP)
+	billingType, err := abi.ParseDoDSettleBillingType(billingTypeP)
 	if err != nil {
 		return err
 	}
@@ -159,14 +154,20 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 	}
 
 	var startTime, endTime int64
+	var billingUnit abi.DoDSettleBillingUnit
 
-	if billingType == abi.DoDBillingTypeDOD {
+	if billingType == abi.DoDSettleBillingTypeDOD {
 		startTime, err = strconv.ParseInt(startTimeP, 10, 64)
 		if err != nil {
 			return err
 		}
 
 		endTime, err = strconv.ParseInt(endTimeP, 10, 64)
+		if err != nil {
+			return err
+		}
+	} else {
+		billingUnit, err = abi.ParseDoDSettleBillingUnit(billingUnitP)
 		if err != nil {
 			return err
 		}
@@ -189,7 +190,7 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 	for _, productId := range pids {
 		var conn *abi.DoDSettleChangeConnectionParam
 
-		if billingType == abi.DoDBillingTypePAYG {
+		if billingType == abi.DoDSettleBillingTypePAYG {
 			conn = &abi.DoDSettleChangeConnectionParam{
 				ProductId: productId,
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{

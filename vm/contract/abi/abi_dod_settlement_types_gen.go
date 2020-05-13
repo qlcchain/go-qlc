@@ -7,7 +7,7 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
-func (z *DoDBillingType) DecodeMsg(dc *msgp.Reader) (err error) {
+func (z *DoDSettleBillingType) DecodeMsg(dc *msgp.Reader) (err error) {
 	{
 		var zb0001 int
 		zb0001, err = dc.ReadInt()
@@ -15,13 +15,13 @@ func (z *DoDBillingType) DecodeMsg(dc *msgp.Reader) (err error) {
 			err = msgp.WrapError(err)
 			return
 		}
-		(*z) = DoDBillingType(zb0001)
+		(*z) = DoDSettleBillingType(zb0001)
 	}
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z DoDBillingType) EncodeMsg(en *msgp.Writer) (err error) {
+func (z DoDSettleBillingType) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteInt(int(z))
 	if err != nil {
 		err = msgp.WrapError(err)
@@ -31,14 +31,14 @@ func (z DoDBillingType) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z DoDBillingType) MarshalMsg(b []byte) (o []byte, err error) {
+func (z DoDSettleBillingType) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	o = msgp.AppendInt(o, int(z))
 	return
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
-func (z *DoDBillingType) UnmarshalMsg(bts []byte) (o []byte, err error) {
+func (z *DoDSettleBillingType) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	{
 		var zb0001 int
 		zb0001, bts, err = msgp.ReadIntBytes(bts)
@@ -46,20 +46,20 @@ func (z *DoDBillingType) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			err = msgp.WrapError(err)
 			return
 		}
-		(*z) = DoDBillingType(zb0001)
+		(*z) = DoDSettleBillingType(zb0001)
 	}
 	o = bts
 	return
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z DoDBillingType) Msgsize() (s int) {
+func (z DoDSettleBillingType) Msgsize() (s int) {
 	s = msgp.IntSize
 	return
 }
 
 // DecodeMsg implements msgp.Decodable
-func (z *DoDOrderOperation) DecodeMsg(dc *msgp.Reader) (err error) {
+func (z *DoDSettleBillingUnit) DecodeMsg(dc *msgp.Reader) (err error) {
 	{
 		var zb0001 int
 		zb0001, err = dc.ReadInt()
@@ -67,13 +67,13 @@ func (z *DoDOrderOperation) DecodeMsg(dc *msgp.Reader) (err error) {
 			err = msgp.WrapError(err)
 			return
 		}
-		(*z) = DoDOrderOperation(zb0001)
+		(*z) = DoDSettleBillingUnit(zb0001)
 	}
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z DoDOrderOperation) EncodeMsg(en *msgp.Writer) (err error) {
+func (z DoDSettleBillingUnit) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteInt(int(z))
 	if err != nil {
 		err = msgp.WrapError(err)
@@ -83,14 +83,14 @@ func (z DoDOrderOperation) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z DoDOrderOperation) MarshalMsg(b []byte) (o []byte, err error) {
+func (z DoDSettleBillingUnit) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	o = msgp.AppendInt(o, int(z))
 	return
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
-func (z *DoDOrderOperation) UnmarshalMsg(bts []byte) (o []byte, err error) {
+func (z *DoDSettleBillingUnit) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	{
 		var zb0001 int
 		zb0001, bts, err = msgp.ReadIntBytes(bts)
@@ -98,170 +98,14 @@ func (z *DoDOrderOperation) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			err = msgp.WrapError(err)
 			return
 		}
-		(*z) = DoDOrderOperation(zb0001)
+		(*z) = DoDSettleBillingUnit(zb0001)
 	}
 	o = bts
 	return
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z DoDOrderOperation) Msgsize() (s int) {
-	s = msgp.IntSize
-	return
-}
-
-// DecodeMsg implements msgp.Decodable
-func (z *DoDPaymentType) DecodeMsg(dc *msgp.Reader) (err error) {
-	{
-		var zb0001 int
-		zb0001, err = dc.ReadInt()
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		(*z) = DoDPaymentType(zb0001)
-	}
-	return
-}
-
-// EncodeMsg implements msgp.Encodable
-func (z DoDPaymentType) EncodeMsg(en *msgp.Writer) (err error) {
-	err = en.WriteInt(int(z))
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	return
-}
-
-// MarshalMsg implements msgp.Marshaler
-func (z DoDPaymentType) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, z.Msgsize())
-	o = msgp.AppendInt(o, int(z))
-	return
-}
-
-// UnmarshalMsg implements msgp.Unmarshaler
-func (z *DoDPaymentType) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	{
-		var zb0001 int
-		zb0001, bts, err = msgp.ReadIntBytes(bts)
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		(*z) = DoDPaymentType(zb0001)
-	}
-	o = bts
-	return
-}
-
-// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z DoDPaymentType) Msgsize() (s int) {
-	s = msgp.IntSize
-	return
-}
-
-// DecodeMsg implements msgp.Decodable
-func (z *DoDResponseAction) DecodeMsg(dc *msgp.Reader) (err error) {
-	{
-		var zb0001 int
-		zb0001, err = dc.ReadInt()
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		(*z) = DoDResponseAction(zb0001)
-	}
-	return
-}
-
-// EncodeMsg implements msgp.Encodable
-func (z DoDResponseAction) EncodeMsg(en *msgp.Writer) (err error) {
-	err = en.WriteInt(int(z))
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	return
-}
-
-// MarshalMsg implements msgp.Marshaler
-func (z DoDResponseAction) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, z.Msgsize())
-	o = msgp.AppendInt(o, int(z))
-	return
-}
-
-// UnmarshalMsg implements msgp.Unmarshaler
-func (z *DoDResponseAction) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	{
-		var zb0001 int
-		zb0001, bts, err = msgp.ReadIntBytes(bts)
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		(*z) = DoDResponseAction(zb0001)
-	}
-	o = bts
-	return
-}
-
-// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z DoDResponseAction) Msgsize() (s int) {
-	s = msgp.IntSize
-	return
-}
-
-// DecodeMsg implements msgp.Decodable
-func (z *DoDServiceClass) DecodeMsg(dc *msgp.Reader) (err error) {
-	{
-		var zb0001 int
-		zb0001, err = dc.ReadInt()
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		(*z) = DoDServiceClass(zb0001)
-	}
-	return
-}
-
-// EncodeMsg implements msgp.Encodable
-func (z DoDServiceClass) EncodeMsg(en *msgp.Writer) (err error) {
-	err = en.WriteInt(int(z))
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	return
-}
-
-// MarshalMsg implements msgp.Marshaler
-func (z DoDServiceClass) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, z.Msgsize())
-	o = msgp.AppendInt(o, int(z))
-	return
-}
-
-// UnmarshalMsg implements msgp.Unmarshaler
-func (z *DoDServiceClass) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	{
-		var zb0001 int
-		zb0001, bts, err = msgp.ReadIntBytes(bts)
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		(*z) = DoDServiceClass(zb0001)
-	}
-	o = bts
-	return
-}
-
-// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z DoDServiceClass) Msgsize() (s int) {
+func (z DoDSettleBillingUnit) Msgsize() (s int) {
 	s = msgp.IntSize
 	return
 }
@@ -992,7 +836,7 @@ func (z *DoDSettleConnectionDynamicParam) DecodeMsg(dc *msgp.Reader) (err error)
 					err = msgp.WrapError(err, "PaymentType")
 					return
 				}
-				z.PaymentType = DoDPaymentType(zb0002)
+				z.PaymentType = DoDSettlePaymentType(zb0002)
 			}
 		case "bt":
 			{
@@ -1002,7 +846,7 @@ func (z *DoDSettleConnectionDynamicParam) DecodeMsg(dc *msgp.Reader) (err error)
 					err = msgp.WrapError(err, "BillingType")
 					return
 				}
-				z.BillingType = DoDBillingType(zb0003)
+				z.BillingType = DoDSettleBillingType(zb0003)
 			}
 		case "cr":
 			z.Currency, err = dc.ReadString()
@@ -1018,7 +862,7 @@ func (z *DoDSettleConnectionDynamicParam) DecodeMsg(dc *msgp.Reader) (err error)
 					err = msgp.WrapError(err, "ServiceClass")
 					return
 				}
-				z.ServiceClass = DoDServiceClass(zb0004)
+				z.ServiceClass = DoDSettleServiceClass(zb0004)
 			}
 		case "bw":
 			z.Bandwidth, err = dc.ReadString()
@@ -1034,7 +878,7 @@ func (z *DoDSettleConnectionDynamicParam) DecodeMsg(dc *msgp.Reader) (err error)
 					err = msgp.WrapError(err, "BillingUnit")
 					return
 				}
-				z.BillingUnit = DodBillingUnit(zb0005)
+				z.BillingUnit = DoDSettleBillingUnit(zb0005)
 			}
 		case "p":
 			z.Price, err = dc.ReadFloat64()
@@ -1240,7 +1084,7 @@ func (z *DoDSettleConnectionDynamicParam) UnmarshalMsg(bts []byte) (o []byte, er
 					err = msgp.WrapError(err, "PaymentType")
 					return
 				}
-				z.PaymentType = DoDPaymentType(zb0002)
+				z.PaymentType = DoDSettlePaymentType(zb0002)
 			}
 		case "bt":
 			{
@@ -1250,7 +1094,7 @@ func (z *DoDSettleConnectionDynamicParam) UnmarshalMsg(bts []byte) (o []byte, er
 					err = msgp.WrapError(err, "BillingType")
 					return
 				}
-				z.BillingType = DoDBillingType(zb0003)
+				z.BillingType = DoDSettleBillingType(zb0003)
 			}
 		case "cr":
 			z.Currency, bts, err = msgp.ReadStringBytes(bts)
@@ -1266,7 +1110,7 @@ func (z *DoDSettleConnectionDynamicParam) UnmarshalMsg(bts []byte) (o []byte, er
 					err = msgp.WrapError(err, "ServiceClass")
 					return
 				}
-				z.ServiceClass = DoDServiceClass(zb0004)
+				z.ServiceClass = DoDSettleServiceClass(zb0004)
 			}
 		case "bw":
 			z.Bandwidth, bts, err = msgp.ReadStringBytes(bts)
@@ -1282,7 +1126,7 @@ func (z *DoDSettleConnectionDynamicParam) UnmarshalMsg(bts []byte) (o []byte, er
 					err = msgp.WrapError(err, "BillingUnit")
 					return
 				}
-				z.BillingUnit = DodBillingUnit(zb0005)
+				z.BillingUnit = DoDSettleBillingUnit(zb0005)
 			}
 		case "p":
 			z.Price, bts, err = msgp.ReadFloat64Bytes(bts)
@@ -1338,41 +1182,11 @@ func (z *DoDSettleConnectionInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "oi":
-			z.OrderId, err = dc.ReadString()
-			if err != nil {
-				err = msgp.WrapError(err, "OrderId")
-				return
-			}
-		case "r":
-			z.Ready, err = dc.ReadBool()
-			if err != nil {
-				err = msgp.WrapError(err, "Ready")
-				return
-			}
 		case "DoDSettleConnectionStaticParam":
 			err = z.DoDSettleConnectionStaticParam.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "DoDSettleConnectionStaticParam")
 				return
-			}
-		case "pd":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "Pending")
-					return
-				}
-				z.Pending = nil
-			} else {
-				if z.Pending == nil {
-					z.Pending = new(DoDSettleConnectionDynamicParam)
-				}
-				err = z.Pending.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "Pending")
-					return
-				}
 			}
 		case "ac":
 			if dc.IsNil() {
@@ -1467,29 +1281,9 @@ func (z *DoDSettleConnectionInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleConnectionInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
-	// write "oi"
-	err = en.Append(0x87, 0xa2, 0x6f, 0x69)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.OrderId)
-	if err != nil {
-		err = msgp.WrapError(err, "OrderId")
-		return
-	}
-	// write "r"
-	err = en.Append(0xa1, 0x72)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.Ready)
-	if err != nil {
-		err = msgp.WrapError(err, "Ready")
-		return
-	}
+	// map header, size 4
 	// write "DoDSettleConnectionStaticParam"
-	err = en.Append(0xbe, 0x44, 0x6f, 0x44, 0x53, 0x65, 0x74, 0x74, 0x6c, 0x65, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x69, 0x63, 0x50, 0x61, 0x72, 0x61, 0x6d)
+	err = en.Append(0x84, 0xbe, 0x44, 0x6f, 0x44, 0x53, 0x65, 0x74, 0x74, 0x6c, 0x65, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x69, 0x63, 0x50, 0x61, 0x72, 0x61, 0x6d)
 	if err != nil {
 		return
 	}
@@ -1497,23 +1291,6 @@ func (z *DoDSettleConnectionInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		err = msgp.WrapError(err, "DoDSettleConnectionStaticParam")
 		return
-	}
-	// write "pd"
-	err = en.Append(0xa2, 0x70, 0x64)
-	if err != nil {
-		return
-	}
-	if z.Pending == nil {
-		err = en.WriteNil()
-		if err != nil {
-			return
-		}
-	} else {
-		err = z.Pending.EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "Pending")
-			return
-		}
 	}
 	// write "ac"
 	err = en.Append(0xa2, 0x61, 0x63)
@@ -1586,30 +1363,13 @@ func (z *DoDSettleConnectionInfo) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleConnectionInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
-	// string "oi"
-	o = append(o, 0x87, 0xa2, 0x6f, 0x69)
-	o = msgp.AppendString(o, z.OrderId)
-	// string "r"
-	o = append(o, 0xa1, 0x72)
-	o = msgp.AppendBool(o, z.Ready)
+	// map header, size 4
 	// string "DoDSettleConnectionStaticParam"
-	o = append(o, 0xbe, 0x44, 0x6f, 0x44, 0x53, 0x65, 0x74, 0x74, 0x6c, 0x65, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x69, 0x63, 0x50, 0x61, 0x72, 0x61, 0x6d)
+	o = append(o, 0x84, 0xbe, 0x44, 0x6f, 0x44, 0x53, 0x65, 0x74, 0x74, 0x6c, 0x65, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x69, 0x63, 0x50, 0x61, 0x72, 0x61, 0x6d)
 	o, err = z.DoDSettleConnectionStaticParam.MarshalMsg(o)
 	if err != nil {
 		err = msgp.WrapError(err, "DoDSettleConnectionStaticParam")
 		return
-	}
-	// string "pd"
-	o = append(o, 0xa2, 0x70, 0x64)
-	if z.Pending == nil {
-		o = msgp.AppendNil(o)
-	} else {
-		o, err = z.Pending.MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "Pending")
-			return
-		}
 	}
 	// string "ac"
 	o = append(o, 0xa2, 0x61, 0x63)
@@ -1671,40 +1431,11 @@ func (z *DoDSettleConnectionInfo) UnmarshalMsg(bts []byte) (o []byte, err error)
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "oi":
-			z.OrderId, bts, err = msgp.ReadStringBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "OrderId")
-				return
-			}
-		case "r":
-			z.Ready, bts, err = msgp.ReadBoolBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Ready")
-				return
-			}
 		case "DoDSettleConnectionStaticParam":
 			bts, err = z.DoDSettleConnectionStaticParam.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DoDSettleConnectionStaticParam")
 				return
-			}
-		case "pd":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.Pending = nil
-			} else {
-				if z.Pending == nil {
-					z.Pending = new(DoDSettleConnectionDynamicParam)
-				}
-				bts, err = z.Pending.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "Pending")
-					return
-				}
 			}
 		case "ac":
 			if msgp.IsNil(bts) {
@@ -1797,13 +1528,7 @@ func (z *DoDSettleConnectionInfo) UnmarshalMsg(bts []byte) (o []byte, err error)
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleConnectionInfo) Msgsize() (s int) {
-	s = 1 + 3 + msgp.StringPrefixSize + len(z.OrderId) + 2 + msgp.BoolSize + 31 + z.DoDSettleConnectionStaticParam.Msgsize() + 3
-	if z.Pending == nil {
-		s += msgp.NilSize
-	} else {
-		s += z.Pending.Msgsize()
-	}
-	s += 3
+	s = 1 + 31 + z.DoDSettleConnectionStaticParam.Msgsize() + 3
 	if z.Active == nil {
 		s += msgp.NilSize
 	} else {
@@ -1846,23 +1571,21 @@ func (z *DoDSettleConnectionLifeTrack) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Param":
-			if dc.IsNil() {
-				err = dc.ReadNil()
+		case "ot":
+			{
+				var zb0002 int
+				zb0002, err = dc.ReadInt()
 				if err != nil {
-					err = msgp.WrapError(err, "Param")
+					err = msgp.WrapError(err, "OrderType")
 					return
 				}
-				z.Param = nil
-			} else {
-				if z.Param == nil {
-					z.Param = new(DoDSettleConnectionDynamicParam)
-				}
-				err = z.Param.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "Param")
-					return
-				}
+				z.OrderType = DoDSettleOrderType(zb0002)
+			}
+		case "oi":
+			z.OrderId, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "OrderId")
+				return
 			}
 		case "t":
 			z.Time, err = dc.ReadInt64()
@@ -1870,11 +1593,23 @@ func (z *DoDSettleConnectionLifeTrack) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Time")
 				return
 			}
-		case "h":
-			err = dc.ReadExtension(&z.Hash)
-			if err != nil {
-				err = msgp.WrapError(err, "Hash")
-				return
+		case "c":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Changed")
+					return
+				}
+				z.Changed = nil
+			} else {
+				if z.Changed == nil {
+					z.Changed = new(DoDSettleConnectionDynamicParam)
+				}
+				err = z.Changed.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Changed")
+					return
+				}
 			}
 		default:
 			err = dc.Skip()
@@ -1889,23 +1624,26 @@ func (z *DoDSettleConnectionLifeTrack) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleConnectionLifeTrack) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 3
-	// write "Param"
-	err = en.Append(0x83, 0xa5, 0x50, 0x61, 0x72, 0x61, 0x6d)
+	// map header, size 4
+	// write "ot"
+	err = en.Append(0x84, 0xa2, 0x6f, 0x74)
 	if err != nil {
 		return
 	}
-	if z.Param == nil {
-		err = en.WriteNil()
-		if err != nil {
-			return
-		}
-	} else {
-		err = z.Param.EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "Param")
-			return
-		}
+	err = en.WriteInt(int(z.OrderType))
+	if err != nil {
+		err = msgp.WrapError(err, "OrderType")
+		return
+	}
+	// write "oi"
+	err = en.Append(0xa2, 0x6f, 0x69)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.OrderId)
+	if err != nil {
+		err = msgp.WrapError(err, "OrderId")
+		return
 	}
 	// write "t"
 	err = en.Append(0xa1, 0x74)
@@ -1917,15 +1655,22 @@ func (z *DoDSettleConnectionLifeTrack) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Time")
 		return
 	}
-	// write "h"
-	err = en.Append(0xa1, 0x68)
+	// write "c"
+	err = en.Append(0xa1, 0x63)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Hash)
-	if err != nil {
-		err = msgp.WrapError(err, "Hash")
-		return
+	if z.Changed == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.Changed.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Changed")
+			return
+		}
 	}
 	return
 }
@@ -1933,27 +1678,26 @@ func (z *DoDSettleConnectionLifeTrack) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleConnectionLifeTrack) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 3
-	// string "Param"
-	o = append(o, 0x83, 0xa5, 0x50, 0x61, 0x72, 0x61, 0x6d)
-	if z.Param == nil {
-		o = msgp.AppendNil(o)
-	} else {
-		o, err = z.Param.MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "Param")
-			return
-		}
-	}
+	// map header, size 4
+	// string "ot"
+	o = append(o, 0x84, 0xa2, 0x6f, 0x74)
+	o = msgp.AppendInt(o, int(z.OrderType))
+	// string "oi"
+	o = append(o, 0xa2, 0x6f, 0x69)
+	o = msgp.AppendString(o, z.OrderId)
 	// string "t"
 	o = append(o, 0xa1, 0x74)
 	o = msgp.AppendInt64(o, z.Time)
-	// string "h"
-	o = append(o, 0xa1, 0x68)
-	o, err = msgp.AppendExtension(o, &z.Hash)
-	if err != nil {
-		err = msgp.WrapError(err, "Hash")
-		return
+	// string "c"
+	o = append(o, 0xa1, 0x63)
+	if z.Changed == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.Changed.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Changed")
+			return
+		}
 	}
 	return
 }
@@ -1976,22 +1720,21 @@ func (z *DoDSettleConnectionLifeTrack) UnmarshalMsg(bts []byte) (o []byte, err e
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Param":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
+		case "ot":
+			{
+				var zb0002 int
+				zb0002, bts, err = msgp.ReadIntBytes(bts)
 				if err != nil {
+					err = msgp.WrapError(err, "OrderType")
 					return
 				}
-				z.Param = nil
-			} else {
-				if z.Param == nil {
-					z.Param = new(DoDSettleConnectionDynamicParam)
-				}
-				bts, err = z.Param.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "Param")
-					return
-				}
+				z.OrderType = DoDSettleOrderType(zb0002)
+			}
+		case "oi":
+			z.OrderId, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OrderId")
+				return
 			}
 		case "t":
 			z.Time, bts, err = msgp.ReadInt64Bytes(bts)
@@ -1999,11 +1742,22 @@ func (z *DoDSettleConnectionLifeTrack) UnmarshalMsg(bts []byte) (o []byte, err e
 				err = msgp.WrapError(err, "Time")
 				return
 			}
-		case "h":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Hash)
-			if err != nil {
-				err = msgp.WrapError(err, "Hash")
-				return
+		case "c":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Changed = nil
+			} else {
+				if z.Changed == nil {
+					z.Changed = new(DoDSettleConnectionDynamicParam)
+				}
+				bts, err = z.Changed.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Changed")
+					return
+				}
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -2019,13 +1773,12 @@ func (z *DoDSettleConnectionLifeTrack) UnmarshalMsg(bts []byte) (o []byte, err e
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleConnectionLifeTrack) Msgsize() (s int) {
-	s = 1 + 6
-	if z.Param == nil {
+	s = 1 + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.OrderId) + 2 + msgp.Int64Size + 2
+	if z.Changed == nil {
 		s += msgp.NilSize
 	} else {
-		s += z.Param.Msgsize()
+		s += z.Changed.Msgsize()
 	}
-	s += 2 + msgp.Int64Size + 2 + msgp.ExtensionPrefixSize + z.Hash.Len()
 	return
 }
 
@@ -2515,6 +2268,58 @@ func (z *DoDSettleConnectionStaticParam) UnmarshalMsg(bts []byte) (o []byte, err
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleConnectionStaticParam) Msgsize() (s int) {
 	s = 1 + 3 + msgp.StringPrefixSize + len(z.ProductId) + 4 + msgp.StringPrefixSize + len(z.SrcCompanyName) + 3 + msgp.StringPrefixSize + len(z.SrcRegion) + 3 + msgp.StringPrefixSize + len(z.SrcCity) + 4 + msgp.StringPrefixSize + len(z.SrcDataCenter) + 3 + msgp.StringPrefixSize + len(z.SrcPort) + 4 + msgp.StringPrefixSize + len(z.DstCompanyName) + 3 + msgp.StringPrefixSize + len(z.DstRegion) + 3 + msgp.StringPrefixSize + len(z.DstCity) + 4 + msgp.StringPrefixSize + len(z.DstDataCenter) + 3 + msgp.StringPrefixSize + len(z.DstPort)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *DoDSettleContractState) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int
+		zb0001, err = dc.ReadInt()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettleContractState(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DoDSettleContractState) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt(int(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DoDSettleContractState) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt(o, int(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettleContractState) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int
+		zb0001, bts, err = msgp.ReadIntBytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettleContractState(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DoDSettleContractState) Msgsize() (s int) {
+	s = msgp.IntSize
 	return
 }
 
@@ -3085,6 +2890,245 @@ func (z *DoDSettleCreateOrderParam) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *DoDSettleInternalIdWrap) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "i":
+			err = dc.ReadExtension(&z.InternalId)
+			if err != nil {
+				err = msgp.WrapError(err, "InternalId")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DoDSettleInternalIdWrap) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 1
+	// write "i"
+	err = en.Append(0x81, 0xa1, 0x69)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.InternalId)
+	if err != nil {
+		err = msgp.WrapError(err, "InternalId")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DoDSettleInternalIdWrap) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 1
+	// string "i"
+	o = append(o, 0x81, 0xa1, 0x69)
+	o, err = msgp.AppendExtension(o, &z.InternalId)
+	if err != nil {
+		err = msgp.WrapError(err, "InternalId")
+		return
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettleInternalIdWrap) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "i":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.InternalId)
+			if err != nil {
+				err = msgp.WrapError(err, "InternalId")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DoDSettleInternalIdWrap) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.InternalId.Len()
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *DoDSettleOrder) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "s":
+			err = dc.ReadExtension(&z.Seller)
+			if err != nil {
+				err = msgp.WrapError(err, "Seller")
+				return
+			}
+		case "o":
+			z.OrderId, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "OrderId")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DoDSettleOrder) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "s"
+	err = en.Append(0x82, 0xa1, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Seller)
+	if err != nil {
+		err = msgp.WrapError(err, "Seller")
+		return
+	}
+	// write "o"
+	err = en.Append(0xa1, 0x6f)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.OrderId)
+	if err != nil {
+		err = msgp.WrapError(err, "OrderId")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DoDSettleOrder) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "s"
+	o = append(o, 0x82, 0xa1, 0x73)
+	o, err = msgp.AppendExtension(o, &z.Seller)
+	if err != nil {
+		err = msgp.WrapError(err, "Seller")
+		return
+	}
+	// string "o"
+	o = append(o, 0xa1, 0x6f)
+	o = msgp.AppendString(o, z.OrderId)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettleOrder) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "s":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Seller)
+			if err != nil {
+				err = msgp.WrapError(err, "Seller")
+				return
+			}
+		case "o":
+			z.OrderId, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OrderId")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DoDSettleOrder) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Seller.Len() + 2 + msgp.StringPrefixSize + len(z.OrderId)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *DoDSettleOrderInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -3202,27 +3246,47 @@ func (z *DoDSettleOrderInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "OrderId")
 				return
 			}
-		case "st":
+		case "ot":
 			{
 				var zb0004 int
 				zb0004, err = dc.ReadInt()
 				if err != nil {
-					err = msgp.WrapError(err, "State")
+					err = msgp.WrapError(err, "OrderType")
 					return
 				}
-				z.State = DoDSettleOrderState(zb0004)
+				z.OrderType = DoDSettleOrderType(zb0004)
+			}
+		case "os":
+			{
+				var zb0005 int
+				zb0005, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "OrderState")
+					return
+				}
+				z.OrderState = DoDSettleOrderState(zb0005)
+			}
+		case "cs":
+			{
+				var zb0006 int
+				zb0006, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "ContractState")
+					return
+				}
+				z.ContractState = DoDSettleContractState(zb0006)
 			}
 		case "c":
-			var zb0005 uint32
-			zb0005, err = dc.ReadArrayHeader()
+			var zb0007 uint32
+			zb0007, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "Connections")
 				return
 			}
-			if cap(z.Connections) >= int(zb0005) {
-				z.Connections = (z.Connections)[:zb0005]
+			if cap(z.Connections) >= int(zb0007) {
+				z.Connections = (z.Connections)[:zb0007]
 			} else {
-				z.Connections = make([]*DoDSettleConnectionParam, zb0005)
+				z.Connections = make([]*DoDSettleConnectionParam, zb0007)
 			}
 			for za0001 := range z.Connections {
 				if dc.IsNil() {
@@ -3236,14 +3300,14 @@ func (z *DoDSettleOrderInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 					if z.Connections[za0001] == nil {
 						z.Connections[za0001] = new(DoDSettleConnectionParam)
 					}
-					var zb0006 uint32
-					zb0006, err = dc.ReadMapHeader()
+					var zb0008 uint32
+					zb0008, err = dc.ReadMapHeader()
 					if err != nil {
 						err = msgp.WrapError(err, "Connections", za0001)
 						return
 					}
-					for zb0006 > 0 {
-						zb0006--
+					for zb0008 > 0 {
+						zb0008--
 						field, err = dc.ReadMapKeyPtr()
 						if err != nil {
 							err = msgp.WrapError(err, "Connections", za0001)
@@ -3273,16 +3337,16 @@ func (z *DoDSettleOrderInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 		case "t":
-			var zb0007 uint32
-			zb0007, err = dc.ReadArrayHeader()
+			var zb0009 uint32
+			zb0009, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "Track")
 				return
 			}
-			if cap(z.Track) >= int(zb0007) {
-				z.Track = (z.Track)[:zb0007]
+			if cap(z.Track) >= int(zb0009) {
+				z.Track = (z.Track)[:zb0009]
 			} else {
-				z.Track = make([]*DoDSettleOrderLifeTrack, zb0007)
+				z.Track = make([]*DoDSettleOrderLifeTrack, zb0009)
 			}
 			for za0002 := range z.Track {
 				if dc.IsNil() {
@@ -3316,9 +3380,9 @@ func (z *DoDSettleOrderInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleOrderInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 6
+	// map header, size 8
 	// write "b"
-	err = en.Append(0x86, 0xa1, 0x62)
+	err = en.Append(0x88, 0xa1, 0x62)
 	if err != nil {
 		return
 	}
@@ -3393,14 +3457,34 @@ func (z *DoDSettleOrderInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "OrderId")
 		return
 	}
-	// write "st"
-	err = en.Append(0xa2, 0x73, 0x74)
+	// write "ot"
+	err = en.Append(0xa2, 0x6f, 0x74)
 	if err != nil {
 		return
 	}
-	err = en.WriteInt(int(z.State))
+	err = en.WriteInt(int(z.OrderType))
 	if err != nil {
-		err = msgp.WrapError(err, "State")
+		err = msgp.WrapError(err, "OrderType")
+		return
+	}
+	// write "os"
+	err = en.Append(0xa2, 0x6f, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(int(z.OrderState))
+	if err != nil {
+		err = msgp.WrapError(err, "OrderState")
+		return
+	}
+	// write "cs"
+	err = en.Append(0xa2, 0x63, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(int(z.ContractState))
+	if err != nil {
+		err = msgp.WrapError(err, "ContractState")
 		return
 	}
 	// write "c"
@@ -3473,9 +3557,9 @@ func (z *DoDSettleOrderInfo) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleOrderInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 6
+	// map header, size 8
 	// string "b"
-	o = append(o, 0x86, 0xa1, 0x62)
+	o = append(o, 0x88, 0xa1, 0x62)
 	if z.Buyer == nil {
 		o = msgp.AppendNil(o)
 	} else {
@@ -3511,9 +3595,15 @@ func (z *DoDSettleOrderInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "oi"
 	o = append(o, 0xa2, 0x6f, 0x69)
 	o = msgp.AppendString(o, z.OrderId)
-	// string "st"
-	o = append(o, 0xa2, 0x73, 0x74)
-	o = msgp.AppendInt(o, int(z.State))
+	// string "ot"
+	o = append(o, 0xa2, 0x6f, 0x74)
+	o = msgp.AppendInt(o, int(z.OrderType))
+	// string "os"
+	o = append(o, 0xa2, 0x6f, 0x73)
+	o = msgp.AppendInt(o, int(z.OrderState))
+	// string "cs"
+	o = append(o, 0xa2, 0x63, 0x73)
+	o = msgp.AppendInt(o, int(z.ContractState))
 	// string "c"
 	o = append(o, 0xa1, 0x63)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.Connections)))
@@ -3671,27 +3761,47 @@ func (z *DoDSettleOrderInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "OrderId")
 				return
 			}
-		case "st":
+		case "ot":
 			{
 				var zb0004 int
 				zb0004, bts, err = msgp.ReadIntBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "State")
+					err = msgp.WrapError(err, "OrderType")
 					return
 				}
-				z.State = DoDSettleOrderState(zb0004)
+				z.OrderType = DoDSettleOrderType(zb0004)
+			}
+		case "os":
+			{
+				var zb0005 int
+				zb0005, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "OrderState")
+					return
+				}
+				z.OrderState = DoDSettleOrderState(zb0005)
+			}
+		case "cs":
+			{
+				var zb0006 int
+				zb0006, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ContractState")
+					return
+				}
+				z.ContractState = DoDSettleContractState(zb0006)
 			}
 		case "c":
-			var zb0005 uint32
-			zb0005, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zb0007 uint32
+			zb0007, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Connections")
 				return
 			}
-			if cap(z.Connections) >= int(zb0005) {
-				z.Connections = (z.Connections)[:zb0005]
+			if cap(z.Connections) >= int(zb0007) {
+				z.Connections = (z.Connections)[:zb0007]
 			} else {
-				z.Connections = make([]*DoDSettleConnectionParam, zb0005)
+				z.Connections = make([]*DoDSettleConnectionParam, zb0007)
 			}
 			for za0001 := range z.Connections {
 				if msgp.IsNil(bts) {
@@ -3704,14 +3814,14 @@ func (z *DoDSettleOrderInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					if z.Connections[za0001] == nil {
 						z.Connections[za0001] = new(DoDSettleConnectionParam)
 					}
-					var zb0006 uint32
-					zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
+					var zb0008 uint32
+					zb0008, bts, err = msgp.ReadMapHeaderBytes(bts)
 					if err != nil {
 						err = msgp.WrapError(err, "Connections", za0001)
 						return
 					}
-					for zb0006 > 0 {
-						zb0006--
+					for zb0008 > 0 {
+						zb0008--
 						field, bts, err = msgp.ReadMapKeyZC(bts)
 						if err != nil {
 							err = msgp.WrapError(err, "Connections", za0001)
@@ -3741,16 +3851,16 @@ func (z *DoDSettleOrderInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 		case "t":
-			var zb0007 uint32
-			zb0007, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zb0009 uint32
+			zb0009, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Track")
 				return
 			}
-			if cap(z.Track) >= int(zb0007) {
-				z.Track = (z.Track)[:zb0007]
+			if cap(z.Track) >= int(zb0009) {
+				z.Track = (z.Track)[:zb0009]
 			} else {
-				z.Track = make([]*DoDSettleOrderLifeTrack, zb0007)
+				z.Track = make([]*DoDSettleOrderLifeTrack, zb0009)
 			}
 			for za0002 := range z.Track {
 				if msgp.IsNil(bts) {
@@ -3796,7 +3906,7 @@ func (z *DoDSettleOrderInfo) Msgsize() (s int) {
 	} else {
 		s += 1 + 2 + msgp.ExtensionPrefixSize + z.Seller.Address.Len() + 2 + msgp.StringPrefixSize + len(z.Seller.Name)
 	}
-	s += 3 + msgp.StringPrefixSize + len(z.OrderId) + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
+	s += 3 + msgp.StringPrefixSize + len(z.OrderId) + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
 	for za0001 := range z.Connections {
 		if z.Connections[za0001] == nil {
 			s += msgp.NilSize
@@ -3833,15 +3943,25 @@ func (z *DoDSettleOrderLifeTrack) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "o":
+		case "cs":
 			{
 				var zb0002 int
 				zb0002, err = dc.ReadInt()
 				if err != nil {
-					err = msgp.WrapError(err, "State")
+					err = msgp.WrapError(err, "ContractState")
 					return
 				}
-				z.State = DoDSettleOrderState(zb0002)
+				z.ContractState = DoDSettleContractState(zb0002)
+			}
+		case "os":
+			{
+				var zb0003 int
+				zb0003, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "OrderState")
+					return
+				}
+				z.OrderState = DoDSettleOrderState(zb0003)
 			}
 		case "r":
 			z.Reason, err = dc.ReadString()
@@ -3874,15 +3994,25 @@ func (z *DoDSettleOrderLifeTrack) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleOrderLifeTrack) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
-	// write "o"
-	err = en.Append(0x84, 0xa1, 0x6f)
+	// map header, size 5
+	// write "cs"
+	err = en.Append(0x85, 0xa2, 0x63, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteInt(int(z.State))
+	err = en.WriteInt(int(z.ContractState))
 	if err != nil {
-		err = msgp.WrapError(err, "State")
+		err = msgp.WrapError(err, "ContractState")
+		return
+	}
+	// write "os"
+	err = en.Append(0xa2, 0x6f, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(int(z.OrderState))
+	if err != nil {
+		err = msgp.WrapError(err, "OrderState")
 		return
 	}
 	// write "r"
@@ -3921,10 +4051,13 @@ func (z *DoDSettleOrderLifeTrack) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleOrderLifeTrack) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
-	// string "o"
-	o = append(o, 0x84, 0xa1, 0x6f)
-	o = msgp.AppendInt(o, int(z.State))
+	// map header, size 5
+	// string "cs"
+	o = append(o, 0x85, 0xa2, 0x63, 0x73)
+	o = msgp.AppendInt(o, int(z.ContractState))
+	// string "os"
+	o = append(o, 0xa2, 0x6f, 0x73)
+	o = msgp.AppendInt(o, int(z.OrderState))
 	// string "r"
 	o = append(o, 0xa1, 0x72)
 	o = msgp.AppendString(o, z.Reason)
@@ -3959,15 +4092,25 @@ func (z *DoDSettleOrderLifeTrack) UnmarshalMsg(bts []byte) (o []byte, err error)
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "o":
+		case "cs":
 			{
 				var zb0002 int
 				zb0002, bts, err = msgp.ReadIntBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "State")
+					err = msgp.WrapError(err, "ContractState")
 					return
 				}
-				z.State = DoDSettleOrderState(zb0002)
+				z.ContractState = DoDSettleContractState(zb0002)
+			}
+		case "os":
+			{
+				var zb0003 int
+				zb0003, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "OrderState")
+					return
+				}
+				z.OrderState = DoDSettleOrderState(zb0003)
 			}
 		case "r":
 			z.Reason, bts, err = msgp.ReadStringBytes(bts)
@@ -4001,7 +4144,7 @@ func (z *DoDSettleOrderLifeTrack) UnmarshalMsg(bts []byte) (o []byte, err error)
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleOrderLifeTrack) Msgsize() (s int) {
-	s = 1 + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Reason) + 2 + msgp.Int64Size + 2 + msgp.ExtensionPrefixSize + z.Hash.Len()
+	s = 1 + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Reason) + 2 + msgp.Int64Size + 2 + msgp.ExtensionPrefixSize + z.Hash.Len()
 	return
 }
 
@@ -4054,6 +4197,242 @@ func (z *DoDSettleOrderState) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z DoDSettleOrderState) Msgsize() (s int) {
 	s = msgp.IntSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *DoDSettleOrderType) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int
+		zb0001, err = dc.ReadInt()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettleOrderType(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DoDSettleOrderType) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt(int(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DoDSettleOrderType) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt(o, int(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettleOrderType) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int
+		zb0001, bts, err = msgp.ReadIntBytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettleOrderType(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DoDSettleOrderType) Msgsize() (s int) {
+	s = msgp.IntSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *DoDSettlePaymentType) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int
+		zb0001, err = dc.ReadInt()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettlePaymentType(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DoDSettlePaymentType) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt(int(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DoDSettlePaymentType) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt(o, int(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettlePaymentType) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int
+		zb0001, bts, err = msgp.ReadIntBytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettlePaymentType(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DoDSettlePaymentType) Msgsize() (s int) {
+	s = msgp.IntSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *DoDSettleProduct) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "s":
+			err = dc.ReadExtension(&z.Seller)
+			if err != nil {
+				err = msgp.WrapError(err, "Seller")
+				return
+			}
+		case "p":
+			z.ProductId, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ProductId")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DoDSettleProduct) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "s"
+	err = en.Append(0x82, 0xa1, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteExtension(&z.Seller)
+	if err != nil {
+		err = msgp.WrapError(err, "Seller")
+		return
+	}
+	// write "p"
+	err = en.Append(0xa1, 0x70)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ProductId)
+	if err != nil {
+		err = msgp.WrapError(err, "ProductId")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DoDSettleProduct) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "s"
+	o = append(o, 0x82, 0xa1, 0x73)
+	o, err = msgp.AppendExtension(o, &z.Seller)
+	if err != nil {
+		err = msgp.WrapError(err, "Seller")
+		return
+	}
+	// string "p"
+	o = append(o, 0xa1, 0x70)
+	o = msgp.AppendString(o, z.ProductId)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettleProduct) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "s":
+			bts, err = msgp.ReadExtensionBytes(bts, &z.Seller)
+			if err != nil {
+				err = msgp.WrapError(err, "Seller")
+				return
+			}
+		case "p":
+			z.ProductId, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProductId")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DoDSettleProduct) Msgsize() (s int) {
+	s = 1 + 2 + msgp.ExtensionPrefixSize + z.Seller.Len() + 2 + msgp.StringPrefixSize + len(z.ProductId)
 	return
 }
 
@@ -4225,6 +4604,58 @@ func (z *DoDSettleResourceReadyParam) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *DoDSettleResponseAction) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int
+		zb0001, err = dc.ReadInt()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettleResponseAction(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DoDSettleResponseAction) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt(int(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DoDSettleResponseAction) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt(o, int(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettleResponseAction) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int
+		zb0001, bts, err = msgp.ReadIntBytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettleResponseAction(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DoDSettleResponseAction) Msgsize() (s int) {
+	s = msgp.IntSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *DoDSettleResponseParam) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -4250,7 +4681,7 @@ func (z *DoDSettleResponseParam) DecodeMsg(dc *msgp.Reader) (err error) {
 					err = msgp.WrapError(err, "Action")
 					return
 				}
-				z.Action = DoDResponseAction(zb0002)
+				z.Action = DoDSettleResponseAction(zb0002)
 			}
 		default:
 			err = dc.Skip()
@@ -4315,7 +4746,7 @@ func (z *DoDSettleResponseParam) UnmarshalMsg(bts []byte) (o []byte, err error) 
 					err = msgp.WrapError(err, "Action")
 					return
 				}
-				z.Action = DoDResponseAction(zb0002)
+				z.Action = DoDSettleResponseAction(zb0002)
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -4332,6 +4763,58 @@ func (z *DoDSettleResponseParam) UnmarshalMsg(bts []byte) (o []byte, err error) 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z DoDSettleResponseParam) Msgsize() (s int) {
 	s = 1 + 2 + msgp.IntSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *DoDSettleServiceClass) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int
+		zb0001, err = dc.ReadInt()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettleServiceClass(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DoDSettleServiceClass) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt(int(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DoDSettleServiceClass) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt(o, int(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettleServiceClass) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int
+		zb0001, bts, err = msgp.ReadIntBytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = DoDSettleServiceClass(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DoDSettleServiceClass) Msgsize() (s int) {
+	s = msgp.IntSize
 	return
 }
 
@@ -4824,15 +5307,15 @@ func (z *DoDSettleUpdateOrderInfoParam) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-		case "o":
+		case "s":
 			{
 				var zb0003 int
 				zb0003, err = dc.ReadInt()
 				if err != nil {
-					err = msgp.WrapError(err, "Operation")
+					err = msgp.WrapError(err, "Status")
 					return
 				}
-				z.Operation = DoDOrderOperation(zb0003)
+				z.Status = DoDSettleOrderState(zb0003)
 			}
 		case "fr":
 			z.FailReason, err = dc.ReadString()
@@ -4891,14 +5374,14 @@ func (z *DoDSettleUpdateOrderInfoParam) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
-	// write "o"
-	err = en.Append(0xa1, 0x6f)
+	// write "s"
+	err = en.Append(0xa1, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteInt(int(z.Operation))
+	err = en.WriteInt(int(z.Status))
 	if err != nil {
-		err = msgp.WrapError(err, "Operation")
+		err = msgp.WrapError(err, "Status")
 		return
 	}
 	// write "fr"
@@ -4934,9 +5417,9 @@ func (z *DoDSettleUpdateOrderInfoParam) MarshalMsg(b []byte) (o []byte, err erro
 	for za0001 := range z.ProductId {
 		o = msgp.AppendString(o, z.ProductId[za0001])
 	}
-	// string "o"
-	o = append(o, 0xa1, 0x6f)
-	o = msgp.AppendInt(o, int(z.Operation))
+	// string "s"
+	o = append(o, 0xa1, 0x73)
+	o = msgp.AppendInt(o, int(z.Status))
 	// string "fr"
 	o = append(o, 0xa2, 0x66, 0x72)
 	o = msgp.AppendString(o, z.FailReason)
@@ -4992,15 +5475,15 @@ func (z *DoDSettleUpdateOrderInfoParam) UnmarshalMsg(bts []byte) (o []byte, err 
 					return
 				}
 			}
-		case "o":
+		case "s":
 			{
 				var zb0003 int
 				zb0003, bts, err = msgp.ReadIntBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "Operation")
+					err = msgp.WrapError(err, "Status")
 					return
 				}
-				z.Operation = DoDOrderOperation(zb0003)
+				z.Status = DoDSettleOrderState(zb0003)
 			}
 		case "fr":
 			z.FailReason, bts, err = msgp.ReadStringBytes(bts)
@@ -5163,113 +5646,6 @@ func (z DoDSettleUser) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
-func (z *DoDSettleUserInfo) DecodeMsg(dc *msgp.Reader) (err error) {
-	var field []byte
-	_ = field
-	var zb0001 uint32
-	zb0001, err = dc.ReadMapHeader()
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	for zb0001 > 0 {
-		zb0001--
-		field, err = dc.ReadMapKeyPtr()
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		switch msgp.UnsafeString(field) {
-		case "i":
-			err = dc.ReadExtension(&z.InternalId)
-			if err != nil {
-				err = msgp.WrapError(err, "InternalId")
-				return
-			}
-		default:
-			err = dc.Skip()
-			if err != nil {
-				err = msgp.WrapError(err)
-				return
-			}
-		}
-	}
-	return
-}
-
-// EncodeMsg implements msgp.Encodable
-func (z DoDSettleUserInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
-	// write "i"
-	err = en.Append(0x81, 0xa1, 0x69)
-	if err != nil {
-		return
-	}
-	err = en.WriteExtension(&z.InternalId)
-	if err != nil {
-		err = msgp.WrapError(err, "InternalId")
-		return
-	}
-	return
-}
-
-// MarshalMsg implements msgp.Marshaler
-func (z DoDSettleUserInfo) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
-	// string "i"
-	o = append(o, 0x81, 0xa1, 0x69)
-	o, err = msgp.AppendExtension(o, &z.InternalId)
-	if err != nil {
-		err = msgp.WrapError(err, "InternalId")
-		return
-	}
-	return
-}
-
-// UnmarshalMsg implements msgp.Unmarshaler
-func (z *DoDSettleUserInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	var field []byte
-	_ = field
-	var zb0001 uint32
-	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	for zb0001 > 0 {
-		zb0001--
-		field, bts, err = msgp.ReadMapKeyZC(bts)
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		switch msgp.UnsafeString(field) {
-		case "i":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.InternalId)
-			if err != nil {
-				err = msgp.WrapError(err, "InternalId")
-				return
-			}
-		default:
-			bts, err = msgp.Skip(bts)
-			if err != nil {
-				err = msgp.WrapError(err)
-				return
-			}
-		}
-	}
-	o = bts
-	return
-}
-
-// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z DoDSettleUserInfo) Msgsize() (s int) {
-	s = 1 + 2 + msgp.ExtensionPrefixSize + z.InternalId.Len()
-	return
-}
-
-// DecodeMsg implements msgp.Decodable
 func (z *DoDSettleUserInfos) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -5291,50 +5667,170 @@ func (z *DoDSettleUserInfos) DecodeMsg(dc *msgp.Reader) (err error) {
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
 			if err != nil {
-				err = msgp.WrapError(err, "Infos")
+				err = msgp.WrapError(err, "InternalIds")
 				return
 			}
-			if cap(z.Infos) >= int(zb0002) {
-				z.Infos = (z.Infos)[:zb0002]
+			if cap(z.InternalIds) >= int(zb0002) {
+				z.InternalIds = (z.InternalIds)[:zb0002]
 			} else {
-				z.Infos = make([]*DoDSettleUserInfo, zb0002)
+				z.InternalIds = make([]*DoDSettleInternalIdWrap, zb0002)
 			}
-			for za0001 := range z.Infos {
+			for za0001 := range z.InternalIds {
 				if dc.IsNil() {
 					err = dc.ReadNil()
 					if err != nil {
-						err = msgp.WrapError(err, "Infos", za0001)
+						err = msgp.WrapError(err, "InternalIds", za0001)
 						return
 					}
-					z.Infos[za0001] = nil
+					z.InternalIds[za0001] = nil
 				} else {
-					if z.Infos[za0001] == nil {
-						z.Infos[za0001] = new(DoDSettleUserInfo)
+					if z.InternalIds[za0001] == nil {
+						z.InternalIds[za0001] = new(DoDSettleInternalIdWrap)
 					}
 					var zb0003 uint32
 					zb0003, err = dc.ReadMapHeader()
 					if err != nil {
-						err = msgp.WrapError(err, "Infos", za0001)
+						err = msgp.WrapError(err, "InternalIds", za0001)
 						return
 					}
 					for zb0003 > 0 {
 						zb0003--
 						field, err = dc.ReadMapKeyPtr()
 						if err != nil {
-							err = msgp.WrapError(err, "Infos", za0001)
+							err = msgp.WrapError(err, "InternalIds", za0001)
 							return
 						}
 						switch msgp.UnsafeString(field) {
 						case "i":
-							err = dc.ReadExtension(&z.Infos[za0001].InternalId)
+							err = dc.ReadExtension(&z.InternalIds[za0001].InternalId)
 							if err != nil {
-								err = msgp.WrapError(err, "Infos", za0001, "InternalId")
+								err = msgp.WrapError(err, "InternalIds", za0001, "InternalId")
 								return
 							}
 						default:
 							err = dc.Skip()
 							if err != nil {
-								err = msgp.WrapError(err, "Infos", za0001)
+								err = msgp.WrapError(err, "InternalIds", za0001)
+								return
+							}
+						}
+					}
+				}
+			}
+		case "p":
+			var zb0004 uint32
+			zb0004, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ProductIds")
+				return
+			}
+			if cap(z.ProductIds) >= int(zb0004) {
+				z.ProductIds = (z.ProductIds)[:zb0004]
+			} else {
+				z.ProductIds = make([]*DoDSettleProduct, zb0004)
+			}
+			for za0002 := range z.ProductIds {
+				if dc.IsNil() {
+					err = dc.ReadNil()
+					if err != nil {
+						err = msgp.WrapError(err, "ProductIds", za0002)
+						return
+					}
+					z.ProductIds[za0002] = nil
+				} else {
+					if z.ProductIds[za0002] == nil {
+						z.ProductIds[za0002] = new(DoDSettleProduct)
+					}
+					var zb0005 uint32
+					zb0005, err = dc.ReadMapHeader()
+					if err != nil {
+						err = msgp.WrapError(err, "ProductIds", za0002)
+						return
+					}
+					for zb0005 > 0 {
+						zb0005--
+						field, err = dc.ReadMapKeyPtr()
+						if err != nil {
+							err = msgp.WrapError(err, "ProductIds", za0002)
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "s":
+							err = dc.ReadExtension(&z.ProductIds[za0002].Seller)
+							if err != nil {
+								err = msgp.WrapError(err, "ProductIds", za0002, "Seller")
+								return
+							}
+						case "p":
+							z.ProductIds[za0002].ProductId, err = dc.ReadString()
+							if err != nil {
+								err = msgp.WrapError(err, "ProductIds", za0002, "ProductId")
+								return
+							}
+						default:
+							err = dc.Skip()
+							if err != nil {
+								err = msgp.WrapError(err, "ProductIds", za0002)
+								return
+							}
+						}
+					}
+				}
+			}
+		case "o":
+			var zb0006 uint32
+			zb0006, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "OrderIds")
+				return
+			}
+			if cap(z.OrderIds) >= int(zb0006) {
+				z.OrderIds = (z.OrderIds)[:zb0006]
+			} else {
+				z.OrderIds = make([]*DoDSettleOrder, zb0006)
+			}
+			for za0003 := range z.OrderIds {
+				if dc.IsNil() {
+					err = dc.ReadNil()
+					if err != nil {
+						err = msgp.WrapError(err, "OrderIds", za0003)
+						return
+					}
+					z.OrderIds[za0003] = nil
+				} else {
+					if z.OrderIds[za0003] == nil {
+						z.OrderIds[za0003] = new(DoDSettleOrder)
+					}
+					var zb0007 uint32
+					zb0007, err = dc.ReadMapHeader()
+					if err != nil {
+						err = msgp.WrapError(err, "OrderIds", za0003)
+						return
+					}
+					for zb0007 > 0 {
+						zb0007--
+						field, err = dc.ReadMapKeyPtr()
+						if err != nil {
+							err = msgp.WrapError(err, "OrderIds", za0003)
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "s":
+							err = dc.ReadExtension(&z.OrderIds[za0003].Seller)
+							if err != nil {
+								err = msgp.WrapError(err, "OrderIds", za0003, "Seller")
+								return
+							}
+						case "o":
+							z.OrderIds[za0003].OrderId, err = dc.ReadString()
+							if err != nil {
+								err = msgp.WrapError(err, "OrderIds", za0003, "OrderId")
+								return
+							}
+						default:
+							err = dc.Skip()
+							if err != nil {
+								err = msgp.WrapError(err, "OrderIds", za0003)
 								return
 							}
 						}
@@ -5354,19 +5850,19 @@ func (z *DoDSettleUserInfos) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleUserInfos) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
+	// map header, size 3
 	// write "i"
-	err = en.Append(0x81, 0xa1, 0x69)
+	err = en.Append(0x83, 0xa1, 0x69)
 	if err != nil {
 		return
 	}
-	err = en.WriteArrayHeader(uint32(len(z.Infos)))
+	err = en.WriteArrayHeader(uint32(len(z.InternalIds)))
 	if err != nil {
-		err = msgp.WrapError(err, "Infos")
+		err = msgp.WrapError(err, "InternalIds")
 		return
 	}
-	for za0001 := range z.Infos {
-		if z.Infos[za0001] == nil {
+	for za0001 := range z.InternalIds {
+		if z.InternalIds[za0001] == nil {
 			err = en.WriteNil()
 			if err != nil {
 				return
@@ -5378,9 +5874,89 @@ func (z *DoDSettleUserInfos) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteExtension(&z.Infos[za0001].InternalId)
+			err = en.WriteExtension(&z.InternalIds[za0001].InternalId)
 			if err != nil {
-				err = msgp.WrapError(err, "Infos", za0001, "InternalId")
+				err = msgp.WrapError(err, "InternalIds", za0001, "InternalId")
+				return
+			}
+		}
+	}
+	// write "p"
+	err = en.Append(0xa1, 0x70)
+	if err != nil {
+		return
+	}
+	err = en.WriteArrayHeader(uint32(len(z.ProductIds)))
+	if err != nil {
+		err = msgp.WrapError(err, "ProductIds")
+		return
+	}
+	for za0002 := range z.ProductIds {
+		if z.ProductIds[za0002] == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			// map header, size 2
+			// write "s"
+			err = en.Append(0x82, 0xa1, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteExtension(&z.ProductIds[za0002].Seller)
+			if err != nil {
+				err = msgp.WrapError(err, "ProductIds", za0002, "Seller")
+				return
+			}
+			// write "p"
+			err = en.Append(0xa1, 0x70)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.ProductIds[za0002].ProductId)
+			if err != nil {
+				err = msgp.WrapError(err, "ProductIds", za0002, "ProductId")
+				return
+			}
+		}
+	}
+	// write "o"
+	err = en.Append(0xa1, 0x6f)
+	if err != nil {
+		return
+	}
+	err = en.WriteArrayHeader(uint32(len(z.OrderIds)))
+	if err != nil {
+		err = msgp.WrapError(err, "OrderIds")
+		return
+	}
+	for za0003 := range z.OrderIds {
+		if z.OrderIds[za0003] == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			// map header, size 2
+			// write "s"
+			err = en.Append(0x82, 0xa1, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteExtension(&z.OrderIds[za0003].Seller)
+			if err != nil {
+				err = msgp.WrapError(err, "OrderIds", za0003, "Seller")
+				return
+			}
+			// write "o"
+			err = en.Append(0xa1, 0x6f)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.OrderIds[za0003].OrderId)
+			if err != nil {
+				err = msgp.WrapError(err, "OrderIds", za0003, "OrderId")
 				return
 			}
 		}
@@ -5391,22 +5967,62 @@ func (z *DoDSettleUserInfos) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleUserInfos) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
+	// map header, size 3
 	// string "i"
-	o = append(o, 0x81, 0xa1, 0x69)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Infos)))
-	for za0001 := range z.Infos {
-		if z.Infos[za0001] == nil {
+	o = append(o, 0x83, 0xa1, 0x69)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.InternalIds)))
+	for za0001 := range z.InternalIds {
+		if z.InternalIds[za0001] == nil {
 			o = msgp.AppendNil(o)
 		} else {
 			// map header, size 1
 			// string "i"
 			o = append(o, 0x81, 0xa1, 0x69)
-			o, err = msgp.AppendExtension(o, &z.Infos[za0001].InternalId)
+			o, err = msgp.AppendExtension(o, &z.InternalIds[za0001].InternalId)
 			if err != nil {
-				err = msgp.WrapError(err, "Infos", za0001, "InternalId")
+				err = msgp.WrapError(err, "InternalIds", za0001, "InternalId")
 				return
 			}
+		}
+	}
+	// string "p"
+	o = append(o, 0xa1, 0x70)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.ProductIds)))
+	for za0002 := range z.ProductIds {
+		if z.ProductIds[za0002] == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			// map header, size 2
+			// string "s"
+			o = append(o, 0x82, 0xa1, 0x73)
+			o, err = msgp.AppendExtension(o, &z.ProductIds[za0002].Seller)
+			if err != nil {
+				err = msgp.WrapError(err, "ProductIds", za0002, "Seller")
+				return
+			}
+			// string "p"
+			o = append(o, 0xa1, 0x70)
+			o = msgp.AppendString(o, z.ProductIds[za0002].ProductId)
+		}
+	}
+	// string "o"
+	o = append(o, 0xa1, 0x6f)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.OrderIds)))
+	for za0003 := range z.OrderIds {
+		if z.OrderIds[za0003] == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			// map header, size 2
+			// string "s"
+			o = append(o, 0x82, 0xa1, 0x73)
+			o, err = msgp.AppendExtension(o, &z.OrderIds[za0003].Seller)
+			if err != nil {
+				err = msgp.WrapError(err, "OrderIds", za0003, "Seller")
+				return
+			}
+			// string "o"
+			o = append(o, 0xa1, 0x6f)
+			o = msgp.AppendString(o, z.OrderIds[za0003].OrderId)
 		}
 	}
 	return
@@ -5434,49 +6050,167 @@ func (z *DoDSettleUserInfos) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Infos")
+				err = msgp.WrapError(err, "InternalIds")
 				return
 			}
-			if cap(z.Infos) >= int(zb0002) {
-				z.Infos = (z.Infos)[:zb0002]
+			if cap(z.InternalIds) >= int(zb0002) {
+				z.InternalIds = (z.InternalIds)[:zb0002]
 			} else {
-				z.Infos = make([]*DoDSettleUserInfo, zb0002)
+				z.InternalIds = make([]*DoDSettleInternalIdWrap, zb0002)
 			}
-			for za0001 := range z.Infos {
+			for za0001 := range z.InternalIds {
 				if msgp.IsNil(bts) {
 					bts, err = msgp.ReadNilBytes(bts)
 					if err != nil {
 						return
 					}
-					z.Infos[za0001] = nil
+					z.InternalIds[za0001] = nil
 				} else {
-					if z.Infos[za0001] == nil {
-						z.Infos[za0001] = new(DoDSettleUserInfo)
+					if z.InternalIds[za0001] == nil {
+						z.InternalIds[za0001] = new(DoDSettleInternalIdWrap)
 					}
 					var zb0003 uint32
 					zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Infos", za0001)
+						err = msgp.WrapError(err, "InternalIds", za0001)
 						return
 					}
 					for zb0003 > 0 {
 						zb0003--
 						field, bts, err = msgp.ReadMapKeyZC(bts)
 						if err != nil {
-							err = msgp.WrapError(err, "Infos", za0001)
+							err = msgp.WrapError(err, "InternalIds", za0001)
 							return
 						}
 						switch msgp.UnsafeString(field) {
 						case "i":
-							bts, err = msgp.ReadExtensionBytes(bts, &z.Infos[za0001].InternalId)
+							bts, err = msgp.ReadExtensionBytes(bts, &z.InternalIds[za0001].InternalId)
 							if err != nil {
-								err = msgp.WrapError(err, "Infos", za0001, "InternalId")
+								err = msgp.WrapError(err, "InternalIds", za0001, "InternalId")
 								return
 							}
 						default:
 							bts, err = msgp.Skip(bts)
 							if err != nil {
-								err = msgp.WrapError(err, "Infos", za0001)
+								err = msgp.WrapError(err, "InternalIds", za0001)
+								return
+							}
+						}
+					}
+				}
+			}
+		case "p":
+			var zb0004 uint32
+			zb0004, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProductIds")
+				return
+			}
+			if cap(z.ProductIds) >= int(zb0004) {
+				z.ProductIds = (z.ProductIds)[:zb0004]
+			} else {
+				z.ProductIds = make([]*DoDSettleProduct, zb0004)
+			}
+			for za0002 := range z.ProductIds {
+				if msgp.IsNil(bts) {
+					bts, err = msgp.ReadNilBytes(bts)
+					if err != nil {
+						return
+					}
+					z.ProductIds[za0002] = nil
+				} else {
+					if z.ProductIds[za0002] == nil {
+						z.ProductIds[za0002] = new(DoDSettleProduct)
+					}
+					var zb0005 uint32
+					zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "ProductIds", za0002)
+						return
+					}
+					for zb0005 > 0 {
+						zb0005--
+						field, bts, err = msgp.ReadMapKeyZC(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "ProductIds", za0002)
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "s":
+							bts, err = msgp.ReadExtensionBytes(bts, &z.ProductIds[za0002].Seller)
+							if err != nil {
+								err = msgp.WrapError(err, "ProductIds", za0002, "Seller")
+								return
+							}
+						case "p":
+							z.ProductIds[za0002].ProductId, bts, err = msgp.ReadStringBytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "ProductIds", za0002, "ProductId")
+								return
+							}
+						default:
+							bts, err = msgp.Skip(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "ProductIds", za0002)
+								return
+							}
+						}
+					}
+				}
+			}
+		case "o":
+			var zb0006 uint32
+			zb0006, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OrderIds")
+				return
+			}
+			if cap(z.OrderIds) >= int(zb0006) {
+				z.OrderIds = (z.OrderIds)[:zb0006]
+			} else {
+				z.OrderIds = make([]*DoDSettleOrder, zb0006)
+			}
+			for za0003 := range z.OrderIds {
+				if msgp.IsNil(bts) {
+					bts, err = msgp.ReadNilBytes(bts)
+					if err != nil {
+						return
+					}
+					z.OrderIds[za0003] = nil
+				} else {
+					if z.OrderIds[za0003] == nil {
+						z.OrderIds[za0003] = new(DoDSettleOrder)
+					}
+					var zb0007 uint32
+					zb0007, bts, err = msgp.ReadMapHeaderBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "OrderIds", za0003)
+						return
+					}
+					for zb0007 > 0 {
+						zb0007--
+						field, bts, err = msgp.ReadMapKeyZC(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "OrderIds", za0003)
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "s":
+							bts, err = msgp.ReadExtensionBytes(bts, &z.OrderIds[za0003].Seller)
+							if err != nil {
+								err = msgp.WrapError(err, "OrderIds", za0003, "Seller")
+								return
+							}
+						case "o":
+							z.OrderIds[za0003].OrderId, bts, err = msgp.ReadStringBytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "OrderIds", za0003, "OrderId")
+								return
+							}
+						default:
+							bts, err = msgp.Skip(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "OrderIds", za0003)
 								return
 							}
 						}
@@ -5498,64 +6232,28 @@ func (z *DoDSettleUserInfos) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleUserInfos) Msgsize() (s int) {
 	s = 1 + 2 + msgp.ArrayHeaderSize
-	for za0001 := range z.Infos {
-		if z.Infos[za0001] == nil {
+	for za0001 := range z.InternalIds {
+		if z.InternalIds[za0001] == nil {
 			s += msgp.NilSize
 		} else {
-			s += 1 + 2 + msgp.ExtensionPrefixSize + z.Infos[za0001].InternalId.Len()
+			s += 1 + 2 + msgp.ExtensionPrefixSize + z.InternalIds[za0001].InternalId.Len()
 		}
 	}
-	return
-}
-
-// DecodeMsg implements msgp.Decodable
-func (z *DodBillingUnit) DecodeMsg(dc *msgp.Reader) (err error) {
-	{
-		var zb0001 int
-		zb0001, err = dc.ReadInt()
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
+	s += 2 + msgp.ArrayHeaderSize
+	for za0002 := range z.ProductIds {
+		if z.ProductIds[za0002] == nil {
+			s += msgp.NilSize
+		} else {
+			s += 1 + 2 + msgp.ExtensionPrefixSize + z.ProductIds[za0002].Seller.Len() + 2 + msgp.StringPrefixSize + len(z.ProductIds[za0002].ProductId)
 		}
-		(*z) = DodBillingUnit(zb0001)
 	}
-	return
-}
-
-// EncodeMsg implements msgp.Encodable
-func (z DodBillingUnit) EncodeMsg(en *msgp.Writer) (err error) {
-	err = en.WriteInt(int(z))
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	return
-}
-
-// MarshalMsg implements msgp.Marshaler
-func (z DodBillingUnit) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, z.Msgsize())
-	o = msgp.AppendInt(o, int(z))
-	return
-}
-
-// UnmarshalMsg implements msgp.Unmarshaler
-func (z *DodBillingUnit) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	{
-		var zb0001 int
-		zb0001, bts, err = msgp.ReadIntBytes(bts)
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
+	s += 2 + msgp.ArrayHeaderSize
+	for za0003 := range z.OrderIds {
+		if z.OrderIds[za0003] == nil {
+			s += msgp.NilSize
+		} else {
+			s += 1 + 2 + msgp.ExtensionPrefixSize + z.OrderIds[za0003].Seller.Len() + 2 + msgp.StringPrefixSize + len(z.OrderIds[za0003].OrderId)
 		}
-		(*z) = DodBillingUnit(zb0001)
 	}
-	o = bts
-	return
-}
-
-// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z DodBillingUnit) Msgsize() (s int) {
-	s = msgp.IntSize
 	return
 }

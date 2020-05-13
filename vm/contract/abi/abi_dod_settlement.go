@@ -103,12 +103,12 @@ func DoDSettleGetOrderInfoByInternalId(ctx *vmstore.VMContext, id types.Hash) (*
 	return oi, nil
 }
 
-func DoDSettleGetInternalIdByProductId(ctx *vmstore.VMContext, orderId string) (types.Hash, error) {
-	orderIdHash := types.Sha256DHashData([]byte(orderId))
+func DoDSettleGetInternalIdByOrderId(ctx *vmstore.VMContext, seller types.Address, orderId string) (types.Hash, error) {
+	orderKey := &DoDSettleOrder{Seller: seller, OrderId: orderId}
 
 	var key []byte
-	key = append(key, DoDSettleDBTableIdMap)
-	key = append(key, orderIdHash.Bytes()...)
+	key = append(key, DoDSettleDBTableOrderIdMap)
+	key = append(key, orderKey.Hash().Bytes()...)
 	data, err := ctx.GetStorage(nil, key)
 	if err != nil {
 		return types.ZeroHash, err
@@ -122,8 +122,8 @@ func DoDSettleGetInternalIdByProductId(ctx *vmstore.VMContext, orderId string) (
 	return hash, nil
 }
 
-func DoDSettleGetOrderInfoByOrderId(ctx *vmstore.VMContext, orderId string) (*DoDSettleOrderInfo, error) {
-	internalId, err := DoDSettleGetInternalIdByProductId(ctx, orderId)
+func DoDSettleGetOrderInfoByOrderId(ctx *vmstore.VMContext, seller types.Address, orderId string) (*DoDSettleOrderInfo, error) {
+	internalId, err := DoDSettleGetInternalIdByOrderId(ctx, seller, orderId)
 	if err != nil {
 		return nil, err
 	}
@@ -131,10 +131,12 @@ func DoDSettleGetOrderInfoByOrderId(ctx *vmstore.VMContext, orderId string) (*Do
 	return DoDSettleGetOrderInfoByInternalId(ctx, internalId)
 }
 
-func DoDSettleGetConnectionInfoByProductId(ctx *vmstore.VMContext, productId types.Hash) (*DoDSettleConnectionInfo, error) {
+func DoDSettleGetConnectionInfoByProductId(ctx *vmstore.VMContext, seller types.Address, productId string) (*DoDSettleConnectionInfo, error) {
+	productKey := &DoDSettleProduct{Seller: seller, ProductId: productId}
+
 	var key []byte
 	key = append(key, DoDSettleDBTableProduct)
-	key = append(key, productId.Bytes()...)
+	key = append(key, productKey.Hash().Bytes()...)
 	data, err := ctx.GetStorage(nil, key)
 	if err != nil {
 		return nil, err
@@ -147,4 +149,131 @@ func DoDSettleGetConnectionInfoByProductId(ctx *vmstore.VMContext, productId typ
 	}
 
 	return conn, nil
+}
+
+func DoDSettleGetConnectionInfoByProductHash(ctx *vmstore.VMContext, hash types.Hash) (*DoDSettleConnectionInfo, error) {
+	var key []byte
+	key = append(key, DoDSettleDBTableProduct)
+	key = append(key, hash.Bytes()...)
+	data, err := ctx.GetStorage(nil, key)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := new(DoDSettleConnectionInfo)
+	_, err = conn.UnmarshalMsg(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func DoDSettleUpdateOrder(ctx *vmstore.VMContext, order *DoDSettleOrderInfo, id types.Hash) error {
+	data, err := order.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	var key []byte
+	key = append(key, DoDSettleDBTableOrder)
+	key = append(key, id.Bytes()...)
+	err = ctx.SetStorage(nil, key, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DoDSettleInheritParam(src, dst *DoDSettleConnectionDynamicParam) {
+	if len(dst.ConnectionName) == 0 {
+		dst.ConnectionName = src.ConnectionName
+	}
+
+	if len(dst.Currency) == 0 {
+		dst.Currency = src.Currency
+	}
+
+	if dst.BillingType == 0 {
+		dst.BillingType = src.BillingType
+	}
+
+	if dst.BillingUnit == 0 {
+		dst.BillingUnit = src.BillingUnit
+	}
+
+	if len(dst.Bandwidth) == 0 {
+		dst.Bandwidth = src.Bandwidth
+	}
+
+	if dst.ServiceClass == 0 {
+		dst.ServiceClass = src.ServiceClass
+	}
+
+	if dst.PaymentType == 0 {
+		dst.PaymentType = src.PaymentType
+	}
+}
+
+func DoDSettleGetInternalIdListByAddress(ctx *vmstore.VMContext, address types.Address) ([]types.Hash, error) {
+	var key []byte
+	key = append(key, DoDSettleDBTableUser)
+	key = append(key, address.Bytes()...)
+
+	data, err := ctx.GetStorage(nil, key)
+	if err != nil {
+		return nil, err
+	}
+
+	userInfo := new(DoDSettleUserInfos)
+	_, err = userInfo.UnmarshalMsg(data)
+	if err != nil {
+		return nil, err
+	}
+
+	hs := make([]types.Hash, 0)
+	for _, i := range userInfo.InternalIds {
+		hs = append(hs, i.InternalId)
+	}
+
+	return hs, nil
+}
+
+func DoDSettleGetProductIdListByAddress(ctx *vmstore.VMContext, address types.Address) ([]*DoDSettleProduct, error) {
+	var key []byte
+	key = append(key, DoDSettleDBTableUser)
+	key = append(key, address.Bytes()...)
+
+	data, err := ctx.GetStorage(nil, key)
+	if err != nil {
+		return nil, err
+	}
+
+	userInfo := new(DoDSettleUserInfos)
+	_, err = userInfo.UnmarshalMsg(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return userInfo.ProductIds, nil
+}
+
+func DoDSettleGetOrderIdListByAddress(ctx *vmstore.VMContext, address types.Address) ([]*DoDSettleOrder, error) {
+	var key []byte
+	key = append(key, DoDSettleDBTableUser)
+	key = append(key, address.Bytes()...)
+
+	data, err := ctx.GetStorage(nil, key)
+	if err != nil {
+		return nil, err
+	}
+
+	userInfo := new(DoDSettleUserInfos)
+	_, err = userInfo.UnmarshalMsg(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return userInfo.OrderIds, nil
 }

@@ -83,7 +83,7 @@ func DSChangeResponse(addressP, hashP, actionP string) error {
 		return err
 	}
 
-	action, err := abi.ParseDoDResponseAction(actionP)
+	action, err := abi.ParseDoDSettleResponseAction(actionP)
 	if err != nil {
 		return err
 	}

@@ -88,8 +88,15 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "endTime",
 		Value: "",
 	}
+	num := util.Flag{
+		Name:  "num",
+		Must:  true,
+		Usage: "num",
+		Value: "",
+	}
 
-	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, srcPort, dstPort, billingType, bandwidth, billingUnit, price, startTime, endTime}
+	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, srcPort, dstPort, billingType, bandwidth,
+		billingUnit, price, startTime, endTime, num}
 	cmd := &ishell.Cmd{
 		Name:                "createOrder",
 		Help:                "create a order request",
@@ -116,9 +123,10 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 			priceP := util.StringVar(c.Args, price)
 			startTimeP := util.StringVar(c.Args, startTime)
 			endTimeP := util.StringVar(c.Args, endTime)
+			numP := util.StringVar(c.Args, num)
 
 			if err := DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPortP, dstPortP,
-				billingTypeP, bandwidthP, billingUnitP, priceP, startTimeP, endTimeP); err != nil {
+				billingTypeP, bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -128,7 +136,7 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 }
 
 func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPortP, dstPortP, billingTypeP,
-	bandwidthP, billingUnitP, priceP, startTimeP, endTimeP string) error {
+	bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -150,17 +158,17 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 		return err
 	}
 
-	paymentType, err := abi.ParseDoDPaymentType("invoice")
+	paymentType, err := abi.ParseDoDSettlePaymentType("invoice")
 	if err != nil {
 		return err
 	}
 
-	billingType, err := abi.ParseDoDBillingType(billingTypeP)
+	billingType, err := abi.ParseDoDSettleBillingType(billingTypeP)
 	if err != nil {
 		return err
 	}
 
-	billingUnit, err := abi.ParseDodBillingUnit(billingUnitP)
+	billingUnit, err := abi.ParseDoDSettleBillingUnit(billingUnitP)
 	if err != nil {
 		return err
 	}
@@ -170,7 +178,12 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 		return err
 	}
 
-	serviceClass, err := abi.ParseDoDServiceClass("Gold")
+	serviceClass, err := abi.ParseDoDSettleServiceClass("gold")
+	if err != nil {
+		return err
+	}
+
+	num, err := strconv.Atoi(numP)
 	if err != nil {
 		return err
 	}
@@ -187,31 +200,73 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 		Connections: make([]*abi.DoDSettleConnectionParam, 0),
 	}
 
-	conn := &abi.DoDSettleConnectionParam{
-		DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-			SrcCompanyName: "CBC",
-			SrcRegion:      "CHN",
-			SrcCity:        "HK",
-			SrcDataCenter:  "DCX",
-			SrcPort:        srcPortP,
-			DstCompanyName: "CBC",
-			DstRegion:      "USA",
-			DstCity:        "NYC",
-			DstDataCenter:  "DCY",
-			DstPort:        dstPortP,
-		},
-		DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
-			ConnectionName: fmt.Sprintf("connection%d", rand.Int()),
-			Bandwidth:      bandwidthP,
-			BillingUnit:    billingUnit,
-			Price:          price,
-			ServiceClass:   serviceClass,
-			PaymentType:    paymentType,
-			BillingType:    billingType,
-			Currency:       "USD",
-		},
+	var conn *abi.DoDSettleConnectionParam
+	for i := 0; i < num; i++ {
+		if billingType == abi.DoDSettleBillingTypePAYG {
+			conn = &abi.DoDSettleConnectionParam{
+				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
+					SrcCompanyName: "CBC",
+					SrcRegion:      "CHN",
+					SrcCity:        "HK",
+					SrcDataCenter:  "DCX",
+					SrcPort:        srcPortP,
+					DstCompanyName: "CBC",
+					DstRegion:      "USA",
+					DstCity:        "NYC",
+					DstDataCenter:  "DCY",
+					DstPort:        dstPortP,
+				},
+				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					ConnectionName: fmt.Sprintf("connection%d", rand.Int()),
+					Bandwidth:      bandwidthP,
+					BillingUnit:    billingUnit,
+					Price:          price,
+					ServiceClass:   serviceClass,
+					PaymentType:    paymentType,
+					BillingType:    billingType,
+					Currency:       "USD",
+				},
+			}
+		} else {
+			startTime, err := strconv.ParseInt(startTimeP, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			endTime, err := strconv.ParseInt(endTimeP, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			conn = &abi.DoDSettleConnectionParam{
+				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
+					SrcCompanyName: "CBC",
+					SrcRegion:      "CHN",
+					SrcCity:        "HK",
+					SrcDataCenter:  "DCX",
+					SrcPort:        srcPortP,
+					DstCompanyName: "CBC",
+					DstRegion:      "USA",
+					DstCity:        "NYC",
+					DstDataCenter:  "DCY",
+					DstPort:        dstPortP,
+				},
+				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					ConnectionName: fmt.Sprintf("connection%d", rand.Int()),
+					Bandwidth:      bandwidthP,
+					Price:          price,
+					ServiceClass:   serviceClass,
+					PaymentType:    paymentType,
+					BillingType:    billingType,
+					Currency:       "USD",
+					StartTime:      startTime,
+					EndTime:        endTime,
+				},
+			}
+		}
+
+		param.Connections = append(param.Connections, conn)
 	}
-	param.Connections = append(param.Connections, conn)
 
 	block := new(types.StateBlock)
 	err = client.Call(&block, "DoDSettlement_getCreateOrderBlock", param)

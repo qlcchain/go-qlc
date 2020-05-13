@@ -33,10 +33,10 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "order id from sonata api",
 		Value: "",
 	}
-	operation := util.Flag{
-		Name:  "operation",
+	orderStatus := util.Flag{
+		Name:  "orderStatus",
 		Must:  true,
-		Usage: "sonata operation has been done (create/change/terminate/fail)",
+		Usage: "sonata api status (success/fail)",
 		Value: "",
 	}
 	reason := util.Flag{
@@ -52,7 +52,7 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Value: "",
 	}
 
-	args := []util.Flag{buyer, internalId, orderId, operation, reason, productNum}
+	args := []util.Flag{buyer, internalId, orderId, orderStatus, reason, productNum}
 	cmd := &ishell.Cmd{
 		Name:                "updateOrderInfo",
 		Help:                "update order info",
@@ -70,7 +70,7 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 			buyerP := util.StringVar(c.Args, buyer)
 			internalIdP := util.StringVar(c.Args, internalId)
 			orderIdP := util.StringVar(c.Args, orderId)
-			operationP := util.StringVar(c.Args, operation)
+			orderStatusP := util.StringVar(c.Args, orderStatus)
 			reasonP := util.StringVar(c.Args, reason)
 			productNumP, err := util.IntVar(c.Args, productNum)
 			if err != nil {
@@ -78,7 +78,7 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 				return
 			}
 
-			if err := DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, operationP, reasonP, productNumP); err != nil {
+			if err := DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, productNumP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -87,7 +87,7 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, operationP, reasonP string, productNum int) error {
+func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP string, productNum int) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -109,7 +109,7 @@ func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, operationP, reasonP string
 		return err
 	}
 
-	operation, err := abi.ParseDoDOrderOperation(operationP)
+	orderStatus, err := abi.ParseDoDSettleOrderState(orderStatusP)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, operationP, reasonP string
 		InternalId: internalId,
 		OrderId:    orderIdP,
 		ProductId:  make([]string, 0),
-		Operation:  operation,
+		Status:     orderStatus,
 		FailReason: reasonP,
 	}
 

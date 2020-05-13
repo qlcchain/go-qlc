@@ -514,8 +514,8 @@ func (d *DoDSettlementAPI) GetResourceReadyRewardBlock(param *abi.DoDSettleRespo
 	return reward, nil
 }
 
-func (d *DoDSettlementAPI) GetOrderInfoByOrderId(orderId string) (*abi.DoDSettleOrderInfo, error) {
-	return abi.DoDSettleGetOrderInfoByOrderId(d.ctx, orderId)
+func (d *DoDSettlementAPI) GetOrderInfoBySellerAndOrderId(seller types.Address, orderId string) (*abi.DoDSettleOrderInfo, error) {
+	return abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, orderId)
 }
 
 func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoDSettleOrderInfo, error) {
@@ -527,9 +527,8 @@ func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoD
 	return abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
 }
 
-func (d *DoDSettlementAPI) GetConnectionInfoByProductId(productId string) (*abi.DoDSettleConnectionInfo, error) {
-	productIdHash := types.Sha256DHashData([]byte(productId))
-	return abi.DoDSettleGetConnectionInfoByProductId(d.ctx, productIdHash)
+func (d *DoDSettlementAPI) GetConnectionInfoBySellerAndProductId(seller types.Address, productId string) (*abi.DoDSettleConnectionInfo, error) {
+	return abi.DoDSettleGetConnectionInfoByProductId(d.ctx, seller, productId)
 }
 
 type DoDPendingRequestRsp struct {
@@ -609,4 +608,44 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]str
 	}
 
 	return orderId, nil
+}
+
+func (d *DoDSettlementAPI) GetProductIdListByAddress(address types.Address) ([]*abi.DoDSettleProduct, error) {
+	return abi.DoDSettleGetProductIdListByAddress(d.ctx, address)
+}
+
+func (d *DoDSettlementAPI) GetOrderIdListByAddress(address types.Address) ([]*abi.DoDSettleOrder, error) {
+	return abi.DoDSettleGetOrderIdListByAddress(d.ctx, address)
+}
+
+func (d *DoDSettlementAPI) GetProductIdListByAddressAndSeller(address, seller types.Address) ([]*abi.DoDSettleProduct, error) {
+	all, err := abi.DoDSettleGetProductIdListByAddress(d.ctx, address)
+	if err != nil {
+		return nil, err
+	}
+
+	products := make([]*abi.DoDSettleProduct, 0)
+	for _, p := range all {
+		if p.Seller == seller {
+			products = append(products, p)
+		}
+	}
+
+	return products, nil
+}
+
+func (d *DoDSettlementAPI) GetOrderIdListByAddressAndSeller(address, seller types.Address) ([]*abi.DoDSettleOrder, error) {
+	all, err := abi.DoDSettleGetOrderIdListByAddress(d.ctx, address)
+	if err != nil {
+		return nil, err
+	}
+
+	orders := make([]*abi.DoDSettleOrder, 0)
+	for _, p := range all {
+		if p.Seller == seller {
+			orders = append(orders, p)
+		}
+	}
+
+	return orders, nil
 }
