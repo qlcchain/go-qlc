@@ -266,6 +266,10 @@ func (z *DoDSettleUpdateOrderInfoParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleUpdateOrderInfoParam) Verify() error {
+	if z.ProductId == nil {
+		return fmt.Errorf("no product")
+	}
+
 	return nil
 }
 
@@ -326,6 +330,10 @@ func (z *DoDSettleTerminateOrderParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleTerminateOrderParam) Verify() error {
+	if z.ProductId == nil {
+		return fmt.Errorf("no product")
+	}
+
 	return nil
 }
 
