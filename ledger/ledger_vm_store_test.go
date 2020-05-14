@@ -2,9 +2,10 @@ package ledger
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
-	"testing"
 
 	"github.com/qlcchain/go-qlc/mock"
 )
