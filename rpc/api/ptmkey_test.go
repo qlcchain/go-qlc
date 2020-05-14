@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -17,7 +19,6 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"go.uber.org/zap"
 )
 
 func TestNewPtmKeyApi(t *testing.T) {

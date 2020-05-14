@@ -35,6 +35,11 @@ func (m *MigrationV6ToV7) Migration(data []byte, version int) ([]byte, int, erro
 	cfg7.Version = configVersion
 	cfg7.P2P.ListeningIp = "127.0.0.1"
 
+	cfg7.Privacy.Enable = false
+	cfg7.Privacy.PtmNode = ""
+
+	cfg7.RPC.PublicModules = append(cfg7.RPC.PublicModules, "privacy")
+
 	bytes, _ := json.Marshal(cfg7)
 	return bytes, m.endVersion, err
 }
