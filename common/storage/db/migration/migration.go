@@ -85,12 +85,12 @@ func downloadTool(dir string) error {
 	toolUrl := fmt.Sprintf("%s/%s", url, toolName)
 	resTool, err := http.Get(toolUrl)
 	if err != nil {
-		return fmt.Errorf("get tool: %s (%s, %s)", err, runtime.GOOS, runtime.GOARCH)
+		return fmt.Errorf("get tool: %s (%s, %s, %s)", err, runtime.GOOS, runtime.GOARCH, dir)
 	}
 	defer resTool.Body.Close()
 	data, err := ioutil.ReadAll(resTool.Body)
 	if err != nil {
-		return fmt.Errorf("read data: %s", err)
+		return fmt.Errorf("read data: %s (%s)", err, dir)
 	}
 	if err := ioutil.WriteFile(dir, data, 0777); err != nil {
 		return fmt.Errorf("write file: %s", err)
@@ -115,6 +115,9 @@ func downloadTool(dir string) error {
 			toolHash = checkValue[0]
 			break
 		}
+	}
+	if toolHash == "" {
+		return fmt.Errorf("get tool failed: %s, %s", runtime.GOOS, runtime.GOARCH)
 	}
 
 	// check tool hash
