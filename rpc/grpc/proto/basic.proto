@@ -1,0 +1,123 @@
+syntax = "proto3";
+package proto;
+option go_package = ".;proto";
+
+
+message  Address {
+    string address = 1;
+}
+
+message  Hash {
+    string hash = 1;
+}
+
+message  Balance {
+    int64 balance = 1;
+}
+
+message  Signature {
+    string signature = 1;
+}
+
+message StateBlock  {
+    bytes     Type    = 1;
+    string    Token   = 2;
+    string    Address = 3;
+    int64     Balance = 4;
+    int64     Vote    = 5;
+    int64     Network = 6;
+    int64     Storage = 7;
+    int64     Oracle  = 8;
+    string    Previous   = 9;
+    string    Link       = 10;
+    bytes     Sender     = 11;
+    bytes     Receiver   = 12;
+    string    Message    = 13;
+    string    Data       = 14;
+    uint64    PoVHeight  = 15;
+    int64     Timestamp  = 16;
+    string    Extra      = 17;
+    string    Representative   = 18;
+
+    string    PrivateFrom      = 19;
+    repeated string PrivateFor = 20;
+    string    PrivateGroupID   = 21;
+
+    uint64    Work           = 22;
+    string    Signature      = 23;
+
+    uint64    Flag           = 24;
+    bool      PrivateRecvRsp = 25;
+    bytes     PrivatePayload = 26;
+}
+
+message TokenMeta {
+    bytes   Type           = 1;
+    string  Header         = 2;
+    string  Representative = 3;
+    string  OpenBlock    = 4;
+    int64   Balance      = 5;
+    string  BelongTo     = 6;
+    int64   Modified     = 7;
+    int64   BlockCount   = 8;
+}
+
+message AccountMeta  {
+    string  Address    = 1;
+    int64  CoinBalance = 2;
+    int64  CoinVote    = 3;
+    int64  CoinNetwork = 4;
+    int64  CoinStorage = 5;
+    int64  CoinOracle  = 6;
+    repeated TokenMeta Tokens = 7;
+}
+
+message Benefit {
+    int64 Balance  =1;
+    int64 Vote     =2;
+    int64 Network  =3;
+    int64 Storage  =4;
+    int64 Oracle   =5;
+    int64 Total    =6;
+}
+
+message TokenInfo  {
+    string  TokenId         = 1;
+    string  TokenName       = 2;
+    string  TokenSymbol     = 3;
+    int64   TotalSupply     = 4;
+    int32   Decimals        = 5;
+    string  Owner           = 6;
+    int64   PledgeAmount    = 7;
+    int64   WithdrawTime    = 8;
+    string  PledgeAddress   = 9;
+    string  NEP5TxId        = 10;
+}
+
+message PendingKey  {
+   string  Address   = 1;
+   string  Hash      = 2;
+}
+
+//go:generate msgp
+message PendingInfo  {
+   string Source   = 1;
+   int64  Amount   = 2;
+   string Type     = 3;
+}
+
+message StateBlocks {
+    repeated StateBlock stateBlocks = 1;
+}
+
+message Addresses {
+    repeated Address addresses = 1;
+}
+
+message Hashes {
+    repeated Hash hashes = 1;
+}
+
+message TokenInfos {
+    repeated TokenInfo tokenInfos = 1;
+}

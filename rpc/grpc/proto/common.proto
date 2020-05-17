@@ -1,0 +1,34 @@
+syntax = "proto3";
+package proto;
+option go_package = ".;proto";
+
+message Empty {}
+
+message Int32 {
+    int32 i = 1;
+}
+
+message Int64 {
+    int64 i = 1;
+}
+
+message UInt32 {
+    uint32 i = 1;
+}
+
+message UInt64 {
+    uint64 i = 1;
+}
+
+message Boolean {
+    bool b = 1;
+}
+
+message String {
+    string str = 1;
+}
+
+message Offset {
+    int32   count      = 1;
+    int32   offset     = 2;
+}

@@ -1,0 +1,30 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = ".;proto";
+
+service ChainAPI {
+    rpc LedgerSize (google.protobuf.Empty) returns (LedgerSizeResponse) {
+        option (google.api.http) = {
+           get: "/chain/ledgerSize"
+       };
+    }
+
+    rpc Version (google.protobuf.Empty) returns (VersionResponse) {
+        option (google.api.http) = {
+           get: "/chain/version"
+       };
+    }
+}
+
+
+message LedgerSizeResponse {
+    map<string, int64> size = 1;
+}
+
+message VersionResponse {
+    map<string, string> size = 1;
+}

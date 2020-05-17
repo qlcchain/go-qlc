@@ -1,0 +1,389 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "basic.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service LedgerAPI{
+    rpc AccountBlocksCount(Address) returns (Int64){
+        option (google.api.http) = {
+           get: "/ledger/accountBlocksCount"
+       };
+    }
+
+    rpc AccountHistoryTopn(AccountHistoryTopnRequest) returns (APIBlocks){
+        option (google.api.http) = {
+           get: "/ledger/accountHistoryTopn"
+       };
+    }
+
+    rpc AccountInfo(Address) returns (APIAccount){
+        option (google.api.http) = {
+           get: "/ledger/accountInfo"
+       };
+    }
+
+    rpc ConfirmedAccountInfo(Address) returns (APIAccount){
+        option (google.api.http) = {
+           get: "/ledger/confirmedAccountInfo"
+       };
+    }
+
+    rpc AccountRepresentative(Address) returns (Address){
+        option (google.api.http) = {
+           get: "/ledger/accountRepresentative"
+       };
+    }
+
+    rpc AccountVotingWeight(Address) returns (Balance){
+        option (google.api.http) = {
+           get: "/ledger/accountVotingWeight"
+       };
+    }
+
+//    rpc AccountsBalance(Addresses) returns (){
+//        option (google.api.http) = {
+//           get: "/ledger/accountsBalance"
+//       };
+//    }
+
+//    rpc AccountsFrontiers(Addresses) returns (){
+//        option (google.api.http) = {
+//           get: "/ledger/accountsFrontiers"
+//       };
+//    }
+
+//    rpc AccountsPending(AccountsPendingRequest) returns (){
+//        option (google.api.http) = {
+//           get: "/ledger/accountsPending"
+//       };
+//    }
+
+    rpc AccountsCount(google.protobuf.Empty) returns (UInt64){
+        option (google.api.http) = {
+           get: "/ledger/accountsCount"
+       };
+    }
+
+    rpc Accounts(Offset) returns (Addresses){
+        option (google.api.http) = {
+           get: "/ledger/accounts"
+       };
+    }
+
+    rpc BlockAccount(Hash) returns (Address){
+        option (google.api.http) = {
+           get: "/ledger/blockAccount"
+       };
+    }
+
+    rpc BlockConfirmedStatus(Hash) returns (Boolean){
+        option (google.api.http) = {
+           get: "/ledger/blockConfirmedStatus"
+       };
+    }
+
+    rpc BlockHash(StateBlock) returns (Hash){
+        option (google.api.http) = {
+           get: "/ledger/blockHash"
+       };
+    }
+
+//    rpc BlocksCount(google.protobuf.Empty) returns (){
+//        option (google.api.http) = {
+//           get: "/ledger/blocksCount"
+//       };
+//    }
+
+//    rpc BlocksCount2(google.protobuf.Empty) returns (){
+//        option (google.api.http) = {
+//           get: "/ledger/blocksCount2"
+//       };
+//    }
+
+//    rpc BlocksCountByType(google.protobuf.Empty) returns (){
+//        option (google.api.http) = {
+//           get: "/ledger/blocksCountByType"
+//       };
+//    }
+
+    rpc BlocksInfo(Hashes) returns (APIBlocks){
+        option (google.api.http) = {
+           get: "/ledger/blocksInfo"
+       };
+    }
+
+    rpc ConfirmedBlocksInfo(Hashes) returns (APIBlocks){
+        option (google.api.http) = {
+           get: "/ledger/confirmedBlocksInfo"
+       };
+    }
+
+    rpc Blocks(Offset) returns (APIBlocks){
+        option (google.api.http) = {
+           get: "/ledger/blocks"
+       };
+    }
+
+    rpc Chain(ChainRequest) returns (Hashes){
+        option (google.api.http) = {
+           get: "/ledger/chain"
+       };
+    }
+
+    rpc Delegators(Address) returns (APIAccountBalances){
+        option (google.api.http) = {
+           get: "/ledger/delegators"
+       };
+    }
+
+    rpc DelegatorsCount(Address) returns (Int64){
+        option (google.api.http) = {
+           get: "/ledger/delegatorsCount"
+       };
+    }
+
+    rpc Pendings(google.protobuf.Empty) returns (APIPendings){
+        option (google.api.http) = {
+           get: "/ledger/pendings"
+       };
+    }
+
+    rpc Representatives(Boolean) returns (APIRepresentatives){
+        option (google.api.http) = {
+           get: "/ledger/representatives"
+       };
+    }
+
+    rpc Tokens(google.protobuf.Empty) returns (TokenInfos){
+        option (google.api.http) = {
+           get: "/ledger/tokens"
+       };
+    }
+
+//    rpc TransactionsCount(google.protobuf.Empty) returns (){
+//        option (google.api.http) = {
+//           get: "/ledger/transactionsCount"
+//       };
+//    }
+
+    rpc TokenInfoById(Hash) returns (TokenInfo){
+        option (google.api.http) = {
+           get: "/ledger/tokenInfoById"
+       };
+    }
+
+    rpc TokenInfoByName(String) returns (TokenInfo){
+        option (google.api.http) = {
+           get: "/ledger/tokenInfoByName"
+       };
+    }
+
+    rpc GetAccountOnlineBlock(Address) returns (StateBlock){
+        option (google.api.http) = {
+           get: "/ledger/getAccountOnlineBlock"
+       };
+    }
+
+    rpc GenesisAddress(google.protobuf.Empty) returns (Address){
+        option (google.api.http) = {
+           get: "/ledger/genesisAddress"
+       };
+    }
+
+    rpc GasAddress(google.protobuf.Empty) returns (Address){
+        option (google.api.http) = {
+           get: "/ledger/gasAddress"
+       };
+    }
+
+    rpc ChainToken(google.protobuf.Empty) returns (Hash){
+        option (google.api.http) = {
+           get: "/ledger/chainToken"
+       };
+    }
+
+    rpc GasToken(google.protobuf.Empty) returns (Hash){
+        option (google.api.http) = {
+           get: "/ledger/gasToken"
+       };
+    }
+
+    rpc GenesisMintageBlock(google.protobuf.Empty) returns (StateBlock){
+        option (google.api.http) = {
+           get: "/ledger/genesisMintageBlock"
+       };
+    }
+
+    rpc GenesisMintageHash(google.protobuf.Empty) returns (Hash){
+        option (google.api.http) = {
+           get: "/ledger/genesisMintageHash"
+       };
+    }
+
+    rpc GenesisBlock(google.protobuf.Empty) returns (StateBlock){
+        option (google.api.http) = {
+           get: "/ledger/genesisBlock"
+       };
+    }
+
+    rpc GenesisBlockHash(google.protobuf.Empty) returns (Hash){
+        option (google.api.http) = {
+           get: "/ledger/genesisBlockHash"
+       };
+    }
+
+    rpc GasBlockHash(google.protobuf.Empty) returns (Hash){
+        option (google.api.http) = {
+           get: "/ledger/gasBlockHash"
+       };
+    }
+
+    rpc GasMintageBlock(google.protobuf.Empty) returns (StateBlock){
+        option (google.api.http) = {
+           get: "/ledger/gasMintageBlock"
+       };
+    }
+
+    rpc GasBlock(google.protobuf.Empty) returns (StateBlock){
+        option (google.api.http) = {
+           get: "/ledger/gasBlock"
+       };
+    }
+
+    rpc IsGenesisBlock(StateBlock) returns (Boolean){
+        option (google.api.http) = {
+           get: "/ledger/isGenesisBlock"
+       };
+    }
+
+    rpc IsGenesisToken(StateBlock) returns (Boolean){
+        option (google.api.http) = {
+           get: "/ledger/isGenesisToken"
+       };
+    }
+
+    rpc AllGenesisBlocks(StateBlock) returns (StateBlocks){
+        option (google.api.http) = {
+           get: "/ledger/allGenesisBlocks"
+       };
+    }
+
+    rpc NewBlock(google.protobuf.Empty) returns (stream APIBlock){
+        option (google.api.http) = {
+           post: "/ledger/newBlock"
+           body: "*"
+       };
+    }
+
+    rpc NewAccountBlock(Address) returns (stream APIBlock){
+        option (google.api.http) = {
+           post: "/ledger/newAccountBlock"
+           body: "*"
+       };
+    }
+
+    rpc BalanceChange(Address) returns (stream APIAccount){
+        option (google.api.http) = {
+           post: "/ledger/balanceChange"
+           body: "*"
+       };
+    }
+
+    rpc NewPending(Address) returns (stream APIPending){
+        option (google.api.http) = {
+           post: "/ledger/newPending"
+           body: "*"
+       };
+    }
+
+    rpc Test(google.protobuf.Empty) returns (TestResponse){
+        option (google.api.http) = {
+           post: "/ledger/test"
+           body: "*"
+       };
+    }
+
+}
+
+message TestResponse {
+    string version = 1;
+}
+
+message AccountHistoryTopnRequest {
+    string    hash    = 1;
+    int32     count   = 2;
+}
+
+message AccountsPendingRequest {
+    Addresses  addresses = 1;
+    int32            count     = 2;
+}
+
+message ChainRequest {
+    Addresses  addresses = 1;
+    int32      count     = 2;
+}
+
+message APIBlock {
+    StateBlock block  = 1;
+    string TokenName  = 2;
+    int64  Amount     = 3;
+    string Hash       = 4;
+
+    uint64 PovConfirmHeight = 5;
+    uint64 PovConfirmCount  = 6;
+}
+
+message APIBlocks {
+    repeated APIBlock apiblocks = 1;
+}
+
+message APITokenMeta {
+    TokenMeta tokenmeta = 1;
+    string    TokenName = 2;
+    int64     Pending   = 3;
+}
+
+message APIAccount  {
+    string Address          = 1;
+    int64  CoinBalance      = 2;
+    int64  CoinVote         = 3;
+    int64  CoinNetwork      = 4;
+    int64  CoinStorage      = 5;
+    int64  CoinOracle       = 6;
+    int64  Representative   = 7;
+    repeated  APITokenMeta Tokens   = 8;
+}
+
+message APIAccountBalance {
+
+}
+
+message APIAccountBalances {
+    repeated APIAccountBalance balances = 1;
+}
+
+message APIPending {
+    PendingKey    key   = 1;
+    PendingInfo   info  = 2;
+    string  TokenName  = 3;
+    int64   Timestamp  = 4;
+    bytes   BlockType  = 5;
+}
+
+message APIPendings {
+    repeated APIPending apiPendings = 1;
+}
+
+message APIRepresentative {
+
+}
+
+message APIRepresentatives {
+    repeated APIRepresentative apiRepresentatives = 1;
+}

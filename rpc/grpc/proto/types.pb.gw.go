@@ -14,6 +14,7 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"google.golang.org/grpc"
@@ -28,8 +29,8 @@ var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
-func request_ChainAPI_Version_0(ctx context.Context, marshaler runtime.Marshaler, client ChainAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq VersionRequest
+func request_TestAPI_Version_0(ctx context.Context, marshaler runtime.Marshaler, client TestAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -45,9 +46,68 @@ func request_ChainAPI_Version_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-// RegisterChainAPIHandlerFromEndpoint is same as RegisterChainAPIHandler but
+func request_TestAPI_Version2_0(ctx context.Context, marshaler runtime.Marshaler, client TestAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq VersionRequest2
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := client.Version2(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func request_TestAPI_Version3_0(ctx context.Context, marshaler runtime.Marshaler, client TestAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq VersionRequest3
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := client.Version3(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func request_TestAPI_BlockStream_0(ctx context.Context, marshaler runtime.Marshaler, client TestAPIClient, req *http.Request, pathParams map[string]string) (TestAPI_BlockStreamClient, runtime.ServerMetadata, error) {
+	var protoReq BlockRequest
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	stream, err := client.BlockStream(ctx, &protoReq)
+	if err != nil {
+		return nil, metadata, err
+	}
+	header, err := stream.Header()
+	if err != nil {
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+	return stream, metadata, nil
+
+}
+
+// RegisterTestAPIHandlerFromEndpoint is same as RegisterTestAPIHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterChainAPIHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterTestAPIHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
@@ -67,23 +127,23 @@ func RegisterChainAPIHandlerFromEndpoint(ctx context.Context, mux *runtime.Serve
 		}()
 	}()
 
-	return RegisterChainAPIHandler(ctx, mux, conn)
+	return RegisterTestAPIHandler(ctx, mux, conn)
 }
 
-// RegisterChainAPIHandler registers the http handlers for service ChainAPI to "mux".
+// RegisterTestAPIHandler registers the http handlers for service TestAPI to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterChainAPIHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterChainAPIHandlerClient(ctx, mux, NewChainAPIClient(conn))
+func RegisterTestAPIHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterTestAPIHandlerClient(ctx, mux, NewTestAPIClient(conn))
 }
 
-// RegisterChainAPIHandlerClient registers the http handlers for service ChainAPI
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ChainAPIClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ChainAPIClient"
+// RegisterTestAPIHandlerClient registers the http handlers for service TestAPI
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "TestAPIClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "TestAPIClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ChainAPIClient" to call the correct interceptors.
-func RegisterChainAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ChainAPIClient) error {
+// "TestAPIClient" to call the correct interceptors.
+func RegisterTestAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, client TestAPIClient) error {
 
-	mux.Handle("POST", pattern_ChainAPI_Version_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_TestAPI_Version_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -92,14 +152,74 @@ func RegisterChainAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_ChainAPI_Version_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_TestAPI_Version_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_ChainAPI_Version_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_TestAPI_Version_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_TestAPI_Version2_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_TestAPI_Version2_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_TestAPI_Version2_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_TestAPI_Version3_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_TestAPI_Version3_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_TestAPI_Version3_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_TestAPI_BlockStream_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_TestAPI_BlockStream_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_TestAPI_BlockStream_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -107,9 +227,21 @@ func RegisterChainAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 }
 
 var (
-	pattern_ChainAPI_Version_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"chain", "version"}, ""))
+	pattern_TestAPI_Version_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"test", "version"}, ""))
+
+	pattern_TestAPI_Version2_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"test", "version2"}, ""))
+
+	pattern_TestAPI_Version3_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"test", "version3"}, ""))
+
+	pattern_TestAPI_BlockStream_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"test", "blockstream"}, ""))
 )
 
 var (
-	forward_ChainAPI_Version_0 = runtime.ForwardResponseMessage
+	forward_TestAPI_Version_0 = runtime.ForwardResponseMessage
+
+	forward_TestAPI_Version2_0 = runtime.ForwardResponseMessage
+
+	forward_TestAPI_Version3_0 = runtime.ForwardResponseMessage
+
+	forward_TestAPI_BlockStream_0 = runtime.ForwardResponseStream
 )

@@ -3,23 +3,54 @@ package proto;
 option go_package = ".;proto";
 
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
 
-message VersionRequest{}
+message VersionRequest2 {}
 
-message VersionResponse {
+message VersionRequest3 {
+    string version = 1;
+}
+
+message VersionResponse4 {
     string buildTime = 1;
     string version = 2;
     string hash = 3;
     string mode = 4;
 }
 
-service ChainAPI{
-    rpc Version(VersionRequest) returns (VersionResponse){
+message BlockRequest{}
+message BlockResponse {
+    string buildTime = 1;
+    string version = 2;
+    string hash = 3;
+    string mode = 4;
+}
+
+
+service TestAPI{
+    rpc Version(google.protobuf.Empty) returns (VersionResponse4){
         option (google.api.http) = {
-           post: "/chain/version"
+           post: "/test/version"
+           body: "*"
+       };
+    }
+    rpc Version2(VersionRequest2) returns (VersionResponse4){
+        option (google.api.http) = {
+           post: "/test/version2"
+           body: "*"
+       };
+    }
+    rpc Version3(VersionRequest3) returns (VersionResponse4){
+        option (google.api.http) = {
+           post: "/test/version3"
+           body: "*"
+       };
+    }
+    rpc BlockStream(BlockRequest) returns (stream BlockResponse){
+        option (google.api.http) = {
+           post: "/test/blockstream"
            body: "*"
        };
     }
 }
-
 

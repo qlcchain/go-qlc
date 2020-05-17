@@ -23,7 +23,7 @@ require (
 	github.com/golang/protobuf v1.4.1
 	github.com/google/go-cmp v0.4.0
 	github.com/google/uuid v1.1.1
-	github.com/grpc-ecosystem/grpc-gateway v1.9.0
+	github.com/grpc-ecosystem/grpc-gateway v1.9.5
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
 	github.com/ipfs/go-log v1.0.4
@@ -70,7 +70,7 @@ require (
 	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20200430143042-b979b6f78d84
-	google.golang.org/grpc v1.27.0
+	google.golang.org/grpc v1.28.1
 	google.golang.org/protobuf v1.22.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect

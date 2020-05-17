@@ -9,6 +9,7 @@ package proto
 import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
+	empty "github.com/golang/protobuf/ptypes/empty"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -30,14 +31,14 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-type VersionRequest struct {
+type VersionRequest2 struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *VersionRequest) Reset() {
-	*x = VersionRequest{}
+func (x *VersionRequest2) Reset() {
+	*x = VersionRequest2{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -45,13 +46,13 @@ func (x *VersionRequest) Reset() {
 	}
 }
 
-func (x *VersionRequest) String() string {
+func (x *VersionRequest2) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*VersionRequest) ProtoMessage() {}
+func (*VersionRequest2) ProtoMessage() {}
 
-func (x *VersionRequest) ProtoReflect() protoreflect.Message {
+func (x *VersionRequest2) ProtoReflect() protoreflect.Message {
 	mi := &file_types_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -63,24 +64,21 @@ func (x *VersionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use VersionRequest.ProtoReflect.Descriptor instead.
-func (*VersionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use VersionRequest2.ProtoReflect.Descriptor instead.
+func (*VersionRequest2) Descriptor() ([]byte, []int) {
 	return file_types_proto_rawDescGZIP(), []int{0}
 }
 
-type VersionResponse struct {
+type VersionRequest3 struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	BuildTime string `protobuf:"bytes,1,opt,name=buildTime,proto3" json:"buildTime,omitempty"`
-	Version   string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	Hash      string `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
-	Mode      string `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
+	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 }
 
-func (x *VersionResponse) Reset() {
-	*x = VersionResponse{}
+func (x *VersionRequest3) Reset() {
+	*x = VersionRequest3{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -88,13 +86,13 @@ func (x *VersionResponse) Reset() {
 	}
 }
 
-func (x *VersionResponse) String() string {
+func (x *VersionRequest3) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*VersionResponse) ProtoMessage() {}
+func (*VersionRequest3) ProtoMessage() {}
 
-func (x *VersionResponse) ProtoReflect() protoreflect.Message {
+func (x *VersionRequest3) ProtoReflect() protoreflect.Message {
 	mi := &file_types_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -106,33 +104,192 @@ func (x *VersionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use VersionResponse.ProtoReflect.Descriptor instead.
-func (*VersionResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use VersionRequest3.ProtoReflect.Descriptor instead.
+func (*VersionRequest3) Descriptor() ([]byte, []int) {
 	return file_types_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *VersionResponse) GetBuildTime() string {
-	if x != nil {
-		return x.BuildTime
-	}
-	return ""
-}
-
-func (x *VersionResponse) GetVersion() string {
+func (x *VersionRequest3) GetVersion() string {
 	if x != nil {
 		return x.Version
 	}
 	return ""
 }
 
-func (x *VersionResponse) GetHash() string {
+type VersionResponse4 struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	BuildTime string `protobuf:"bytes,1,opt,name=buildTime,proto3" json:"buildTime,omitempty"`
+	Version   string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Hash      string `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
+	Mode      string `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
+}
+
+func (x *VersionResponse4) Reset() {
+	*x = VersionResponse4{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *VersionResponse4) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VersionResponse4) ProtoMessage() {}
+
+func (x *VersionResponse4) ProtoReflect() protoreflect.Message {
+	mi := &file_types_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VersionResponse4.ProtoReflect.Descriptor instead.
+func (*VersionResponse4) Descriptor() ([]byte, []int) {
+	return file_types_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *VersionResponse4) GetBuildTime() string {
+	if x != nil {
+		return x.BuildTime
+	}
+	return ""
+}
+
+func (x *VersionResponse4) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *VersionResponse4) GetHash() string {
 	if x != nil {
 		return x.Hash
 	}
 	return ""
 }
 
-func (x *VersionResponse) GetMode() string {
+func (x *VersionResponse4) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+type BlockRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *BlockRequest) Reset() {
+	*x = BlockRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BlockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockRequest) ProtoMessage() {}
+
+func (x *BlockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_types_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockRequest.ProtoReflect.Descriptor instead.
+func (*BlockRequest) Descriptor() ([]byte, []int) {
+	return file_types_proto_rawDescGZIP(), []int{3}
+}
+
+type BlockResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	BuildTime string `protobuf:"bytes,1,opt,name=buildTime,proto3" json:"buildTime,omitempty"`
+	Version   string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Hash      string `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
+	Mode      string `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
+}
+
+func (x *BlockResponse) Reset() {
+	*x = BlockResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BlockResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockResponse) ProtoMessage() {}
+
+func (x *BlockResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_types_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockResponse.ProtoReflect.Descriptor instead.
+func (*BlockResponse) Descriptor() ([]byte, []int) {
+	return file_types_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *BlockResponse) GetBuildTime() string {
+	if x != nil {
+		return x.BuildTime
+	}
+	return ""
+}
+
+func (x *BlockResponse) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *BlockResponse) GetHash() string {
+	if x != nil {
+		return x.Hash
+	}
+	return ""
+}
+
+func (x *BlockResponse) GetMode() string {
 	if x != nil {
 		return x.Mode
 	}
@@ -145,22 +302,52 @@ var file_types_proto_rawDesc = []byte{
 	0x0a, 0x0b, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1c, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x61, 0x70, 0x69,
 	0x2f, 0x61, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x22, 0x10, 0x0a, 0x0e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x22, 0x71, 0x0a, 0x0f, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x62, 0x75, 0x69, 0x6c, 0x64,
-	0x54, 0x69, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x62, 0x75, 0x69, 0x6c,
-	0x64, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12,
-	0x12, 0x0a, 0x04, 0x68, 0x61, 0x73, 0x68, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x68,
-	0x61, 0x73, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x32, 0x5f, 0x0a, 0x08, 0x43, 0x68, 0x61, 0x69, 0x6e,
-	0x41, 0x50, 0x49, 0x12, 0x53, 0x0a, 0x07, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x15,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x56, 0x65,
-	0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x19, 0x82,
-	0xd3, 0xe4, 0x93, 0x02, 0x13, 0x22, 0x0e, 0x2f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x2f, 0x76, 0x65,
-	0x72, 0x73, 0x69, 0x6f, 0x6e, 0x3a, 0x01, 0x2a, 0x42, 0x09, 0x5a, 0x07, 0x2e, 0x3b, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x6f, 0x1a, 0x1b, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x62, 0x75, 0x66, 0x2f, 0x65, 0x6d, 0x70, 0x74, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22,
+	0x11, 0x0a, 0x0f, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x32, 0x22, 0x2b, 0x0a, 0x0f, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x33, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x22,
+	0x72, 0x0a, 0x10, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x34, 0x12, 0x1c, 0x0a, 0x09, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x54, 0x69, 0x6d, 0x65,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x54, 0x69, 0x6d,
+	0x65, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x68,
+	0x61, 0x73, 0x68, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x68, 0x61, 0x73, 0x68, 0x12,
+	0x12, 0x0a, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6d,
+	0x6f, 0x64, 0x65, 0x22, 0x0e, 0x0a, 0x0c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x22, 0x6f, 0x0a, 0x0d, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x54, 0x69, 0x6d,
+	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x62, 0x75, 0x69, 0x6c, 0x64, 0x54, 0x69,
+	0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04,
+	0x68, 0x61, 0x73, 0x68, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x68, 0x61, 0x73, 0x68,
+	0x12, 0x12, 0x0a, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04,
+	0x6d, 0x6f, 0x64, 0x65, 0x32, 0xe9, 0x02, 0x0a, 0x07, 0x54, 0x65, 0x73, 0x74, 0x41, 0x50, 0x49,
+	0x12, 0x54, 0x0a, 0x07, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x16, 0x2e, 0x67, 0x6f,
+	0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d,
+	0x70, 0x74, 0x79, 0x1a, 0x17, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x56, 0x65, 0x72, 0x73,
+	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x34, 0x22, 0x18, 0x82, 0xd3,
+	0xe4, 0x93, 0x02, 0x12, 0x22, 0x0d, 0x2f, 0x74, 0x65, 0x73, 0x74, 0x2f, 0x76, 0x65, 0x72, 0x73,
+	0x69, 0x6f, 0x6e, 0x3a, 0x01, 0x2a, 0x12, 0x56, 0x0a, 0x08, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f,
+	0x6e, 0x32, 0x12, 0x16, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x56, 0x65, 0x72, 0x73, 0x69,
+	0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x32, 0x1a, 0x17, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x34, 0x22, 0x19, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x13, 0x22, 0x0e, 0x2f, 0x74, 0x65,
+	0x73, 0x74, 0x2f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x32, 0x3a, 0x01, 0x2a, 0x12, 0x56,
+	0x0a, 0x08, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x33, 0x12, 0x16, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x33, 0x1a, 0x17, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x56, 0x65, 0x72, 0x73, 0x69,
+	0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x34, 0x22, 0x19, 0x82, 0xd3, 0xe4,
+	0x93, 0x02, 0x13, 0x22, 0x0e, 0x2f, 0x74, 0x65, 0x73, 0x74, 0x2f, 0x76, 0x65, 0x72, 0x73, 0x69,
+	0x6f, 0x6e, 0x33, 0x3a, 0x01, 0x2a, 0x12, 0x58, 0x0a, 0x0b, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53,
+	0x74, 0x72, 0x65, 0x61, 0x6d, 0x12, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x42, 0x6c,
+	0x6f, 0x63, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x1c, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x16, 0x22, 0x11, 0x2f, 0x74, 0x65, 0x73, 0x74, 0x2f,
+	0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x3a, 0x01, 0x2a, 0x30, 0x01,
+	0x42, 0x09, 0x5a, 0x07, 0x2e, 0x3b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -175,16 +362,26 @@ func file_types_proto_rawDescGZIP() []byte {
 	return file_types_proto_rawDescData
 }
 
-var file_types_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_types_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_types_proto_goTypes = []interface{}{
-	(*VersionRequest)(nil),  // 0: proto.VersionRequest
-	(*VersionResponse)(nil), // 1: proto.VersionResponse
+	(*VersionRequest2)(nil),  // 0: proto.VersionRequest2
+	(*VersionRequest3)(nil),  // 1: proto.VersionRequest3
+	(*VersionResponse4)(nil), // 2: proto.VersionResponse4
+	(*BlockRequest)(nil),     // 3: proto.BlockRequest
+	(*BlockResponse)(nil),    // 4: proto.BlockResponse
+	(*empty.Empty)(nil),      // 5: google.protobuf.Empty
 }
 var file_types_proto_depIdxs = []int32{
-	0, // 0: proto.ChainAPI.Version:input_type -> proto.VersionRequest
-	1, // 1: proto.ChainAPI.Version:output_type -> proto.VersionResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	5, // 0: proto.TestAPI.Version:input_type -> google.protobuf.Empty
+	0, // 1: proto.TestAPI.Version2:input_type -> proto.VersionRequest2
+	1, // 2: proto.TestAPI.Version3:input_type -> proto.VersionRequest3
+	3, // 3: proto.TestAPI.BlockStream:input_type -> proto.BlockRequest
+	2, // 4: proto.TestAPI.Version:output_type -> proto.VersionResponse4
+	2, // 5: proto.TestAPI.Version2:output_type -> proto.VersionResponse4
+	2, // 6: proto.TestAPI.Version3:output_type -> proto.VersionResponse4
+	4, // 7: proto.TestAPI.BlockStream:output_type -> proto.BlockResponse
+	4, // [4:8] is the sub-list for method output_type
+	0, // [0:4] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -197,7 +394,7 @@ func file_types_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_types_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*VersionRequest); i {
+			switch v := v.(*VersionRequest2); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -209,7 +406,43 @@ func file_types_proto_init() {
 			}
 		}
 		file_types_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*VersionResponse); i {
+			switch v := v.(*VersionRequest3); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*VersionResponse4); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*BlockRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*BlockResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -227,7 +460,7 @@ func file_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_types_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
@@ -249,74 +482,210 @@ var _ grpc.ClientConnInterface
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion6
 
-// ChainAPIClient is the client API for ChainAPI service.
+// TestAPIClient is the client API for TestAPI service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type ChainAPIClient interface {
-	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
+type TestAPIClient interface {
+	Version(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*VersionResponse4, error)
+	Version2(ctx context.Context, in *VersionRequest2, opts ...grpc.CallOption) (*VersionResponse4, error)
+	Version3(ctx context.Context, in *VersionRequest3, opts ...grpc.CallOption) (*VersionResponse4, error)
+	BlockStream(ctx context.Context, in *BlockRequest, opts ...grpc.CallOption) (TestAPI_BlockStreamClient, error)
 }
 
-type chainAPIClient struct {
+type testAPIClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewChainAPIClient(cc grpc.ClientConnInterface) ChainAPIClient {
-	return &chainAPIClient{cc}
+func NewTestAPIClient(cc grpc.ClientConnInterface) TestAPIClient {
+	return &testAPIClient{cc}
 }
 
-func (c *chainAPIClient) Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error) {
-	out := new(VersionResponse)
-	err := c.cc.Invoke(ctx, "/proto.ChainAPI/Version", in, out, opts...)
+func (c *testAPIClient) Version(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*VersionResponse4, error) {
+	out := new(VersionResponse4)
+	err := c.cc.Invoke(ctx, "/proto.TestAPI/Version", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ChainAPIServer is the server API for ChainAPI service.
-type ChainAPIServer interface {
-	Version(context.Context, *VersionRequest) (*VersionResponse, error)
+func (c *testAPIClient) Version2(ctx context.Context, in *VersionRequest2, opts ...grpc.CallOption) (*VersionResponse4, error) {
+	out := new(VersionResponse4)
+	err := c.cc.Invoke(ctx, "/proto.TestAPI/Version2", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-// UnimplementedChainAPIServer can be embedded to have forward compatible implementations.
-type UnimplementedChainAPIServer struct {
+func (c *testAPIClient) Version3(ctx context.Context, in *VersionRequest3, opts ...grpc.CallOption) (*VersionResponse4, error) {
+	out := new(VersionResponse4)
+	err := c.cc.Invoke(ctx, "/proto.TestAPI/Version3", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-func (*UnimplementedChainAPIServer) Version(context.Context, *VersionRequest) (*VersionResponse, error) {
+func (c *testAPIClient) BlockStream(ctx context.Context, in *BlockRequest, opts ...grpc.CallOption) (TestAPI_BlockStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_TestAPI_serviceDesc.Streams[0], "/proto.TestAPI/BlockStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &testAPIBlockStreamClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type TestAPI_BlockStreamClient interface {
+	Recv() (*BlockResponse, error)
+	grpc.ClientStream
+}
+
+type testAPIBlockStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *testAPIBlockStreamClient) Recv() (*BlockResponse, error) {
+	m := new(BlockResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// TestAPIServer is the server API for TestAPI service.
+type TestAPIServer interface {
+	Version(context.Context, *empty.Empty) (*VersionResponse4, error)
+	Version2(context.Context, *VersionRequest2) (*VersionResponse4, error)
+	Version3(context.Context, *VersionRequest3) (*VersionResponse4, error)
+	BlockStream(*BlockRequest, TestAPI_BlockStreamServer) error
+}
+
+// UnimplementedTestAPIServer can be embedded to have forward compatible implementations.
+type UnimplementedTestAPIServer struct {
+}
+
+func (*UnimplementedTestAPIServer) Version(context.Context, *empty.Empty) (*VersionResponse4, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
 }
-
-func RegisterChainAPIServer(s *grpc.Server, srv ChainAPIServer) {
-	s.RegisterService(&_ChainAPI_serviceDesc, srv)
+func (*UnimplementedTestAPIServer) Version2(context.Context, *VersionRequest2) (*VersionResponse4, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Version2 not implemented")
+}
+func (*UnimplementedTestAPIServer) Version3(context.Context, *VersionRequest3) (*VersionResponse4, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Version3 not implemented")
+}
+func (*UnimplementedTestAPIServer) BlockStream(*BlockRequest, TestAPI_BlockStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method BlockStream not implemented")
 }
 
-func _ChainAPI_Version_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VersionRequest)
+func RegisterTestAPIServer(s *grpc.Server, srv TestAPIServer) {
+	s.RegisterService(&_TestAPI_serviceDesc, srv)
+}
+
+func _TestAPI_Version_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(empty.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChainAPIServer).Version(ctx, in)
+		return srv.(TestAPIServer).Version(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.ChainAPI/Version",
+		FullMethod: "/proto.TestAPI/Version",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChainAPIServer).Version(ctx, req.(*VersionRequest))
+		return srv.(TestAPIServer).Version(ctx, req.(*empty.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _ChainAPI_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.ChainAPI",
-	HandlerType: (*ChainAPIServer)(nil),
+func _TestAPI_Version2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VersionRequest2)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TestAPIServer).Version2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.TestAPI/Version2",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TestAPIServer).Version2(ctx, req.(*VersionRequest2))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TestAPI_Version3_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VersionRequest3)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TestAPIServer).Version3(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.TestAPI/Version3",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TestAPIServer).Version3(ctx, req.(*VersionRequest3))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TestAPI_BlockStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(BlockRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(TestAPIServer).BlockStream(m, &testAPIBlockStreamServer{stream})
+}
+
+type TestAPI_BlockStreamServer interface {
+	Send(*BlockResponse) error
+	grpc.ServerStream
+}
+
+type testAPIBlockStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *testAPIBlockStreamServer) Send(m *BlockResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+var _TestAPI_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.TestAPI",
+	HandlerType: (*TestAPIServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Version",
-			Handler:    _ChainAPI_Version_Handler,
+			Handler:    _TestAPI_Version_Handler,
+		},
+		{
+			MethodName: "Version2",
+			Handler:    _TestAPI_Version2_Handler,
+		},
+		{
+			MethodName: "Version3",
+			Handler:    _TestAPI_Version3_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "BlockStream",
+			Handler:       _TestAPI_BlockStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "types.proto",
 }
