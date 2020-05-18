@@ -93,29 +93,12 @@ func (ns *QlcService) setWhiteList() error {
 		}
 		for _, v := range pn {
 			if len(v.NodeId) != 0 {
-				ns.node.protector.whiteList = append(ns.node.protector.whiteList, v.NodeId)
+				ns.node.updateWhiteList(v.NodeId, v.NodeUrl)
 			}
-			ns.node.protector.whiteList = append(ns.node.protector.whiteList, v.NodeUrl)
 		}
-		var wls []string
 		for _, v := range cfg.WhiteList.WhiteListInfos {
-			if len(v.Addr) != 0 {
-				wls = append(wls, v.Addr)
-			}
 			if len(v.PeerId) != 0 {
-				wls = append(wls, v.PeerId)
-			}
-		}
-		for _, v := range wls {
-			var b bool
-			for _, value := range ns.node.protector.whiteList {
-				if value == v {
-					b = true
-					break
-				}
-			}
-			if !b {
-				ns.node.protector.whiteList = append(ns.node.protector.whiteList, v)
+				ns.node.updateWhiteList(v.PeerId, v.Addr)
 			}
 		}
 	}
@@ -140,11 +123,8 @@ func (ns *QlcService) setEvent() error {
 		case *topic.EventP2PSyncStateMsg:
 			ns.msgService.syncService.onConsensusSyncFinished()
 		case *topic.PermissionEvent:
-			if len(msg.NodeUrl) != 0 {
-				ns.node.updateWhiteList(msg.NodeUrl)
-			}
 			if len(msg.NodeId) != 0 {
-				ns.node.updateWhiteList(msg.NodeId)
+				ns.node.updateWhiteList(msg.NodeId, msg.NodeUrl)
 			}
 		}
 	}), ns.msgEvent)
