@@ -2,7 +2,6 @@ package abi
 
 import (
 	"fmt"
-
 	"github.com/qlcchain/go-qlc/common/types"
 )
 
@@ -360,4 +359,9 @@ func (z *DoDSettleResourceReadyParam) FromABI(data []byte) error {
 
 func (z *DoDSettleResourceReadyParam) Verify() error {
 	return nil
+}
+
+type DoDSettleInvoice struct {
+	Buyer  *DoDSettleUser `json:"buyer" msg:"b"`
+	Seller *DoDSettleUser `json:"seller" msg:"s"`
 }

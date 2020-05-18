@@ -165,13 +165,19 @@ func (co *DoDSettleCreateOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 		return err
 	}
 
+	ol := abi.DoDSettlementLock.GetOrderInfoLock(block.Previous)
+	ol.Lock()
+
 	var key []byte
 	key = append(key, abi.DoDSettleDBTableOrder)
 	key = append(key, block.Previous.Bytes()...)
 	err = ctx.SetStorage(nil, key, data)
 	if err != nil {
+		ol.Unlock()
 		return err
 	}
+
+	ol.Unlock()
 
 	key = key[0:0]
 	key = append(key, abi.DoDSettleDBTableUser)
@@ -216,6 +222,10 @@ func (co *DoDSettleCreateOrder) DoReceive(ctx *vmstore.VMContext, block *types.S
 	if err != nil {
 		return nil, err
 	}
+
+	ol := abi.DoDSettlementLock.GetOrderInfoLock(input.Previous)
+	ol.Lock()
+	defer ol.Unlock()
 
 	order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, input.Previous)
 	if err != nil {
@@ -319,6 +329,10 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 		return nil, nil, err
 	}
 
+	ol := abi.DoDSettlementLock.GetOrderInfoLock(param.InternalId)
+	ol.Lock()
+	defer ol.Unlock()
+
 	order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, param.InternalId)
 	if err != nil {
 		return nil, nil, err
@@ -326,10 +340,6 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 
 	if order.Buyer.Address != block.Address {
 		return nil, nil, fmt.Errorf("invalid operator")
-	}
-
-	if order.ContractState != abi.DoDSettleContractStateConfirmed {
-		return nil, nil, fmt.Errorf("state err")
 	}
 
 	order.OrderId = param.OrderId
@@ -365,35 +375,16 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 		}, nil
 }
 
-func (uo *DoDSettleUpdateOrderInfo) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
-	param := new(abi.DoDSettleUpdateOrderInfoParam)
-	err := param.FromABI(block.Data)
-	if err != nil {
-		return common.ContractNoGap, nil, err
-	}
-
-	if param.InternalId.IsZero() {
-		return common.ContractNoGap, nil, err
-	}
-
-	order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, param.InternalId)
-	if err != nil {
-		return common.ContractNoGap, nil, err
-	}
-
-	if order.ContractState != abi.DoDSettleContractStateConfirmed {
-		return common.ContractDoDOrderState, param.InternalId, nil
-	}
-
-	return common.ContractNoGap, nil, nil
-}
-
 func (uo *DoDSettleUpdateOrderInfo) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types.StateBlock) ([]*ContractBlock, error) {
 	param := new(abi.DoDSettleUpdateOrderInfoParam)
 	err := param.FromABI(input.Data)
 	if err != nil {
 		return nil, err
 	}
+
+	ol := abi.DoDSettlementLock.GetOrderInfoLock(param.InternalId)
+	ol.Lock()
+	defer ol.Unlock()
 
 	order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, param.InternalId)
 	if err != nil {
@@ -1060,11 +1051,11 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 			abi.DoDSettleInheritParam(conn.Active, newActive)
 
 			if conn.Active.BillingType == abi.DoDSettleBillingTypePAYG {
-				conn.Active.EndTime = time.Now().Unix()
+				conn.Active.EndTime = abi.DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime)
 			}
 
 			if newActive.BillingType == abi.DoDSettleBillingTypePAYG {
-				newActive.StartTime = time.Now().Unix()
+				newActive.StartTime = conn.Active.EndTime
 			}
 
 			conn.Done = append(conn.Done, conn.Active)

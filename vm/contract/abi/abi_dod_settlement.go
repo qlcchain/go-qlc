@@ -2,6 +2,8 @@ package abi
 
 import (
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/vm/abi"
@@ -83,7 +85,103 @@ const (
 
 var (
 	DoDSettlementABI, _ = abi.JSONToABIContract(strings.NewReader(JsonDoDSettlement))
+	DoDSettlementLock   = new(DoDSettleLock)
 )
+
+const (
+	DoDSettleLockHashSize = 1024
+)
+
+type DoDSettleLock struct {
+	OrderInfoLock [DoDSettleLockHashSize]*sync.Mutex
+}
+
+func (l *DoDSettleLock) GetOrderInfoLock(id types.Hash) *sync.Mutex {
+	index := (int(id[0])*256 + int(id[1])) % DoDSettleLockHashSize
+
+	if l.OrderInfoLock[index] == nil {
+		l.OrderInfoLock[index] = new(sync.Mutex)
+	}
+
+	return l.OrderInfoLock[index]
+}
+
+func DoDSettleBillingUnitRound(unit DoDSettleBillingUnit, s int64) int64 {
+	now := time.Now()
+	start := time.Unix(s, 0)
+	var end time.Time
+
+	switch unit {
+	case DoDSettleBillingUnitYear:
+		for {
+			end = start.AddDate(1, 0, 0)
+			if end.After(now) {
+				break
+			}
+		}
+		return end.Unix()
+	case DoDSettleBillingUnitMonth:
+		for {
+			end = start.AddDate(0, 1, 0)
+			if end.After(now) {
+				break
+			}
+		}
+		return end.Unix()
+	case DoDSettleBillingUnitWeek:
+		round := int64(60 * 60 * 24 * 7)
+		return s + (now.Unix()-s+round-1)/round*round
+	case DoDSettleBillingUnitDay:
+		round := int64(60 * 60 * 24)
+		return s + (now.Unix()-s+round-1)/round*round
+	case DoDSettleBillingUnitHour:
+		round := int64(60 * 60)
+		return s + (now.Unix()-s+round-1)/round*round
+	case DoDSettleBillingUnitMinute:
+		round := int64(60)
+		return s + (now.Unix()-s+round-1)/round*round
+	case DoDSettleBillingUnitSecond:
+		return start.Unix()
+	default:
+		return start.Unix()
+	}
+}
+
+func DoDSettleCalcBillingUnit(unit DoDSettleBillingUnit, s, e int64) int {
+	start := time.Unix(s, 0)
+	end := time.Unix(e, 0)
+
+	switch unit {
+	case DoDSettleBillingUnitYear:
+		return end.Year() - start.Year()
+	case DoDSettleBillingUnitMonth:
+		count := 0
+		for {
+			start = start.AddDate(0, 1, 0)
+			count++
+			if end.Sub(start) <= 0 {
+				break
+			}
+		}
+		return count
+	case DoDSettleBillingUnitWeek:
+		round := 60 * 60 * 24 * 7
+		return int(e-s) / round
+	case DoDSettleBillingUnitDay:
+		round := 60 * 60 * 24
+		return int(e-s) / round
+	case DoDSettleBillingUnitHour:
+		round := 60 * 60
+		return int(e-s) / round
+	case DoDSettleBillingUnitMinute:
+		round := 60
+		return int(e-s) / round
+	case DoDSettleBillingUnitSecond:
+		return int(e - s)
+	default:
+		return int(e - s)
+	}
+}
 
 func DoDSettleGetOrderInfoByInternalId(ctx *vmstore.VMContext, id types.Hash) (*DoDSettleOrderInfo, error) {
 	var key []byte
@@ -276,4 +374,8 @@ func DoDSettleGetOrderIdListByAddress(ctx *vmstore.VMContext, address types.Addr
 	}
 
 	return userInfo.OrderIds, nil
+}
+
+func DodSettleGenerateInvoiceByOrder(ctx *vmstore.VMContext, orderId string) {
+
 }
