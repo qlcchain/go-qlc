@@ -80,6 +80,10 @@ func newGateway(grpcAddress, gwAddress string) error {
 	if err != nil {
 		return fmt.Errorf("gateway register: %s", err)
 	}
+	err = pb.RegisterLedgerAPIHandlerFromEndpoint(ctx, gwmux, grpcAddress, opts)
+	if err != nil {
+		return fmt.Errorf("gateway register: %s", err)
+	}
 	_, address, err := scheme(gwAddress)
 	if err != nil {
 		return err

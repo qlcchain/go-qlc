@@ -20,104 +20,104 @@ message  Signature {
 }
 
 message StateBlock  {
-    bytes     Type    = 1;
-    string    Token   = 2;
-    string    Address = 3;
-    int64     Balance = 4;
-    int64     Vote    = 5;
-    int64     Network = 6;
-    int64     Storage = 7;
-    int64     Oracle  = 8;
-    string    Previous   = 9;
-    string    Link       = 10;
-    bytes     Sender     = 11;
-    bytes     Receiver   = 12;
-    string    Message    = 13;
-    string    Data       = 14;
-    uint64    PoVHeight  = 15;
-    int64     Timestamp  = 16;
-    string    Extra      = 17;
-    string    Representative   = 18;
+    string    type    = 1;
+    string    token   = 2;
+    string    address = 3;
+    int64     balance = 4;
+    int64     vote    = 5;
+    int64     network = 6;
+    int64     storage = 7;
+    int64     oracle  = 8;
+    string    previous   = 9;
+    string    link       = 10;
+    string    sender     = 11;
+    string    receiver   = 12;
+    string    message    = 13;
+    string    data       = 14;
+    uint64    poVHeight  = 15;
+    int64     timestamp  = 16;
+    string    extra      = 17;
+    string    representative   = 18;
 
-    string    PrivateFrom      = 19;
-    repeated string PrivateFor = 20;
-    string    PrivateGroupID   = 21;
+    string    privateFrom      = 19;
+    repeated string privateFor = 20;
+    string    privateGroupID   = 21;
 
-    uint64    Work           = 22;
-    string    Signature      = 23;
+    uint64    work           = 22;
+    string    signature      = 23;
 
-    uint64    Flag           = 24;
-    bool      PrivateRecvRsp = 25;
-    bytes     PrivatePayload = 26;
+    uint64    flag           = 24;
+    bool      privateRecvRsp = 25;
+    string    privatePayload = 26;
 }
 
 message TokenMeta {
-    bytes   Type           = 1;
-    string  Header         = 2;
-    string  Representative = 3;
-    string  OpenBlock    = 4;
-    int64   Balance      = 5;
-    string  BelongTo     = 6;
-    int64   Modified     = 7;
-    int64   BlockCount   = 8;
+    string  type           = 1;
+    string  header         = 2;
+    string  representative = 3;
+    string  openBlock    = 4;
+    int64   balance      = 5;
+    string  belongTo     = 6;
+    int64   modified     = 7;
+    int64   blockCount   = 8;
 }
 
 message AccountMeta  {
-    string  Address    = 1;
-    int64  CoinBalance = 2;
-    int64  CoinVote    = 3;
-    int64  CoinNetwork = 4;
-    int64  CoinStorage = 5;
-    int64  CoinOracle  = 6;
-    repeated TokenMeta Tokens = 7;
+    string address    = 1;
+    int64  coinBalance = 2;
+    int64  coinVote    = 3;
+    int64  coinNetwork = 4;
+    int64  coinStorage = 5;
+    int64  coinOracle  = 6;
+    repeated TokenMeta tokens = 7;
 }
 
 message Benefit {
-    int64 Balance  =1;
-    int64 Vote     =2;
-    int64 Network  =3;
-    int64 Storage  =4;
-    int64 Oracle   =5;
-    int64 Total    =6;
+    int64 balance  =1;
+    int64 vote     =2;
+    int64 network  =3;
+    int64 storage  =4;
+    int64 oracle   =5;
+    int64 total    =6;
 }
 
 message TokenInfo  {
-    string  TokenId         = 1;
-    string  TokenName       = 2;
-    string  TokenSymbol     = 3;
-    int64   TotalSupply     = 4;
-    int32   Decimals        = 5;
-    string  Owner           = 6;
-    int64   PledgeAmount    = 7;
-    int64   WithdrawTime    = 8;
-    string  PledgeAddress   = 9;
+    string  tokenId         = 1;
+    string  tokenName       = 2;
+    string  tokenSymbol     = 3;
+    int64   totalSupply     = 4;
+    int32   decimals        = 5;
+    string  owner           = 6;
+    int64   pledgeAmount    = 7;
+    int64   withdrawTime    = 8;
+    string  pledgeAddress   = 9;
     string  NEP5TxId        = 10;
 }
 
 message PendingKey  {
-   string  Address   = 1;
-   string  Hash      = 2;
+   string  address   = 1;
+   string  hash      = 2;
 }
 
 //go:generate msgp
 message PendingInfo  {
-   string Source   = 1;
-   int64  Amount   = 2;
-   string Type     = 3;
+   string source   = 1;
+   int64  amount   = 2;
+   string type     = 3;
 }
 
 message StateBlocks {
     repeated StateBlock stateBlocks = 1;
 }
 
+message TokenInfos {
+    repeated TokenInfo tokenInfos = 1;
+}
+
 message Addresses {
-    repeated Address addresses = 1;
+    repeated string addresses = 1;
 }
 
 message Hashes {
-    repeated Hash hashes = 1;
-}
-
-message TokenInfos {
-    repeated TokenInfo tokenInfos = 1;
+    repeated string hashes = 1;
 }
