@@ -31,9 +31,11 @@ func (cg *ConnectionGater) InterceptAddrDial(p peer.ID, addr ma.Multiaddr) bool 
 			if v.addr != nil {
 				if v.addr.Equal(addr) {
 					allow = true
+					break
 				}
 			} else {
 				allow = true
+				break
 			}
 		}
 	}
