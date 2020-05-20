@@ -30,6 +30,7 @@ type UncheckedBlockStore interface {
 	GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error
 
 	AddGapDoDSettleStateBlock(key types.Hash, block *types.StateBlock, sync types.SynchronizedKind) error
+	GetGapDoDSettleStateBlock(key types.Hash) (*types.StateBlock, types.SynchronizedKind, error)
 	DeleteGapDoDSettleStateBlock(key types.Hash) error
 }
 
@@ -335,6 +336,35 @@ func (l *Ledger) AddGapDoDSettleStateBlock(key types.Hash, blk *types.StateBlock
 		return err
 	}
 	return l.store.Put(k, v)
+}
+
+func (l *Ledger) GetGapDoDSettleStateBlock(key types.Hash) (*types.StateBlock, types.SynchronizedKind, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	v, err := l.store.Get(k)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return nil, 0, ErrUncheckedBlockNotFound
+		}
+		return nil, 0, err
+	}
+
+	value := new(types.Unchecked)
+	if err := value.Deserialize(v); err != nil {
+		return nil, 0, fmt.Errorf("uncheck deserialize error: %s", err)
+	}
+
+	if value.Block.IsPrivate() {
+		pl, err := l.GetBlockPrivatePayload(value.Block.GetHash())
+		if err == nil {
+			value.Block.SetPrivatePayload(pl)
+		}
+	}
+
+	return value.Block, value.Kind, nil
 }
 
 func (l *Ledger) DeleteGapDoDSettleStateBlock(key types.Hash) error {

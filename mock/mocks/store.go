@@ -3963,3 +3963,58 @@ func (_m *Store) Weight(account types.Address) types.Balance {
 
 	return r0
 }
+
+func (_m *Store) AddGapDoDSettleStateBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error {
+	ret := _m.Called(key, blk, sync)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash, *types.StateBlock, types.SynchronizedKind) error); ok {
+		r0 = rf(key, blk, sync)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+func (_m *Store) GetGapDoDSettleStateBlock(key types.Hash) (*types.StateBlock, types.SynchronizedKind, error) {
+	ret := _m.Called(key)
+
+	var r0 *types.StateBlock
+	if rf, ok := ret.Get(0).(func(types.Hash) *types.StateBlock); ok {
+		r0 = rf(key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.StateBlock)
+		}
+	}
+
+	var r1 types.SynchronizedKind
+	if rf, ok := ret.Get(1).(func(types.Hash) types.SynchronizedKind); ok {
+		r1 = rf(key)
+	} else {
+		r1 = ret.Get(1).(types.SynchronizedKind)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(types.Hash, types.UncheckedKind) error); ok {
+		r2 = rf(key)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+func (_m *Store) DeleteGapDoDSettleStateBlock(key types.Hash) error {
+	ret := _m.Called(key)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.Hash) error); ok {
+		r0 = rf(hash)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}

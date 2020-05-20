@@ -2,9 +2,10 @@ package abi
 
 import (
 	"fmt"
+	"strings"
+
 	_ "github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
-	"strings"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/util"

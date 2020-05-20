@@ -1,8 +1,9 @@
 package chain
 
 import (
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	rpc "github.com/qlcchain/jsonrpc2"

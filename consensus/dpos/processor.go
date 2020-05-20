@@ -2,10 +2,11 @@ package dpos
 
 import (
 	"context"
-	"github.com/qlcchain/go-qlc/vm/contract"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/qlcchain/go-qlc/vm/contract"
 
 	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 
@@ -970,7 +971,7 @@ func (p *Processor) dequeueGapDoDSettleState(hash types.Hash) {
 	}
 
 	internalId := input.Previous
-	if block, bf, _ := dps.ledger.GetUncheckedBlock(internalId, types.UncheckedKindDoDSettleState); block != nil {
+	if block, bf, _ := dps.ledger.GetGapDoDSettleStateBlock(internalId); block != nil {
 		if dps.getProcessorIndex(block.Address) == p.index {
 			dps.logger.Debugf("dequeue gap dod settle state internal id[%s] block[%s]", internalId, block.GetHash())
 			bs := &consensus.BlockSource{
