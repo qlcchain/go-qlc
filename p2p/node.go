@@ -94,20 +94,20 @@ type QlcNode struct {
 	isRepresentative bool
 	reporter         p2pmetrics.Reporter
 	ping             *ping.Pinger
-	protector        *Protector
+	connectionGater  *ConnectionGater
 }
 
 // NewNode return new QlcNode according to the config.
 func NewNode(config *config.Config) (*QlcNode, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	node := &QlcNode{
-		cfg:           config,
-		ctx:           ctx,
-		cancel:        cancel,
-		streamManager: NewStreamManager(),
-		logger:        log.NewLogger("p2p"),
-		isMiner:       config.PoV.PovEnabled,
-		protector:     NewProtector(),
+		cfg:             config,
+		ctx:             ctx,
+		cancel:          cancel,
+		streamManager:   NewStreamManager(),
+		logger:          log.NewLogger("p2p"),
+		isMiner:         config.PoV.PovEnabled,
+		connectionGater: NewConnectionGater(),
 	}
 	privateKey, err := config.DecodePrivateKey()
 	if err != nil {
@@ -130,18 +130,33 @@ func (node *QlcNode) setRepresentativeNode(isRepresentative bool) {
 	node.isRepresentative = isRepresentative
 }
 
-func (node *QlcNode) updateWhiteList(ip string) {
+func (node *QlcNode) updateWhiteList(id string, url string) {
 	if node.cfg.WhiteList.Enable {
-		if node.protector != nil {
+		if node.connectionGater != nil {
 			var b bool
-			for _, v := range node.protector.whiteList {
-				if v == ip {
+			peerId, err := peer.Decode(id)
+			if err != nil {
+				return
+			}
+			for _, v := range node.connectionGater.whiteList {
+				if v.id == peerId {
 					b = true
 					break
 				}
 			}
 			if !b {
-				node.protector.whiteList = append(node.protector.whiteList, ip)
+				wl := WhiteList{}
+				wl.id = peerId
+				ss := strings.Split(url, ":")
+				if len(ss) >= 2 {
+					multiAddrString := "/ip4/" + ss[0] + "/tcp/" + ss[1]
+					multiAddr, err := ma.NewMultiaddr(multiAddrString)
+					if err != nil {
+						return
+					}
+					wl.addr = multiAddr
+				}
+				node.connectionGater.whiteList = append(node.connectionGater.whiteList, wl)
 			}
 		}
 	}
@@ -160,7 +175,7 @@ func (node *QlcNode) buildHost() error {
 			//libp2p.NATPortMap(),
 			libp2p.BandwidthReporter(node.reporter),
 			libp2p.Ping(false),
-			libp2p.PrivateNetwork(node.protector),
+			libp2p.ConnectionGater(node.connectionGater),
 			// libp2p.NoSecurity,
 			// libp2p.DefaultMuxers,
 		)
@@ -403,6 +418,7 @@ func (node *QlcNode) connectBootstrap(pInfoS []peer.AddrInfo) {
 
 	_, err = node.dis.Advertise(node.ctx, QlcProtocolFOUND)
 	if err != nil {
+		node.logger.Error(err)
 		return
 	}
 }
@@ -621,8 +637,10 @@ func (node *QlcNode) getBootNode(urls []string) {
 				}
 				if node.cfg.WhiteList.Enable {
 					ss := strings.Split(boot, "/")
-					wl := fmt.Sprintf("%s:%s", ss[2], ss[4])
-					node.updateWhiteList(wl)
+					if len(ss) >= 7 {
+						multiAddrString := fmt.Sprintf("%s:%s", ss[2], ss[4])
+						node.updateWhiteList(ss[6], multiAddrString)
+					}
 				}
 				if len(node.boostrapAddrs) == 0 {
 					node.boostrapAddrs = append(node.boostrapAddrs, boot)
