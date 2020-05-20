@@ -3997,7 +3997,7 @@ func (_m *Store) GetGapDoDSettleStateBlock(key types.Hash) (*types.StateBlock, t
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(types.Hash, types.UncheckedKind) error); ok {
+	if rf, ok := ret.Get(2).(func(types.Hash) error); ok {
 		r2 = rf(key)
 	} else {
 		r2 = ret.Error(2)
@@ -4011,7 +4011,7 @@ func (_m *Store) DeleteGapDoDSettleStateBlock(key types.Hash) error {
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(types.Hash) error); ok {
-		r0 = rf(hash)
+		r0 = rf(key)
 	} else {
 		r0 = ret.Error(0)
 	}
