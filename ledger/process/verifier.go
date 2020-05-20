@@ -31,6 +31,7 @@ const (
 	GapTokenInfo
 	GapPovHeight
 	GapPublish
+	GapDoDSettleState
 	BalanceMismatch
 	UnReceivable
 	InvalidData

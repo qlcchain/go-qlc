@@ -2,13 +2,12 @@ package dpos
 
 import (
 	"context"
+	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/bluele/gcache"
@@ -772,7 +771,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 
 		dstAddr := types.ZeroAddress
 
-		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetPayload()); ok && err == nil {
 			ctx := vmstore.NewVMContextWithBlock(dps.ledger, blk)
 			if ctx == nil {
 				dps.logger.Error("dispatch: can not get vm context")
@@ -792,34 +791,54 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		}
 
 		if types.Address(blk.GetLink()) == contractaddress.PubKeyDistributionAddress {
-			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.Data)
-			if err == nil {
-				if method.Name == cabi.MethodNamePKDPublish {
-					for _, p := range dps.processors {
-						if localIndex != p.index {
-							p.publishBlockNotify(hash)
-						}
+			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.GetPayload())
+			if err != nil {
+				dps.logger.Errorf("get contract method err %s", err)
+			}
+
+			if method.Name == cabi.MethodNamePKDPublish {
+				for _, p := range dps.processors {
+					if localIndex != p.index {
+						p.publishBlockNotify(hash)
 					}
 				}
-			} else {
-				dps.logger.Errorf("get contract method err")
 			}
 		}
 	case types.ContractReward: // deal gap tokenInfo
-		if blk.IsOpen() {
-			input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
+		// check private tx
+		if blk.IsPrivate() && !blk.IsRecipient() {
+			break
+		}
+
+		input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
+		if err != nil {
+			dps.logger.Errorf("get block link error [%s]", hash)
+			return
+		}
+
+		if types.Address(input.GetLink()) == contractaddress.MintageAddress {
+			method, err := mintage.MintageABI.MethodById(input.GetPayload())
 			if err != nil {
-				dps.logger.Errorf("get block link error [%s]", hash)
-				return
+				dps.logger.Errorf("get contract method err %s", err)
 			}
 
-			if types.Address(input.GetLink()) == contractaddress.MintageAddress {
-				param := new(mintage.ParamMintage)
-				if err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.GetData()); err == nil {
-					index := dps.getProcessorIndex(input.Address)
-					if localIndex != index {
-						dps.processors[index].tokenCreateNotify(hash)
-					}
+			if method.Name == mintage.MethodNameMintage {
+				index := dps.getProcessorIndex(input.Address)
+				if localIndex != index {
+					dps.processors[index].tokenCreateNotify(hash)
+				}
+			}
+		} else if types.Address(input.GetLink()) == contractaddress.DoDSettlementAddress {
+			method, err := cabi.DoDSettlementABI.MethodById(input.GetPayload())
+			if err != nil {
+				dps.logger.Errorf("get contract method err %s", err)
+			}
+
+			if method.Name == cabi.MethodNameDoDSettleCreateOrder || method.Name == cabi.MethodNameDoDSettleChangeOrder ||
+				method.Name == cabi.MethodNameDoDSettleTerminateOrder {
+				index := dps.getProcessorIndex(input.Address)
+				if localIndex != index {
+					dps.processors[index].dodSettleStateChangeNotify(hash)
 				}
 			}
 		}

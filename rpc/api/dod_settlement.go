@@ -1,15 +1,11 @@
 package api
 
 import (
-	"fmt"
-
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
-	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/vm/contract"
@@ -22,6 +18,7 @@ type DoDSettlementAPI struct {
 	l      ledger.Store
 	cc     *chainctx.ChainContext
 	ctx    *vmstore.VMContext
+	ca     *ContractApi
 	co     *contract.DoDSettleCreateOrder
 	uo     *contract.DoDSettleUpdateOrderInfo
 	cho    *contract.DoDSettleChangeOrder
@@ -41,31 +38,44 @@ func NewDoDSettlementAPI(cfgFile string, l ledger.Store) *DoDSettlementAPI {
 		to:     &contract.DoDSettleTerminateOrder{},
 		rr:     &contract.DoDSettleResourceReady{},
 	}
+
+	api.ca = NewContractApi(api.cc, api.l)
 	return api
 }
 
-func (d *DoDSettlementAPI) GetCreateOrderBlock(param *abi.DoDSettleCreateOrderParam) (*types.StateBlock, error) {
+type DoDSettleCreateOrderParam struct {
+	ContractPrivacyParam
+	abi.DoDSettleCreateOrderParam
+}
+
+type DoDSettleResponseParam struct {
+	ContractPrivacyParam
+	abi.DoDSettleResponseParam
+}
+
+type DoDSettleUpdateOrderInfoParam struct {
+	ContractPrivacyParam
+	abi.DoDSettleUpdateOrderInfoParam
+}
+
+type DoDSettleChangeOrderParam struct {
+	ContractPrivacyParam
+	abi.DoDSettleChangeOrderParam
+}
+
+type DoDSettleTerminateOrderParam struct {
+	ContractPrivacyParam
+	abi.DoDSettleTerminateOrderParam
+}
+
+type DoDSettleResourceReadyParam struct {
+	ContractPrivacyParam
+	abi.DoDSettleResourceReadyParam
+}
+
+func (d *DoDSettlementAPI) GetCreateOrderBlock(param *DoDSettleCreateOrderParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
-	}
-
-	if !d.cc.IsPoVDone() {
-		return nil, chainctx.ErrPoVNotFinish
-	}
-
-	povHeader, err := d.l.GetLatestPovHeader()
-	if err != nil {
-		return nil, fmt.Errorf("get pov header error: %s", err)
-	}
-
-	am, err := d.l.GetAccountMeta(param.Buyer.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	tm := am.Token(config.GasToken())
-	if tm == nil {
-		return nil, fmt.Errorf("%s do not have qlc token", param.Buyer.Address)
 	}
 
 	data, err := param.ToABI()
@@ -73,93 +83,44 @@ func (d *DoDSettlementAPI) GetCreateOrderBlock(param *abi.DoDSettleCreateOrderPa
 		return nil, err
 	}
 
-	send := &types.StateBlock{
-		Type:           types.ContractSend,
-		Token:          tm.Type,
+	p := &ContractSendBlockPara{
 		Address:        param.Buyer.Address,
-		Balance:        tm.Balance,
-		Previous:       tm.Header,
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
-		Link:           types.Hash(contractaddress.DoDSettlementAddress),
-		Representative: tm.Representative,
+		TokenName:      "QGAS",
+		To:             contractaddress.DoDSettlementAddress,
+		Amount:         types.NewBalance(0),
 		Data:           data,
-		PoVHeight:      povHeader.GetHeight(),
-		Timestamp:      common.TimeNow().Unix(),
+		PrivateFrom:    param.PrivateFrom,
+		PrivateFor:     param.PrivateFor,
+		PrivateGroupID: param.PrivateGroupID,
 	}
 
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	_, _, err = d.co.ProcessSend(vmContext, send)
-	if err != nil {
-		return nil, err
-	}
-
-	h := vmstore.TrieHash(vmContext)
-	if h != nil {
-		send.Extra = *h
-	}
-
-	return send, nil
+	return d.ca.GenerateSendBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetCreateOrderRewardBlock(param *abi.DoDSettleResponseParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetCreateOrderRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
 
-	send, err := d.l.GetStateBlockConfirmed(param.RequestHash)
+	data, err := param.MarshalMsg(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	reward := &types.StateBlock{}
-	reward.Data, err = param.MarshalMsg(nil)
-	if err != nil {
-		return nil, err
+	p := &ContractRewardBlockPara{
+		SendHash:       param.RequestHash,
+		Data:           data,
+		PrivateFrom:    param.PrivateFrom,
+		PrivateFor:     param.PrivateFor,
+		PrivateGroupID: param.PrivateGroupID,
 	}
 
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	blocks, err := d.co.DoReceive(vmContext, reward, send)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(blocks) > 0 {
-		h := vmstore.TrieHash(vmContext)
-		if h != nil {
-			reward.Extra = *h
-		}
-
-		return reward, nil
-	}
-
-	return reward, nil
+	return d.ca.GenerateRewardBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetUpdateOrderInfoBlock(param *abi.DoDSettleUpdateOrderInfoParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetUpdateOrderInfoBlock(param *DoDSettleUpdateOrderInfoParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
-	}
-
-	if !d.cc.IsPoVDone() {
-		return nil, chainctx.ErrPoVNotFinish
-	}
-
-	povHeader, err := d.l.GetLatestPovHeader()
-	if err != nil {
-		return nil, fmt.Errorf("get pov header error: %s", err)
-	}
-
-	am, err := d.l.GetAccountMeta(param.Buyer)
-	if err != nil {
-		return nil, err
-	}
-
-	tm := am.Token(config.GasToken())
-	if tm == nil {
-		return nil, fmt.Errorf("%s do not have qlc token", param.Buyer)
 	}
 
 	data, err := param.ToABI()
@@ -167,93 +128,35 @@ func (d *DoDSettlementAPI) GetUpdateOrderInfoBlock(param *abi.DoDSettleUpdateOrd
 		return nil, err
 	}
 
-	send := &types.StateBlock{
-		Type:           types.ContractSend,
-		Token:          tm.Type,
+	p := &ContractSendBlockPara{
 		Address:        param.Buyer,
-		Balance:        tm.Balance,
-		Previous:       tm.Header,
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
-		Link:           types.Hash(contractaddress.DoDSettlementAddress),
-		Representative: tm.Representative,
+		TokenName:      "QGAS",
+		To:             contractaddress.DoDSettlementAddress,
+		Amount:         types.NewBalance(0),
 		Data:           data,
-		PoVHeight:      povHeader.GetHeight(),
-		Timestamp:      common.TimeNow().Unix(),
+		PrivateFrom:    param.PrivateFrom,
+		PrivateFor:     param.PrivateFor,
+		PrivateGroupID: param.PrivateGroupID,
 	}
 
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	_, _, err = d.uo.ProcessSend(vmContext, send)
-	if err != nil {
-		return nil, err
-	}
-
-	h := vmstore.TrieHash(vmContext)
-	if h != nil {
-		send.Extra = *h
-	}
-
-	return send, nil
+	return d.ca.GenerateSendBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetUpdateOrderInfoRewardBlock(param *abi.DoDSettleResponseParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetUpdateOrderInfoRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
 
-	send, err := d.l.GetStateBlockConfirmed(param.RequestHash)
-	if err != nil {
-		return nil, err
+	p := &ContractRewardBlockPara{
+		SendHash: param.RequestHash,
 	}
 
-	reward := &types.StateBlock{}
-	reward.Data, err = param.MarshalMsg(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	blocks, err := d.uo.DoReceive(vmContext, reward, send)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(blocks) > 0 {
-		h := vmstore.TrieHash(vmContext)
-		if h != nil {
-			reward.Extra = *h
-		}
-
-		return reward, nil
-	}
-
-	return reward, nil
+	return d.ca.GenerateRewardBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetChangeOrderBlock(param *abi.DoDSettleChangeOrderParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetChangeOrderBlock(param *DoDSettleChangeOrderParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
-	}
-
-	if !d.cc.IsPoVDone() {
-		return nil, chainctx.ErrPoVNotFinish
-	}
-
-	povHeader, err := d.l.GetLatestPovHeader()
-	if err != nil {
-		return nil, fmt.Errorf("get pov header error: %s", err)
-	}
-
-	am, err := d.l.GetAccountMeta(param.Buyer.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	tm := am.Token(config.GasToken())
-	if tm == nil {
-		return nil, fmt.Errorf("%s do not have qlc token", param.Buyer.Address)
 	}
 
 	data, err := param.ToABI()
@@ -261,93 +164,44 @@ func (d *DoDSettlementAPI) GetChangeOrderBlock(param *abi.DoDSettleChangeOrderPa
 		return nil, err
 	}
 
-	send := &types.StateBlock{
-		Type:           types.ContractSend,
-		Token:          tm.Type,
+	p := &ContractSendBlockPara{
 		Address:        param.Buyer.Address,
-		Balance:        tm.Balance,
-		Previous:       tm.Header,
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
-		Link:           types.Hash(contractaddress.DoDSettlementAddress),
-		Representative: tm.Representative,
+		TokenName:      "QGAS",
+		To:             contractaddress.DoDSettlementAddress,
+		Amount:         types.NewBalance(0),
 		Data:           data,
-		PoVHeight:      povHeader.GetHeight(),
-		Timestamp:      common.TimeNow().Unix(),
+		PrivateFrom:    param.PrivateFrom,
+		PrivateFor:     param.PrivateFor,
+		PrivateGroupID: param.PrivateGroupID,
 	}
 
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	_, _, err = d.cho.ProcessSend(vmContext, send)
-	if err != nil {
-		return nil, err
-	}
-
-	h := vmstore.TrieHash(vmContext)
-	if h != nil {
-		send.Extra = *h
-	}
-
-	return send, nil
+	return d.ca.GenerateSendBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetChangeOrderRewardBlock(param *abi.DoDSettleResponseParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetChangeOrderRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
 
-	send, err := d.l.GetStateBlockConfirmed(param.RequestHash)
+	data, err := param.MarshalMsg(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	reward := &types.StateBlock{}
-	reward.Data, err = param.MarshalMsg(nil)
-	if err != nil {
-		return nil, err
+	p := &ContractRewardBlockPara{
+		SendHash:       param.RequestHash,
+		Data:           data,
+		PrivateFrom:    param.PrivateFrom,
+		PrivateFor:     param.PrivateFor,
+		PrivateGroupID: param.PrivateGroupID,
 	}
 
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	blocks, err := d.cho.DoReceive(vmContext, reward, send)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(blocks) > 0 {
-		h := vmstore.TrieHash(vmContext)
-		if h != nil {
-			reward.Extra = *h
-		}
-
-		return reward, nil
-	}
-
-	return reward, nil
+	return d.ca.GenerateRewardBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetTerminateOrderBlock(param *abi.DoDSettleTerminateOrderParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetTerminateOrderBlock(param *DoDSettleTerminateOrderParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
-	}
-
-	if !d.cc.IsPoVDone() {
-		return nil, chainctx.ErrPoVNotFinish
-	}
-
-	povHeader, err := d.l.GetLatestPovHeader()
-	if err != nil {
-		return nil, fmt.Errorf("get pov header error: %s", err)
-	}
-
-	am, err := d.l.GetAccountMeta(param.Buyer.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	tm := am.Token(config.GasToken())
-	if tm == nil {
-		return nil, fmt.Errorf("%s do not have qlc token", param.Buyer.Address)
 	}
 
 	data, err := param.ToABI()
@@ -355,93 +209,44 @@ func (d *DoDSettlementAPI) GetTerminateOrderBlock(param *abi.DoDSettleTerminateO
 		return nil, err
 	}
 
-	send := &types.StateBlock{
-		Type:           types.ContractSend,
-		Token:          tm.Type,
+	p := &ContractSendBlockPara{
 		Address:        param.Buyer.Address,
-		Balance:        tm.Balance,
-		Previous:       tm.Header,
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
-		Link:           types.Hash(contractaddress.DoDSettlementAddress),
-		Representative: tm.Representative,
+		TokenName:      "QGAS",
+		To:             contractaddress.DoDSettlementAddress,
+		Amount:         types.NewBalance(0),
 		Data:           data,
-		PoVHeight:      povHeader.GetHeight(),
-		Timestamp:      common.TimeNow().Unix(),
+		PrivateFrom:    param.PrivateFrom,
+		PrivateFor:     param.PrivateFor,
+		PrivateGroupID: param.PrivateGroupID,
 	}
 
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	_, _, err = d.to.ProcessSend(vmContext, send)
-	if err != nil {
-		return nil, err
-	}
-
-	h := vmstore.TrieHash(vmContext)
-	if h != nil {
-		send.Extra = *h
-	}
-
-	return send, nil
+	return d.ca.GenerateSendBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetTerminateOrderRewardBlock(param *abi.DoDSettleResponseParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetTerminateOrderRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
 
-	send, err := d.l.GetStateBlockConfirmed(param.RequestHash)
+	data, err := param.MarshalMsg(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	reward := &types.StateBlock{}
-	reward.Data, err = param.MarshalMsg(nil)
-	if err != nil {
-		return nil, err
+	p := &ContractRewardBlockPara{
+		SendHash:       param.RequestHash,
+		Data:           data,
+		PrivateFrom:    param.PrivateFrom,
+		PrivateFor:     param.PrivateFor,
+		PrivateGroupID: param.PrivateGroupID,
 	}
 
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	blocks, err := d.to.DoReceive(vmContext, reward, send)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(blocks) > 0 {
-		h := vmstore.TrieHash(vmContext)
-		if h != nil {
-			reward.Extra = *h
-		}
-
-		return reward, nil
-	}
-
-	return reward, nil
+	return d.ca.GenerateRewardBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetResourceReadyBlock(param *abi.DoDSettleResourceReadyParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetResourceReadyBlock(param *DoDSettleResourceReadyParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
-	}
-
-	if !d.cc.IsPoVDone() {
-		return nil, chainctx.ErrPoVNotFinish
-	}
-
-	povHeader, err := d.l.GetLatestPovHeader()
-	if err != nil {
-		return nil, fmt.Errorf("get pov header error: %s", err)
-	}
-
-	am, err := d.l.GetAccountMeta(param.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	tm := am.Token(config.GasToken())
-	if tm == nil {
-		return nil, fmt.Errorf("%s do not have qlc token", param.Address)
 	}
 
 	data, err := param.ToABI()
@@ -449,69 +254,30 @@ func (d *DoDSettlementAPI) GetResourceReadyBlock(param *abi.DoDSettleResourceRea
 		return nil, err
 	}
 
-	send := &types.StateBlock{
-		Type:           types.ContractSend,
-		Token:          tm.Type,
+	p := &ContractSendBlockPara{
 		Address:        param.Address,
-		Balance:        tm.Balance,
-		Previous:       tm.Header,
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
-		Link:           types.Hash(contractaddress.DoDSettlementAddress),
-		Representative: tm.Representative,
+		TokenName:      "QGAS",
+		To:             contractaddress.DoDSettlementAddress,
+		Amount:         types.NewBalance(0),
 		Data:           data,
-		PoVHeight:      povHeader.GetHeight(),
-		Timestamp:      common.TimeNow().Unix(),
+		PrivateFrom:    param.PrivateFrom,
+		PrivateFor:     param.PrivateFor,
+		PrivateGroupID: param.PrivateGroupID,
 	}
 
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	_, _, err = d.rr.ProcessSend(vmContext, send)
-	if err != nil {
-		return nil, err
-	}
-
-	h := vmstore.TrieHash(vmContext)
-	if h != nil {
-		send.Extra = *h
-	}
-
-	return send, nil
+	return d.ca.GenerateSendBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetResourceReadyRewardBlock(param *abi.DoDSettleResponseParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetResourceReadyRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
 
-	send, err := d.l.GetStateBlockConfirmed(param.RequestHash)
-	if err != nil {
-		return nil, err
+	p := &ContractRewardBlockPara{
+		SendHash: param.RequestHash,
 	}
 
-	reward := &types.StateBlock{}
-	reward.Data, err = param.MarshalMsg(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	vmContext := vmstore.NewVMContext(d.l, &contractaddress.DoDSettlementAddress)
-	blocks, err := d.rr.DoReceive(vmContext, reward, send)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(blocks) > 0 {
-		h := vmstore.TrieHash(vmContext)
-		if h != nil {
-			reward.Extra = *h
-		}
-
-		return reward, nil
-	}
-
-	return reward, nil
+	return d.ca.GenerateRewardBlock(p)
 }
 
 func (d *DoDSettlementAPI) GetOrderInfoBySellerAndOrderId(seller types.Address, orderId string) (*abi.DoDSettleOrderInfo, error) {
@@ -575,9 +341,19 @@ func (d *DoDSettlementAPI) GetPendingRequest(address types.Address) ([]*DoDPendi
 	return rsp, nil
 }
 
+type DoDSettleProductWithActiveInfo struct {
+	ProductId string `json:"productId"`
+	Active    bool   `json:"active"`
+}
+
+type DoDPendingResourceCheckInfo struct {
+	OrderId  string                            `json:"orderId"`
+	Products []*DoDSettleProductWithActiveInfo `json:"products"`
+}
+
 // query all pending resource check requests
-func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]string, error) {
-	orderId := make([]string, 0)
+func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*DoDPendingResourceCheckInfo, error) {
+	infos := make([]*DoDPendingResourceCheckInfo, 0)
 
 	if err := d.l.GetPendingsByAddress(address, func(key *types.PendingKey, value *types.PendingInfo) error {
 		sendBlock, err := d.ctx.GetStateBlockConfirmed(key.Hash)
@@ -598,7 +374,37 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]str
 					return err
 				}
 
-				orderId = append(orderId, param.OrderId)
+				if param.Status == abi.DoDSettleOrderStateFail {
+					return nil
+				}
+
+				order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, param.InternalId)
+				if err != nil {
+					return err
+				}
+
+				info := &DoDPendingResourceCheckInfo{
+					OrderId:  param.OrderId,
+					Products: make([]*DoDSettleProductWithActiveInfo, 0),
+				}
+
+				for _, pid := range param.ProductId {
+					productKey := &abi.DoDSettleProduct{
+						Seller:    order.Seller.Address,
+						ProductId: pid,
+					}
+
+					pai := &DoDSettleProductWithActiveInfo{ProductId: pid, Active: false}
+
+					_, err := abi.DodSettleGetSellerConnectionActive(d.ctx, productKey.Hash())
+					if err == nil {
+						pai.Active = true
+					}
+
+					info.Products = append(info.Products, pai)
+				}
+
+				infos = append(infos, info)
 			}
 		}
 
@@ -607,7 +413,42 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]str
 		return nil, err
 	}
 
-	return orderId, nil
+	return infos, nil
+}
+
+type DoDPlacingOrderInfo struct {
+	InternalId types.Hash              `json:"internalId"`
+	OrderInfo  *abi.DoDSettleOrderInfo `json:"orderInfo"`
+}
+
+func (d *DoDSettlementAPI) GetPlacingOrder(buyer, seller types.Address) ([]*DoDPlacingOrderInfo, error) {
+	orderInfo := make([]*DoDPlacingOrderInfo, 0)
+
+	internalIds, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, buyer)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range internalIds {
+		oi, _ := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
+		if oi == nil {
+			continue
+		}
+
+		if oi.Seller.Address != seller {
+			continue
+		}
+
+		if oi.ContractState == abi.DoDSettleContractStateConfirmed && oi.OrderState == abi.DoDSettleOrderStateNull {
+			poi := &DoDPlacingOrderInfo{
+				InternalId: id,
+				OrderInfo:  oi,
+			}
+			orderInfo = append(orderInfo, poi)
+		}
+	}
+
+	return orderInfo, nil
 }
 
 func (d *DoDSettlementAPI) GetProductIdListByAddress(address types.Address) ([]*abi.DoDSettleProduct, error) {
@@ -648,4 +489,12 @@ func (d *DoDSettlementAPI) GetOrderIdListByAddressAndSeller(address, seller type
 	}
 
 	return orders, nil
+}
+
+func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64) (*abi.DoDSettleInvoice, error) {
+	return abi.DodSettleGenerateInvoiceByOrder(d.ctx, seller, orderId, start, end)
+}
+
+func (d *DoDSettlementAPI) GenerateInvoiceByBuyer(seller, buyer types.Address, start, end int64) (*abi.DoDSettleInvoice, error) {
+	return abi.DodSettleGenerateInvoiceByBuyer(d.ctx, seller, buyer, start, end)
 }

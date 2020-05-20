@@ -99,6 +99,8 @@ const (
 	DoDSettleDBTableProduct
 	DoDSettleDBTableOrderIdMap
 	DoDSettleDBTableUser
+	DoDSettleDBTableSellerConnActive
+	DoDSettleDBTableBuyerConnActive
 )
 
 //go:generate msgp
@@ -361,7 +363,39 @@ func (z *DoDSettleResourceReadyParam) Verify() error {
 	return nil
 }
 
+type DoDSettleInvoiceConnDynamic struct {
+	DoDSettleConnectionDynamicParam
+	InvoiceStartTime int64   `json:"invoiceStartTime"`
+	InvoiceEndTime   int64   `json:"invoiceEndTime"`
+	InvoiceUnitCount int     `json:"invoiceUnitCount"`
+	Amount           float64 `json:"amount"`
+}
+
+type DoDSettleInvoiceConn struct {
+	ConnectionAmount float64 `json:"connectionAmount"`
+	DoDSettleConnectionStaticParam
+	Usage []*DoDSettleInvoiceConnDynamic `json:"usage"`
+}
+
+type DoDSettleInvoiceOrder struct {
+	OrderId         string                  `json:"orderId"`
+	ConnectionCount int                     `json:"connectionCount"`
+	OrderAmount     float64                 `json:"orderAmount"`
+	Connections     []*DoDSettleInvoiceConn `json:"connections"`
+}
+
 type DoDSettleInvoice struct {
-	Buyer  *DoDSettleUser `json:"buyer" msg:"b"`
-	Seller *DoDSettleUser `json:"seller" msg:"s"`
+	OrderCount           int                      `json:"orderCount"`
+	TotalConnectionCount int                      `json:"totalConnectionCount"`
+	TotalAmount          float64                  `json:"totalAmount"`
+	Currency             string                   `json:"currency"`
+	StartTime            int64                    `json:"startTime"`
+	EndTime              int64                    `json:"endTime"`
+	Buyer                *DoDSettleUser           `json:"buyer"`
+	Seller               *DoDSettleUser           `json:"seller"`
+	Orders               []*DoDSettleInvoiceOrder `json:"orders"`
+}
+
+type DoDSettleConnectionActive struct {
+	ActiveAt int64 `json:"activeAt" msg:"a"`
 }

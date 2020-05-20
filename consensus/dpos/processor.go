@@ -35,27 +35,28 @@ type chainOrderKey struct {
 }
 
 type Processor struct {
-	index              int
-	dps                *DPoS
-	uncheckedCache     gcache.Cache // gap blocks
-	quitCh             chan bool
-	blocks             chan *consensus.BlockSource
-	blocksAcked        chan types.Hash
-	tokenCreate        chan types.Hash
-	publishBlock       chan types.Hash
-	syncBlock          chan *types.StateBlock
-	syncAcked          chan types.Hash
-	acks               chan *voteInfo
-	frontiers          chan *types.StateBlock
-	syncStateChange    chan topic.SyncState
-	syncState          topic.SyncState
-	orderedChain       *sync.Map
-	chainHeight        *sync.Map
-	confirmedChain     map[types.Hash]bool
-	confirmParallelNum int32
-	ctx                context.Context
-	cancel             context.CancelFunc
-	exited             chan struct{}
+	index                int
+	dps                  *DPoS
+	uncheckedCache       gcache.Cache // gap blocks
+	quitCh               chan bool
+	blocks               chan *consensus.BlockSource
+	blocksAcked          chan types.Hash
+	tokenCreate          chan types.Hash
+	publishBlock         chan types.Hash
+	dodSettleStateChange chan types.Hash
+	syncBlock            chan *types.StateBlock
+	syncAcked            chan types.Hash
+	acks                 chan *voteInfo
+	frontiers            chan *types.StateBlock
+	syncStateChange      chan topic.SyncState
+	syncState            topic.SyncState
+	orderedChain         *sync.Map
+	chainHeight          *sync.Map
+	confirmedChain       map[types.Hash]bool
+	confirmParallelNum   int32
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	exited               chan struct{}
 }
 
 func newProcessors(num int) []*Processor {
@@ -172,6 +173,8 @@ func (p *Processor) processMsg() {
 			p.dequeueGapToken(hash)
 		case hash := <-p.publishBlock:
 			p.dequeueGapPublish(hash)
+		case hash := <-p.dodSettleStateChange:
+			p.dequeueGapDoDSettleState(hash)
 		case ack := <-p.acks:
 			p.processAck(ack)
 			p.drainAck()
@@ -221,6 +224,13 @@ func (p *Processor) publishBlockNotify(hash types.Hash) {
 func (p *Processor) tokenCreateNotify(hash types.Hash) {
 	select {
 	case p.tokenCreate <- hash:
+	default:
+	}
+}
+
+func (p *Processor) dodSettleStateChangeNotify(hash types.Hash) {
+	select {
+	case p.dodSettleStateChange <- hash:
 	default:
 	}
 }
@@ -435,7 +445,7 @@ func (p *Processor) processMsgDo(bs *consensus.BlockSource) {
 
 	result, err = dps.lv.BlockCheck(bs.Block)
 	if result == process.Other {
-		dps.logger.Infof("block[%s] check err[%s]", hash, err.Error())
+		dps.logger.Infof("block[%s] check err[%s]", hash, err)
 		return
 	}
 
@@ -533,6 +543,9 @@ func (p *Processor) processResult(result process.ProcessResult, bs *consensus.Bl
 		p.enqueueUnchecked(result, bs)
 	case process.GapPublish:
 		dps.logger.Infof("block:[%s] Gap publish", hash)
+		p.enqueueUnchecked(result, bs)
+	case process.GapDoDSettleState:
+		dps.logger.Infof("block:[%s] Gap DoD settle state", hash)
 		p.enqueueUnchecked(result, bs)
 	}
 }
@@ -728,9 +741,10 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 					dps.logger.Errorf("enqueue unchecked: can not get vm context")
 					return
 				}
+
 				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
 				if err != nil || gapResult != common.ContractRewardGapPov {
-					dps.logger.Errorf("add gap pov block to ledger err %s", err)
+					dps.logger.Errorf("check gap %s", err)
 				}
 
 				height := gapInfo.(uint64)
@@ -739,6 +753,37 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 					err := dps.ledger.AddGapPovBlock(height, bs.Block, bs.BlockFrom)
 					if err != nil {
 						dps.logger.Errorf("add gap pov block to ledger err %s", err)
+					}
+				}
+			}
+		}
+	case process.GapDoDSettleState:
+		// check private tx
+		if bs.Block.IsPrivate() && !bs.Block.IsRecipient() {
+			break
+		}
+
+		if c, ok, err := contract.GetChainContract(types.Address(bs.Block.Link), bs.Block.GetPayload()); ok && err == nil {
+			d := c.GetDescribe()
+			switch d.GetVersion() {
+			case contract.SpecVer2:
+				vmCtx := vmstore.NewVMContextWithBlock(dps.ledger, bs.Block)
+				if vmCtx == nil {
+					dps.logger.Errorf("enqueue unchecked: can not get vm context")
+					return
+				}
+
+				gapResult, gapInfo, err := c.DoGap(vmCtx, bs.Block)
+				if err != nil || gapResult != common.ContractDoDOrderState {
+					dps.logger.Errorf("check gap err %s", err)
+				}
+
+				internalId := gapInfo.(types.Hash)
+				if !internalId.IsZero() {
+					dps.logger.Infof("add gap dod settle state[%s][%s]", bs.Block.GetHash(), internalId)
+					err := dps.ledger.AddGapDoDSettleStateBlock(internalId, bs.Block, bs.BlockFrom)
+					if err != nil {
+						dps.logger.Errorf("add gap dod settle state block to ledger err %s", err)
 					}
 				}
 			}
@@ -903,6 +948,44 @@ func (p *Processor) dequeueGapPublish(hash types.Hash) {
 		return nil
 	}); err != nil {
 		dps.logger.Errorf("dequeue gap publish err %s", err)
+	}
+}
+
+func (p *Processor) dequeueGapDoDSettleState(hash types.Hash) {
+	dps := p.dps
+
+	// check if the block is existed, may be from another thread
+	blk, err := dps.ledger.GetStateBlockConfirmed(hash)
+	if err != nil || blk == nil {
+		dps.logger.Debugf("get confirmed block fail %s", hash)
+		time.Sleep(time.Millisecond)
+		p.dodSettleStateChangeNotify(hash)
+		return
+	}
+
+	input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
+	if err != nil {
+		dps.logger.Errorf("get block link error [%s]", hash)
+		return
+	}
+
+	internalId := input.Previous
+	if block, bf, _ := dps.ledger.GetUncheckedBlock(internalId, types.UncheckedKindDoDSettleState); block != nil {
+		if dps.getProcessorIndex(block.Address) == p.index {
+			dps.logger.Debugf("dequeue gap dod settle state internal id[%s] block[%s]", internalId, block.GetHash())
+			bs := &consensus.BlockSource{
+				Block:     block,
+				BlockFrom: bf,
+			}
+
+			p.processUncheckedBlock(bs)
+
+			err := dps.ledger.DeleteGapDoDSettleStateBlock(internalId)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete GapDoDSettleStateBlock", err, block.GetHash())
+			}
+		}
+		return
 	}
 }
 

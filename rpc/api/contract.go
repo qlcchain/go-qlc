@@ -37,6 +37,12 @@ type ContractApi struct {
 	logger *zap.SugaredLogger
 }
 
+type ContractPrivacyParam struct {
+	PrivateFrom    string   `json:"privateFrom,omitempty"`
+	PrivateFor     []string `json:"privateFor,omitempty"`
+	PrivateGroupID string   `json:"privateGroupID,omitempty"`
+}
+
 func NewContractApi(cc *chainctx.ChainContext, l ledger.Store) *ContractApi {
 	return &ContractApi{cc: cc, eb: cc.EventBus(), l: l, logger: log.NewLogger("api_contract")}
 }
@@ -238,6 +244,11 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 
 type ContractRewardBlockPara struct {
 	SendHash types.Hash `json:"sendHash"`
+	Data     []byte     `json:"data"`
+
+	PrivateFrom    string   `json:"privateFrom,omitempty"`
+	PrivateFor     []string `json:"privateFor,omitempty"`
+	PrivateGroupID string   `json:"privateGroupID,omitempty"`
 }
 
 func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types.StateBlock, error) {
@@ -249,8 +260,13 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 	if para == nil {
 		return nil, ErrParameterNil
 	}
+
 	if para.SendHash.IsZero() {
 		return nil, errors.New("invalid transaction parameter")
+	}
+
+	if len(para.Data) == 0 && len(para.PrivateFrom) > 0 {
+		para.PrivateFrom = ""
 	}
 
 	sendBlk, err := c.l.GetStateBlockConfirmed(para.SendHash)
@@ -295,12 +311,39 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 		return nil, fmt.Errorf("get pov header error: %s", err)
 	}
 
+	rawPayload := para.Data
+	blkFillData := para.Data
+
+	if len(para.Data) > 0 && len(para.PrivateFrom) > 0 {
+		// convert raw payload to enclave key for private txs
+		msgReq := &topic.EventPrivacySendReqMsg{
+			RawPayload:     para.Data,
+			PrivateFrom:    para.PrivateFrom,
+			PrivateFor:     para.PrivateFor,
+			PrivateGroupID: para.PrivateGroupID,
+
+			RspChan: make(chan *topic.EventPrivacySendRspMsg, 1),
+		}
+
+		enclaveKey, err := privacyDistributeRawPayload(c.cc, msgReq)
+		if err != nil {
+			return nil, err
+		}
+
+		blkFillData = enclaveKey
+	}
+
 	// fill default fields in reward block, but all fields can be set by DoReceive action
 	recvBlk := &types.StateBlock{
 		Type:      types.ContractReward,
 		Link:      para.SendHash,
+		Data:      blkFillData,
 		Timestamp: common.TimeNow().Unix(),
 		PoVHeight: povHeader.GetHeight(),
+	}
+
+	if len(para.Data) > 0 && len(para.PrivateFrom) > 0 {
+		recvBlk.SetPrivatePayload(rawPayload)
 	}
 
 	// pre-running contract method receive action

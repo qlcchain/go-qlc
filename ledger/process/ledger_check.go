@@ -773,6 +773,8 @@ func checkContractSendBlock(lv *LedgerVerifier, block *types.StateBlock) (Proces
 					return errorP(block, GapPovHeight, nil)
 				case common.ContractDPKIGapPublish:
 					return errorP(block, GapPublish, nil)
+				case common.ContractDoDOrderState:
+					return errorP(block, GapDoDSettleState, nil)
 				}
 			} else {
 				return errorP(block, Other, fmt.Errorf("do gap error: %s", err))
