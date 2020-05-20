@@ -154,10 +154,6 @@ func (l *Ledger) GetUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error {
 		return err
 	}
 
-	if err := l.getUncheckedBlocks(types.UncheckedKindDoDSettleState, visit); err != nil {
-		return err
-	}
-
 	return l.getUncheckedBlocks(types.UncheckedKindPublish, visit)
 }
 

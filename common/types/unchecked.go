@@ -16,7 +16,6 @@ const (
 	UncheckedKindLink
 	UncheckedKindTokenInfo
 	UncheckedKindPublish
-	UncheckedKindDoDSettleState
 )
 
 type SynchronizedKind byte
