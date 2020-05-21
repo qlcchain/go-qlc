@@ -27,7 +27,6 @@ func TestWhiteListMode(t *testing.T) {
 	cfg.P2P.Discovery.MDNSEnabled = false
 	cfg.LogLevel = "warn"
 	cfg.P2P.IsBootNode = true
-	cfg.P2P.BootNodes = []string{"127.0.0.1:18001/wlm"}
 	cfg.WhiteList.Enable = true
 	w1 := &config.WhiteListInfo{
 		PeerId: "Qmc5VuY4Bys47oyJM1tPoN784ViNDYrh2vEQwGqZBMK5RX",
@@ -50,12 +49,6 @@ func TestWhiteListMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pm := &topic.PermissionEvent{
-		NodeId:  "Qmc5VuY4Bys47oyJM1tPoN784ViNDYrh2vEQwGqZBMK5RX",
-		NodeUrl: "127.0.0.1:18002",
-	}
-	node.msgEvent.Publish(topic.EventPermissionNodeUpdate, pm)
-	node.node.updateWhiteList("127.0.0.1:18002")
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +64,6 @@ func TestWhiteListMode(t *testing.T) {
 	cfg1.LogLevel = "warn"
 	cfg1.WhiteList.Enable = true
 
-	node.node.boostrapAddrs = append(node.node.boostrapAddrs, cfg1.P2P.Listen+"/p2p/"+cfg1.P2P.ID.PeerID)
 	//start bootNode
 	setPovStatus(cc1, t)
 	//start1 node
@@ -83,6 +75,11 @@ func TestWhiteListMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pm := &topic.PermissionEvent{
+		NodeId:  node1.node.ID.Pretty(),
+		NodeUrl: "127.0.0.1:18002",
+	}
+	node.msgEvent.Publish(topic.EventPermissionNodeUpdate, pm)
 	//remove test file
 	defer func() {
 		err = node.Stop()
