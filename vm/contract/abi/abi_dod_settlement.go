@@ -378,10 +378,10 @@ func DoDSettleGetOrderIdListByAddress(ctx *vmstore.VMContext, address types.Addr
 	return userInfo.OrderIds, nil
 }
 
-func DodSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, order *DoDSettleOrderInfo, start, end int64) (*DoDSettleInvoiceOrder, error) {
-	invoiceOrder := new(DoDSettleInvoiceOrder)
+func DodSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, order *DoDSettleOrderInfo, start, end int64) (*DoDSettleInvoiceOrderDetail, error) {
+	invoiceOrder := new(DoDSettleInvoiceOrderDetail)
 	invoiceOrder.OrderId = order.OrderId
-	invoiceOrder.Connections = make([]*DoDSettleInvoiceConn, 0)
+	invoiceOrder.Connections = make([]*DoDSettleInvoiceConnDetail, 0)
 
 	for _, c := range order.Connections {
 		conn, _ := DoDSettleGetConnectionInfoByProductId(ctx, seller, c.ProductId)
@@ -389,7 +389,7 @@ func DodSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, orde
 			continue
 		}
 
-		ic := &DoDSettleInvoiceConn{
+		ic := &DoDSettleInvoiceConnDetail{
 			DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{
 				ProductId:      conn.ProductId,
 				SrcCompanyName: conn.SrcCompanyName,
@@ -406,7 +406,7 @@ func DodSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, orde
 			Usage: make([]*DoDSettleInvoiceConnDynamic, 0),
 		}
 
-		if conn.Active != nil && end > conn.Active.StartTime {
+		if conn.Active != nil && conn.Active.OrderId == order.OrderId && end > conn.Active.StartTime {
 			dc := &DoDSettleInvoiceConnDynamic{
 				DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
 					ConnectionName: conn.Active.ConnectionName,
@@ -441,8 +441,9 @@ func DodSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, orde
 		}
 
 		for _, done := range conn.Done {
-			if (start >= done.StartTime && start <= done.EndTime) || (end > done.StartTime && end < done.EndTime) ||
-				(start < done.StartTime && end > done.EndTime) {
+			if done.OrderId == order.OrderId && ((start >= done.StartTime && start <= done.EndTime) ||
+				(end > done.StartTime && end < done.EndTime) ||
+				(start < done.StartTime && end > done.EndTime)) {
 				dc := &DoDSettleInvoiceConnDynamic{
 					DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
 						ConnectionName: done.ConnectionName,
@@ -479,6 +480,7 @@ func DodSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, orde
 
 				ic.ConnectionAmount += dc.Amount
 				ic.Usage = append(ic.Usage, dc)
+				break
 			}
 		}
 
@@ -490,8 +492,108 @@ func DodSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, orde
 	return invoiceOrder, nil
 }
 
-func DodSettleGenerateInvoiceByOrder(ctx *vmstore.VMContext, seller types.Address, orderId string, start, end int64) (*DoDSettleInvoice, error) {
-	invoice := new(DoDSettleInvoice)
+func DodSettleGetProductInvoice(ctx *vmstore.VMContext, seller types.Address, conn *DoDSettleConnectionInfo, start, end int64) (*DoDSettleInvoiceConnDetail, error) {
+	invoiceProduct := &DoDSettleInvoiceConnDetail{
+		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{
+			ProductId:      conn.ProductId,
+			SrcCompanyName: conn.SrcCompanyName,
+			SrcRegion:      conn.SrcRegion,
+			SrcCity:        conn.SrcCity,
+			SrcDataCenter:  conn.SrcDataCenter,
+			SrcPort:        conn.SrcPort,
+			DstCompanyName: conn.DstCompanyName,
+			DstRegion:      conn.DstRegion,
+			DstCity:        conn.DstCity,
+			DstDataCenter:  conn.DstDataCenter,
+			DstPort:        conn.DstPort,
+		},
+		Usage: make([]*DoDSettleInvoiceConnDynamic, 0),
+	}
+
+	if conn.Active != nil && end > conn.Active.StartTime {
+		dc := &DoDSettleInvoiceConnDynamic{
+			DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
+				OrderId:        conn.Active.OrderId,
+				ConnectionName: conn.Active.ConnectionName,
+				PaymentType:    conn.Active.PaymentType,
+				BillingType:    conn.Active.BillingType,
+				Currency:       conn.Active.Currency,
+				ServiceClass:   conn.Active.ServiceClass,
+				Bandwidth:      conn.Active.Bandwidth,
+				BillingUnit:    conn.Active.BillingUnit,
+				Price:          conn.Active.Price,
+				StartTime:      conn.Active.StartTime,
+				EndTime:        conn.Active.EndTime,
+			},
+		}
+
+		if conn.Active.BillingType == DoDSettleBillingTypeDOD {
+			dc.Amount = conn.Active.Price
+		} else {
+			if start > conn.Active.StartTime {
+				dc.InvoiceStartTime = DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, start)
+			} else {
+				dc.InvoiceStartTime = conn.Active.StartTime
+			}
+
+			dc.InvoiceEndTime = DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, end)
+			dc.InvoiceUnitCount = DoDSettleCalcBillingUnit(conn.Active.BillingUnit, dc.InvoiceStartTime, dc.InvoiceEndTime)
+			dc.Amount = conn.Active.Price * float64(dc.InvoiceUnitCount)
+		}
+
+		invoiceProduct.ConnectionAmount += dc.Amount
+		invoiceProduct.Usage = append(invoiceProduct.Usage, dc)
+	}
+
+	for _, done := range conn.Done {
+		if (start >= done.StartTime && start <= done.EndTime) ||
+			(end > done.StartTime && end < done.EndTime) ||
+			(start < done.StartTime && end > done.EndTime) {
+			dc := &DoDSettleInvoiceConnDynamic{
+				DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
+					OrderId:        done.OrderId,
+					ConnectionName: done.ConnectionName,
+					PaymentType:    done.PaymentType,
+					BillingType:    done.BillingType,
+					Currency:       done.Currency,
+					ServiceClass:   done.ServiceClass,
+					Bandwidth:      done.Bandwidth,
+					BillingUnit:    done.BillingUnit,
+					Price:          done.Price,
+					StartTime:      done.StartTime,
+					EndTime:        done.EndTime,
+				},
+			}
+
+			if done.BillingType == DoDSettleBillingTypeDOD {
+				dc.Amount = done.Price
+			} else {
+				if start >= done.StartTime {
+					dc.InvoiceStartTime = DoDSettleBillingUnitRound(done.BillingUnit, done.StartTime, start)
+				} else {
+					dc.InvoiceStartTime = done.StartTime
+				}
+
+				if end < done.EndTime {
+					dc.InvoiceEndTime = DoDSettleBillingUnitRound(done.BillingUnit, done.StartTime, end)
+				} else {
+					dc.InvoiceEndTime = done.EndTime
+				}
+
+				dc.InvoiceUnitCount = DoDSettleCalcBillingUnit(done.BillingUnit, dc.InvoiceStartTime, dc.InvoiceEndTime)
+				dc.Amount = done.Price * float64(dc.InvoiceUnitCount)
+			}
+
+			invoiceProduct.ConnectionAmount += dc.Amount
+			invoiceProduct.Usage = append(invoiceProduct.Usage, dc)
+		}
+	}
+
+	return invoiceProduct, nil
+}
+
+func DodSettleGenerateInvoiceByOrder(ctx *vmstore.VMContext, seller types.Address, orderId string, start, end int64) (*DoDSettleOrderInvoice, error) {
+	invoice := new(DoDSettleOrderInvoice)
 
 	now := time.Now().Unix()
 	if start > end || start > now || end > now {
@@ -510,19 +612,52 @@ func DodSettleGenerateInvoiceByOrder(ctx *vmstore.VMContext, seller types.Addres
 
 	invoice.StartTime = start
 	invoice.EndTime = end
-	invoice.OrderCount = 1
 	invoice.Currency = order.Connections[0].Currency
 	invoice.Buyer = order.Buyer
 	invoice.Seller = order.Seller
 	invoice.TotalConnectionCount = invoiceOrder.ConnectionCount
 	invoice.TotalAmount = invoiceOrder.OrderAmount
-	invoice.Orders = []*DoDSettleInvoiceOrder{invoiceOrder}
+	invoice.Order = invoiceOrder
 
 	return invoice, nil
 }
 
-func DodSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types.Address, start, end int64) (*DoDSettleInvoice, error) {
-	invoice := new(DoDSettleInvoice)
+func DodSettleGenerateInvoiceByProduct(ctx *vmstore.VMContext, seller types.Address, productId string, start, end int64) (*DoDSettleProductInvoice, error) {
+	invoice := new(DoDSettleProductInvoice)
+
+	now := time.Now().Unix()
+	if start > end || start > now || end > now {
+		return nil, fmt.Errorf("invalid start or end time")
+	}
+
+	conn, err := DoDSettleGetConnectionInfoByProductId(ctx, seller, productId)
+	if err != nil {
+		return nil, err
+	}
+
+	order, err := DoDSettleGetOrderInfoByOrderId(ctx, seller, conn.Track[0].OrderId)
+	if err != nil {
+		return nil, err
+	}
+
+	productOrder, err := DodSettleGetProductInvoice(ctx, seller, conn, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	invoice.StartTime = start
+	invoice.EndTime = end
+	invoice.Currency = order.Connections[0].Currency
+	invoice.Buyer = order.Buyer
+	invoice.Seller = order.Seller
+	invoice.TotalAmount = productOrder.ConnectionAmount
+	invoice.Connection = productOrder
+
+	return invoice, nil
+}
+
+func DodSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types.Address, start, end int64) (*DoDSettleBuyerInvoice, error) {
+	invoice := new(DoDSettleBuyerInvoice)
 
 	now := time.Now().Unix()
 	if start > end || start > now || end > now {
@@ -531,7 +666,7 @@ func DodSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types
 
 	invoice.StartTime = start
 	invoice.EndTime = end
-	invoice.Orders = make([]*DoDSettleInvoiceOrder, 0)
+	invoice.Orders = make([]*DoDSettleInvoiceOrderDetail, 0)
 
 	orders, err := DoDSettleGetOrderIdListByAddress(ctx, buyer)
 	if err != nil {
@@ -544,7 +679,7 @@ func DodSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types
 			return nil, err
 		}
 
-		if order.OrderType != DoDSettleOrderTypeCreate {
+		if order.OrderType == DoDSettleOrderTypeTerminate {
 			continue
 		}
 

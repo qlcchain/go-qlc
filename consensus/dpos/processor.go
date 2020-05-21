@@ -67,25 +67,26 @@ func newProcessors(num int) []*Processor {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		p := &Processor{
-			index:              i,
-			quitCh:             make(chan bool, 1),
-			blocks:             make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
-			blocksAcked:        make(chan types.Hash, common.DPoSMaxBlocks),
-			tokenCreate:        make(chan types.Hash, 1024),
-			publishBlock:       make(chan types.Hash, common.DPoSMaxBlocks),
-			syncBlock:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncAcked:          make(chan types.Hash, common.DPoSMaxBlocks),
-			acks:               make(chan *voteInfo, common.DPoSMaxBlocks),
-			frontiers:          make(chan *types.StateBlock, common.DPoSMaxBlocks),
-			syncStateChange:    make(chan topic.SyncState, 1),
-			syncState:          topic.SyncNotStart,
-			orderedChain:       new(sync.Map),
-			chainHeight:        new(sync.Map),
-			confirmedChain:     make(map[types.Hash]bool),
-			confirmParallelNum: ConfirmChainParallelNum,
-			ctx:                ctx,
-			cancel:             cancel,
-			exited:             make(chan struct{}, 1),
+			index:                i,
+			quitCh:               make(chan bool, 1),
+			blocks:               make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
+			blocksAcked:          make(chan types.Hash, common.DPoSMaxBlocks),
+			tokenCreate:          make(chan types.Hash, 1024),
+			publishBlock:         make(chan types.Hash, common.DPoSMaxBlocks),
+			dodSettleStateChange: make(chan types.Hash, common.DPoSMaxBlocks),
+			syncBlock:            make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncAcked:            make(chan types.Hash, common.DPoSMaxBlocks),
+			acks:                 make(chan *voteInfo, common.DPoSMaxBlocks),
+			frontiers:            make(chan *types.StateBlock, common.DPoSMaxBlocks),
+			syncStateChange:      make(chan topic.SyncState, 1),
+			syncState:            topic.SyncNotStart,
+			orderedChain:         new(sync.Map),
+			chainHeight:          new(sync.Map),
+			confirmedChain:       make(map[types.Hash]bool),
+			confirmParallelNum:   ConfirmChainParallelNum,
+			ctx:                  ctx,
+			cancel:               cancel,
+			exited:               make(chan struct{}, 1),
 		}
 		processors = append(processors, p)
 	}
@@ -783,7 +784,7 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 				if !internalId.IsZero() {
 					dps.logger.Infof("add gap dod settle state[%s][%s]", bs.Block.GetHash(), internalId)
 					err := dps.ledger.AddGapDoDSettleStateBlock(internalId, bs.Block, bs.BlockFrom)
-					if err != nil {
+					if err != nil && err != ledger.ErrUncheckedBlockExists {
 						dps.logger.Errorf("add gap dod settle state block to ledger err %s", err)
 					}
 				}
@@ -912,7 +913,6 @@ func (p *Processor) dequeueGapToken(hash types.Hash) {
 				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindTokenInfo", err, blkToken.GetHash())
 			}
 		}
-		return
 	}
 }
 
@@ -964,29 +964,46 @@ func (p *Processor) dequeueGapDoDSettleState(hash types.Hash) {
 		return
 	}
 
-	input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
-	if err != nil {
-		dps.logger.Errorf("get block link error [%s]", hash)
-		return
+	var internalId types.Hash
+
+	if blk.Type == types.ContractSend {
+		param := new(cabi.DoDSettleUpdateOrderInfoParam)
+		err := param.FromABI(blk.GetPayload())
+		if err != nil {
+			dps.logger.Errorf("unpack data err %s", err)
+			return
+		}
+
+		internalId = param.InternalId
+	} else {
+		input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
+		if err != nil {
+			dps.logger.Errorf("get block link error [%s]", hash)
+			return
+		}
+
+		internalId = input.Previous
 	}
 
-	internalId := input.Previous
-	if block, bf, _ := dps.ledger.GetGapDoDSettleStateBlock(internalId); block != nil {
+	if err = dps.ledger.GetGapDoDSettleStateBlock(internalId, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		if dps.getProcessorIndex(block.Address) == p.index {
 			dps.logger.Debugf("dequeue gap dod settle state internal id[%s] block[%s]", internalId, block.GetHash())
 			bs := &consensus.BlockSource{
 				Block:     block,
-				BlockFrom: bf,
+				BlockFrom: sync,
 			}
 
 			p.processUncheckedBlock(bs)
 
-			err := dps.ledger.DeleteGapDoDSettleStateBlock(internalId)
+			blkHash := block.GetHash()
+			err := dps.ledger.DeleteGapDoDSettleStateBlock(internalId, blkHash)
 			if err != nil {
-				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete GapDoDSettleStateBlock", err, block.GetHash())
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete GapDoDSettleStateBlock", err, blkHash)
 			}
 		}
-		return
+		return nil
+	}); err != nil {
+		dps.logger.Errorf("dequeue gap dod settle publish err %s", err)
 	}
 }
 

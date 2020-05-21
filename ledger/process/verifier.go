@@ -81,6 +81,8 @@ func (r ProcessResult) String() string {
 		return "GapPublish"
 	case GapPovHeight:
 		return "GapPovHeight"
+	case GapDoDSettleState:
+		return "GapDoDSettleState"
 	case BalanceMismatch:
 		return "BalanceMismatch"
 	case UnReceivable:

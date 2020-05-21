@@ -30,8 +30,8 @@ type UncheckedBlockStore interface {
 	GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error
 
 	AddGapDoDSettleStateBlock(key types.Hash, block *types.StateBlock, sync types.SynchronizedKind) error
-	GetGapDoDSettleStateBlock(key types.Hash) (*types.StateBlock, types.SynchronizedKind, error)
-	DeleteGapDoDSettleStateBlock(key types.Hash) error
+	GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error
+	DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error
 }
 
 func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) storage.KeyPrefix {
@@ -297,6 +297,14 @@ func (l *Ledger) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockW
 		if err := u.Deserialize(val); err != nil {
 			return fmt.Errorf("uncheck deserialize err: %s", err)
 		}
+
+		if u.Block.IsPrivate() {
+			pl, err := l.GetBlockPrivatePayload(u.Block.GetHash())
+			if err == nil {
+				u.Block.SetPrivatePayload(pl)
+			}
+		}
+
 		err = visit(u.Block, u.Kind)
 		if err != nil {
 			errStr = append(errStr, err.Error())
@@ -315,7 +323,7 @@ func (l *Ledger) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockW
 }
 
 func (l *Ledger) AddGapDoDSettleStateBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error {
-	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key)
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key, blk.GetHash())
 	if err != nil {
 		return err
 	}
@@ -334,37 +342,46 @@ func (l *Ledger) AddGapDoDSettleStateBlock(key types.Hash, blk *types.StateBlock
 	return l.store.Put(k, v)
 }
 
-func (l *Ledger) GetGapDoDSettleStateBlock(key types.Hash) (*types.StateBlock, types.SynchronizedKind, error) {
+func (l *Ledger) GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key)
 	if err != nil {
-		return nil, 0, err
+		return err
 	}
 
-	v, err := l.store.Get(k)
+	errStr := make([]string, 0)
+	err = l.store.Iterator(k, nil, func(key []byte, val []byte) error {
+		u := new(types.Unchecked)
+		if err := u.Deserialize(val); err != nil {
+			return fmt.Errorf("uncheck deserialize err: %s", err)
+		}
+
+		if u.Block.IsPrivate() {
+			pl, err := l.GetBlockPrivatePayload(u.Block.GetHash())
+			if err == nil {
+				u.Block.SetPrivatePayload(pl)
+			}
+		}
+
+		err = visit(u.Block, u.Kind)
+		if err != nil {
+			errStr = append(errStr, err.Error())
+			return nil
+		}
+
+		return nil
+	})
 	if err != nil {
-		if err == storage.KeyNotFound {
-			return nil, 0, ErrUncheckedBlockNotFound
-		}
-		return nil, 0, err
+		return err
+	}
+	if len(errStr) != 0 {
+		return errors.New(strings.Join(errStr, ", "))
 	}
 
-	value := new(types.Unchecked)
-	if err := value.Deserialize(v); err != nil {
-		return nil, 0, fmt.Errorf("uncheck deserialize error: %s", err)
-	}
-
-	if value.Block.IsPrivate() {
-		pl, err := l.GetBlockPrivatePayload(value.Block.GetHash())
-		if err == nil {
-			value.Block.SetPrivatePayload(pl)
-		}
-	}
-
-	return value.Block, value.Kind, nil
+	return nil
 }
 
-func (l *Ledger) DeleteGapDoDSettleStateBlock(key types.Hash) error {
-	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key)
+func (l *Ledger) DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key, blkHash)
 	if err != nil {
 		return err
 	}

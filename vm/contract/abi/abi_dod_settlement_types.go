@@ -2,6 +2,7 @@ package abi
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 
 	"github.com/qlcchain/go-qlc/common/types"
 )
@@ -115,14 +116,14 @@ type DoDSettleInternalIdWrap struct {
 }
 
 type DoDSettleUserInfos struct {
-	InternalIds []*DoDSettleInternalIdWrap `json:"internalIds" msg:"i"`
-	ProductIds  []*DoDSettleProduct        `json:"productIds" msg:"p"`
-	OrderIds    []*DoDSettleOrder          `json:"orderIds" msg:"o"`
+	InternalIds []*DoDSettleInternalIdWrap `json:"internalIds,omitempty" msg:"i"`
+	ProductIds  []*DoDSettleProduct        `json:"productIds,omitempty" msg:"p"`
+	OrderIds    []*DoDSettleOrder          `json:"orderIds,omitempty" msg:"o"`
 }
 
 type DoDSettleProduct struct {
 	Seller    types.Address `json:"seller" msg:"s,extension"`
-	ProductId string        `json:"productId" msg:"p"`
+	ProductId string        `json:"productId,omitempty" msg:"p"`
 }
 
 func (z *DoDSettleProduct) Hash() types.Hash {
@@ -132,7 +133,7 @@ func (z *DoDSettleProduct) Hash() types.Hash {
 
 type DoDSettleOrder struct {
 	Seller  types.Address `json:"seller" msg:"s,extension"`
-	OrderId string        `json:"orderId" msg:"o"`
+	OrderId string        `json:"orderId,omitempty" msg:"o"`
 }
 
 func (z *DoDSettleOrder) Hash() types.Hash {
@@ -143,7 +144,8 @@ func (z *DoDSettleOrder) Hash() types.Hash {
 type DoDSettleCreateOrderParam struct {
 	Buyer       *DoDSettleUser              `json:"buyer" msg:"b"`
 	Seller      *DoDSettleUser              `json:"seller" msg:"s"`
-	Connections []*DoDSettleConnectionParam `json:"connections" msg:"c"`
+	QuoteId     string                      `json:"quoteId,omitempty" msg:"q"`
+	Connections []*DoDSettleConnectionParam `json:"connections,omitempty" msg:"c"`
 }
 
 func (z *DoDSettleCreateOrderParam) ToABI() ([]byte, error) {
@@ -166,6 +168,24 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 		return fmt.Errorf("invalid param")
 	}
 
+	quoteItemIdMap := make(map[string]struct{})
+	for _, c := range z.Connections {
+		if _, ok := quoteItemIdMap[c.QuoteItemId]; ok {
+			return fmt.Errorf("duplicate quote item id")
+		} else {
+			quoteItemIdMap[c.QuoteItemId] = struct{}{}
+		}
+	}
+
+	productItemIdMap := make(map[string]struct{})
+	for _, c := range z.Connections {
+		if _, ok := productItemIdMap[c.ItemId]; ok {
+			return fmt.Errorf("duplicate product item id")
+		} else {
+			productItemIdMap[c.ItemId] = struct{}{}
+		}
+	}
+
 	return nil
 }
 
@@ -175,37 +195,40 @@ type DoDSettleConnectionParam struct {
 }
 
 type DoDSettleConnectionStaticParam struct {
-	ProductId      string `json:"productId" msg:"pi"`
-	SrcCompanyName string `json:"srcCompanyName" msg:"scn"`
-	SrcRegion      string `json:"srcRegion" msg:"sr"`
-	SrcCity        string `json:"srcCity" msg:"sc"`
-	SrcDataCenter  string `json:"srcDataCenter" msg:"sdc"`
-	SrcPort        string `json:"srcPort" msg:"sp"`
-	DstCompanyName string `json:"dstCompanyName" msg:"dcn"`
-	DstRegion      string `json:"dstRegion" msg:"dr"`
-	DstCity        string `json:"dstCity" msg:"dc"`
-	DstDataCenter  string `json:"dstDataCenter" msg:"ddc"`
-	DstPort        string `json:"dstPort" msg:"dp"`
+	ItemId         string `json:"itemId,omitempty" msg:"ii"`
+	ProductId      string `json:"productId,omitempty" msg:"pi"`
+	SrcCompanyName string `json:"srcCompanyName,omitempty" msg:"scn"`
+	SrcRegion      string `json:"srcRegion,omitempty" msg:"sr"`
+	SrcCity        string `json:"srcCity,omitempty" msg:"sc"`
+	SrcDataCenter  string `json:"srcDataCenter,omitempty" msg:"sdc"`
+	SrcPort        string `json:"srcPort,omitempty" msg:"sp"`
+	DstCompanyName string `json:"dstCompanyName,omitempty" msg:"dcn"`
+	DstRegion      string `json:"dstRegion,omitempty" msg:"dr"`
+	DstCity        string `json:"dstCity,omitempty" msg:"dc"`
+	DstDataCenter  string `json:"dstDataCenter,omitempty" msg:"ddc"`
+	DstPort        string `json:"dstPort,omitempty" msg:"dp"`
 }
 
 type DoDSettleConnectionDynamicParam struct {
-	ConnectionName string                `json:"connectionName" msg:"cn"`
-	PaymentType    DoDSettlePaymentType  `json:"paymentType" msg:"pt"`
-	BillingType    DoDSettleBillingType  `json:"billingType" msg:"bt"`
-	Currency       string                `json:"currency" msg:"cr"`
-	ServiceClass   DoDSettleServiceClass `json:"serviceClass" msg:"scs"`
-	Bandwidth      string                `json:"bandwidth" msg:"bw"`
-	BillingUnit    DoDSettleBillingUnit  `json:"billingUnit" msg:"bu"`
-	Price          float64               `json:"price" msg:"p"`
+	OrderId        string                `json:"orderId,omitempty" msg:"oi"`
+	QuoteItemId    string                `json:"quoteItemId,omitempty" msg:"qi"`
+	ConnectionName string                `json:"connectionName,omitempty" msg:"cn"`
+	PaymentType    DoDSettlePaymentType  `json:"paymentType,omitempty" msg:"pt"`
+	BillingType    DoDSettleBillingType  `json:"billingType,omitempty" msg:"bt"`
+	Currency       string                `json:"currency,omitempty" msg:"cr"`
+	ServiceClass   DoDSettleServiceClass `json:"serviceClass,omitempty" msg:"scs"`
+	Bandwidth      string                `json:"bandwidth,omitempty" msg:"bw"`
+	BillingUnit    DoDSettleBillingUnit  `json:"billingUnit,omitempty" msg:"bu"`
+	Price          float64               `json:"price,omitempty" msg:"p"`
 	StartTime      int64                 `json:"startTime" msg:"st"`
 	EndTime        int64                 `json:"endTime" msg:"et"`
 }
 
 type DoDSettleConnectionLifeTrack struct {
-	OrderType DoDSettleOrderType               `json:"orderType" msg:"ot"`
-	OrderId   string                           `json:"orderId" msg:"oi"`
-	Time      int64                            `json:"time" msg:"t"`
-	Changed   *DoDSettleConnectionDynamicParam `json:"changed" msg:"c"`
+	OrderType DoDSettleOrderType               `json:"orderType,omitempty" msg:"ot"`
+	OrderId   string                           `json:"orderId,omitempty" msg:"oi"`
+	Time      int64                            `json:"time,omitempty" msg:"t"`
+	Changed   *DoDSettleConnectionDynamicParam `json:"changed,omitempty" msg:"c"`
 }
 
 type DoDSettleConnectionInfo struct {
@@ -218,7 +241,7 @@ type DoDSettleConnectionInfo struct {
 type DoDSettleOrderLifeTrack struct {
 	ContractState DoDSettleContractState `json:"contractState" msg:"cs"`
 	OrderState    DoDSettleOrderState    `json:"orderState" msg:"os"`
-	Reason        string                 `json:"reason" msg:"r"`
+	Reason        string                 `json:"reason,omitempty" msg:"r"`
 	Time          int64                  `json:"time" msg:"t"`
 	Hash          types.Hash             `json:"hash" msg:"h,extension"`
 }
@@ -226,8 +249,9 @@ type DoDSettleOrderLifeTrack struct {
 type DoDSettleOrderInfo struct {
 	Buyer         *DoDSettleUser              `json:"buyer" msg:"b"`
 	Seller        *DoDSettleUser              `json:"seller" msg:"s"`
-	OrderId       string                      `json:"orderId" msg:"oi"`
-	OrderType     DoDSettleOrderType          `json:"orderType" msg:"ot"`
+	OrderId       string                      `json:"orderId,omitempty" msg:"oi"`
+	QuoteId       string                      `json:"quoteId,omitempty" msg:"qi"`
+	OrderType     DoDSettleOrderType          `json:"orderType,omitempty" msg:"ot"`
 	OrderState    DoDSettleOrderState         `json:"orderState" msg:"os"`
 	ContractState DoDSettleContractState      `json:"contractState" msg:"cs"`
 	Connections   []*DoDSettleConnectionParam `json:"connections" msg:"c"`
@@ -243,13 +267,18 @@ func NewOrderInfo() *DoDSettleOrderInfo {
 	return oi
 }
 
+type DoDSettleProductItem struct {
+	ProductId string `json:"productId" msg:"p"`
+	ItemId    string `json:"itemId" msg:"i"`
+}
+
 type DoDSettleUpdateOrderInfoParam struct {
-	Buyer      types.Address       `json:"buyer" msg:"-"`
-	InternalId types.Hash          `json:"internalId" msg:"i,extension"`
-	OrderId    string              `json:"orderId" msg:"oi"`
-	ProductId  []string            `json:"productId" msg:"pi"`
-	Status     DoDSettleOrderState `json:"status" msg:"s"`
-	FailReason string              `json:"failReason" msg:"fr"`
+	Buyer      types.Address           `json:"buyer" msg:"-"`
+	InternalId types.Hash              `json:"internalId,omitempty" msg:"i,extension"`
+	OrderId    string                  `json:"orderId,omitempty" msg:"oi"`
+	ProductIds []*DoDSettleProductItem `json:"productIds" msg:"pis"`
+	Status     DoDSettleOrderState     `json:"status,omitempty" msg:"s"`
+	FailReason string                  `json:"failReason,omitempty" msg:"fr"`
 }
 
 func (z *DoDSettleUpdateOrderInfoParam) ToABI() ([]byte, error) {
@@ -267,22 +296,59 @@ func (z *DoDSettleUpdateOrderInfoParam) FromABI(data []byte) error {
 	return err
 }
 
-func (z *DoDSettleUpdateOrderInfoParam) Verify() error {
-	if z.ProductId == nil {
+func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
+	if z.ProductIds == nil {
 		return fmt.Errorf("no product")
+	}
+
+	if z.InternalId.IsZero() {
+		return fmt.Errorf("invalid internal id")
+	}
+
+	order, err := DoDSettleGetOrderInfoByInternalId(ctx, z.InternalId)
+	if err != nil {
+		return err
+	}
+
+	productIdMap := make(map[string]struct{})
+	for _, p := range z.ProductIds {
+		if _, ok := productIdMap[p.ItemId]; ok {
+			return fmt.Errorf("duplicate product id")
+		} else {
+			productIdMap[p.ItemId] = struct{}{}
+		}
+	}
+
+	if order.OrderType == DoDSettleOrderTypeCreate {
+		for _, c := range order.Connections {
+			found := false
+
+			for _, p := range z.ProductIds {
+				if c.ItemId == p.ItemId {
+					found = true
+					break
+				}
+			}
+
+			if found == false {
+				return fmt.Errorf("not enough products")
+			}
+		}
 	}
 
 	return nil
 }
 
 type DoDSettleChangeConnectionParam struct {
-	ProductId string `json:"productId" msg:"o"`
+	ProductId   string `json:"productId" msg:"p"`
+	QuoteItemId string `json:"quoteItemId" msg:"q"`
 	DoDSettleConnectionDynamicParam
 }
 
 type DoDSettleChangeOrderParam struct {
 	Buyer       *DoDSettleUser                    `json:"buyer" msg:"b"`
 	Seller      *DoDSettleUser                    `json:"seller" msg:"s"`
+	QuoteId     string                            `json:"quoteId" msg:"q"`
 	Connections []*DoDSettleChangeConnectionParam `json:"connections" msg:"c"`
 }
 
@@ -302,6 +368,19 @@ func (z *DoDSettleChangeOrderParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleChangeOrderParam) Verify() error {
+	if z.Buyer == nil || z.Seller == nil || z.Connections == nil {
+		return fmt.Errorf("invalid param")
+	}
+
+	quoteItemIdMap := make(map[string]struct{})
+	for _, c := range z.Connections {
+		if _, ok := quoteItemIdMap[c.QuoteItemId]; ok {
+			return fmt.Errorf("duplicate quote item id")
+		} else {
+			quoteItemIdMap[c.QuoteItemId] = struct{}{}
+		}
+	}
+
 	return nil
 }
 
@@ -340,9 +419,9 @@ func (z *DoDSettleTerminateOrderParam) Verify() error {
 }
 
 type DoDSettleResourceReadyParam struct {
-	Address   types.Address `json:"address" msg:"-"`
-	OrderId   string        `json:"orderId" msg:"o"`
-	ProductId []string      `json:"productId" msg:"p"`
+	Address    types.Address `json:"address" msg:"-"`
+	InternalId types.Hash    `json:"internalId" msg:"i,extension"`
+	ProductId  []string      `json:"productId" msg:"p"`
 }
 
 func (z *DoDSettleResourceReadyParam) ToABI() ([]byte, error) {
@@ -372,29 +451,50 @@ type DoDSettleInvoiceConnDynamic struct {
 	Amount           float64 `json:"amount"`
 }
 
-type DoDSettleInvoiceConn struct {
+type DoDSettleInvoiceConnDetail struct {
 	ConnectionAmount float64 `json:"connectionAmount"`
 	DoDSettleConnectionStaticParam
 	Usage []*DoDSettleInvoiceConnDynamic `json:"usage"`
 }
 
-type DoDSettleInvoiceOrder struct {
-	OrderId         string                  `json:"orderId"`
-	ConnectionCount int                     `json:"connectionCount"`
-	OrderAmount     float64                 `json:"orderAmount"`
-	Connections     []*DoDSettleInvoiceConn `json:"connections"`
+type DoDSettleInvoiceOrderDetail struct {
+	OrderId         string                        `json:"orderId"`
+	ConnectionCount int                           `json:"connectionCount"`
+	OrderAmount     float64                       `json:"orderAmount"`
+	Connections     []*DoDSettleInvoiceConnDetail `json:"connections"`
 }
 
-type DoDSettleInvoice struct {
-	OrderCount           int                      `json:"orderCount"`
-	TotalConnectionCount int                      `json:"totalConnectionCount"`
-	TotalAmount          float64                  `json:"totalAmount"`
-	Currency             string                   `json:"currency"`
-	StartTime            int64                    `json:"startTime"`
-	EndTime              int64                    `json:"endTime"`
-	Buyer                *DoDSettleUser           `json:"buyer"`
-	Seller               *DoDSettleUser           `json:"seller"`
-	Orders               []*DoDSettleInvoiceOrder `json:"orders"`
+type DoDSettleOrderInvoice struct {
+	TotalConnectionCount int                          `json:"totalConnectionCount"`
+	TotalAmount          float64                      `json:"totalAmount"`
+	Currency             string                       `json:"currency"`
+	StartTime            int64                        `json:"startTime"`
+	EndTime              int64                        `json:"endTime"`
+	Buyer                *DoDSettleUser               `json:"buyer"`
+	Seller               *DoDSettleUser               `json:"seller"`
+	Order                *DoDSettleInvoiceOrderDetail `json:"order"`
+}
+
+type DoDSettleBuyerInvoice struct {
+	OrderCount           int                            `json:"orderCount"`
+	TotalConnectionCount int                            `json:"totalConnectionCount"`
+	TotalAmount          float64                        `json:"totalAmount"`
+	Currency             string                         `json:"currency"`
+	StartTime            int64                          `json:"startTime"`
+	EndTime              int64                          `json:"endTime"`
+	Buyer                *DoDSettleUser                 `json:"buyer"`
+	Seller               *DoDSettleUser                 `json:"seller"`
+	Orders               []*DoDSettleInvoiceOrderDetail `json:"orders"`
+}
+
+type DoDSettleProductInvoice struct {
+	TotalAmount float64                     `json:"totalAmount"`
+	Currency    string                      `json:"currency"`
+	StartTime   int64                       `json:"startTime"`
+	EndTime     int64                       `json:"endTime"`
+	Buyer       *DoDSettleUser              `json:"buyer"`
+	Seller      *DoDSettleUser              `json:"seller"`
+	Connection  *DoDSettleInvoiceConnDetail `json:"connection"`
 }
 
 type DoDSettleConnectionActive struct {

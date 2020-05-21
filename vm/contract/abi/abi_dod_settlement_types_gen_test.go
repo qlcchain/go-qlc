@@ -9,6 +9,119 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
+func TestMarshalUnmarshalDoDSettleBuyerInvoice(t *testing.T) {
+	v := DoDSettleBuyerInvoice{}
+	bts, err := v.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+}
+
+func BenchmarkMarshalMsgDoDSettleBuyerInvoice(b *testing.B) {
+	v := DoDSettleBuyerInvoice{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.MarshalMsg(nil)
+	}
+}
+
+func BenchmarkAppendMsgDoDSettleBuyerInvoice(b *testing.B) {
+	v := DoDSettleBuyerInvoice{}
+	bts := make([]byte, 0, v.Msgsize())
+	bts, _ = v.MarshalMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bts, _ = v.MarshalMsg(bts[0:0])
+	}
+}
+
+func BenchmarkUnmarshalDoDSettleBuyerInvoice(b *testing.B) {
+	v := DoDSettleBuyerInvoice{}
+	bts, _ := v.MarshalMsg(nil)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(bts)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := v.UnmarshalMsg(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestEncodeDecodeDoDSettleBuyerInvoice(t *testing.T) {
+	v := DoDSettleBuyerInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+
+	m := v.Msgsize()
+	if buf.Len() > m {
+		t.Log("WARNING: TestEncodeDecodeDoDSettleBuyerInvoice Msgsize() is inaccurate")
+	}
+
+	vn := DoDSettleBuyerInvoice{}
+	err := msgp.Decode(&buf, &vn)
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf.Reset()
+	msgp.Encode(&buf, &v)
+	err = msgp.NewReader(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEncodeDoDSettleBuyerInvoice(b *testing.B) {
+	v := DoDSettleBuyerInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.EncodeMsg(en)
+	}
+	en.Flush()
+}
+
+func BenchmarkDecodeDoDSettleBuyerInvoice(b *testing.B) {
+	v := DoDSettleBuyerInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes(), b)
+	dc := msgp.NewReader(rd)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := v.DecodeMsg(dc)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestMarshalUnmarshalDoDSettleChangeConnectionParam(t *testing.T) {
 	v := DoDSettleChangeConnectionParam{}
 	bts, err := v.MarshalMsg(nil)
@@ -1139,8 +1252,8 @@ func BenchmarkDecodeDoDSettleInternalIdWrap(b *testing.B) {
 	}
 }
 
-func TestMarshalUnmarshalDoDSettleInvoice(t *testing.T) {
-	v := DoDSettleInvoice{}
+func TestMarshalUnmarshalDoDSettleInvoiceConnDetail(t *testing.T) {
+	v := DoDSettleInvoiceConnDetail{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -1162,8 +1275,8 @@ func TestMarshalUnmarshalDoDSettleInvoice(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgDoDSettleInvoice(b *testing.B) {
-	v := DoDSettleInvoice{}
+func BenchmarkMarshalMsgDoDSettleInvoiceConnDetail(b *testing.B) {
+	v := DoDSettleInvoiceConnDetail{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -1171,8 +1284,8 @@ func BenchmarkMarshalMsgDoDSettleInvoice(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgDoDSettleInvoice(b *testing.B) {
-	v := DoDSettleInvoice{}
+func BenchmarkAppendMsgDoDSettleInvoiceConnDetail(b *testing.B) {
+	v := DoDSettleInvoiceConnDetail{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -1183,8 +1296,8 @@ func BenchmarkAppendMsgDoDSettleInvoice(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalDoDSettleInvoice(b *testing.B) {
-	v := DoDSettleInvoice{}
+func BenchmarkUnmarshalDoDSettleInvoiceConnDetail(b *testing.B) {
+	v := DoDSettleInvoiceConnDetail{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -1197,17 +1310,17 @@ func BenchmarkUnmarshalDoDSettleInvoice(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeDoDSettleInvoice(t *testing.T) {
-	v := DoDSettleInvoice{}
+func TestEncodeDecodeDoDSettleInvoiceConnDetail(t *testing.T) {
+	v := DoDSettleInvoiceConnDetail{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeDoDSettleInvoice Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeDoDSettleInvoiceConnDetail Msgsize() is inaccurate")
 	}
 
-	vn := DoDSettleInvoice{}
+	vn := DoDSettleInvoiceConnDetail{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -1221,8 +1334,8 @@ func TestEncodeDecodeDoDSettleInvoice(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeDoDSettleInvoice(b *testing.B) {
-	v := DoDSettleInvoice{}
+func BenchmarkEncodeDoDSettleInvoiceConnDetail(b *testing.B) {
+	v := DoDSettleInvoiceConnDetail{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -1235,121 +1348,8 @@ func BenchmarkEncodeDoDSettleInvoice(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeDoDSettleInvoice(b *testing.B) {
-	v := DoDSettleInvoice{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-	b.SetBytes(int64(buf.Len()))
-	rd := msgp.NewEndlessReader(buf.Bytes(), b)
-	dc := msgp.NewReader(rd)
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err := v.DecodeMsg(dc)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func TestMarshalUnmarshalDoDSettleInvoiceConn(t *testing.T) {
-	v := DoDSettleInvoiceConn{}
-	bts, err := v.MarshalMsg(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	left, err := v.UnmarshalMsg(bts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(left) > 0 {
-		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
-	}
-
-	left, err = msgp.Skip(bts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(left) > 0 {
-		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
-	}
-}
-
-func BenchmarkMarshalMsgDoDSettleInvoiceConn(b *testing.B) {
-	v := DoDSettleInvoiceConn{}
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		v.MarshalMsg(nil)
-	}
-}
-
-func BenchmarkAppendMsgDoDSettleInvoiceConn(b *testing.B) {
-	v := DoDSettleInvoiceConn{}
-	bts := make([]byte, 0, v.Msgsize())
-	bts, _ = v.MarshalMsg(bts[0:0])
-	b.SetBytes(int64(len(bts)))
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bts, _ = v.MarshalMsg(bts[0:0])
-	}
-}
-
-func BenchmarkUnmarshalDoDSettleInvoiceConn(b *testing.B) {
-	v := DoDSettleInvoiceConn{}
-	bts, _ := v.MarshalMsg(nil)
-	b.ReportAllocs()
-	b.SetBytes(int64(len(bts)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := v.UnmarshalMsg(bts)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func TestEncodeDecodeDoDSettleInvoiceConn(t *testing.T) {
-	v := DoDSettleInvoiceConn{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-
-	m := v.Msgsize()
-	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeDoDSettleInvoiceConn Msgsize() is inaccurate")
-	}
-
-	vn := DoDSettleInvoiceConn{}
-	err := msgp.Decode(&buf, &vn)
-	if err != nil {
-		t.Error(err)
-	}
-
-	buf.Reset()
-	msgp.Encode(&buf, &v)
-	err = msgp.NewReader(&buf).Skip()
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-func BenchmarkEncodeDoDSettleInvoiceConn(b *testing.B) {
-	v := DoDSettleInvoiceConn{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-	b.SetBytes(int64(buf.Len()))
-	en := msgp.NewWriter(msgp.Nowhere)
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		v.EncodeMsg(en)
-	}
-	en.Flush()
-}
-
-func BenchmarkDecodeDoDSettleInvoiceConn(b *testing.B) {
-	v := DoDSettleInvoiceConn{}
+func BenchmarkDecodeDoDSettleInvoiceConnDetail(b *testing.B) {
+	v := DoDSettleInvoiceConnDetail{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -1478,8 +1478,8 @@ func BenchmarkDecodeDoDSettleInvoiceConnDynamic(b *testing.B) {
 	}
 }
 
-func TestMarshalUnmarshalDoDSettleInvoiceOrder(t *testing.T) {
-	v := DoDSettleInvoiceOrder{}
+func TestMarshalUnmarshalDoDSettleInvoiceOrderDetail(t *testing.T) {
+	v := DoDSettleInvoiceOrderDetail{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -1501,8 +1501,8 @@ func TestMarshalUnmarshalDoDSettleInvoiceOrder(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgDoDSettleInvoiceOrder(b *testing.B) {
-	v := DoDSettleInvoiceOrder{}
+func BenchmarkMarshalMsgDoDSettleInvoiceOrderDetail(b *testing.B) {
+	v := DoDSettleInvoiceOrderDetail{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -1510,8 +1510,8 @@ func BenchmarkMarshalMsgDoDSettleInvoiceOrder(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgDoDSettleInvoiceOrder(b *testing.B) {
-	v := DoDSettleInvoiceOrder{}
+func BenchmarkAppendMsgDoDSettleInvoiceOrderDetail(b *testing.B) {
+	v := DoDSettleInvoiceOrderDetail{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -1522,8 +1522,8 @@ func BenchmarkAppendMsgDoDSettleInvoiceOrder(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalDoDSettleInvoiceOrder(b *testing.B) {
-	v := DoDSettleInvoiceOrder{}
+func BenchmarkUnmarshalDoDSettleInvoiceOrderDetail(b *testing.B) {
+	v := DoDSettleInvoiceOrderDetail{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -1536,17 +1536,17 @@ func BenchmarkUnmarshalDoDSettleInvoiceOrder(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeDoDSettleInvoiceOrder(t *testing.T) {
-	v := DoDSettleInvoiceOrder{}
+func TestEncodeDecodeDoDSettleInvoiceOrderDetail(t *testing.T) {
+	v := DoDSettleInvoiceOrderDetail{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeDoDSettleInvoiceOrder Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeDoDSettleInvoiceOrderDetail Msgsize() is inaccurate")
 	}
 
-	vn := DoDSettleInvoiceOrder{}
+	vn := DoDSettleInvoiceOrderDetail{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -1560,8 +1560,8 @@ func TestEncodeDecodeDoDSettleInvoiceOrder(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeDoDSettleInvoiceOrder(b *testing.B) {
-	v := DoDSettleInvoiceOrder{}
+func BenchmarkEncodeDoDSettleInvoiceOrderDetail(b *testing.B) {
+	v := DoDSettleInvoiceOrderDetail{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -1574,8 +1574,8 @@ func BenchmarkEncodeDoDSettleInvoiceOrder(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeDoDSettleInvoiceOrder(b *testing.B) {
-	v := DoDSettleInvoiceOrder{}
+func BenchmarkDecodeDoDSettleInvoiceOrderDetail(b *testing.B) {
+	v := DoDSettleInvoiceOrderDetail{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -1817,6 +1817,119 @@ func BenchmarkDecodeDoDSettleOrderInfo(b *testing.B) {
 	}
 }
 
+func TestMarshalUnmarshalDoDSettleOrderInvoice(t *testing.T) {
+	v := DoDSettleOrderInvoice{}
+	bts, err := v.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+}
+
+func BenchmarkMarshalMsgDoDSettleOrderInvoice(b *testing.B) {
+	v := DoDSettleOrderInvoice{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.MarshalMsg(nil)
+	}
+}
+
+func BenchmarkAppendMsgDoDSettleOrderInvoice(b *testing.B) {
+	v := DoDSettleOrderInvoice{}
+	bts := make([]byte, 0, v.Msgsize())
+	bts, _ = v.MarshalMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bts, _ = v.MarshalMsg(bts[0:0])
+	}
+}
+
+func BenchmarkUnmarshalDoDSettleOrderInvoice(b *testing.B) {
+	v := DoDSettleOrderInvoice{}
+	bts, _ := v.MarshalMsg(nil)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(bts)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := v.UnmarshalMsg(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestEncodeDecodeDoDSettleOrderInvoice(t *testing.T) {
+	v := DoDSettleOrderInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+
+	m := v.Msgsize()
+	if buf.Len() > m {
+		t.Log("WARNING: TestEncodeDecodeDoDSettleOrderInvoice Msgsize() is inaccurate")
+	}
+
+	vn := DoDSettleOrderInvoice{}
+	err := msgp.Decode(&buf, &vn)
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf.Reset()
+	msgp.Encode(&buf, &v)
+	err = msgp.NewReader(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEncodeDoDSettleOrderInvoice(b *testing.B) {
+	v := DoDSettleOrderInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.EncodeMsg(en)
+	}
+	en.Flush()
+}
+
+func BenchmarkDecodeDoDSettleOrderInvoice(b *testing.B) {
+	v := DoDSettleOrderInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes(), b)
+	dc := msgp.NewReader(rd)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := v.DecodeMsg(dc)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestMarshalUnmarshalDoDSettleOrderLifeTrack(t *testing.T) {
 	v := DoDSettleOrderLifeTrack{}
 	bts, err := v.MarshalMsg(nil)
@@ -2028,6 +2141,232 @@ func BenchmarkEncodeDoDSettleProduct(b *testing.B) {
 
 func BenchmarkDecodeDoDSettleProduct(b *testing.B) {
 	v := DoDSettleProduct{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes(), b)
+	dc := msgp.NewReader(rd)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := v.DecodeMsg(dc)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestMarshalUnmarshalDoDSettleProductInvoice(t *testing.T) {
+	v := DoDSettleProductInvoice{}
+	bts, err := v.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+}
+
+func BenchmarkMarshalMsgDoDSettleProductInvoice(b *testing.B) {
+	v := DoDSettleProductInvoice{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.MarshalMsg(nil)
+	}
+}
+
+func BenchmarkAppendMsgDoDSettleProductInvoice(b *testing.B) {
+	v := DoDSettleProductInvoice{}
+	bts := make([]byte, 0, v.Msgsize())
+	bts, _ = v.MarshalMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bts, _ = v.MarshalMsg(bts[0:0])
+	}
+}
+
+func BenchmarkUnmarshalDoDSettleProductInvoice(b *testing.B) {
+	v := DoDSettleProductInvoice{}
+	bts, _ := v.MarshalMsg(nil)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(bts)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := v.UnmarshalMsg(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestEncodeDecodeDoDSettleProductInvoice(t *testing.T) {
+	v := DoDSettleProductInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+
+	m := v.Msgsize()
+	if buf.Len() > m {
+		t.Log("WARNING: TestEncodeDecodeDoDSettleProductInvoice Msgsize() is inaccurate")
+	}
+
+	vn := DoDSettleProductInvoice{}
+	err := msgp.Decode(&buf, &vn)
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf.Reset()
+	msgp.Encode(&buf, &v)
+	err = msgp.NewReader(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEncodeDoDSettleProductInvoice(b *testing.B) {
+	v := DoDSettleProductInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.EncodeMsg(en)
+	}
+	en.Flush()
+}
+
+func BenchmarkDecodeDoDSettleProductInvoice(b *testing.B) {
+	v := DoDSettleProductInvoice{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes(), b)
+	dc := msgp.NewReader(rd)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := v.DecodeMsg(dc)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestMarshalUnmarshalDoDSettleProductItem(t *testing.T) {
+	v := DoDSettleProductItem{}
+	bts, err := v.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+}
+
+func BenchmarkMarshalMsgDoDSettleProductItem(b *testing.B) {
+	v := DoDSettleProductItem{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.MarshalMsg(nil)
+	}
+}
+
+func BenchmarkAppendMsgDoDSettleProductItem(b *testing.B) {
+	v := DoDSettleProductItem{}
+	bts := make([]byte, 0, v.Msgsize())
+	bts, _ = v.MarshalMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bts, _ = v.MarshalMsg(bts[0:0])
+	}
+}
+
+func BenchmarkUnmarshalDoDSettleProductItem(b *testing.B) {
+	v := DoDSettleProductItem{}
+	bts, _ := v.MarshalMsg(nil)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(bts)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := v.UnmarshalMsg(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestEncodeDecodeDoDSettleProductItem(t *testing.T) {
+	v := DoDSettleProductItem{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+
+	m := v.Msgsize()
+	if buf.Len() > m {
+		t.Log("WARNING: TestEncodeDecodeDoDSettleProductItem Msgsize() is inaccurate")
+	}
+
+	vn := DoDSettleProductItem{}
+	err := msgp.Decode(&buf, &vn)
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf.Reset()
+	msgp.Encode(&buf, &v)
+	err = msgp.NewReader(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEncodeDoDSettleProductItem(b *testing.B) {
+	v := DoDSettleProductItem{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.EncodeMsg(en)
+	}
+	en.Flush()
+}
+
+func BenchmarkDecodeDoDSettleProductItem(b *testing.B) {
+	v := DoDSettleProductItem{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

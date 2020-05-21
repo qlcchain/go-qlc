@@ -120,12 +120,14 @@ func (co *DoDSettleCreateOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 	order.Buyer.Name = param.Buyer.Name
 	order.Seller.Address = param.Seller.Address
 	order.Seller.Name = param.Seller.Name
+	order.QuoteId = param.QuoteId
 	order.OrderType = abi.DoDSettleOrderTypeCreate
 	order.ContractState = abi.DoDSettleContractStateRequest
 
 	for _, c := range param.Connections {
 		conn := &abi.DoDSettleConnectionParam{
 			DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
+				ItemId:         c.ItemId,
 				SrcCompanyName: c.SrcCompanyName,
 				SrcRegion:      c.SrcRegion,
 				SrcCity:        c.SrcCity,
@@ -138,6 +140,7 @@ func (co *DoDSettleCreateOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 				DstPort:        c.DstPort,
 			},
 			DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+				QuoteItemId:    c.QuoteItemId,
 				ConnectionName: c.ConnectionName,
 				PaymentType:    c.PaymentType,
 				BillingType:    c.BillingType,
@@ -320,12 +323,8 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 		return nil, nil, err
 	}
 
-	err = param.Verify()
+	err = param.Verify(ctx)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	if param.InternalId.IsZero() {
 		return nil, nil, err
 	}
 
@@ -343,8 +342,13 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 
 	// maybe not matched ? need to check this.
 	if order.OrderType == abi.DoDSettleOrderTypeCreate {
-		for i, c := range order.Connections {
-			c.ProductId = param.ProductId[i]
+		for _, c := range order.Connections {
+			for _, p := range param.ProductIds {
+				if c.ItemId == p.ItemId {
+					c.ProductId = p.ProductId
+					break
+				}
+			}
 		}
 	}
 
@@ -372,12 +376,12 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 			}
 			productHash := productKey.Hash()
 
-			// only update dod
-			if cp.BillingType == abi.DoDSettleBillingTypePAYG {
-				continue
-			}
-
 			if order.OrderType == abi.DoDSettleOrderTypeCreate {
+				// only update dod
+				if cp.BillingType == abi.DoDSettleBillingTypePAYG {
+					continue
+				}
+
 				conn, _ = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 				if conn != nil {
 					return nil, nil, fmt.Errorf("dup product")
@@ -398,6 +402,7 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 						DstPort:        cp.DstPort,
 					},
 					Active: &abi.DoDSettleConnectionDynamicParam{
+						OrderId:        order.OrderId,
 						ConnectionName: cp.ConnectionName,
 						PaymentType:    cp.PaymentType,
 						BillingType:    cp.BillingType,
@@ -418,7 +423,13 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 					return nil, nil, err
 				}
 
+				// only update dod
+				if conn.Active.BillingType == abi.DoDSettleBillingTypePAYG {
+					continue
+				}
+
 				newActive := &abi.DoDSettleConnectionDynamicParam{
+					OrderId:        order.OrderId,
 					ConnectionName: cp.ConnectionName,
 					PaymentType:    cp.PaymentType,
 					BillingType:    cp.BillingType,
@@ -439,6 +450,11 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 				conn, err = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 				if err != nil {
 					return nil, nil, err
+				}
+
+				// only update dod
+				if conn.Active.BillingType == abi.DoDSettleBillingTypePAYG {
+					continue
 				}
 
 				conn.Done = append(conn.Done, conn.Active)
@@ -728,6 +744,7 @@ func (co *DoDSettleChangeOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 	order.Buyer.Name = param.Buyer.Name
 	order.Seller.Address = param.Seller.Address
 	order.Seller.Name = param.Seller.Name
+	order.QuoteId = param.QuoteId
 	order.OrderType = abi.DoDSettleOrderTypeChange
 	order.ContractState = abi.DoDSettleContractStateRequest
 
@@ -737,6 +754,7 @@ func (co *DoDSettleChangeOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 				ProductId: c.ProductId,
 			},
 			DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+				QuoteItemId:    c.QuoteItemId,
 				ConnectionName: c.ConnectionName,
 				PaymentType:    c.PaymentType,
 				BillingType:    c.BillingType,
@@ -1129,12 +1147,12 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 		return nil, nil, err
 	}
 
-	order, err := abi.DoDSettleGetOrderInfoByOrderId(ctx, block.Address, param.OrderId)
+	order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, param.InternalId)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if order.Seller.Address != block.Address {
+	if block.Address != order.Seller.Address && block.Address != order.Buyer.Address {
 		return nil, nil, fmt.Errorf("invalid operator")
 	}
 
@@ -1169,12 +1187,12 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 			return nil, nil, fmt.Errorf("illegal operation")
 		}
 
-		// only update payg
-		if connParam.BillingType == abi.DoDSettleBillingTypeDOD {
-			continue
-		}
-
 		if order.OrderType == abi.DoDSettleOrderTypeCreate {
+			// only update payg
+			if connParam.BillingType == abi.DoDSettleBillingTypeDOD {
+				continue
+			}
+
 			conn, _ = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 			if conn != nil {
 				return nil, nil, fmt.Errorf("dup product")
@@ -1195,6 +1213,7 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 					DstPort:        connParam.DstPort,
 				},
 				Active: &abi.DoDSettleConnectionDynamicParam{
+					OrderId:        order.OrderId,
 					ConnectionName: connParam.ConnectionName,
 					PaymentType:    connParam.PaymentType,
 					BillingType:    connParam.BillingType,
@@ -1214,7 +1233,13 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 				return nil, nil, err
 			}
 
+			// only update payg
+			if conn.Active.BillingType == abi.DoDSettleBillingTypeDOD {
+				continue
+			}
+
 			newActive := &abi.DoDSettleConnectionDynamicParam{
+				OrderId:        order.OrderId,
 				ConnectionName: connParam.ConnectionName,
 				PaymentType:    connParam.PaymentType,
 				BillingType:    connParam.BillingType,
@@ -1223,8 +1248,6 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 				Bandwidth:      connParam.Bandwidth,
 				BillingUnit:    connParam.BillingUnit,
 				Price:          connParam.Price,
-				StartTime:      connParam.StartTime,
-				EndTime:        connParam.EndTime,
 			}
 
 			abi.DoDSettleInheritParam(conn.Active, newActive)
@@ -1240,7 +1263,12 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 				return nil, nil, err
 			}
 
-			conn.Active.EndTime = time.Now().Unix()
+			// only update payg
+			if conn.Active.BillingType == abi.DoDSettleBillingTypeDOD {
+				continue
+			}
+
+			conn.Active.EndTime = abi.DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, time.Now().Unix())
 			conn.Done = append(conn.Done, conn.Active)
 			conn.Active = nil
 		}
@@ -1275,4 +1303,31 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 	}
 
 	return nil, nil, nil
+}
+
+func (rr *DoDSettleResourceReady) DoGap(ctx *vmstore.VMContext, block *types.StateBlock) (common.ContractGapType, interface{}, error) {
+	param := new(abi.DoDSettleResourceReadyParam)
+	err := param.FromABI(block.GetPayload())
+	if err != nil {
+		return common.ContractNoGap, nil, err
+	}
+
+	if param.InternalId.IsZero() {
+		return common.ContractNoGap, nil, fmt.Errorf("invalid internal id")
+	}
+
+	order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, param.InternalId)
+	if err != nil {
+		return common.ContractNoGap, nil, err
+	}
+
+	if order.OrderState == abi.DoDSettleOrderStateFail {
+		return common.ContractNoGap, nil, fmt.Errorf("invalid order state")
+	}
+
+	if order.OrderState == abi.DoDSettleOrderStateNull {
+		return common.ContractDoDOrderState, param.InternalId, nil
+	}
+
+	return common.ContractNoGap, nil, nil
 }

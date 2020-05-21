@@ -347,8 +347,10 @@ type DoDSettleProductWithActiveInfo struct {
 }
 
 type DoDPendingResourceCheckInfo struct {
-	OrderId  string                            `json:"orderId"`
-	Products []*DoDSettleProductWithActiveInfo `json:"products"`
+	SendHash   types.Hash                        `json:"sendHash"`
+	OrderId    string                            `json:"orderId"`
+	InternalId types.Hash                        `json:"internalId"`
+	Products   []*DoDSettleProductWithActiveInfo `json:"products"`
 }
 
 // query all pending resource check requests
@@ -384,17 +386,19 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 				}
 
 				info := &DoDPendingResourceCheckInfo{
-					OrderId:  param.OrderId,
-					Products: make([]*DoDSettleProductWithActiveInfo, 0),
+					SendHash:   key.Hash,
+					OrderId:    param.OrderId,
+					InternalId: param.InternalId,
+					Products:   make([]*DoDSettleProductWithActiveInfo, 0),
 				}
 
-				for _, pid := range param.ProductId {
+				for _, p := range param.ProductIds {
 					productKey := &abi.DoDSettleProduct{
 						Seller:    order.Seller.Address,
-						ProductId: pid,
+						ProductId: p.ProductId,
 					}
 
-					pai := &DoDSettleProductWithActiveInfo{ProductId: pid, Active: false}
+					pai := &DoDSettleProductWithActiveInfo{ProductId: p.ProductId, Active: false}
 
 					_, err := abi.DodSettleGetSellerConnectionActive(d.ctx, productKey.Hash())
 					if err == nil {
@@ -491,10 +495,14 @@ func (d *DoDSettlementAPI) GetOrderIdListByAddressAndSeller(address, seller type
 	return orders, nil
 }
 
-func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64) (*abi.DoDSettleInvoice, error) {
+func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64) (*abi.DoDSettleOrderInvoice, error) {
 	return abi.DodSettleGenerateInvoiceByOrder(d.ctx, seller, orderId, start, end)
 }
 
-func (d *DoDSettlementAPI) GenerateInvoiceByBuyer(seller, buyer types.Address, start, end int64) (*abi.DoDSettleInvoice, error) {
+func (d *DoDSettlementAPI) GenerateInvoiceByBuyer(seller, buyer types.Address, start, end int64) (*abi.DoDSettleBuyerInvoice, error) {
 	return abi.DodSettleGenerateInvoiceByBuyer(d.ctx, seller, buyer, start, end)
+}
+
+func (d *DoDSettlementAPI) GenerateInvoiceByProductId(seller types.Address, productId string, start, end int64) (*abi.DoDSettleProductInvoice, error) {
+	return abi.DodSettleGenerateInvoiceByProduct(d.ctx, seller, productId, start, end)
 }

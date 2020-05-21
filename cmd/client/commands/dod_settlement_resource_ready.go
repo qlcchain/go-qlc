@@ -21,10 +21,10 @@ func addDSResourceReadyCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "address hex string",
 		Value: "",
 	}
-	orderId := util.Flag{
-		Name:  "orderId",
+	internalId := util.Flag{
+		Name:  "internalId",
 		Must:  true,
-		Usage: "orderId",
+		Usage: "internalId",
 		Value: "",
 	}
 	productId := util.Flag{
@@ -34,7 +34,7 @@ func addDSResourceReadyCmdByShell(parentCmd *ishell.Cmd) {
 		Value: "",
 	}
 
-	args := []util.Flag{address, orderId, productId}
+	args := []util.Flag{address, internalId, productId}
 	cmd := &ishell.Cmd{
 		Name:                "resourceReady",
 		Help:                "notify resource is ready",
@@ -50,10 +50,10 @@ func addDSResourceReadyCmdByShell(parentCmd *ishell.Cmd) {
 			}
 
 			addressP := util.StringVar(c.Args, address)
-			orderIdP := util.StringVar(c.Args, orderId)
+			internalIdP := util.StringVar(c.Args, internalId)
 			productIdP := util.StringVar(c.Args, productId)
 
-			if err := DSResourceReady(addressP, orderIdP, productIdP); err != nil {
+			if err := DSResourceReady(addressP, internalIdP, productIdP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -62,7 +62,7 @@ func addDSResourceReadyCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSResourceReady(addressP, orderIdP, productIdP string) error {
+func DSResourceReady(addressP, internalIdP, productIdP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -79,10 +79,15 @@ func DSResourceReady(addressP, orderIdP, productIdP string) error {
 		return fmt.Errorf("account format err")
 	}
 
+	internalId, err := types.NewHash(internalIdP)
+	if err != nil {
+		return err
+	}
+
 	param := &abi.DoDSettleResourceReadyParam{
-		Address:   acc.Address(),
-		OrderId:   orderIdP,
-		ProductId: strings.Split(productIdP, ","),
+		Address:    acc.Address(),
+		InternalId: internalId,
+		ProductId:  strings.Split(productIdP, ","),
 	}
 
 	block := new(types.StateBlock)
