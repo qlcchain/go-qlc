@@ -2,11 +2,13 @@ package abi
 
 import (
 	"bytes"
+	"testing"
+
+	"github.com/tinylib/msgp/msgp"
+
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"github.com/tinylib/msgp/msgp"
-	"testing"
 )
 
 func TestDoDSettleCreateOrderParam(t *testing.T) {
@@ -308,7 +310,7 @@ func TestDoDSettleTerminateOrderParam(t *testing.T) {
 
 	conn := new(DoDSettleConnectionInfo)
 	conn.ProductId = "p1"
-	conn.Active = &DoDSettleConnectionDynamicParam{BillingType:DoDSettleBillingTypeDOD,}
+	conn.Active = &DoDSettleConnectionDynamicParam{BillingType: DoDSettleBillingTypeDOD}
 	addDoDSettleTestConnection(t, ctx, conn, top.Seller.Address)
 
 	err = top.Verify(ctx)
@@ -379,7 +381,7 @@ func TestNewOrderInfo(t *testing.T) {
 }
 
 func TestDoDSettleConnectionActiveKeyHash(t *testing.T) {
-	ak := &DoDSettleConnectionActiveKey{InternalId:mock.Hash(),ProductId:"p1"}
+	ak := &DoDSettleConnectionActiveKey{InternalId: mock.Hash(), ProductId: "p1"}
 	_ = ak.Hash()
 }
 

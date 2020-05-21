@@ -1,13 +1,14 @@
 package abi
 
 import (
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"strings"
-	"testing"
-	"time"
 
 	"github.com/qlcchain/go-qlc/vm/abi"
 )
@@ -489,7 +490,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 			BillingType: DoDSettleBillingTypeDOD,
 			Currency:    "USD",
 			Price:       8.000,
-			Addition:   8.000,
+			Addition:    8.000,
 			StartTime:   1000,
 			EndTime:     9000,
 		},
@@ -508,11 +509,11 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	connInfo2 := &DoDSettleConnectionInfo{
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product002"},
 		Disconnect: &DoDSettleDisconnectInfo{
-		OrderId:      "order001",
-		Price:        0,
-		Currency:     "USD",
-		DisconnectAt: 3000,
-	},
+			OrderId:      "order001",
+			Price:        0,
+			Currency:     "USD",
+			DisconnectAt: 3000,
+		},
 	}
 	conn3 := &DoDSettleConnectionParam{
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product003"},
@@ -658,7 +659,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 			BillingType: DoDSettleBillingTypeDOD,
 			Currency:    "USD",
 			Price:       5.000,
-			Addition:5.000,
+			Addition:    5.000,
 			StartTime:   10000,
 			EndTime:     15000,
 		},
@@ -668,7 +669,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 				BillingType: DoDSettleBillingTypeDOD,
 				Currency:    "USD",
 				Price:       4.000,
-				Addition:   4.000,
+				Addition:    4.000,
 				StartTime:   1000,
 				EndTime:     5000,
 			},
@@ -677,7 +678,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 				BillingType: DoDSettleBillingTypeDOD,
 				Currency:    "USD",
 				Price:       3.000,
-				Addition:   3.000,
+				Addition:    3.000,
 				StartTime:   6000,
 				EndTime:     9000,
 			},

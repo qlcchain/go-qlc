@@ -3,11 +3,12 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/abiosoft/ishell"
-	rpc "github.com/qlcchain/jsonrpc2"
 	"math/rand"
 	"strconv"
 	"strings"
+
+	"github.com/abiosoft/ishell"
+	rpc "github.com/qlcchain/jsonrpc2"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
