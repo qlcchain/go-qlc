@@ -2,7 +2,7 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "basic.proto";
+import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
@@ -22,7 +22,7 @@ service PrivacyAPI {
        };
     }
 
-    rpc GetBlockPrivatePayload(Hash) returns (Bytes){
+    rpc GetBlockPrivatePayload(types.Hash) returns (Bytes){
         option (google.api.http) = {
            post: "/privacy/getBlockPrivatePayload"
            body: "*"

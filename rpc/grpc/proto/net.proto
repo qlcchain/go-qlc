@@ -3,13 +3,13 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "basic.proto";
+import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
 
 service NetAPI {
-    rpc OnlineRepresentatives(google.protobuf.Empty) returns (Addresses){
+    rpc OnlineRepresentatives(google.protobuf.Empty) returns (types.Addresses){
         option (google.api.http) = {
               get: "/net/onlineRepresentatives"
          };

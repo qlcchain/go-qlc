@@ -12,6 +12,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -115,7 +116,7 @@ func request_PublicKeyDistributionAPI_GetActiveVerifiers_0(ctx context.Context, 
 }
 
 func request_PublicKeyDistributionAPI_GetVerifiersByAccount_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -319,7 +320,7 @@ func request_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0(ctx context.Co
 }
 
 func request_PublicKeyDistributionAPI_GetOracleInfosByHash_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -387,7 +388,7 @@ func request_PublicKeyDistributionAPI_GetRewardSendBlock_0(ctx context.Context, 
 }
 
 func request_PublicKeyDistributionAPI_GetRewardRecvBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq StateBlock
+	var protoReq proto_0.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -404,7 +405,7 @@ func request_PublicKeyDistributionAPI_GetRewardRecvBlock_0(ctx context.Context, 
 }
 
 func request_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -421,7 +422,7 @@ func request_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0(ctx context
 }
 
 func request_PublicKeyDistributionAPI_GetRewardHistory_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -438,7 +439,7 @@ func request_PublicKeyDistributionAPI_GetRewardHistory_0(ctx context.Context, ma
 }
 
 func request_PublicKeyDistributionAPI_GetAvailRewardInfo_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

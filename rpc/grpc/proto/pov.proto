@@ -3,7 +3,8 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "basic.proto";
+import "types/basic.proto";
+import "types/pov.proto";
 import "common.proto";
 
 option go_package = ".;proto";
@@ -21,7 +22,7 @@ service PovAPI {
        };
     }
 
-    rpc GetHeaderByHash (Hash) returns (PovApiHeader) {
+    rpc GetHeaderByHash (types.Hash) returns (PovApiHeader) {
         option (google.api.http) = {
            get: "/pov/getHeaderByHash"
        };
@@ -63,7 +64,7 @@ service PovAPI {
        };
     }
 
-    rpc GetTransaction (Hash) returns (PovApiTxLookup) {
+    rpc GetTransaction (types.Hash) returns (PovApiTxLookup) {
         option (google.api.http) = {
            get: "/pov/getTransaction"
        };
@@ -87,7 +88,7 @@ service PovAPI {
        };
     }
 
-    rpc GetLatestAccountState (Address) returns (PovApiState) {
+    rpc GetLatestAccountState (types.Address) returns (PovApiState) {
         option (google.api.http) = {
            get: "/pov/getLatestAccountState"
        };
@@ -105,31 +106,31 @@ service PovAPI {
        };
     }
 
-//    rpc DumpBlockState (Hash) returns (PovApiDumpState) {
+//    rpc DumpBlockState (types.Hash) returns (PovApiDumpState) {
 //        option (google.api.http) = {
 //           get: "/pov/dumpBlockState"
 //       };
 //    }
 //
-//    rpc DumpContractState (Hash) returns (PovApiContractState) {
+//    rpc DumpContractState (types.Hash) returns (PovApiContractState) {
 //        option (google.api.http) = {
 //           get: "/pov/dumpContractState"
 //       };
 //    }
 
-    rpc GetAllRepStatesByStateHash (Hash) returns (PovApiRepState) {
+    rpc GetAllRepStatesByStateHash (types.Hash) returns (PovApiRepState) {
         option (google.api.http) = {
            get: "/pov/getAllRepStatesByStateHash"
        };
     }
 
-    rpc GetAllRepStatesByBlockHash (Hash) returns (PovApiRepState) {
+    rpc GetAllRepStatesByBlockHash (types.Hash) returns (PovApiRepState) {
         option (google.api.http) = {
            get: "/pov/getAllRepStatesByBlockHash"
        };
     }
 
-    rpc GetAllRepStatesByBlockHeight (Hash) returns (PovApiRepState) {
+    rpc GetAllRepStatesByBlockHeight (types.Hash) returns (PovApiRepState) {
         option (google.api.http) = {
            get: "/pov/getAllRepStatesByBlockHeight"
        };
@@ -141,7 +142,7 @@ service PovAPI {
        };
     }
 
-    rpc GetBlockTDByHash (Hash) returns (PovApiTD) {
+    rpc GetBlockTDByHash (types.Hash) returns (PovApiTD) {
         option (google.api.http) = {
            get: "/pov/getBlockTDByHash"
        };
@@ -153,37 +154,37 @@ service PovAPI {
        };
     }
 
-    rpc GetMinerStats (Addresses) returns (PovMinerStats) {
+    rpc GetMinerStats (types.Addresses) returns (PovMinerStats) {
         option (google.api.http) = {
            get: "/pov/getMinerStats"
        };
     }
 
-    rpc GetRepStats (Addresses) returns (PovRepStats) {
+    rpc GetRepStats (types.Addresses) returns (PovRepStats) {
         option (google.api.http) = {
            get: "/pov/getRepStats"
        };
     }
 
-    rpc GetMinerDayStat (UInt32) returns (PovMinerDayStat) {
+    rpc GetMinerDayStat (UInt32) returns (types.PovMinerDayStat) {
         option (google.api.http) = {
            get: "/pov/getMinerDayStat"
        };
     }
 
-    rpc GetMinerDayStatByHeight (UInt64) returns (PovMinerDayStat) {
+    rpc GetMinerDayStatByHeight (UInt64) returns (types.PovMinerDayStat) {
         option (google.api.http) = {
            get: "/pov/getMinerDayStatByHeight"
        };
     }
 
-    rpc GetDiffDayStat (UInt32) returns (PovDiffDayStat) {
+    rpc GetDiffDayStat (UInt32) returns (types.PovDiffDayStat) {
         option (google.api.http) = {
            get: "/pov/getDiffDayStat"
        };
     }
 
-    rpc GetDiffDayStatByHeight (UInt64) returns (PovDiffDayStat) {
+    rpc GetDiffDayStatByHeight (UInt64) returns (types.PovDiffDayStat) {
         option (google.api.http) = {
            get: "/pov/getDiffDayStatByHeight"
        };
@@ -232,13 +233,13 @@ service PovAPI {
        };
     }
 
-    rpc GetAllOnlineRepStates (PovHeader) returns (PovRepStates) {
+    rpc GetAllOnlineRepStates (types.PovHeader) returns (types.PovRepStates) {
         option (google.api.http) = {
            get: "/pov/getAllOnlineRepStates"
        };
     }
 
-    rpc GetRepStatesByHeightAndAccount (RepStatesByHeightRequset) returns (PovRepState) {
+    rpc GetRepStatesByHeightAndAccount (RepStatesByHeightRequset) returns (types.PovRepState) {
         option (google.api.http) = {
            post: "/pov/getRepStatesByHeightAndAccount"
            body: "*"
@@ -259,7 +260,7 @@ message PovStatus  {
 }
 
 message  PovApiHeader  {
-    PovHeader povHeader      = 1;
+    types.PovHeader povHeader      = 1;
     string    algoName       = 2;
     uint32    algoEfficiency = 3;
     uint32    normBits       = 4;
@@ -273,7 +274,7 @@ message  PovApiBatchHeader  {
 }
 
 message PovApiBlock  {
-    PovBlock povBlock       = 1;
+    types.PovBlock povBlock       = 1;
     string algoName         = 2;
     uint32 AlgoEfficiency   = 3;
     uint32 NormBits         = 4;
@@ -282,21 +283,21 @@ message PovApiBlock  {
 }
 
 message PovApiState  {
-    PovAccountState  accountState   = 1;
-    PovRepState      repState       = 2;
-    PovContractState contractState  = 3;
+    types.PovAccountState  accountState   = 1;
+    types.PovRepState      repState       = 2;
+    types.PovContractState contractState  = 3;
 }
 
 message PovApiDumpState  {
     string stateHash     = 1;
-    map<string, PovAccountState>  accounts  = 2;
-    map<string, PovRepState>      reps      = 3;
-    map<string, PovContractState> contracts = 4;
+    map<string, types.PovAccountState>  accounts  = 2;
+    map<string, types.PovRepState>      reps      = 3;
+    map<string, types.PovContractState> contracts = 4;
 }
 
 message PovApiRepState  {
     string  stateHash   = 1;
-    map<string, PovRepState> reps  = 2;
+    map<string, types.PovRepState> reps  = 2;
 }
 
 message PovApiKeyValPair  {
@@ -313,9 +314,9 @@ message PovApiKeyValPair  {
 
 message PovApiTxLookup  {
     string         txHash      = 1;
-    PovTxLookup    txLookup    = 2;
-    PovCoinBaseTx  coinbaseTx  = 3;
-    StateBlock     accountTx   = 4;
+    types.PovTxLookup    txLookup    = 2;
+    types.PovCoinBaseTx  coinbaseTx  = 3;
+    types.StateBlock     accountTx   = 4;
 }
 
 message PovLedgerStats  {
@@ -328,11 +329,11 @@ message PovLedgerStats  {
 }
 
 message PovApiTD  {
-    PovHeader header  = 1;
-    PovTD     td      = 2;
+    types.PovHeader header  = 1;
+    types.PovTD     td      = 2;
 }
 
-message APIPovMinerStatItem {
+message PovMinerStatItem {
     string account             = 1;
     uint32 mainBlockNum        = 2;
     string mainRewardAmount    = 3;
@@ -387,7 +388,7 @@ message  PovApiSubmitWork  {
     uint32 nonce         = 5;
     string coinbaseExtra = 6;   //bytes
     string coinbaseHash  = 7;
-    PovAuxHeader auxPow  = 8;
+    types.PovAuxHeader auxPow  = 8;
 }
 
 
@@ -494,7 +495,7 @@ message LastNHourInfoRequest {
 }
 
 message RepStatesByHeightRequset {
-    PovHeader header  = 1;
+    types.PovHeader header  = 1;
     string    acc     = 2;
 }
 
@@ -537,8 +538,8 @@ message PovApiHashInfo  {
 }
 
 message PovApiCheckStateRsp  {
-    map<string, PovAccountState> accountStates = 1;
-    map<string, AccountMeta>     accountMetas  = 2;
-    map<string, PovRepState>     repStates     = 3;
-    map<string, Benefit>         repMetas      = 4;
+    map<string, types.PovAccountState> accountStates = 1;
+    map<string, types.AccountMeta>     accountMetas  = 2;
+    map<string, types.PovRepState>     repStates     = 3;
+    map<string, types.Benefit>         repMetas      = 4;
 }

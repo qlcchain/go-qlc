@@ -12,6 +12,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -34,7 +35,7 @@ var (
 )
 
 func request_ContractAPI_GetAbiByContractAddress_0(ctx context.Context, marshaler runtime.Marshaler, client ContractAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_ContractAPI_GetAbiByContractAddress_0); err != nil {

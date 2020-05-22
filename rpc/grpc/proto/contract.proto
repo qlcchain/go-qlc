@@ -3,13 +3,13 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "basic.proto";
+import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
 
 service ContractAPI{
-    rpc GetAbiByContractAddress (Address) returns (String) {
+    rpc GetAbiByContractAddress (types.Address) returns (String) {
         option (google.api.http) = {
            get: "/contract/getAbiByContractAddress"
         };
@@ -29,20 +29,20 @@ service ContractAPI{
         };
     }
 
-    rpc ContractAddressList (google.protobuf.Empty) returns (Addresses) {
+    rpc ContractAddressList (google.protobuf.Empty) returns (types.Addresses) {
         option (google.api.http) = {
            get: "/contract/contractAddressList"
         };
     }
 
-    rpc GenerateSendBlock (ContractSendBlockPara) returns (StateBlock) {
+    rpc GenerateSendBlock (ContractSendBlockPara) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/contract/generateSendBlock"
            body: "*"
         };
     }
 
-    rpc GenerateRewardBlock (ContractRewardBlockPara) returns (StateBlock) {
+    rpc GenerateRewardBlock (ContractRewardBlockPara) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/contract/generateRewardBlock"
            body: "*"

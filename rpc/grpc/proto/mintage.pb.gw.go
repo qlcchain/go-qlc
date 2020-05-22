@@ -12,6 +12,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -63,7 +64,7 @@ func request_MintageAPI_GetMintageBlock_0(ctx context.Context, marshaler runtime
 }
 
 func request_MintageAPI_GetRewardBlock_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq StateBlock
+	var protoReq proto_0.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -80,7 +81,7 @@ func request_MintageAPI_GetRewardBlock_0(ctx context.Context, marshaler runtime.
 }
 
 func request_MintageAPI_GetWithdrawMintageData_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -131,7 +132,7 @@ func request_MintageAPI_GetWithdrawMintageBlock_0(ctx context.Context, marshaler
 }
 
 func request_MintageAPI_GetWithdrawRewardBlock_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq StateBlock
+	var protoReq proto_0.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

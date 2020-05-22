@@ -2,41 +2,42 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "basic.proto";
+import "types/basic.proto";
+import "types/contract.proto";
 import "common.proto";
 
 option go_package = ".;proto";
 
 service RewardsAPI {
-    rpc GetUnsignedRewardData (RewardsParam) returns (Hash) {
+    rpc GetUnsignedRewardData (RewardsParam) returns (types.Hash) {
         option (google.api.http) = {
            post: "/rewards/getUnsignedRewardData"
            body: "*"
        };
     }
 
-    rpc GetUnsignedConfidantData (RewardsParam) returns (Hash) {
+    rpc GetUnsignedConfidantData (RewardsParam) returns (types.Hash) {
         option (google.api.http) = {
            post: "/rewards/getUnsignedConfidantData"
            body: "*"
        };
     }
 
-    rpc GetSendRewardBlock (RewardsParamWithSign) returns (StateBlock) {
+    rpc GetSendRewardBlock (RewardsParamWithSign) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/rewards/getSendRewardBlock"
            body: "*"
        };
     }
     
-    rpc GetSendConfidantBlock (RewardsParamWithSign) returns (StateBlock) {
+    rpc GetSendConfidantBlock (RewardsParamWithSign) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/rewards/getSendConfidantBlock"
            body: "*"
        };
     }
 
-    rpc GetReceiveRewardBlock (Hash) returns (StateBlock) {
+    rpc GetReceiveRewardBlock (types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/rewards/getReceiveRewardBlock"
            body: "*"
@@ -64,14 +65,14 @@ service RewardsAPI {
        };
     }
 
-    rpc GetConfidantRewards (Address) returns (ConfidantRewardsResponse) {
+    rpc GetConfidantRewards (types.Address) returns (ConfidantRewardsResponse) {
         option (google.api.http) = {
            post: "/rewards/getConfidantRewards"
            body: "*"
        };
     }
 
-    rpc GetConfidantRewordsDetail (Address) returns (RewardsInfosByAddress) {
+    rpc GetConfidantRewordsDetail (types.Address) returns (RewardsInfosByAddress) {
         option (google.api.http) = {
            post: "/rewards/getConfidantRewordsDetail"
            body: "*"
@@ -93,7 +94,7 @@ message RewardsParamWithSign  {
 
 
 message RewardsInfos{
-    repeated RewardsInfo infos = 1;
+    repeated types.RewardsInfo infos = 1;
 }
 
 message RewardsInfosByAddress{

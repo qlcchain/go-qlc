@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/rpc/grpc/proto"
+	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
+	pbtypes "github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"go.uber.org/zap"
 )
 
@@ -16,26 +17,26 @@ func NewAccountApi() *AccountApi {
 	return &AccountApi{logger: log.NewLogger("rpc/account")}
 }
 
-func (AccountApi) Create(context.Context, *proto.CreateRequest) (*proto.CreateResponse, error) {
+func (AccountApi) Create(context.Context, *pb.CreateRequest) (*pb.CreateResponse, error) {
 	panic("implement me")
 }
 
-func (AccountApi) ForPublicKey(context.Context, *proto.String) (*proto.Address, error) {
+func (AccountApi) ForPublicKey(context.Context, *pb.String) (*pbtypes.Address, error) {
 	panic("implement me")
 }
 
-func (AccountApi) NewSeed(context.Context, *empty.Empty) (*proto.String, error) {
+func (AccountApi) NewSeed(context.Context, *empty.Empty) (*pb.String, error) {
 	panic("implement me")
 }
 
-func (AccountApi) NewAccounts(context.Context, *proto.UInt32) (*proto.AccountsResponse, error) {
+func (AccountApi) NewAccounts(context.Context, *pb.UInt32) (*pb.AccountsResponse, error) {
 	panic("implement me")
 }
 
-func (AccountApi) PublicKey(context.Context, *proto.String) (*proto.String, error) {
+func (AccountApi) PublicKey(context.Context, *pb.String) (*pb.String, error) {
 	panic("implement me")
 }
 
-func (AccountApi) Validate(context.Context, *proto.String) (*proto.Boolean, error) {
+func (AccountApi) Validate(context.Context, *pb.String) (*pb.Boolean, error) {
 	panic("implement me")
 }

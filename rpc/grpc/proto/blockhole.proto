@@ -2,34 +2,34 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "basic.proto";
+import "types/basic.proto";
 
 option go_package = ".;proto";
 
 
 service BlackHoleAPI {
-    rpc GetSendBlock (SendBlockRequest) returns (StateBlock) {
+    rpc GetSendBlock (SendBlockRequest) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/blockhole/getsendblock"
            body: "*"
        };
     }
 
-    rpc GetRewardsBlock (Hash) returns (StateBlock) {
+    rpc GetRewardsBlock (types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/blockhole/getrewardsblock"
            body: "*"
        };
     }
 
-    rpc GetTotalDestroyInfo (Address) returns (Balance) {
+    rpc GetTotalDestroyInfo (types.Address) returns (types.Balance) {
         option (google.api.http) = {
            post: "/blockhole/gettotaldestroyinfo"
            body: "*"
        };
     }
 
-    rpc GetDestroyInfoDetail (Address) returns (DestroyInfoDetailResponse) {
+    rpc GetDestroyInfoDetail (types.Address) returns (DestroyInfoDetailResponse) {
         option (google.api.http) = {
            post: "/blockhole/getdestroyinfodetail"
            body: "*"

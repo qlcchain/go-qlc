@@ -2,259 +2,260 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "basic.proto";
+import "types/basic.proto";
+import "types/contract.proto";
 import "common.proto";
 
 option go_package = ".;proto";
 
 service SettlementAPI {
-    rpc ToAddress (CreateContractParam) returns (Address) {
+    rpc ToAddress (CreateContractParam) returns (types.Address) {
         option (google.api.http) = {
            post: "/settlement/toAddress"
            body: "*"
        };
     }
 
-    rpc GetSettlementRewardsBlock (Hash) returns (StateBlock) {
+    rpc GetSettlementRewardsBlock (types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
            get: "/settlement/getSettlementRewardsBlock"
        };
     }
 
-    rpc GetCreateContractBlock (APICreateContractParam) returns (StateBlock) {
+    rpc GetCreateContractBlock (CreateContractParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getCreateContractBlock"
            body: "*"
        };
     }
 
-    rpc GetSignContractBlock (APISignContractParam) returns (StateBlock) {
+    rpc GetSignContractBlock (SignContractParam) returns (types.StateBlock) {
         option (google.api.http) = {
            get: "/settlement/getSignContractBlock"
        };
     }
 
-    rpc GetAddPreStopBlock (APIStopParam) returns (StateBlock) {
+    rpc GetAddPreStopBlock (StopParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getAddPreStopBlock"
            body: "*"
        };
     }
 
-    rpc GetRemovePreStopBlock (APIStopParam) returns (StateBlock) {
+    rpc GetRemovePreStopBlock (StopParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getRemovePreStopBlock"
            body: "*"
        };
     }
 
-    rpc GetUpdatePreStopBlock (APIUpdateStopParam) returns (StateBlock) {
+    rpc GetUpdatePreStopBlock (UpdateStopParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getUpdatePreStopBlock"
            body: "*"
        };
     }
 
-    rpc GetAddNextStopBlock (APIStopParam) returns (StateBlock) {
+    rpc GetAddNextStopBlock (StopParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getAddNextStopBlock"
            body: "*"
        };
     }
 
-    rpc GetRemoveNextStopBlock (APIStopParam) returns (StateBlock) {
+    rpc GetRemoveNextStopBlock (StopParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getRemoveNextStopBlock"
            body: "*"
        };
     }
 
-    rpc GetUpdateNextStopBlock (APIUpdateStopParam) returns (StateBlock) {
+    rpc GetUpdateNextStopBlock (UpdateStopParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getUpdateNextStopBlock"
            body: "*"
        };
     }
 
-    rpc GetAllContracts (Offset) returns (APISettlementContracts) {
+    rpc GetAllContracts (Offset) returns (SettlementContracts) {
         option (google.api.http) = {
            get: "/settlement/getAllContracts"
        };
     }
 
-    rpc GetContractsByAddress (ContractsByAddressRequest) returns (APISettlementContracts) {
+    rpc GetContractsByAddress (ContractsByAddressRequest) returns (SettlementContracts) {
         option (google.api.http) = {
            get: "/settlement/getContractsByAddress"
        };
     }
 
-    rpc GetContractsByStatus (ContractsByStatusRequest) returns (APISettlementContracts) {
+    rpc GetContractsByStatus (ContractsByStatusRequest) returns (SettlementContracts) {
         option (google.api.http) = {
            get: "/settlement/getContractsByStatus"
        };
     }
 
-    rpc GetExpiredContracts (ContractsByAddressRequest) returns (APISettlementContracts) {
+    rpc GetExpiredContracts (ContractsByAddressRequest) returns (SettlementContracts) {
         option (google.api.http) = {
            get: "/settlement/getExpiredContracts"
        };
     }
 
-    rpc GetContractsAsPartyA (ContractsByAddressRequest) returns (APISettlementContracts) {
+    rpc GetContractsAsPartyA (ContractsByAddressRequest) returns (SettlementContracts) {
         option (google.api.http) = {
            get: "/settlement/getContractsAsPartyA"
        };
     }
 
-    rpc GetContractsAsPartyB (ContractsByAddressRequest) returns (APISettlementContracts) {
+    rpc GetContractsAsPartyB (ContractsByAddressRequest) returns (SettlementContracts) {
         option (google.api.http) = {
            get: "/settlement/getContractsAsPartyB"
        };
     }
 
-    rpc GetContractAddressByPartyANextStop (ContractAddressByPartyRequest) returns (Address) {
+    rpc GetContractAddressByPartyANextStop (ContractAddressByPartyRequest) returns (types.Address) {
         option (google.api.http) = {
            get: "/settlement/getContractAddressByPartyANextStop"
        };
     }
 
-    rpc GetContractAddressByPartyBPreStop (ContractAddressByPartyRequest) returns (Address) {
+    rpc GetContractAddressByPartyBPreStop (ContractAddressByPartyRequest) returns (types.Address) {
         option (google.api.http) = {
            get: "/settlement/getContractAddressByPartyBPreStop"
        };
     }
 
-    rpc GetProcessCDRBlock (ProcessCDRBlockRequest) returns (StateBlock) {
+    rpc GetProcessCDRBlock (ProcessCDRBlockRequest) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getProcessCDRBlock"
            body: "*"
        };
     }
 
-    rpc GetTerminateContractBlock (APITerminateParam) returns (StateBlock) {
+    rpc GetTerminateContractBlock (TerminateParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/settlement/getTerminateContractBlock"
            body: "*"
        };
     }
 
-    rpc GetCDRStatus (CDRStatusRequest) returns (APICDRStatus) {
+    rpc GetCDRStatus (CDRStatusRequest) returns (CDRStatus) {
         option (google.api.http) = {
            get: "/settlement/getCDRStatus"
        };
     }
 
-    rpc GetCDRStatusByCdrData (CDRStatusByCdrDataRequest) returns (APICDRStatus) {
+    rpc GetCDRStatusByCdrData (CDRStatusByCdrDataRequest) returns (CDRStatus) {
         option (google.api.http) = {
            get: "/settlement/getCDRStatusByCdrData"
        };
     }
 
-    rpc GetCDRStatusByDate (CDRStatusByDateRequest) returns (APICDRStatuses) {
+    rpc GetCDRStatusByDate (CDRStatusByDateRequest) returns (CDRStatuses) {
         option (google.api.http) = {
            get: "/settlement/getCDRStatusByDate"
        };
     }
 
-    rpc GetAllCDRStatus (ContractsByAddressRequest) returns (APICDRStatuses) {
+    rpc GetAllCDRStatus (ContractsByAddressRequest) returns (CDRStatuses) {
         option (google.api.http) = {
            get: "/settlement/getAllCDRStatus"
        };
     }
 
-    rpc GetMultiPartyCDRStatus (MultiPartyCDRStatusRequest) returns (APICDRStatuses) {
+    rpc GetMultiPartyCDRStatus (MultiPartyCDRStatusRequest) returns (CDRStatuses) {
         option (google.api.http) = {
            get: "/settlement/getMultiPartyCDRStatus"
        };
     }
 
-//    rpc GetSummaryReport (MultiPartyCDRStatusRequest) returns (SummaryResult) {
-//        option (google.api.http) = {
-//           get: "/settlement/getSummaryReport"
-//       };
-//    }
-//
+    //    rpc GetSummaryReport (MultiPartyCDRStatusRequest) returns (SummaryResult) {
+    //        option (google.api.http) = {
+    //           get: "/settlement/getSummaryReport"
+    //       };
+    //    }
+    //
 
 
 }
 
 
-message APISignContractParam  {
+message SignContractParam {
     string contractAddress = 1;
     string address         = 2;
 }
 
-message APICreateContractParam  {
-    Contractor partyA     = 1;
-    Contractor partyB     = 2;
-    repeated ContractService services   = 3;
+message CreateContractParam {
+    types.Contractor partyA     = 1;
+    types.Contractor partyB     = 2;
+    repeated types.ContractService services   = 3;
     int64 startDate       = 4;
     int64 endDate         = 5;
 }
 
-message APIStopParam {
-    StopParam stopParam = 1;
+message StopParam {
+    types.StopParam stopParam = 1;
     string     Address  = 2;
 }
 
-message APIUpdateStopParam  {
-    UpdateStopParam updateStopParam = 1;
+message UpdateStopParam {
+    types.UpdateStopParam updateStopParam = 1;
     string          address         = 2;
 }
 
 
-message APISettlementContract  {
-    ContractParam contractParam = 1;
+message SettlementContract {
+    types.ContractParam contractParam = 1;
     string address              = 2;
 }
 
-message APISettlementContracts  {
-    repeated APISettlementContract contracts = 1;
+message SettlementContracts {
+    repeated SettlementContract contracts = 1;
 }
 
-message APITerminateParam {
-    TerminateParam terminateParam = 1;
+message TerminateParam {
+    types.TerminateParam terminateParam = 1;
     string address                = 2;
 }
 
-message APICDRStatus  {
+message CDRStatus {
     string address      = 1;
-    CDRStatus cdrStatus = 2;
+    types.CDRStatus cdrStatus = 2;
 }
 
-message APICDRStatuses{
-    repeated APICDRStatus statuses =1;
+message CDRStatuses {
+    repeated CDRStatus statuses = 1;
 }
 
-message APIRegisterAssetParam  {
-    Contractor owner       = 1;
-    repeated Asset assets  = 2;
+message RegisterAssetParam {
+    types.Contractor owner       = 1;
+    repeated types.Asset assets  = 2;
     int64    startDate     = 3;
     int64    endDate       = 4;
     string   status        = 5;
 }
 
-message ContractsByAddressRequest{
+message ContractsByAddressRequest {
     string addr    = 1;
     int32  count   = 2;
     int32  offset  = 3;
 }
 
-message ContractsByStatusRequest{
+message ContractsByStatusRequest {
     string addr    = 1;
     string status  = 2;
     int32  count   = 3;
     int32  offset  = 4;
 }
 
-message ContractAddressByPartyRequest{
+message ContractAddressByPartyRequest {
     string addr      = 1;
     string stopName  = 2;
 }
 
 message ProcessCDRBlockRequest{
     string addr               = 1;
-    repeated CDRParam params  = 2;
+    repeated types.CDRParam params  = 2;
 }
 
 message CDRStatusRequest{

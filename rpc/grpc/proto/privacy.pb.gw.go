@@ -12,6 +12,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -63,7 +64,7 @@ func request_PrivacyAPI_GetRawPayload_0(ctx context.Context, marshaler runtime.M
 }
 
 func request_PrivacyAPI_GetBlockPrivatePayload_0(ctx context.Context, marshaler runtime.Marshaler, client PrivacyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

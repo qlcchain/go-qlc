@@ -12,6 +12,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -50,7 +51,7 @@ var (
 )
 
 func request_SettlementAPI_GetSettlementRewardsBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_SettlementAPI_GetSettlementRewardsBlock_0); err != nil {
@@ -63,7 +64,7 @@ func request_SettlementAPI_GetSettlementRewardsBlock_0(ctx context.Context, mars
 }
 
 func request_SettlementAPI_GetCreateContractBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APICreateContractParam
+	var protoReq CreateContractParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -84,7 +85,7 @@ var (
 )
 
 func request_SettlementAPI_GetSignContractBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APISignContractParam
+	var protoReq SignContractParam
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_SettlementAPI_GetSignContractBlock_0); err != nil {
@@ -97,7 +98,7 @@ func request_SettlementAPI_GetSignContractBlock_0(ctx context.Context, marshaler
 }
 
 func request_SettlementAPI_GetAddPreStopBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APIStopParam
+	var protoReq StopParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -114,7 +115,7 @@ func request_SettlementAPI_GetAddPreStopBlock_0(ctx context.Context, marshaler r
 }
 
 func request_SettlementAPI_GetRemovePreStopBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APIStopParam
+	var protoReq StopParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -131,7 +132,7 @@ func request_SettlementAPI_GetRemovePreStopBlock_0(ctx context.Context, marshale
 }
 
 func request_SettlementAPI_GetUpdatePreStopBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APIUpdateStopParam
+	var protoReq UpdateStopParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -148,7 +149,7 @@ func request_SettlementAPI_GetUpdatePreStopBlock_0(ctx context.Context, marshale
 }
 
 func request_SettlementAPI_GetAddNextStopBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APIStopParam
+	var protoReq StopParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -165,7 +166,7 @@ func request_SettlementAPI_GetAddNextStopBlock_0(ctx context.Context, marshaler 
 }
 
 func request_SettlementAPI_GetRemoveNextStopBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APIStopParam
+	var protoReq StopParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -182,7 +183,7 @@ func request_SettlementAPI_GetRemoveNextStopBlock_0(ctx context.Context, marshal
 }
 
 func request_SettlementAPI_GetUpdateNextStopBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APIUpdateStopParam
+	var protoReq UpdateStopParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -352,7 +353,7 @@ func request_SettlementAPI_GetProcessCDRBlock_0(ctx context.Context, marshaler r
 }
 
 func request_SettlementAPI_GetTerminateContractBlock_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq APITerminateParam
+	var protoReq TerminateParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

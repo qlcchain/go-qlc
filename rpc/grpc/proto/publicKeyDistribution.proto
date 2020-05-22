@@ -3,20 +3,21 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "basic.proto";
+import "types/basic.proto";
+import "types/pov.proto";
 import "common.proto";
 
 option go_package = ".;proto";
 
 service PublicKeyDistributionAPI {
-    rpc GetVerifierRegisterBlock (VerifierRegParam) returns (StateBlock) {
+    rpc GetVerifierRegisterBlock (VerifierRegParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/pkdistribution/getVerifierRegisterBlock"
            body: "*"
        };
     }
 
-    rpc GetVerifierUnregisterBlock (VerifierUnRegParam) returns (StateBlock) {
+    rpc GetVerifierUnregisterBlock (VerifierUnRegParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/pkdistribution/getVerifierUnregisterBlock"
            body: "*"
@@ -44,14 +45,14 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetVerifiersByAccount (Address) returns (VerifierRegParams) {
+    rpc GetVerifiersByAccount (types.Address) returns (VerifierRegParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getVerifiersByAccount"
            body: "*"
        };
     }
 
-    rpc GetVerifierStateByBlockHeight (VerifierStateByBlockHeightRequest) returns (PovVerifierState) {
+    rpc GetVerifierStateByBlockHeight (VerifierStateByBlockHeightRequest) returns (types.PovVerifierState) {
         option (google.api.http) = {
            post: "/pkdistribution/getVerifierStateByBlockHeight"
            body: "*"
@@ -72,7 +73,7 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetUnPublishBlock(UnPublishParam) returns (StateBlock) {
+    rpc GetUnPublishBlock(UnPublishParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/pkdistribution/getUnPublishBlock"
            body: "*"
@@ -107,7 +108,7 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetOracleBlock(OracleParam) returns (StateBlock) {
+    rpc GetOracleBlock(OracleParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/pkdistribution/getOracleBlock"
            body: "*"
@@ -128,7 +129,7 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetOracleInfosByHash(Hash) returns (OracleParams) {
+    rpc GetOracleInfosByHash(types.Hash) returns (OracleParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getOracleInfosByHash"
            body: "*"
@@ -149,42 +150,42 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetRewardSendBlock(PKDRewardParam) returns (StateBlock) {
+    rpc GetRewardSendBlock(PKDRewardParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/pkdistribution/getRewardSendBlock"
            body: "*"
        };
     }
 
-    rpc GetRewardRecvBlock(StateBlock) returns (StateBlock) {
+    rpc GetRewardRecvBlock(types.StateBlock) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/pkdistribution/getRewardRecvBlock"
            body: "*"
        };
     }
 
-    rpc GetRewardRecvBlockBySendHash(Hash) returns (StateBlock) {
+    rpc GetRewardRecvBlockBySendHash(types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/pkdistribution/getRewardRecvBlockBySendHash"
            body: "*"
        };
     }
 
-    rpc GetRewardHistory(Address) returns (PKDHistoryRewardInfo) {
+    rpc GetRewardHistory(types.Address) returns (PKDHistoryRewardInfo) {
         option (google.api.http) = {
            post: "/pkdistribution/getRewardHistory"
            body: "*"
        };
     }
 
-    rpc GetAvailRewardInfo(Address) returns (PKDAvailRewardInfo) {
+    rpc GetAvailRewardInfo(types.Address) returns (PKDAvailRewardInfo) {
         option (google.api.http) = {
            post: "/pkdistribution/getAvailRewardInfo"
            body: "*"
        };
     }
 
-    rpc GetVerifierHeartBlock(VerifierHeartBlockRequest) returns (StateBlock) {
+    rpc GetVerifierHeartBlock(VerifierHeartBlockRequest) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/pkdistribution/getVerifierHeartBlock"
            body: "*"
@@ -216,7 +217,7 @@ message VerifierStateByBlockHeightRequest{
 
 message PKDVerifierStateList  {
     int32 verifierNum   = 1;
-    map<string, PovVerifierState> allVerifiers = 2;
+    map<string, types.PovVerifierState> allVerifiers = 2;
 }
 
 message PublishParam  {
@@ -233,7 +234,7 @@ message PublishParam  {
 
 message  PublishInfoState  {
     PublishParam    publishParam = 1;
-    PovPublishState state        = 2;
+    types.PovPublishState state        = 2;
 }
 
 message PublishInfoStates{
@@ -257,7 +258,7 @@ message  VerifierContent  {
 }
 
 message PublishRet  {
-    StateBlock block = 1;
+    types.StateBlock block = 1;
     map<string, VerifierContent> verifiers = 2;
 }
 

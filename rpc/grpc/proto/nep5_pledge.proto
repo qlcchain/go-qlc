@@ -3,7 +3,7 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "basic.proto";
+import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
@@ -16,21 +16,21 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc GetPledgeBlock(PledgeParam) returns (StateBlock){
+    rpc GetPledgeBlock(PledgeParam) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/pledge/getPledgeBlock"
            body: "*"
        };
     }
 
-    rpc GetPledgeRewardBlock(StateBlock) returns (StateBlock){
+    rpc GetPledgeRewardBlock(types.StateBlock) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/pledge/getPledgeRewardBlock"
            body: "*"
        };
     }
 
-    rpc GetPledgeRewardBlockBySendHash(Hash) returns (StateBlock){
+    rpc GetPledgeRewardBlockBySendHash(types.Hash) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/pledge/getPledgeRewardBlockBySendHash"
            body: "*"
@@ -44,21 +44,21 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc GetWithdrawPledgeBlock(WithdrawPledgeParam) returns (StateBlock){
+    rpc GetWithdrawPledgeBlock(WithdrawPledgeParam) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/pledge/getWithdrawPledgeBlock"
            body: "*"
        };
     }
 
-    rpc GetWithdrawRewardBlock(StateBlock) returns (StateBlock){
+    rpc GetWithdrawRewardBlock(types.StateBlock) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/pledge/getWithdrawRewardBlock"
            body: "*"
        };
     }
 
-    rpc GetWithdrawRewardBlockBySendHash(Hash) returns (StateBlock){
+    rpc GetWithdrawRewardBlockBySendHash(types.Hash) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/pledge/getWithdrawRewardBlockBySendHash"
            body: "*"
@@ -72,21 +72,21 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc GetPledgeInfosByPledgeAddress(Address) returns (PledgeInfos){
+    rpc GetPledgeInfosByPledgeAddress(types.Address) returns (PledgeInfos){
         option (google.api.http) = {
            post: "/pledge/getPledgeInfosByPledgeAddress"
            body: "*"
        };
     }
 
-    rpc GetPledgeBeneficialTotalAmount(Address) returns (Int64){
+    rpc GetPledgeBeneficialTotalAmount(types.Address) returns (Int64){
         option (google.api.http) = {
            post: "/pledge/getPledgeBeneficialTotalAmount"
            body: "*"
        };
     }
 
-    rpc GetBeneficialPledgeInfosByAddress(Address) returns (PledgeInfos){
+    rpc GetBeneficialPledgeInfosByAddress(types.Address) returns (PledgeInfos){
         option (google.api.http) = {
            post: "/pledge/getBeneficialPledgeInfosByAddress"
            body: "*"

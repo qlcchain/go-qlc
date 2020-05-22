@@ -3,7 +3,7 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "basic.proto";
+import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
@@ -15,7 +15,7 @@ service AccountAPI{
        };
     }
 
-    rpc ForPublicKey(String) returns (Address){
+    rpc ForPublicKey(String) returns (types.Address){
         option (google.api.http) = {
            get: "/account/forPublicKey"
        };

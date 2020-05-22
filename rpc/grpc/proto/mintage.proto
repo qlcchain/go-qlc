@@ -2,7 +2,7 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "basic.proto";
+import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
@@ -15,42 +15,42 @@ service MintageAPI {
        };
     }
 
-    rpc GetMintageBlock (MintageParams) returns (StateBlock) {
+    rpc GetMintageBlock (MintageParams) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/miner/getMintageBlock"
            body: "*"
        };
     }
 
-    rpc GetRewardBlock (StateBlock) returns (StateBlock) {
+    rpc GetRewardBlock (types.StateBlock) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/miner/getRewardBlock"
            body: "*"
        };
     }
 
-    rpc GetWithdrawMintageData (Hash) returns (Bytes) {
+    rpc GetWithdrawMintageData (types.Hash) returns (Bytes) {
         option (google.api.http) = {
            post: "/miner/getWithdrawMintageData"
            body: "*"
        };
     }
 
-    rpc ParseTokenInfo (Bytes) returns (TokenInfo) {
+    rpc ParseTokenInfo (Bytes) returns (types.TokenInfo) {
         option (google.api.http) = {
            post: "/miner/getWithdrawMintageData"
            body: "*"
        };
     }
 
-    rpc GetWithdrawMintageBlock (WithdrawParams) returns (StateBlock) {
+    rpc GetWithdrawMintageBlock (WithdrawParams) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/miner/getWithdrawMintageBlock"
            body: "*"
        };
     }
 
-    rpc GetWithdrawRewardBlock (StateBlock) returns (StateBlock) {
+    rpc GetWithdrawRewardBlock (types.StateBlock) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/miner/getWithdrawRewardBlock"
            body: "*"

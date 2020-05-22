@@ -12,6 +12,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -46,7 +47,7 @@ func request_BlackHoleAPI_GetSendBlock_0(ctx context.Context, marshaler runtime.
 }
 
 func request_BlackHoleAPI_GetRewardsBlock_0(ctx context.Context, marshaler runtime.Marshaler, client BlackHoleAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -63,7 +64,7 @@ func request_BlackHoleAPI_GetRewardsBlock_0(ctx context.Context, marshaler runti
 }
 
 func request_BlackHoleAPI_GetTotalDestroyInfo_0(ctx context.Context, marshaler runtime.Marshaler, client BlackHoleAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -80,7 +81,7 @@ func request_BlackHoleAPI_GetTotalDestroyInfo_0(ctx context.Context, marshaler r
 }
 
 func request_BlackHoleAPI_GetDestroyInfoDetail_0(ctx context.Context, marshaler runtime.Marshaler, client BlackHoleAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

@@ -2,7 +2,7 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "basic.proto";
+import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
@@ -22,34 +22,34 @@ service MinerAPI{
        };
     }
 
-    rpc GetAvailRewardInfo(Address) returns (MinerAvailRewardInfo) {
+    rpc GetAvailRewardInfo(types.Address) returns (MinerAvailRewardInfo) {
         option (google.api.http) = {
            get: "/miner/getAvailRewardInfo"
        };
     }
 
-    rpc GetRewardSendBlock(RewardParam) returns (StateBlock) {
+    rpc GetRewardSendBlock(RewardParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/miner/getRewardSendBlock"
            body: "*"
        };
     }
 
-    rpc GetRewardRecvBlock(StateBlock) returns (StateBlock) {
+    rpc GetRewardRecvBlock(types.StateBlock) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/miner/getRewardRecvBlock"
            body: "*"
        };
     }
 
-    rpc GetRewardRecvBlockBySendHash(Hash) returns (StateBlock) {
+    rpc GetRewardRecvBlockBySendHash(types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/miner/getRewardRecvBlockBySendHash"
            body: "*"
        };
     }
 
-    rpc GetRewardHistory(Hash) returns (MinerHistoryRewardInfo) {
+    rpc GetRewardHistory(types.Hash) returns (MinerHistoryRewardInfo) {
         option (google.api.http) = {
            post: "/miner/getRewardHistory"
            body: "*"

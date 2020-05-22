@@ -3,13 +3,13 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "basic.proto";
+import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
 
 service PermissionAPI {
-    rpc GetAdminHandoverBlock(AdminUpdateParam) returns (StateBlock){
+    rpc GetAdminHandoverBlock(AdminUpdateParam) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/permission/getAdminHandoverBlock"
            body: "*"
@@ -23,7 +23,7 @@ service PermissionAPI {
        };
     }
 
-    rpc GetNodeUpdateBlock(NodeParam) returns (StateBlock){
+    rpc GetNodeUpdateBlock(NodeParam) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/permission/getNodeUpdateBlock"
            body: "*"

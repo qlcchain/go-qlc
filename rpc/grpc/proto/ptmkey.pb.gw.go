@@ -12,6 +12,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -63,7 +64,7 @@ func request_PtmKeyAPI_GetPtmKeyDeleteBlock_0(ctx context.Context, marshaler run
 }
 
 func request_PtmKeyAPI_GetPtmKeyByAccount_0(ctx context.Context, marshaler runtime.Marshaler, client PtmKeyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

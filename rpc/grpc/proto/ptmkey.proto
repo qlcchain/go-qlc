@@ -2,26 +2,26 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "basic.proto";
+import "types/basic.proto";
 
 option go_package = ".;proto";
 
 service PtmKeyAPI {
-    rpc GetPtmKeyUpdateBlock (PtmKeyUpdateParam) returns (StateBlock) {
+    rpc GetPtmKeyUpdateBlock (PtmKeyUpdateParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/ptmkey/getPtmKeyUpdateBlock"
            body: "*"
        };
     }
 
-    rpc GetPtmKeyDeleteBlock (PtmKeyByAccountAndBtypeParam) returns (StateBlock) {
+    rpc GetPtmKeyDeleteBlock (PtmKeyByAccountAndBtypeParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/ptmkey/getPtmKeyDeleteBlock"
            body: "*"
        };
     }
 
-    rpc GetPtmKeyByAccount (Address) returns (PtmKeyUpdateParams) {
+    rpc GetPtmKeyByAccount (types.Address) returns (PtmKeyUpdateParams) {
         option (google.api.http) = {
            post: "/ptmkey/getPtmKeyByAccount"
            body: "*"

@@ -12,6 +12,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -34,7 +35,7 @@ var (
 )
 
 func request_LedgerAPI_AccountBlocksCount_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_AccountBlocksCount_0); err != nil {
@@ -68,7 +69,7 @@ var (
 )
 
 func request_LedgerAPI_AccountInfo_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_AccountInfo_0); err != nil {
@@ -85,7 +86,7 @@ var (
 )
 
 func request_LedgerAPI_ConfirmedAccountInfo_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_ConfirmedAccountInfo_0); err != nil {
@@ -102,7 +103,7 @@ var (
 )
 
 func request_LedgerAPI_AccountRepresentative_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_AccountRepresentative_0); err != nil {
@@ -119,7 +120,7 @@ var (
 )
 
 func request_LedgerAPI_AccountVotingWeight_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_AccountVotingWeight_0); err != nil {
@@ -136,7 +137,7 @@ var (
 )
 
 func request_LedgerAPI_AccountsBalance_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Addresses
+	var protoReq proto_0.Addresses
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_AccountsBalance_0); err != nil {
@@ -153,7 +154,7 @@ var (
 )
 
 func request_LedgerAPI_AccountsFrontiers_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Addresses
+	var protoReq proto_0.Addresses
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_AccountsFrontiers_0); err != nil {
@@ -213,7 +214,7 @@ var (
 )
 
 func request_LedgerAPI_BlockAccount_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_BlockAccount_0); err != nil {
@@ -230,7 +231,7 @@ var (
 )
 
 func request_LedgerAPI_BlockConfirmedStatus_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_BlockConfirmedStatus_0); err != nil {
@@ -247,7 +248,7 @@ var (
 )
 
 func request_LedgerAPI_BlockHash_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq StateBlock
+	var protoReq proto_0.StateBlock
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_BlockHash_0); err != nil {
@@ -291,7 +292,7 @@ var (
 )
 
 func request_LedgerAPI_BlocksInfo_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hashes
+	var protoReq proto_0.Hashes
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_BlocksInfo_0); err != nil {
@@ -308,7 +309,7 @@ var (
 )
 
 func request_LedgerAPI_ConfirmedBlocksInfo_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hashes
+	var protoReq proto_0.Hashes
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_ConfirmedBlocksInfo_0); err != nil {
@@ -359,7 +360,7 @@ var (
 )
 
 func request_LedgerAPI_Delegators_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_Delegators_0); err != nil {
@@ -376,7 +377,7 @@ var (
 )
 
 func request_LedgerAPI_DelegatorsCount_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_DelegatorsCount_0); err != nil {
@@ -437,7 +438,7 @@ var (
 )
 
 func request_LedgerAPI_TokenInfoById_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Hash
+	var protoReq proto_0.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_TokenInfoById_0); err != nil {
@@ -471,7 +472,7 @@ var (
 )
 
 func request_LedgerAPI_GetAccountOnlineBlock_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_GetAccountOnlineBlock_0); err != nil {
@@ -587,7 +588,7 @@ var (
 )
 
 func request_LedgerAPI_IsGenesisBlock_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq StateBlock
+	var protoReq proto_0.StateBlock
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_IsGenesisBlock_0); err != nil {
@@ -604,7 +605,7 @@ var (
 )
 
 func request_LedgerAPI_IsGenesisToken_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq StateBlock
+	var protoReq proto_0.StateBlock
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_IsGenesisToken_0); err != nil {
@@ -621,7 +622,7 @@ var (
 )
 
 func request_LedgerAPI_AllGenesisBlocks_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq StateBlock
+	var protoReq proto_0.StateBlock
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_AllGenesisBlocks_0); err != nil {
@@ -702,7 +703,7 @@ func request_LedgerAPI_GenerateChangeBlock_0(ctx context.Context, marshaler runt
 }
 
 func request_LedgerAPI_Process_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq StateBlock
+	var protoReq proto_0.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -744,7 +745,7 @@ func request_LedgerAPI_NewBlock_0(ctx context.Context, marshaler runtime.Marshal
 }
 
 func request_LedgerAPI_NewAccountBlock_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (LedgerAPI_NewAccountBlockClient, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -769,7 +770,7 @@ func request_LedgerAPI_NewAccountBlock_0(ctx context.Context, marshaler runtime.
 }
 
 func request_LedgerAPI_BalanceChange_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (LedgerAPI_BalanceChangeClient, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -794,7 +795,7 @@ func request_LedgerAPI_BalanceChange_0(ctx context.Context, marshaler runtime.Ma
 }
 
 func request_LedgerAPI_NewPending_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (LedgerAPI_NewPendingClient, runtime.ServerMetadata, error) {
-	var protoReq Address
+	var protoReq proto_0.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
