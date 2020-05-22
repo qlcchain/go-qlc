@@ -1,0 +1,105 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "basic.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service RewardsAPI {
+    rpc GetUnsignedRewardData (RewardsParam) returns (Hash) {
+        option (google.api.http) = {
+           post: "/rewards/getUnsignedRewardData"
+           body: "*"
+       };
+    }
+
+    rpc GetUnsignedConfidantData (RewardsParam) returns (Hash) {
+        option (google.api.http) = {
+           post: "/rewards/getUnsignedConfidantData"
+           body: "*"
+       };
+    }
+
+    rpc GetSendRewardBlock (RewardsParamWithSign) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/rewards/getSendRewardBlock"
+           body: "*"
+       };
+    }
+    
+    rpc GetSendConfidantBlock (RewardsParamWithSign) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/rewards/getSendConfidantBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetReceiveRewardBlock (Hash) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/rewards/getReceiveRewardBlock"
+           body: "*"
+       };
+    }
+    
+    rpc IsAirdropRewards (Bytes) returns (Boolean) {
+        option (google.api.http) = {
+           post: "/rewards/isAirdropRewards"
+           body: "*"
+       };
+    }
+
+    rpc GetTotalRewards (String) returns (Int64) {
+        option (google.api.http) = {
+           post: "/rewards/getTotalRewards"
+           body: "*"
+       };
+    }
+
+    rpc GetRewardsDetail (String) returns (RewardsInfos) {
+        option (google.api.http) = {
+           post: "/rewards/getRewardsDetail"
+           body: "*"
+       };
+    }
+
+    rpc GetConfidantRewards (Address) returns (ConfidantRewardsResponse) {
+        option (google.api.http) = {
+           post: "/rewards/getConfidantRewards"
+           body: "*"
+       };
+    }
+
+    rpc GetConfidantRewordsDetail (Address) returns (RewardsInfosByAddress) {
+        option (google.api.http) = {
+           post: "/rewards/getConfidantRewordsDetail"
+           body: "*"
+       };
+    }
+}
+
+message RewardsParam  {
+    string id      = 1;
+    int64  amount  = 2;
+    string self    = 3;
+    string to      = 4;
+}
+
+message RewardsParamWithSign  {
+    RewardsParam para   = 1;
+    string       sign   = 2;
+}
+
+
+message RewardsInfos{
+    repeated RewardsInfo infos = 1;
+}
+
+message RewardsInfosByAddress{
+    map<string, RewardsInfos> infos = 1;
+}
+
+message ConfidantRewardsResponse{
+    map<string, int64> rewards = 1;
+}

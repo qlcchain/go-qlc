@@ -56,7 +56,7 @@ func (l *LedgerAPI) ConfirmedAccountInfo(context.Context, *pb.Address) (*pb.APIA
 		Tokens: []*pb.APITokenMeta{
 			{
 				TokenName: "QLC",
-				Tokenmeta: &pb.TokenMeta{
+				TokenMeta: &pb.TokenMeta{
 					Type: "3f3ab7b5657ce9a7786feea51a0c7660f63bff2e7abb27c6c6ff6a8d3a1955b2",
 				},
 			},
@@ -87,6 +87,18 @@ func (l *LedgerAPI) AccountsBalance(ctx context.Context, addresses *pb.Addresses
 				Balances: map[string]*pb.AccountsBalanceResponse_APIAccountsBalance{
 					"3f3ab7b5657ce9a7786feea51a0c7660f63bff2e7abb27c6c6ff6a8d3a1955b2": {
 						Balance: 100,
+						Vote:    100,
+					},
+					"660f63bff2e7abb27c6c6ff6a8d3a1955b24f3ab7b5657ce9a7786feea51a0c7": {
+						Balance: 200,
+						Vote:    200,
+					},
+				},
+			},
+			"qlc_upg68zqszfp1okfm3k5y5738hahaus8o1c6xxzrjgy7qp6oehkjf9gbbeonm": {
+				Balances: map[string]*pb.AccountsBalanceResponse_APIAccountsBalance{
+					"3f3ab7b5657ce9a7786feea51a0c7660f63bff2e7abb27c6c6ff6a8d3a1955b2": {
+						Balance: 300,
 						Vote:    100,
 					},
 				},

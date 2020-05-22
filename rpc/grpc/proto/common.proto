@@ -28,6 +28,15 @@ message String {
     string str = 1;
 }
 
+message Bytes {
+    bytes b = 1;
+}
+
+message Float {
+    float f = 1;
+}
+
+
 message Offset {
     int32   count      = 1;
     int32   offset     = 2;

@@ -1,0 +1,83 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "basic.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service PermissionAPI {
+    rpc GetAdminHandoverBlock(AdminUpdateParam) returns (StateBlock){
+        option (google.api.http) = {
+           post: "/permission/getAdminHandoverBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetAdmin(google.protobuf.Empty) returns (AdminUser){
+        option (google.api.http) = {
+           post: "/permission/getAdmin"
+           body: "*"
+       };
+    }
+
+    rpc GetNodeUpdateBlock(NodeParam) returns (StateBlock){
+        option (google.api.http) = {
+           post: "/permission/getNodeUpdateBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetNode(String) returns (NodeInfo){
+        option (google.api.http) = {
+           post: "/permission/getNode"
+           body: "*"
+       };
+    }
+
+    rpc GetNodesCount(google.protobuf.Empty) returns (Int32){
+        option (google.api.http) = {
+           post: "/permission/getNodesCount"
+           body: "*"
+       };
+    }
+
+    rpc GetNodes(Offset) returns (NodeInfos){
+        option (google.api.http) = {
+           post: "/permission/getNodes"
+           body: "*"
+       };
+    }
+
+}
+
+
+message AdminUpdateParam  {
+    string admin = 1;
+    string successor  = 2;
+    string comment    = 3;
+}
+
+message AdminUser  {
+    string account  = 1;
+    string comment  = 2;
+}
+
+message NodeParam  {
+    string admin     = 1;
+    string nodeId    = 2;
+    string nodeUrl   = 3;
+    string comment   = 4;
+}
+
+message NodeInfo  {
+    string nodeId    = 1;
+    string nodeUrl   = 2;
+    string comment   = 3;
+}
+
+message NodeInfos {
+    repeated NodeInfo nodes = 1;
+}

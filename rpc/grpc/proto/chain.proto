@@ -20,7 +20,6 @@ service ChainAPI {
     }
 }
 
-
 message LedgerSizeResponse {
     map<string, int64> size = 1;
 }

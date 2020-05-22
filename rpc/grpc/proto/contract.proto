@@ -1,0 +1,81 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "basic.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service ContractAPI{
+    rpc GetAbiByContractAddress (Address) returns (String) {
+        option (google.api.http) = {
+           get: "/contract/getAbiByContractAddress"
+        };
+    }
+
+    rpc PackContractData (PackContractDataRequest) returns (Bytes) {
+        option (google.api.http) = {
+           post: "/contract/packContractData"
+           body: "*"
+        };
+    }
+
+    rpc PackChainContractData (PackChainContractDataRequest) returns (Bytes) {
+        option (google.api.http) = {
+           post: "/contract/packChainContractData"
+           body: "*"
+        };
+    }
+
+    rpc ContractAddressList (google.protobuf.Empty) returns (Addresses) {
+        option (google.api.http) = {
+           get: "/contract/contractAddressList"
+        };
+    }
+
+    rpc GenerateSendBlock (ContractSendBlockPara) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/contract/generateSendBlock"
+           body: "*"
+        };
+    }
+
+    rpc GenerateRewardBlock (ContractRewardBlockPara) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/contract/generateRewardBlock"
+           body: "*"
+        };
+    }
+
+}
+
+message PackContractDataRequest {
+    string abiStr      = 1;
+    string methodName  = 2;
+    bytes  params      = 3;
+}
+
+message PackChainContractDataRequest {
+    string contractAddress = 1;
+    string methodName      = 2;
+    bytes  params          = 3;
+}
+
+message ContractSendBlockPara  {
+    string address     = 1;
+    string tokenName   = 2;
+    string to          = 3;
+    int64  amount      = 4;
+    string data        = 5;
+
+    string privateFrom         = 6;
+    repeated string privateFor = 7;
+    string  string             = 8;
+    string  enclaveKey         = 9;
+}
+
+message ContractRewardBlockPara  {
+    string sendHash   = 1;
+}

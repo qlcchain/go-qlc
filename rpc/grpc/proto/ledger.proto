@@ -444,7 +444,7 @@ message APIBlocks {
 }
 
 message APITokenMeta {
-    TokenMeta tokenmeta = 1;
+    TokenMeta tokenMeta = 1;
     string    tokenName = 2;
     int64     pending   = 3;
 }

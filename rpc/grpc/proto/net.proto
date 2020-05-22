@@ -1,0 +1,100 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "basic.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service NetAPI {
+    rpc OnlineRepresentatives(google.protobuf.Empty) returns (Addresses){
+        option (google.api.http) = {
+              get: "/net/onlineRepresentatives"
+         };
+    }
+
+    rpc OnlineRepsInfo(google.protobuf.Empty) returns (OnlineRepTotal){
+        option (google.api.http) = {
+              get: "/net/onlineRepsInfo"
+         };
+    }
+
+    rpc ConnectPeersInfo(Offset) returns (PeerInfos){
+        option (google.api.http) = {
+              get: "/net/connectPeersInfo"
+         };
+    }
+
+    rpc GetOnlinePeersInfo(Offset) returns (PeerInfos){
+        option (google.api.http) = {
+              get: "/net/getOnlinePeersInfo"
+         };
+    }
+
+    rpc GetAllPeersInfo(Offset) returns (PeerInfos){
+        option (google.api.http) = {
+              get: "/net/getAllPeersInfo"
+         };
+    }
+
+    rpc PeersCount(google.protobuf.Empty) returns (PeersCountResponse){
+        option (google.api.http) = {
+              get: "/net/peersCount"
+         };
+    }
+
+    rpc GetBandwidthStats(google.protobuf.Empty) returns (EventBandwidthStats){
+        option (google.api.http) = {
+              get: "/net/getBandwidthStats"
+         };
+    }
+
+    rpc Syncing(google.protobuf.Empty) returns (Boolean){
+        option (google.api.http) = {
+              get: "/net/syncing"
+         };
+    }
+
+    rpc GetPeerId(google.protobuf.Empty) returns (String){
+        option (google.api.http) = {
+              get: "/net/getPeerId"
+         };
+    }
+
+}
+
+message OnlineRepInfo  {
+  string account = 1;
+  int64  vote    = 2;
+}
+
+message  OnlineRepTotal  {
+    repeated OnlineRepInfo reps    = 1;
+    int64    validVotes            = 2;
+    string   validVotesPercent     = 3;
+}
+
+message PeerInfo  {
+    string peerID          = 1;
+    string address         = 2;
+    string version         = 3;
+    double rtt             = 4;
+    string lastUpdateTime  = 5;
+}
+
+message PeerInfos {
+    repeated PeerInfo peerInfos = 1;
+}
+
+message PeersCountResponse{
+    map<string,uint64> count = 1;
+}
+
+message  EventBandwidthStats  {
+    int64  TotalIn   = 1;
+    int64  TotalOut  = 2;
+    double RateIn    = 3;
+    double RateOut   = 4;
+}

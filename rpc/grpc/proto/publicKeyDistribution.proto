@@ -1,0 +1,314 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "basic.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service PublicKeyDistributionAPI {
+    rpc GetVerifierRegisterBlock (VerifierRegParam) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getVerifierRegisterBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetVerifierUnregisterBlock (VerifierUnRegParam) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getVerifierUnregisterBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetAllVerifiers (google.protobuf.Empty) returns (VerifierRegParams) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getAllVerifiers"
+           body: "*"
+       };
+    }
+
+    rpc GetVerifiersByType (String) returns (VerifierRegParams) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getVerifiersByType"
+           body: "*"
+       };
+    }
+
+    rpc GetActiveVerifiers (String) returns (VerifierRegParams) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getActiveVerifiers"
+           body: "*"
+       };
+    }
+
+    rpc GetVerifiersByAccount (Address) returns (VerifierRegParams) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getVerifiersByAccount"
+           body: "*"
+       };
+    }
+
+    rpc GetVerifierStateByBlockHeight (VerifierStateByBlockHeightRequest) returns (PovVerifierState) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getVerifierStateByBlockHeight"
+           body: "*"
+       };
+    }
+
+    rpc GetAllVerifierStatesByBlockHeight(UInt64) returns (PKDVerifierStateList) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getAllVerifierStatesByBlockHeight"
+           body: "*"
+       };
+    }
+
+    rpc GetPublishBlock(UInt64) returns (PKDVerifierStateList) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getPublishBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetUnPublishBlock(UnPublishParam) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getUnPublishBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetPubKeyByTypeAndID(TypeAndIDParam) returns (PublishInfoStates) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getPubKeyByTypeAndID"
+           body: "*"
+       };
+    }
+
+    rpc GetRecommendPubKey(TypeAndIDParam) returns (PublishInfoState) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getRecommendPubKey"
+           body: "*"
+       };
+    }
+
+    rpc GetPublishInfosByType(String) returns (PublishInfoStates) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getPublishInfosByType"
+           body: "*"
+       };
+    }
+
+    rpc GetPublishInfosByAccountAndType(AccountAndTypeParam) returns (PublishInfoStates) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getPublishInfosByAccountAndType"
+           body: "*"
+       };
+    }
+
+    rpc GetOracleBlock(OracleParam) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getOracleBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetOracleInfosByType(String) returns (OracleParams) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getOracleInfosByType"
+           body: "*"
+       };
+    }
+
+    rpc GetOracleInfosByTypeAndID(TypeAndIDParam) returns (OracleParams) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getOracleInfosByType"
+           body: "*"
+       };
+    }
+
+    rpc GetOracleInfosByHash(Hash) returns (OracleParams) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getOracleInfosByHash"
+           body: "*"
+       };
+    }
+
+    rpc PackRewardData(PKDRewardParam) returns (Bytes) {
+        option (google.api.http) = {
+           post: "/pkdistribution/packRewardData"
+           body: "*"
+       };
+    }
+
+    rpc UnpackRewardData(Bytes) returns (PKDRewardParam) {
+        option (google.api.http) = {
+           post: "/pkdistribution/unpackRewardData"
+           body: "*"
+       };
+    }
+
+    rpc GetRewardSendBlock(PKDRewardParam) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getRewardSendBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetRewardRecvBlock(StateBlock) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getRewardRecvBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetRewardRecvBlockBySendHash(Hash) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getRewardRecvBlockBySendHash"
+           body: "*"
+       };
+    }
+
+    rpc GetRewardHistory(Address) returns (PKDHistoryRewardInfo) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getRewardHistory"
+           body: "*"
+       };
+    }
+
+    rpc GetAvailRewardInfo(Address) returns (PKDAvailRewardInfo) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getAvailRewardInfo"
+           body: "*"
+       };
+    }
+
+    rpc GetVerifierHeartBlock(VerifierHeartBlockRequest) returns (StateBlock) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getVerifierHeartBlock"
+           body: "*"
+       };
+    }
+
+}
+
+message VerifierRegParam  {
+    string account  = 1;
+    string type     = 2;
+    string id       = 3;
+    string key      = 4;
+}
+
+message VerifierRegParams{
+    repeated VerifierRegParam params = 1;
+}
+
+message  VerifierUnRegParam  {
+    string account = 1;
+    string type    = 2;
+}
+
+message VerifierStateByBlockHeightRequest{
+    uint64 height  = 1;
+    string address = 2;
+}
+
+message PKDVerifierStateList  {
+    int32 verifierNum   = 1;
+    map<string, PovVerifierState> allVerifiers = 2;
+}
+
+message PublishParam  {
+    string account     = 1;
+    string type        = 2;
+    string id          = 3;
+    string pubKey      = 4;
+    string keyType     = 5;
+    int64  fee         = 6;
+    repeated string verifiers  = 7;
+    repeated string codes      = 8;
+    string hash                = 9;
+}
+
+message  PublishInfoState  {
+    PublishParam    publishParam = 1;
+    PovPublishState state        = 2;
+}
+
+message PublishInfoStates{
+    repeated PublishInfoState states = 1;
+}
+
+message  UnPublishParam  {
+    string Account  = 1;
+    string type     = 2;
+    string id       = 3;
+    string pubKey   = 4;
+    string keyType  = 5;
+    string hash     = 6;
+}
+
+message  VerifierContent  {
+    string account = 1;
+    string pubKey  = 2;
+    string code    = 3;
+    string hash    = 4;
+}
+
+message PublishRet  {
+    StateBlock block = 1;
+    map<string, VerifierContent> verifiers = 2;
+}
+
+message OracleParam  {
+    string account  = 1;
+    string type     = 2;
+    string id       = 3;
+    string keyType  = 4;
+    string pubKey   = 5;
+    string code     = 6;
+    string hash     = 7;
+}
+
+message OracleParams{
+    repeated OracleParam params = 1;
+}
+
+message  PKDRewardParam  {
+    string  account       = 1;
+    int64   beneficial    = 2;
+    uint64  endHeight     = 3;
+    int64   rewardAmount  = 4;
+}
+
+message  PKDHistoryRewardInfo  {
+    uint64 lastEndHeight   = 1;
+    string lastBeneficial  = 2;
+    uint64 lastRewardTime  = 3;
+    int64  rewardAmount    = 4;
+}
+
+message  PKDAvailRewardInfo  {
+    uint64 LastEndHeight        = 1;
+    uint64 LatestBlockHeight    = 2;
+    uint64 NodeRewardHeight     = 3;
+    uint64 AvailEndHeight       = 4;
+    int64  AvailRewardAmount    = 5;
+    bool   NeedCallReward       = 6;
+}
+
+message TypeAndIDParam {
+    string type = 1;
+    string pID  = 2;
+}
+
+message AccountAndTypeParam {
+    string pType     = 1;
+    string account   = 2;
+}
+
+message VerifierHeartBlockRequest {
+    string account   = 1;
+    repeated string vTypes  = 2;
+}

@@ -121,3 +121,310 @@ message Addresses {
 message Hashes {
     repeated string hashes = 1;
 }
+
+
+message PovVerifierState  {
+    uint64 totalVerify     = 1;
+    int64  totalReward     = 2;
+    map<string,uint64>  activeHeight  = 3;
+}
+
+message PovPublishState  {
+    repeated string oracleAccounts  = 1;
+    uint64   publishHeight   = 2;
+    uint64   verifiedHeight  = 3;
+    int32    verifiedStatus  = 4;
+    int64    bonusFee        = 5;
+}
+
+message PovRepState  {
+    string account     = 1;
+    int64  balance     = 2;
+    int64  vote        = 3;
+    int64  network     = 4;
+    int64  storage     = 5;
+    int64  oracle      = 6;
+    int64  total       = 7;
+
+    uint32 status      = 8;
+    uint64 height      = 9;
+}
+
+message PovRepStates  {
+    repeated  PovRepState  states = 1;
+}
+
+
+
+message PovHeader  {
+    PovBaseHeader basHdr   = 1;
+    PovAuxHeader  auxHdr   = 2;
+    PovCoinBaseTx cbTx     = 3;
+}
+
+message PovBaseHeader {
+    uint32 version          = 1;
+    string previous         = 2;
+    string merkleRoot       = 3;
+    uint32 timestamp        = 4;
+    uint32 bits             = 5;
+    uint32 nonce            = 6;
+
+    string hash             = 7;
+    uint64 height           = 8;
+
+    // just for cache use
+    //NormBits      uint32   `msg:"-" json:"-"` // normalized bits
+    //NormTargetInt *big.Int `msg:"-" json:"-"` // normalized target big int
+    //AlgoTargetInt *big.Int `msg:"-" json:"-"` //
+}
+
+message PovAuxHeader  {
+    repeated string auxMerkleBranch     = 1;
+    int32     auxMerkleIndex            = 2;
+    PovBtcTx  parCoinBaseTx             = 3;
+    repeated string  parCoinBaseMerkle  = 4;
+    int32       parMerkleIndex          = 5;
+    PovBtcHeader parBlockHeader       = 6;
+    string    parentHash              = 7;
+}
+
+message PovBtcTx  {
+    int32 version          = 1;
+    repeated PovBtcTxIn  txIn   = 2;
+    repeated PovBtcTxOut txOut  = 3;
+    uint32   lockTime      = 4;
+}
+
+message PovBtcTxIn  {
+    PovBtcOutPoint previousOutPoint  = 1;
+    string signatureScript           = 2;//[]byte
+    uint32 sequence                  = 3;
+}
+
+message PovBtcOutPoint  {
+    string hash   = 1;
+    uint32 index  = 2;
+}
+
+message PovBtcTxOut  {
+    int64  value       = 1;
+    string pkScript    = 2;  //[]byte
+}
+
+message PovBtcHeader  {
+    uint32 version    = 1;
+    string previous   = 2;
+    string merkleRoot = 3;
+    uint32 timestamp  = 4;
+    uint32 bits       = 5;
+    uint32 nonce      = 6;
+}
+
+message PovCoinBaseTx  {
+    uint32 version                   = 1;
+    repeated PovCoinBaseTxIn txIns   = 2;
+    repeated PovCoinBaseTxOut txOuts = 3;
+    string   stateHash               = 4;
+    uint32   txNum                   = 5;
+    string   Hash                    = 6;
+}
+
+message PovCoinBaseTxIn {
+    string PrevTxHash  = 1;
+    uint32 PrevTxIdx   = 2;
+    string Extra       = 3;  //[]byte
+    uint32 Sequence    = 4;
+}
+
+message PovCoinBaseTxOut {
+    int64  value   = 1;
+    string address = 2;
+}
+
+
+message PovBlock  {
+    PovHeader Header  = 1;
+    PovBody   Body    = 2;
+}
+
+message PovBody {
+    repeated PovTransaction txs = 1;
+}
+
+message PovTransaction {
+    string Hash   = 1;
+//    PovCoinBaseTx CbTx  * `msg:"-" json:"-"`
+//    Block *StateBlock    `msg:"-" json:"-"`
+}
+
+
+message PovAccountState  {
+    string account      = 1;
+    int64  balance      = 2;
+    int64  vote         = 3;
+    int64  network      = 4;
+    int64  storage      = 5;
+    int64  oracle       = 6;
+    repeated PovTokenState tokenStates  = 7;
+}
+
+message PovTokenState  {
+    string type           = 1;
+    string hash           = 2;
+    string representative = 3;
+    int64  balance        = 4;
+}
+
+message PovContractState {
+    string stateHash = 1;
+    string codeHash  = 2;
+}
+
+message PovTxLookup  {
+    string blockHash   = 1;
+    uint64 blockHeight = 2;
+    uint64 txIndex     = 3;
+}
+
+message PovTD {
+    int64 chain    = 1;
+    int64 sha256d  = 2;
+    int64 scrypt   = 3;
+    int64 x11      = 4;
+    int64 hybrid   = 5;
+}
+
+message PovMinerStatItem  {
+    string account            = 1;
+    uint32 mainBlockNum       = 2;
+    int64  mainRewardAmount   = 3;
+    uint32 stableBlockNum     = 4;
+    int64  stableRewardAmount = 5;
+    int64  firstBlockTime     = 6;
+    int64  lastBlockTime      = 7;
+    uint64 firstBlockHeight   = 8;
+    uint64 lastBlockHeight    = 9;
+    bool   isHourOnline       = 10;
+    bool   isDayOnline        = 11;
+}
+
+message PovMinerDayStat  {
+    uint32 dayIndex       = 1;
+    uint32 minerNum       = 2;
+    map<string, PovMinerStatItem> minerStats  =3;
+}
+
+message PovDiffDayStat  {
+    uint32 dayIndex     = 1;
+    uint64 avgDiffRatio = 2;
+    uint64 maxDiffRatio = 3;
+    uint64 minDiffRatio = 4;
+    uint32 maxBlockTime = 5;
+    uint32 minBlockTime = 6;
+}
+
+
+
+// abi
+
+message RewardsInfo  {
+    int32  type      = 1;
+    string from      = 2;
+    string to        = 3;
+    string txHeader  = 4;
+    string rxHeader  = 5;
+    int64  amount    = 6;
+}
+
+message Contractor {
+    string Address  = 1;
+    string Name     = 2;
+}
+
+message ContractService  {
+    string serviceId    = 1;
+    uint64 mcc          = 2;
+    uint64 mnc          = 3;
+    uint64 totalAmount  = 4;
+    double unitPrice    = 5;
+    string currency     = 6;
+}
+
+message StopParam  {
+    string contractAddress = 1;
+    string stopName        = 2;
+}
+
+message UpdateStopParam  {
+    string contractAddress = 1;
+    string stopName        = 2;
+    string newName         = 3;
+}
+
+
+message ContractParam  {
+    CreateContractParam contractParam  = 1;
+    repeated string preStops     = 2;
+    repeated string nextStops    = 3;
+    int64    confirmDate         = 4;
+    int32    status       = 5;
+    Terminator      terminator   = 6;
+}
+
+message CreateContractParam  {
+    Contractor partyA     = 1;
+    Contractor partyB     = 2;
+    //Previous  types.Hash        `msg:"pre,extension" json:"-"`
+    repeated ContractService services  = 3;
+    int64 signDate        = 4;
+    int64 startDate       = 5;
+    int64 endDate         = 6;
+}
+
+message Terminator  {
+    string address  = 1;
+    bool   request  = 2;
+}
+
+message Asset  {
+    Asset asset     = 1;
+    string assetID  = 2;
+}
+
+message AssetParam  {
+    Contractor owner        = 1;
+    repeated Asset assets   = 2;
+    int64    signDate       = 3;
+    int64    startDate      = 4;
+    int64    endDate        = 5;
+    int32    status      = 6;
+    string   address        = 7;
+}
+
+message TerminateParam  {
+    string contractAddress  = 1;
+    bool   request          = 2;
+}
+
+message CDRStatus  {
+    map<string, CDRParams> Params = 1;
+    int32 status  = 2;
+}
+
+message CDRParam  {
+    uint64 index          = 1;
+    uint64 smsDt          = 2;
+    string account        = 3;
+    string sender         = 4;
+    string customer       = 5;
+    string destination    = 6;
+    int32  sendingStatus  = 7;
+    int32  dlrStatus      = 8;
+    string preStop        = 9;
+    string nextStop       = 10;
+}
+
+message CDRParams{
+    repeated CDRParam cdrParams = 1;
+}
