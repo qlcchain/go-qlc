@@ -673,6 +673,8 @@ func DodSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types
 		return nil, err
 	}
 
+	productIdMap := make(map[string]struct{})
+
 	for _, o := range orders {
 		order, err := DoDSettleGetOrderInfoByOrderId(ctx, seller, o.OrderId)
 		if err != nil {
@@ -694,11 +696,16 @@ func DodSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types
 			return nil, err
 		}
 
+		for _, c := range invoiceOrder.Connections {
+			productIdMap[c.ProductId] = struct{}{}
+		}
+
 		invoice.OrderCount++
-		invoice.TotalConnectionCount += invoiceOrder.ConnectionCount
 		invoice.TotalAmount += invoiceOrder.OrderAmount
 		invoice.Orders = append(invoice.Orders, invoiceOrder)
 	}
+
+	invoice.TotalConnectionCount = len(productIdMap)
 
 	return invoice, nil
 }

@@ -169,8 +169,16 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 		return fmt.Errorf("invalid param")
 	}
 
+	if len(z.QuoteId) == 0 {
+		return fmt.Errorf("quote id needed")
+	}
+
 	quoteItemIdMap := make(map[string]struct{})
 	for _, c := range z.Connections {
+		if len(c.ItemId) == 0 || len(c.QuoteItemId) == 0 {
+			return fmt.Errorf("item id and quote item id needed")
+		}
+
 		if _, ok := quoteItemIdMap[c.QuoteItemId]; ok {
 			return fmt.Errorf("duplicate quote item id")
 		} else {
@@ -373,8 +381,16 @@ func (z *DoDSettleChangeOrderParam) Verify() error {
 		return fmt.Errorf("invalid param")
 	}
 
+	if len(z.QuoteId) == 0 {
+		return fmt.Errorf("quote id needed")
+	}
+
 	quoteItemIdMap := make(map[string]struct{})
 	for _, c := range z.Connections {
+		if len(c.QuoteItemId) == 0 {
+			return fmt.Errorf("quote item id needed")
+		}
+
 		if _, ok := quoteItemIdMap[c.QuoteItemId]; ok {
 			return fmt.Errorf("duplicate quote item id")
 		} else {
@@ -441,6 +457,14 @@ func (z *DoDSettleResourceReadyParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleResourceReadyParam) Verify() error {
+	if z.InternalId.IsZero() {
+		return fmt.Errorf("invalid internal id")
+	}
+
+	if len(z.ProductId) == 0 {
+		return fmt.Errorf("product id null")
+	}
+
 	return nil
 }
 

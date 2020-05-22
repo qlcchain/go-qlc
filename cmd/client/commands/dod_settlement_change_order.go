@@ -206,6 +206,7 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 					Bandwidth:   bandwidthP,
 					BillingUnit: billingUnit,
 					Price:       price,
+					Currency:    "USD",
 				},
 			}
 		} else {
@@ -215,6 +216,7 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 					StartTime: startTime,
 					EndTime:   endTime,
 					Price:     price,
+					Currency:  "USD",
 				},
 			}
 		}

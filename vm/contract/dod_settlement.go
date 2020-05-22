@@ -1147,6 +1147,11 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 		return nil, nil, err
 	}
 
+	err = param.Verify()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, param.InternalId)
 	if err != nil {
 		return nil, nil, err
