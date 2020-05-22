@@ -306,7 +306,7 @@ func (z *DoDSettleUpdateOrderInfoParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
-	if z.ProductIds == nil {
+	if z.ProductIds == nil || len(z.ProductIds) == 0 {
 		return fmt.Errorf("no product")
 	}
 
@@ -377,7 +377,7 @@ func (z *DoDSettleChangeOrderParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleChangeOrderParam) Verify() error {
-	if z.Buyer == nil || z.Seller == nil || z.Connections == nil {
+	if z.Buyer == nil || z.Seller == nil || z.Connections == nil || len(z.Connections) == 0 {
 		return fmt.Errorf("invalid param")
 	}
 
@@ -387,6 +387,10 @@ func (z *DoDSettleChangeOrderParam) Verify() error {
 
 	quoteItemIdMap := make(map[string]struct{})
 	for _, c := range z.Connections {
+		if len(c.ProductId) == 0 {
+			return fmt.Errorf("product id needed")
+		}
+
 		if len(c.QuoteItemId) == 0 {
 			return fmt.Errorf("quote item id needed")
 		}
@@ -427,9 +431,22 @@ func (z *DoDSettleTerminateOrderParam) FromABI(data []byte) error {
 	return err
 }
 
-func (z *DoDSettleTerminateOrderParam) Verify() error {
-	if z.ProductId == nil {
+func (z *DoDSettleTerminateOrderParam) Verify(ctx *vmstore.VMContext) error {
+	if z.ProductId == nil || len(z.ProductId) == 0 {
 		return fmt.Errorf("no product")
+	}
+
+	for _, p := range z.ProductId {
+		productKey := &DoDSettleProduct{
+			Seller:    z.Seller.Address,
+			ProductId: p,
+		}
+		productHash := productKey.Hash()
+
+		_, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
+		if err != nil {
+			return fmt.Errorf("product is not active")
+		}
 	}
 
 	return nil

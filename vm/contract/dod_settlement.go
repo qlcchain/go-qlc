@@ -340,7 +340,6 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 	order.OrderId = param.OrderId
 	order.OrderState = param.Status
 
-	// maybe not matched ? need to check this.
 	if order.OrderType == abi.DoDSettleOrderTypeCreate {
 		for _, c := range order.Connections {
 			for _, p := range param.ProductIds {
@@ -420,7 +419,7 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 			} else if order.OrderType == abi.DoDSettleOrderTypeChange {
 				conn, err = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, fmt.Errorf("product is not active")
 				}
 
 				// only update dod
@@ -449,7 +448,7 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 			} else {
 				conn, err = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, fmt.Errorf("product is not active")
 				}
 
 				// only update dod
@@ -937,7 +936,7 @@ func (to *DoDSettleTerminateOrder) ProcessSend(ctx *vmstore.VMContext, block *ty
 		return nil, nil, err
 	}
 
-	err = param.Verify()
+	err = param.Verify(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1233,6 +1232,7 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 				Track: make([]*abi.DoDSettleConnectionLifeTrack, 0),
 			}
 		} else if order.OrderType == abi.DoDSettleOrderTypeChange {
+			// situation: create order but not ready, then change it. need think about this??
 			conn, err = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 			if err != nil {
 				return nil, nil, err
