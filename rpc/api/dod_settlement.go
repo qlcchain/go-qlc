@@ -380,11 +380,6 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 					return nil
 				}
 
-				order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, param.InternalId)
-				if err != nil {
-					return err
-				}
-
 				info := &DoDPendingResourceCheckInfo{
 					SendHash:   key.Hash,
 					OrderId:    param.OrderId,
@@ -393,14 +388,10 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 				}
 
 				for _, p := range param.ProductIds {
-					productKey := &abi.DoDSettleProduct{
-						Seller:    order.Seller.Address,
-						ProductId: p.ProductId,
-					}
-
 					pai := &DoDSettleProductWithActiveInfo{ProductId: p.ProductId, Active: false}
 
-					_, err := abi.DodSettleGetSellerConnectionActive(d.ctx, productKey.Hash())
+					ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: p.ProductId}
+					_, err := abi.DodSettleGetSellerConnectionActive(d.ctx, ak.Hash())
 					if err == nil {
 						pai.Active = true
 					}

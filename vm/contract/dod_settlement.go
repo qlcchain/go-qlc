@@ -375,6 +375,11 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 			}
 			productHash := productKey.Hash()
 
+			err = abi.DoDSettleUpdateConnectionRawParam(ctx, cp, productHash)
+			if err != nil {
+				return nil, nil, err
+			}
+
 			if order.OrderType == abi.DoDSettleOrderTypeCreate {
 				// only update dod
 				if cp.BillingType == abi.DoDSettleBillingTypePAYG {
@@ -537,6 +542,8 @@ func (uo *DoDSettleUpdateOrderInfo) DoReceive(ctx *vmstore.VMContext, block *typ
 
 	if order.OrderState == abi.DoDSettleOrderStateSuccess {
 		order.OrderState = abi.DoDSettleOrderStateComplete
+	} else {
+		return nil, fmt.Errorf("order state is fail, can not become complete")
 	}
 
 	// generate contract reward block
@@ -680,7 +687,7 @@ func (uo *DoDSettleUpdateOrderInfo) GetTargetReceiver(ctx *vmstore.VMContext, bl
 	}
 
 	if param.InternalId.IsZero() {
-		return types.ZeroAddress, err
+		return types.ZeroAddress, fmt.Errorf("invalid internal id")
 	}
 
 	order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, param.InternalId)
@@ -1168,14 +1175,12 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 		var conn *abi.DoDSettleConnectionInfo
 		var connParam *abi.DoDSettleConnectionParam
 
-		productKey := &abi.DoDSettleProduct{
-			Seller:    order.Seller.Address,
-			ProductId: pid,
-		}
+		productKey := &abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: pid}
 		productHash := productKey.Hash()
 
+		ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: pid}
 		act := &abi.DoDSettleConnectionActive{ActiveAt: time.Now().Unix()}
-		err = abi.DodSettleSetSellerConnectionActive(ctx, act, productHash)
+		err = abi.DodSettleSetSellerConnectionActive(ctx, act, ak.Hash())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1232,36 +1237,74 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 				Track: make([]*abi.DoDSettleConnectionLifeTrack, 0),
 			}
 		} else if order.OrderType == abi.DoDSettleOrderTypeChange {
-			// situation: create order but not ready, then change it. need think about this??
-			conn, err = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
-			if err != nil {
-				return nil, nil, err
+			conn, _ = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
+			if conn != nil {
+				// only update payg
+				if conn.Active.BillingType == abi.DoDSettleBillingTypeDOD {
+					continue
+				}
+
+				newActive := &abi.DoDSettleConnectionDynamicParam{
+					OrderId:        order.OrderId,
+					ConnectionName: connParam.ConnectionName,
+					PaymentType:    connParam.PaymentType,
+					BillingType:    connParam.BillingType,
+					Currency:       connParam.Currency,
+					ServiceClass:   connParam.ServiceClass,
+					Bandwidth:      connParam.Bandwidth,
+					BillingUnit:    connParam.BillingUnit,
+					Price:          connParam.Price,
+				}
+
+				abi.DoDSettleInheritParam(conn.Active, newActive)
+
+				conn.Active.EndTime = abi.DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, time.Now().Unix())
+				newActive.StartTime = conn.Active.EndTime
+
+				conn.Done = append(conn.Done, conn.Active)
+				conn.Active = newActive
+			} else {
+				// create a connection before, but not active
+				cp, err := abi.DoDSettleGetConnectionRawParam(ctx, productHash)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				// only update payg
+				if cp.BillingType == abi.DoDSettleBillingTypeDOD {
+					continue
+				}
+
+				conn = &abi.DoDSettleConnectionInfo{
+					DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
+						ProductId:      pid,
+						SrcCompanyName: cp.SrcCompanyName,
+						SrcRegion:      cp.SrcRegion,
+						SrcCity:        cp.SrcCity,
+						SrcDataCenter:  cp.SrcDataCenter,
+						SrcPort:        cp.SrcPort,
+						DstCompanyName: cp.DstCompanyName,
+						DstRegion:      cp.DstRegion,
+						DstCity:        cp.DstCity,
+						DstDataCenter:  cp.DstDataCenter,
+						DstPort:        cp.DstPort,
+					},
+					Active: &abi.DoDSettleConnectionDynamicParam{
+						OrderId:        order.OrderId,
+						ConnectionName: cp.ConnectionName,
+						PaymentType:    cp.PaymentType,
+						BillingType:    cp.BillingType,
+						Currency:       cp.Currency,
+						ServiceClass:   cp.ServiceClass,
+						Bandwidth:      cp.Bandwidth,
+						BillingUnit:    cp.BillingUnit,
+						Price:          cp.Price,
+						StartTime:      time.Now().Unix(),
+					},
+					Done:  make([]*abi.DoDSettleConnectionDynamicParam, 0),
+					Track: make([]*abi.DoDSettleConnectionLifeTrack, 0),
+				}
 			}
-
-			// only update payg
-			if conn.Active.BillingType == abi.DoDSettleBillingTypeDOD {
-				continue
-			}
-
-			newActive := &abi.DoDSettleConnectionDynamicParam{
-				OrderId:        order.OrderId,
-				ConnectionName: connParam.ConnectionName,
-				PaymentType:    connParam.PaymentType,
-				BillingType:    connParam.BillingType,
-				Currency:       connParam.Currency,
-				ServiceClass:   connParam.ServiceClass,
-				Bandwidth:      connParam.Bandwidth,
-				BillingUnit:    connParam.BillingUnit,
-				Price:          connParam.Price,
-			}
-
-			abi.DoDSettleInheritParam(conn.Active, newActive)
-
-			conn.Active.EndTime = abi.DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, time.Now().Unix())
-			newActive.StartTime = conn.Active.EndTime
-
-			conn.Done = append(conn.Done, conn.Active)
-			conn.Active = newActive
 		} else {
 			conn, err = abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 			if err != nil {

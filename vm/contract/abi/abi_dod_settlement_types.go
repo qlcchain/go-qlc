@@ -104,6 +104,7 @@ const (
 	DoDSettleDBTableUser
 	DoDSettleDBTableSellerConnActive
 	DoDSettleDBTableBuyerConnActive
+	DoDSettleDBTableConnRawParam
 )
 
 //go:generate msgp
@@ -160,6 +161,10 @@ func (z *DoDSettleCreateOrderParam) ToABI() ([]byte, error) {
 }
 
 func (z *DoDSettleCreateOrderParam) FromABI(data []byte) error {
+	if len(data) < 4 {
+		return fmt.Errorf("data too short")
+	}
+
 	_, err := z.UnmarshalMsg(data[4:])
 	return err
 }
@@ -184,6 +189,10 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 		} else {
 			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
+
+		if c.BillingType == DoDSettleBillingTypeDOD && c.StartTime == c.EndTime {
+			return fmt.Errorf("starttime equal endtime")
+		}
 	}
 
 	productItemIdMap := make(map[string]struct{})
@@ -196,6 +205,29 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 	}
 
 	return nil
+}
+
+type DoDSettleConnectionRawParam struct {
+	SrcCompanyName string                `json:"srcCompanyName,omitempty" msg:"scn"`
+	SrcRegion      string                `json:"srcRegion,omitempty" msg:"sr"`
+	SrcCity        string                `json:"srcCity,omitempty" msg:"sc"`
+	SrcDataCenter  string                `json:"srcDataCenter,omitempty" msg:"sdc"`
+	SrcPort        string                `json:"srcPort,omitempty" msg:"sp"`
+	DstCompanyName string                `json:"dstCompanyName,omitempty" msg:"dcn"`
+	DstRegion      string                `json:"dstRegion,omitempty" msg:"dr"`
+	DstCity        string                `json:"dstCity,omitempty" msg:"dc"`
+	DstDataCenter  string                `json:"dstDataCenter,omitempty" msg:"ddc"`
+	DstPort        string                `json:"dstPort,omitempty" msg:"dp"`
+	ConnectionName string                `json:"connectionName,omitempty" msg:"cn"`
+	PaymentType    DoDSettlePaymentType  `json:"paymentType,omitempty" msg:"pt"`
+	BillingType    DoDSettleBillingType  `json:"billingType,omitempty" msg:"bt"`
+	Currency       string                `json:"currency,omitempty" msg:"cr"`
+	ServiceClass   DoDSettleServiceClass `json:"serviceClass,omitempty" msg:"scs"`
+	Bandwidth      string                `json:"bandwidth,omitempty" msg:"bw"`
+	BillingUnit    DoDSettleBillingUnit  `json:"billingUnit,omitempty" msg:"bu"`
+	Price          float64               `json:"price,omitempty" msg:"p"`
+	StartTime      int64                 `json:"startTime" msg:"st"`
+	EndTime        int64                 `json:"endTime" msg:"et"`
 }
 
 type DoDSettleConnectionParam struct {
@@ -301,6 +333,10 @@ func (z *DoDSettleUpdateOrderInfoParam) ToABI() ([]byte, error) {
 }
 
 func (z *DoDSettleUpdateOrderInfoParam) FromABI(data []byte) error {
+	if len(data) < 4 {
+		return fmt.Errorf("data too short")
+	}
+
 	_, err := z.UnmarshalMsg(data[4:])
 	return err
 }
@@ -372,6 +408,10 @@ func (z *DoDSettleChangeOrderParam) ToABI() ([]byte, error) {
 }
 
 func (z *DoDSettleChangeOrderParam) FromABI(data []byte) error {
+	if len(data) < 4 {
+		return fmt.Errorf("data too short")
+	}
+
 	_, err := z.UnmarshalMsg(data[4:])
 	return err
 }
@@ -400,6 +440,10 @@ func (z *DoDSettleChangeOrderParam) Verify() error {
 		} else {
 			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
+
+		if c.BillingType == DoDSettleBillingTypeDOD && c.StartTime == c.EndTime {
+			return fmt.Errorf("starttime equal endtime")
+		}
 	}
 
 	return nil
@@ -427,6 +471,10 @@ func (z *DoDSettleTerminateOrderParam) ToABI() ([]byte, error) {
 }
 
 func (z *DoDSettleTerminateOrderParam) FromABI(data []byte) error {
+	if len(data) < 4 {
+		return fmt.Errorf("data too short")
+	}
+
 	_, err := z.UnmarshalMsg(data[4:])
 	return err
 }
@@ -469,6 +517,10 @@ func (z *DoDSettleResourceReadyParam) ToABI() ([]byte, error) {
 }
 
 func (z *DoDSettleResourceReadyParam) FromABI(data []byte) error {
+	if len(data) < 4 {
+		return fmt.Errorf("data too short")
+	}
+
 	_, err := z.UnmarshalMsg(data[4:])
 	return err
 }
@@ -487,9 +539,9 @@ func (z *DoDSettleResourceReadyParam) Verify() error {
 
 type DoDSettleInvoiceConnDynamic struct {
 	DoDSettleConnectionDynamicParam
-	InvoiceStartTime int64   `json:"invoiceStartTime"`
-	InvoiceEndTime   int64   `json:"invoiceEndTime"`
-	InvoiceUnitCount int     `json:"invoiceUnitCount"`
+	InvoiceStartTime int64   `json:"invoiceStartTime,omitempty"`
+	InvoiceEndTime   int64   `json:"invoiceEndTime,omitempty"`
+	InvoiceUnitCount int     `json:"invoiceUnitCount,omitempty"`
 	Amount           float64 `json:"amount"`
 }
 
@@ -537,6 +589,16 @@ type DoDSettleProductInvoice struct {
 	Buyer       *DoDSettleUser              `json:"buyer"`
 	Seller      *DoDSettleUser              `json:"seller"`
 	Connection  *DoDSettleInvoiceConnDetail `json:"connection"`
+}
+
+type DoDSettleConnectionActiveKey struct {
+	InternalId types.Hash `json:"internalId" msg:"i"`
+	ProductId  string     `json:"productId,omitempty" msg:"p"`
+}
+
+func (z *DoDSettleConnectionActiveKey) Hash() types.Hash {
+	data := append(z.InternalId.Bytes(), []byte(z.ProductId)...)
+	return types.HashData(data)
 }
 
 type DoDSettleConnectionActive struct {

@@ -2779,6 +2779,616 @@ func (z *DoDSettleConnectionParam) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *DoDSettleConnectionRawParam) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "scn":
+			z.SrcCompanyName, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "SrcCompanyName")
+				return
+			}
+		case "sr":
+			z.SrcRegion, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "SrcRegion")
+				return
+			}
+		case "sc":
+			z.SrcCity, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "SrcCity")
+				return
+			}
+		case "sdc":
+			z.SrcDataCenter, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "SrcDataCenter")
+				return
+			}
+		case "sp":
+			z.SrcPort, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "SrcPort")
+				return
+			}
+		case "dcn":
+			z.DstCompanyName, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "DstCompanyName")
+				return
+			}
+		case "dr":
+			z.DstRegion, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "DstRegion")
+				return
+			}
+		case "dc":
+			z.DstCity, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "DstCity")
+				return
+			}
+		case "ddc":
+			z.DstDataCenter, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "DstDataCenter")
+				return
+			}
+		case "dp":
+			z.DstPort, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "DstPort")
+				return
+			}
+		case "cn":
+			z.ConnectionName, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ConnectionName")
+				return
+			}
+		case "pt":
+			{
+				var zb0002 int
+				zb0002, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "PaymentType")
+					return
+				}
+				z.PaymentType = DoDSettlePaymentType(zb0002)
+			}
+		case "bt":
+			{
+				var zb0003 int
+				zb0003, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "BillingType")
+					return
+				}
+				z.BillingType = DoDSettleBillingType(zb0003)
+			}
+		case "cr":
+			z.Currency, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Currency")
+				return
+			}
+		case "scs":
+			{
+				var zb0004 int
+				zb0004, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "ServiceClass")
+					return
+				}
+				z.ServiceClass = DoDSettleServiceClass(zb0004)
+			}
+		case "bw":
+			z.Bandwidth, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Bandwidth")
+				return
+			}
+		case "bu":
+			{
+				var zb0005 int
+				zb0005, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "BillingUnit")
+					return
+				}
+				z.BillingUnit = DoDSettleBillingUnit(zb0005)
+			}
+		case "p":
+			z.Price, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "Price")
+				return
+			}
+		case "st":
+			z.StartTime, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "StartTime")
+				return
+			}
+		case "et":
+			z.EndTime, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "EndTime")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *DoDSettleConnectionRawParam) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 20
+	// write "scn"
+	err = en.Append(0xde, 0x0, 0x14, 0xa3, 0x73, 0x63, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.SrcCompanyName)
+	if err != nil {
+		err = msgp.WrapError(err, "SrcCompanyName")
+		return
+	}
+	// write "sr"
+	err = en.Append(0xa2, 0x73, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.SrcRegion)
+	if err != nil {
+		err = msgp.WrapError(err, "SrcRegion")
+		return
+	}
+	// write "sc"
+	err = en.Append(0xa2, 0x73, 0x63)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.SrcCity)
+	if err != nil {
+		err = msgp.WrapError(err, "SrcCity")
+		return
+	}
+	// write "sdc"
+	err = en.Append(0xa3, 0x73, 0x64, 0x63)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.SrcDataCenter)
+	if err != nil {
+		err = msgp.WrapError(err, "SrcDataCenter")
+		return
+	}
+	// write "sp"
+	err = en.Append(0xa2, 0x73, 0x70)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.SrcPort)
+	if err != nil {
+		err = msgp.WrapError(err, "SrcPort")
+		return
+	}
+	// write "dcn"
+	err = en.Append(0xa3, 0x64, 0x63, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.DstCompanyName)
+	if err != nil {
+		err = msgp.WrapError(err, "DstCompanyName")
+		return
+	}
+	// write "dr"
+	err = en.Append(0xa2, 0x64, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.DstRegion)
+	if err != nil {
+		err = msgp.WrapError(err, "DstRegion")
+		return
+	}
+	// write "dc"
+	err = en.Append(0xa2, 0x64, 0x63)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.DstCity)
+	if err != nil {
+		err = msgp.WrapError(err, "DstCity")
+		return
+	}
+	// write "ddc"
+	err = en.Append(0xa3, 0x64, 0x64, 0x63)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.DstDataCenter)
+	if err != nil {
+		err = msgp.WrapError(err, "DstDataCenter")
+		return
+	}
+	// write "dp"
+	err = en.Append(0xa2, 0x64, 0x70)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.DstPort)
+	if err != nil {
+		err = msgp.WrapError(err, "DstPort")
+		return
+	}
+	// write "cn"
+	err = en.Append(0xa2, 0x63, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ConnectionName)
+	if err != nil {
+		err = msgp.WrapError(err, "ConnectionName")
+		return
+	}
+	// write "pt"
+	err = en.Append(0xa2, 0x70, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(int(z.PaymentType))
+	if err != nil {
+		err = msgp.WrapError(err, "PaymentType")
+		return
+	}
+	// write "bt"
+	err = en.Append(0xa2, 0x62, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(int(z.BillingType))
+	if err != nil {
+		err = msgp.WrapError(err, "BillingType")
+		return
+	}
+	// write "cr"
+	err = en.Append(0xa2, 0x63, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Currency)
+	if err != nil {
+		err = msgp.WrapError(err, "Currency")
+		return
+	}
+	// write "scs"
+	err = en.Append(0xa3, 0x73, 0x63, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(int(z.ServiceClass))
+	if err != nil {
+		err = msgp.WrapError(err, "ServiceClass")
+		return
+	}
+	// write "bw"
+	err = en.Append(0xa2, 0x62, 0x77)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Bandwidth)
+	if err != nil {
+		err = msgp.WrapError(err, "Bandwidth")
+		return
+	}
+	// write "bu"
+	err = en.Append(0xa2, 0x62, 0x75)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(int(z.BillingUnit))
+	if err != nil {
+		err = msgp.WrapError(err, "BillingUnit")
+		return
+	}
+	// write "p"
+	err = en.Append(0xa1, 0x70)
+	if err != nil {
+		return
+	}
+	err = en.WriteFloat64(z.Price)
+	if err != nil {
+		err = msgp.WrapError(err, "Price")
+		return
+	}
+	// write "st"
+	err = en.Append(0xa2, 0x73, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.StartTime)
+	if err != nil {
+		err = msgp.WrapError(err, "StartTime")
+		return
+	}
+	// write "et"
+	err = en.Append(0xa2, 0x65, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.EndTime)
+	if err != nil {
+		err = msgp.WrapError(err, "EndTime")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *DoDSettleConnectionRawParam) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 20
+	// string "scn"
+	o = append(o, 0xde, 0x0, 0x14, 0xa3, 0x73, 0x63, 0x6e)
+	o = msgp.AppendString(o, z.SrcCompanyName)
+	// string "sr"
+	o = append(o, 0xa2, 0x73, 0x72)
+	o = msgp.AppendString(o, z.SrcRegion)
+	// string "sc"
+	o = append(o, 0xa2, 0x73, 0x63)
+	o = msgp.AppendString(o, z.SrcCity)
+	// string "sdc"
+	o = append(o, 0xa3, 0x73, 0x64, 0x63)
+	o = msgp.AppendString(o, z.SrcDataCenter)
+	// string "sp"
+	o = append(o, 0xa2, 0x73, 0x70)
+	o = msgp.AppendString(o, z.SrcPort)
+	// string "dcn"
+	o = append(o, 0xa3, 0x64, 0x63, 0x6e)
+	o = msgp.AppendString(o, z.DstCompanyName)
+	// string "dr"
+	o = append(o, 0xa2, 0x64, 0x72)
+	o = msgp.AppendString(o, z.DstRegion)
+	// string "dc"
+	o = append(o, 0xa2, 0x64, 0x63)
+	o = msgp.AppendString(o, z.DstCity)
+	// string "ddc"
+	o = append(o, 0xa3, 0x64, 0x64, 0x63)
+	o = msgp.AppendString(o, z.DstDataCenter)
+	// string "dp"
+	o = append(o, 0xa2, 0x64, 0x70)
+	o = msgp.AppendString(o, z.DstPort)
+	// string "cn"
+	o = append(o, 0xa2, 0x63, 0x6e)
+	o = msgp.AppendString(o, z.ConnectionName)
+	// string "pt"
+	o = append(o, 0xa2, 0x70, 0x74)
+	o = msgp.AppendInt(o, int(z.PaymentType))
+	// string "bt"
+	o = append(o, 0xa2, 0x62, 0x74)
+	o = msgp.AppendInt(o, int(z.BillingType))
+	// string "cr"
+	o = append(o, 0xa2, 0x63, 0x72)
+	o = msgp.AppendString(o, z.Currency)
+	// string "scs"
+	o = append(o, 0xa3, 0x73, 0x63, 0x73)
+	o = msgp.AppendInt(o, int(z.ServiceClass))
+	// string "bw"
+	o = append(o, 0xa2, 0x62, 0x77)
+	o = msgp.AppendString(o, z.Bandwidth)
+	// string "bu"
+	o = append(o, 0xa2, 0x62, 0x75)
+	o = msgp.AppendInt(o, int(z.BillingUnit))
+	// string "p"
+	o = append(o, 0xa1, 0x70)
+	o = msgp.AppendFloat64(o, z.Price)
+	// string "st"
+	o = append(o, 0xa2, 0x73, 0x74)
+	o = msgp.AppendInt64(o, z.StartTime)
+	// string "et"
+	o = append(o, 0xa2, 0x65, 0x74)
+	o = msgp.AppendInt64(o, z.EndTime)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DoDSettleConnectionRawParam) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "scn":
+			z.SrcCompanyName, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SrcCompanyName")
+				return
+			}
+		case "sr":
+			z.SrcRegion, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SrcRegion")
+				return
+			}
+		case "sc":
+			z.SrcCity, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SrcCity")
+				return
+			}
+		case "sdc":
+			z.SrcDataCenter, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SrcDataCenter")
+				return
+			}
+		case "sp":
+			z.SrcPort, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SrcPort")
+				return
+			}
+		case "dcn":
+			z.DstCompanyName, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DstCompanyName")
+				return
+			}
+		case "dr":
+			z.DstRegion, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DstRegion")
+				return
+			}
+		case "dc":
+			z.DstCity, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DstCity")
+				return
+			}
+		case "ddc":
+			z.DstDataCenter, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DstDataCenter")
+				return
+			}
+		case "dp":
+			z.DstPort, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DstPort")
+				return
+			}
+		case "cn":
+			z.ConnectionName, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ConnectionName")
+				return
+			}
+		case "pt":
+			{
+				var zb0002 int
+				zb0002, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "PaymentType")
+					return
+				}
+				z.PaymentType = DoDSettlePaymentType(zb0002)
+			}
+		case "bt":
+			{
+				var zb0003 int
+				zb0003, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "BillingType")
+					return
+				}
+				z.BillingType = DoDSettleBillingType(zb0003)
+			}
+		case "cr":
+			z.Currency, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Currency")
+				return
+			}
+		case "scs":
+			{
+				var zb0004 int
+				zb0004, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ServiceClass")
+					return
+				}
+				z.ServiceClass = DoDSettleServiceClass(zb0004)
+			}
+		case "bw":
+			z.Bandwidth, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Bandwidth")
+				return
+			}
+		case "bu":
+			{
+				var zb0005 int
+				zb0005, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "BillingUnit")
+					return
+				}
+				z.BillingUnit = DoDSettleBillingUnit(zb0005)
+			}
+		case "p":
+			z.Price, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Price")
+				return
+			}
+		case "st":
+			z.StartTime, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "StartTime")
+				return
+			}
+		case "et":
+			z.EndTime, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "EndTime")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *DoDSettleConnectionRawParam) Msgsize() (s int) {
+	s = 3 + 4 + msgp.StringPrefixSize + len(z.SrcCompanyName) + 3 + msgp.StringPrefixSize + len(z.SrcRegion) + 3 + msgp.StringPrefixSize + len(z.SrcCity) + 4 + msgp.StringPrefixSize + len(z.SrcDataCenter) + 3 + msgp.StringPrefixSize + len(z.SrcPort) + 4 + msgp.StringPrefixSize + len(z.DstCompanyName) + 3 + msgp.StringPrefixSize + len(z.DstRegion) + 3 + msgp.StringPrefixSize + len(z.DstCity) + 4 + msgp.StringPrefixSize + len(z.DstDataCenter) + 3 + msgp.StringPrefixSize + len(z.DstPort) + 3 + msgp.StringPrefixSize + len(z.ConnectionName) + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.Currency) + 4 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.Bandwidth) + 3 + msgp.IntSize + 2 + msgp.Float64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *DoDSettleConnectionStaticParam) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
