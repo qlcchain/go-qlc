@@ -1,23 +1,15 @@
 package contract
 
 import (
-<<<<<<< HEAD
-=======
 	"testing"
 	"time"
 
->>>>>>> feat: dod settlement smart contract
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-<<<<<<< HEAD
-	"testing"
-	"time"
-=======
->>>>>>> feat: dod settlement smart contract
 )
 
 func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
@@ -52,20 +44,12 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 	}
 
 	cp := &abi.DoDSettleCreateOrderParam{
-<<<<<<< HEAD
-		Seller:  &abi.DoDSettleUser{Address: mock.Address(), Name: "S1"},
-=======
 		Seller: &abi.DoDSettleUser{Address: mock.Address(), Name: "S1"},
->>>>>>> feat: dod settlement smart contract
 		Connections: []*abi.DoDSettleConnectionParam{
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
 					ItemId:         "item1",
-<<<<<<< HEAD
-					BuyerProductId:"bp1",
-=======
 					BuyerProductId: "bp1",
->>>>>>> feat: dod settlement smart contract
 					SrcCompanyName: "CBC",
 					SrcRegion:      "CHN",
 					SrcCity:        "HK",
@@ -79,11 +63,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					ConnectionName: "conn1",
-<<<<<<< HEAD
-					QuoteId: "quote1",
-=======
 					QuoteId:        "quote1",
->>>>>>> feat: dod settlement smart contract
 					QuoteItemId:    "quoteItem1",
 					Bandwidth:      "200 Mbps",
 					BillingUnit:    abi.DoDSettleBillingUnitSecond,
@@ -97,11 +77,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
 					ItemId:         "item2",
-<<<<<<< HEAD
-					BuyerProductId:"bp2",
-=======
 					BuyerProductId: "bp2",
->>>>>>> feat: dod settlement smart contract
 					SrcCompanyName: "CBC",
 					SrcRegion:      "CHN",
 					SrcCity:        "HK",
@@ -115,11 +91,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					ConnectionName: "conn2",
-<<<<<<< HEAD
-					QuoteId: "quote1",
-=======
 					QuoteId:        "quote1",
->>>>>>> feat: dod settlement smart contract
 					QuoteItemId:    "quoteItem2",
 					Bandwidth:      "200 Mbps",
 					Price:          1,
@@ -694,19 +666,6 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 	}
 
 	cp := &abi.DoDSettleChangeOrderParam{
-<<<<<<< HEAD
-		Buyer:   &abi.DoDSettleUser{Address: mock.Address(), Name: "B1"},
-		Seller:  &abi.DoDSettleUser{Address: mock.Address(), Name: "S1"},
-		Connections: []*abi.DoDSettleChangeConnectionParam{
-			{
-				ProductId:   "p1",
-				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
-					QuoteId: "",
-					QuoteItemId: "qi1",
-					Bandwidth: "100 Mbps",
-					Price:     10,
-					StartTime: time.Now().Unix(),
-=======
 		Buyer:  &abi.DoDSettleUser{Address: mock.Address(), Name: "B1"},
 		Seller: &abi.DoDSettleUser{Address: mock.Address(), Name: "S1"},
 		Connections: []*abi.DoDSettleChangeConnectionParam{
@@ -718,7 +677,6 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 					Bandwidth:   "100 Mbps",
 					Price:       10,
 					StartTime:   time.Now().Unix(),
->>>>>>> feat: dod settlement smart contract
 				},
 			},
 		},
@@ -918,11 +876,7 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 	param := &abi.DoDSettleTerminateOrderParam{
 		Buyer:  &abi.DoDSettleUser{Address: mock.Address(), Name: "B1"},
 		Seller: &abi.DoDSettleUser{Address: mock.Address(), Name: "S1"},
-<<<<<<< HEAD
-		Connections:[]*abi.DoDSettleChangeConnectionParam{
-=======
 		Connections: []*abi.DoDSettleChangeConnectionParam{
->>>>>>> feat: dod settlement smart contract
 			{},
 		},
 	}
