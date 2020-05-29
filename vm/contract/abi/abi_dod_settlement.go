@@ -1032,6 +1032,10 @@ func DodSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types
 			return nil, err
 		}
 
+		if invoiceOrder.OrderAmount == 0 {
+			continue
+		}
+
 		for _, c := range invoiceOrder.Connections {
 			productIdMap[c.ProductId] = struct{}{}
 		}
