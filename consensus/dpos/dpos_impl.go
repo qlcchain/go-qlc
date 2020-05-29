@@ -7,9 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qlcchain/go-qlc/vm/contract"
-
 	"github.com/qlcchain/go-qlc/common/vmcontract/mintage"
+	"github.com/qlcchain/go-qlc/vm/contract"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/bluele/gcache"
@@ -773,7 +772,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 
 		dstAddr := types.ZeroAddress
 
-		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetData()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(blk.GetLink()), blk.GetPayload()); ok && err == nil {
 			ctx := vmstore.NewVMContextWithBlock(dps.ledger, blk)
 			if ctx == nil {
 				dps.logger.Error("dispatch: can not get vm context")
@@ -793,8 +792,10 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		}
 
 		if types.Address(blk.GetLink()) == contractaddress.PubKeyDistributionAddress {
-			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.Data)
-			if err == nil {
+			method, err := cabi.PublicKeyDistributionABI.MethodById(blk.GetPayload())
+			if err != nil {
+				dps.logger.Errorf("get contract method err %s", err)
+			} else {
 				if method.Name == cabi.MethodNamePKDPublish {
 					for _, p := range dps.processors {
 						if localIndex != p.index {
@@ -802,24 +803,70 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 						}
 					}
 				}
+			}
+		} else if types.Address(blk.GetLink()) == contractaddress.DoDSettlementAddress {
+			method, err := cabi.DoDSettlementABI.MethodById(blk.GetPayload())
+			if err != nil {
+				dps.logger.Errorf("get contract method err %s", err)
 			} else {
-				dps.logger.Errorf("get contract method err")
+				if method.Name == cabi.MethodNameDoDSettleUpdateOrderInfo {
+					param := new(cabi.DoDSettleUpdateOrderInfoParam)
+					err := param.FromABI(blk.GetPayload())
+					if err != nil {
+						dps.logger.Errorf("unpack data err %s", err)
+						return
+					}
+
+					vmCtx := vmstore.NewVMContext(dps.ledger, &contractaddress.DoDSettlementAddress)
+					order, err := cabi.DoDSettleGetOrderInfoByInternalId(vmCtx, param.InternalId)
+					if err != nil {
+						dps.logger.Errorf("get order info err %s", err)
+						return
+					}
+
+					index := dps.getProcessorIndex(order.Seller.Address)
+					if localIndex != index {
+						dps.processors[index].dodSettleStateChangeNotify(hash)
+					}
+				}
 			}
 		}
 	case types.ContractReward: // deal gap tokenInfo
-		if blk.IsOpen() {
-			input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
-			if err != nil {
-				dps.logger.Errorf("get block link error [%s]", hash)
-				return
-			}
+		// check private tx
+		if blk.IsPrivate() && !blk.IsRecipient() {
+			break
+		}
 
-			if types.Address(input.GetLink()) == contractaddress.MintageAddress {
-				param := new(mintage.ParamMintage)
-				if err := mintage.MintageABI.UnpackMethod(param, mintage.MethodNameMintage, input.GetData()); err == nil {
+		input, err := dps.ledger.GetStateBlockConfirmed(blk.GetLink())
+		if err != nil {
+			dps.logger.Errorf("get block link error [%s]", hash)
+			return
+		}
+
+		if types.Address(input.GetLink()) == contractaddress.MintageAddress {
+			method, err := mintage.MintageABI.MethodById(input.GetPayload())
+			if err != nil {
+				dps.logger.Errorf("get contract method err %s", err)
+			} else {
+				if method.Name == mintage.MethodNameMintage {
 					index := dps.getProcessorIndex(input.Address)
 					if localIndex != index {
 						dps.processors[index].tokenCreateNotify(hash)
+					}
+				}
+			}
+		} else if types.Address(input.GetLink()) == contractaddress.DoDSettlementAddress {
+			method, err := cabi.DoDSettlementABI.MethodById(input.GetPayload())
+			if err != nil {
+				dps.logger.Errorf("get contract method err %s", err)
+			} else {
+				if method.Name == cabi.MethodNameDoDSettleCreateOrder || method.Name == cabi.MethodNameDoDSettleChangeOrder ||
+					method.Name == cabi.MethodNameDoDSettleTerminateOrder {
+					dps.logger.Info("dod confirm block", blk.GetHash())
+					index := dps.getProcessorIndex(input.Address)
+					if localIndex != index {
+						dps.logger.Info("dod confirm block notify", blk.GetHash(), index)
+						dps.processors[index].dodSettleStateChangeNotify(hash)
 					}
 				}
 			}

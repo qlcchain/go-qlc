@@ -384,3 +384,38 @@ func TestLedger_GetGapPublishBlock(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestLedger_AddGapDoDSettleStateBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	internalId := mock.Hash()
+	block := mock.StateBlockWithoutWork()
+	err := l.AddGapDoDSettleStateBlock(internalId, block, types.UnSynchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.GetGapDoDSettleStateBlock(internalId, func(blk *types.StateBlock, sync types.SynchronizedKind) error {
+		if blk.GetHash() != block.GetHash() {
+			t.Fatal()
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.DeleteGapDoDSettleStateBlock(internalId, block.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.GetGapDoDSettleStateBlock(internalId, func(blk *types.StateBlock, sync types.SynchronizedKind) error {
+		t.Fatal()
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
