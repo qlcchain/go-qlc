@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
@@ -180,10 +182,10 @@ func TestDoDSettlementAPI_GetOrderInfoByInternalId(t *testing.T) {
 	_, _ = ds.GetOrderInfoByInternalId("63be22932dd23059ad3706e347d0b8343de752d9bff9d12f5132102d0bd13b9b")
 }
 
-func TestDoDSettlementAPI_GetConnectionInfoBySellerAndProductId(t *testing.T) {
+func TestDoDSettlementAPI_GetProductInfoBySellerAndProductId(t *testing.T) {
 	ds, clear := DoDSettleAPITestInit(t)
 	defer clear()
-	_, _ = ds.GetConnectionInfoBySellerAndProductId(mock.Address(), "product001")
+	_, _ = ds.GetProductInfoBySellerAndProductId(mock.Address(), "product001")
 }
 
 func TestDoDSettlementAPI_GetPendingRequest(t *testing.T) {
@@ -534,4 +536,281 @@ func TestDoDSettlementAPI_GenerateInvoiceByProductId(t *testing.T) {
 	ds, clear := DoDSettleAPITestInit(t)
 	defer clear()
 	_, _ = ds.GenerateInvoiceByProductId(mock.Address(), "product1", 100, 1000, true, true)
+}
+
+func addDoDSettleTestOrder(t *testing.T, ctx *vmstore.VMContext, address, seller types.Address, count int) {
+	order := abi.NewOrderInfo()
+	order.Seller = &abi.DoDSettleUser{Address: seller}
+	order.Buyer = &abi.DoDSettleUser{Address: address}
+
+	var key []byte
+	key = append(key, abi.DoDSettleDBTableUser)
+	key = append(key, address.Bytes()...)
+
+	userInfo := new(abi.DoDSettleUserInfos)
+	userInfo.InternalIds = make([]*abi.DoDSettleInternalIdWrap, 0)
+	userInfo.OrderIds = make([]*abi.DoDSettleOrder, 0)
+
+	for i := 0; i < count; i++ {
+		order.OrderId = fmt.Sprintf("order%d", i)
+		id := mock.Hash()
+
+		internalId := &abi.DoDSettleInternalIdWrap{InternalId: id}
+		userInfo.InternalIds = append(userInfo.InternalIds, internalId)
+
+		data, err := order.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var key []byte
+		key = append(key, abi.DoDSettleDBTableOrder)
+		key = append(key, id.Bytes()...)
+		err = ctx.SetStorage(nil, key, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		orderKey := &abi.DoDSettleOrder{
+			Seller:  seller,
+			OrderId: order.OrderId,
+		}
+
+		userInfo.OrderIds = append(userInfo.OrderIds, orderKey)
+
+		key = key[0:0]
+		key = append(key, abi.DoDSettleDBTableOrderIdMap)
+		key = append(key, orderKey.Hash().Bytes()...)
+
+		err = ctx.SetStorage(nil, key, id.Bytes())
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	data, err := userInfo.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ctx.SetStorage(nil, key, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func addDoDSettleTestConnection(t *testing.T, ctx *vmstore.VMContext, address, seller types.Address, count int) {
+	conn := new(abi.DoDSettleConnectionInfo)
+
+	var key []byte
+	key = append(key, abi.DoDSettleDBTableUser)
+	key = append(key, address.Bytes()...)
+
+	userInfo := new(abi.DoDSettleUserInfos)
+	userInfo.ProductIds = make([]*abi.DoDSettleProduct, 0)
+
+	for i := 0; i < count; i++ {
+		conn.ProductId = fmt.Sprintf("product%d", i)
+
+		productKey := &abi.DoDSettleProduct{
+			Seller:    seller,
+			ProductId: conn.ProductId,
+		}
+		productHash := productKey.Hash()
+
+		userInfo.ProductIds = append(userInfo.ProductIds, productKey)
+
+		data, err := conn.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var key []byte
+		key = append(key, abi.DoDSettleDBTableProduct)
+		key = append(key, productHash.Bytes()...)
+		err = ctx.SetStorage(nil, key, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	data, err := userInfo.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ctx.SetStorage(nil, key, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDoDSettlementAPI_GetOrderCountByAddress(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	address := mock.Address()
+	count := ds.GetOrderCountByAddress(address)
+	if count != 0 {
+		t.Fatal()
+	}
+
+	addDoDSettleTestOrder(t, ds.ctx, address, mock.Address(), 10)
+
+	count = ds.GetOrderCountByAddress(address)
+	if count != 10 {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettlementAPI_GetOrderInfoByAddress(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	address := mock.Address()
+	_, err := ds.GetOrderInfoByAddress(address, 1, 0)
+	if err == nil {
+		t.Fatal()
+	}
+
+	addDoDSettleTestOrder(t, ds.ctx, address, mock.Address(), 10)
+
+	ois, err := ds.GetOrderInfoByAddress(address, 1, 0)
+	if err != nil || ois[0].OrderId != "order9" {
+		t.Fatal()
+	}
+
+	ois, err = ds.GetOrderInfoByAddress(address, 2, 3)
+	if err != nil || len(ois) != 2 || ois[0].OrderId != "order6" {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettlementAPI_GetOrderCountByAddressAndSeller(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	address := mock.Address()
+	seller := mock.Address()
+	count := ds.GetOrderCountByAddressAndSeller(address, seller)
+	if count != 0 {
+		t.Fatal()
+	}
+
+	addDoDSettleTestOrder(t, ds.ctx, address, seller, 10)
+
+	count = ds.GetOrderCountByAddressAndSeller(address, seller)
+	if count != 10 {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettlementAPI_GetOrderInfoByAddressAndSeller(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	address := mock.Address()
+	seller := mock.Address()
+	_, err := ds.GetOrderInfoByAddressAndSeller(address, seller, 1, 0)
+	if err == nil {
+		t.Fatal()
+	}
+
+	addDoDSettleTestOrder(t, ds.ctx, address, seller, 10)
+
+	ois, err := ds.GetOrderInfoByAddressAndSeller(address, seller, 1, 0)
+	if err != nil || ois[0].OrderId != "order9" {
+		t.Fatal()
+	}
+
+	ois, err = ds.GetOrderInfoByAddressAndSeller(address, seller, 2, 3)
+	if err != nil || len(ois) != 2 || ois[0].OrderId != "order6" {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettlementAPI_GetProductCountByAddress(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	address := mock.Address()
+	seller := mock.Address()
+	count := ds.GetProductCountByAddress(address)
+	if count != 0 {
+		t.Fatal()
+	}
+
+	addDoDSettleTestConnection(t, ds.ctx, address, seller, 10)
+
+	count = ds.GetProductCountByAddress(address)
+	if count != 10 {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettlementAPI_GetProductInfoByAddress(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	address := mock.Address()
+	seller := mock.Address()
+	_, err := ds.GetProductInfoByAddress(address, 1, 0)
+	if err == nil {
+		t.Fatal()
+	}
+
+	addDoDSettleTestConnection(t, ds.ctx, address, seller, 10)
+
+	pds, err := ds.GetProductInfoByAddress(address, 1, 0)
+	if err != nil || pds[0].ProductId != "product9" {
+		t.Fatal()
+	}
+
+	pds, err = ds.GetProductInfoByAddress(address, 2, 3)
+	if err != nil || len(pds) != 2 || pds[0].ProductId != "product6" {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettlementAPI_GetProductCountByAddressAndSeller(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	address := mock.Address()
+	seller := mock.Address()
+	count := ds.GetProductCountByAddressAndSeller(address, seller)
+	if count != 0 {
+		t.Fatal()
+	}
+
+	addDoDSettleTestConnection(t, ds.ctx, address, seller, 10)
+
+	count = ds.GetProductCountByAddressAndSeller(address, seller)
+	if count != 10 {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettlementAPI_GetProductInfoByAddressAndSeller(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	address := mock.Address()
+	seller := mock.Address()
+	_, err := ds.GetProductInfoByAddressAndSeller(address, seller, 1, 0)
+	if err == nil {
+		t.Fatal()
+	}
+
+	addDoDSettleTestConnection(t, ds.ctx, address, seller, 10)
+
+	pds, err := ds.GetProductInfoByAddressAndSeller(address, seller, 1, 0)
+	if err != nil || pds[0].ProductId != "product9" {
+		t.Fatal()
+	}
+
+	pds, err = ds.GetProductInfoByAddressAndSeller(address, seller, 2, 3)
+	if err != nil || len(pds) != 2 || pds[0].ProductId != "product6" {
+		t.Fatal()
+	}
 }
