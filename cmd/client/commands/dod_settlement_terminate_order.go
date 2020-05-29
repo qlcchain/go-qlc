@@ -3,10 +3,11 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"strings"
-
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
+	"math/rand"
+	"strconv"
+	"strings"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -45,8 +46,14 @@ func addDSTerminateOrderCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "productId (separate by comma)",
 		Value: "",
 	}
+	price := util.Flag{
+		Name:  "price",
+		Must:  true,
+		Usage: "price",
+		Value: "",
+	}
 
-	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, productId}
+	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, productId, price}
 	cmd := &ishell.Cmd{
 		Name:                "terminateOrder",
 		Help:                "create a terminate order request",
@@ -66,8 +73,9 @@ func addDSTerminateOrderCmdByShell(parentCmd *ishell.Cmd) {
 			sellerAddressP := util.StringVar(c.Args, sellerAddress)
 			sellerNameP := util.StringVar(c.Args, sellerName)
 			productIdP := util.StringVar(c.Args, productId)
+			priceP := util.StringVar(c.Args, price)
 
-			if err := DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, productIdP); err != nil {
+			if err := DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, productIdP, priceP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -76,7 +84,7 @@ func addDSTerminateOrderCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, productIdP string) error {
+func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, productIdP, priceP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -98,6 +106,11 @@ func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, pr
 		return err
 	}
 
+	price, err := strconv.ParseFloat(priceP, 64)
+	if err != nil {
+		return err
+	}
+
 	param := &abi.DoDSettleTerminateOrderParam{
 		Buyer: &abi.DoDSettleUser{
 			Address: acc.Address(),
@@ -107,7 +120,19 @@ func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, pr
 			Address: sellerAddress,
 			Name:    sellerNameP,
 		},
-		ProductId: strings.Split(productIdP, ","),
+		Connections: make([]*abi.DoDSettleChangeConnectionParam, 0),
+	}
+
+	pids := strings.Split(productIdP, ",")
+
+	for _, productId := range pids {
+		conn := new(abi.DoDSettleChangeConnectionParam)
+		conn.Price = price
+		conn.Currency = "USD"
+		conn.ProductId = productId
+		conn.QuoteId = fmt.Sprintf("quote%d", rand.Int())
+		conn.QuoteItemId = fmt.Sprintf("quoteItem%d", rand.Int())
+		param.Connections = append(param.Connections, conn)
 	}
 
 	block := new(types.StateBlock)

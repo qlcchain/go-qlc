@@ -13,7 +13,7 @@ func TestDoDSettleBillingType(t *testing.T) {
 		t.Fatal()
 	}
 
-	DoDSettleBillingType(1000).String()
+	_ = DoDSettleBillingType(1000).String()
 
 	pbt, _ := ParseDoDSettleBillingType("PAYG")
 	if pbt != DoDSettleBillingTypePAYG {
@@ -45,7 +45,7 @@ func TestDoDSettleBillingUnit(t *testing.T) {
 		t.Fatal()
 	}
 
-	DoDSettleBillingUnit(1000).String()
+	_ = DoDSettleBillingUnit(1000).String()
 
 	pbu, _ := ParseDoDSettleBillingUnit("second")
 	if pbu != DoDSettleBillingUnitSecond {
@@ -77,7 +77,7 @@ func TestDoDSettleContractState(t *testing.T) {
 		t.Fatal()
 	}
 
-	DoDSettleContractState(1000).String()
+	_ = DoDSettleContractState(1000).String()
 
 	psr, _ := ParseDoDSettleContractState("request")
 	if psr != DoDSettleContractStateRequest {
@@ -109,7 +109,7 @@ func TestDoDSettleOrderState(t *testing.T) {
 		t.Fatal()
 	}
 
-	DoDSettleOrderState(1000).String()
+	_ = DoDSettleOrderState(1000).String()
 
 	pos, _ := ParseDoDSettleOrderState("success")
 	if pos != DoDSettleOrderStateSuccess {
@@ -141,7 +141,7 @@ func TestDoDSettleOrderType(t *testing.T) {
 		t.Fatal()
 	}
 
-	DoDSettleOrderType(1000).String()
+	_ = DoDSettleOrderType(1000).String()
 
 	pot, _ := ParseDoDSettleOrderType("create")
 	if pot != DoDSettleOrderTypeCreate {
@@ -173,7 +173,7 @@ func TestDoDSettlePaymentType(t *testing.T) {
 		t.Fatal()
 	}
 
-	DoDSettlePaymentType(1000).String()
+	_ = DoDSettlePaymentType(1000).String()
 
 	ppt, _ := ParseDoDSettlePaymentType("invoice")
 	if ppt != DoDSettlePaymentTypeInvoice {
@@ -205,7 +205,7 @@ func TestDoDSettleResponseAction(t *testing.T) {
 		t.Fatal()
 	}
 
-	DoDSettleResponseAction(1000).String()
+	_ = DoDSettleResponseAction(1000).String()
 
 	pac, _ := ParseDoDSettleResponseAction("confirm")
 	if pac != DoDSettleResponseActionConfirm {
@@ -237,7 +237,7 @@ func TestDoDSettleServiceClass(t *testing.T) {
 		t.Fatal()
 	}
 
-	DoDSettleServiceClass(1000).String()
+	_ = DoDSettleServiceClass(1000).String()
 
 	psc, _ := ParseDoDSettleServiceClass("gold")
 	if psc != DoDSettleServiceClassGold {

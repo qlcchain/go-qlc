@@ -146,7 +146,6 @@ func (z *DoDSettleOrder) Hash() types.Hash {
 type DoDSettleCreateOrderParam struct {
 	Buyer       *DoDSettleUser              `json:"buyer" msg:"b"`
 	Seller      *DoDSettleUser              `json:"seller" msg:"s"`
-	QuoteId     string                      `json:"quoteId,omitempty" msg:"q"`
 	Connections []*DoDSettleConnectionParam `json:"connections,omitempty" msg:"c"`
 }
 
@@ -174,14 +173,41 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 		return fmt.Errorf("invalid param")
 	}
 
-	if len(z.QuoteId) == 0 {
-		return fmt.Errorf("quote id needed")
+	if len(z.Connections) == 0 {
+		return fmt.Errorf("no product")
 	}
 
 	quoteItemIdMap := make(map[string]struct{})
+	productItemIdMap := make(map[string]struct{})
+	productBuyerProductIdMap := make(map[string]struct{})
+
 	for _, c := range z.Connections {
-		if len(c.ItemId) == 0 || len(c.QuoteItemId) == 0 {
-			return fmt.Errorf("item id and quote item id needed")
+		if len(c.ItemId) == 0 {
+			return fmt.Errorf("item id needed")
+		}
+
+		if _, ok := productItemIdMap[c.ItemId]; ok {
+			return fmt.Errorf("duplicate item id")
+		} else {
+			productItemIdMap[c.ItemId] = struct{}{}
+		}
+
+		if len(c.BuyerProductId) == 0 {
+			return fmt.Errorf("buyer item id needed")
+		}
+
+		if _, ok := productBuyerProductIdMap[c.BuyerProductId]; ok {
+			return fmt.Errorf("duplicate buyer product id")
+		} else {
+			productBuyerProductIdMap[c.BuyerProductId] = struct{}{}
+		}
+
+		if len(c.QuoteId) == 0 {
+			return fmt.Errorf("quote id needed")
+		}
+
+		if len(c.QuoteItemId) == 0 {
+			return fmt.Errorf("quote item id needed")
 		}
 
 		if _, ok := quoteItemIdMap[c.QuoteItemId]; ok {
@@ -195,19 +221,12 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 		}
 	}
 
-	productItemIdMap := make(map[string]struct{})
-	for _, c := range z.Connections {
-		if _, ok := productItemIdMap[c.ItemId]; ok {
-			return fmt.Errorf("duplicate product item id")
-		} else {
-			productItemIdMap[c.ItemId] = struct{}{}
-		}
-	}
-
 	return nil
 }
 
 type DoDSettleConnectionRawParam struct {
+	ItemId         string                `json:"itemId,omitempty" msg:"ii"`
+	BuyerProductId string                `json:"buyerProductId,omitempty" msg:"bp"`
 	SrcCompanyName string                `json:"srcCompanyName,omitempty" msg:"scn"`
 	SrcRegion      string                `json:"srcRegion,omitempty" msg:"sr"`
 	SrcCity        string                `json:"srcCity,omitempty" msg:"sc"`
@@ -237,6 +256,7 @@ type DoDSettleConnectionParam struct {
 
 type DoDSettleConnectionStaticParam struct {
 	ItemId         string `json:"itemId,omitempty" msg:"ii"`
+	BuyerProductId string `json:"buyerProductId,omitempty" msg:"bp"`
 	ProductId      string `json:"productId,omitempty" msg:"pi"`
 	SrcCompanyName string `json:"srcCompanyName,omitempty" msg:"scn"`
 	SrcRegion      string `json:"srcRegion,omitempty" msg:"sr"`
@@ -252,6 +272,7 @@ type DoDSettleConnectionStaticParam struct {
 
 type DoDSettleConnectionDynamicParam struct {
 	OrderId        string                `json:"orderId,omitempty" msg:"oi"`
+	QuoteId        string                `json:"quoteId,omitempty" msg:"q"`
 	QuoteItemId    string                `json:"quoteItemId,omitempty" msg:"qi"`
 	ConnectionName string                `json:"connectionName,omitempty" msg:"cn"`
 	PaymentType    DoDSettlePaymentType  `json:"paymentType,omitempty" msg:"pt"`
@@ -261,8 +282,11 @@ type DoDSettleConnectionDynamicParam struct {
 	Bandwidth      string                `json:"bandwidth,omitempty" msg:"bw"`
 	BillingUnit    DoDSettleBillingUnit  `json:"billingUnit,omitempty" msg:"bu"`
 	Price          float64               `json:"price,omitempty" msg:"p"`
+	Addition       float64               `json:"addition" msg:"ad"`
 	StartTime      int64                 `json:"startTime" msg:"st"`
+	StartTimeStr   string                `json:"startTimeStr,omitempty" msg:"-"`
 	EndTime        int64                 `json:"endTime" msg:"et"`
+	EndTimeStr     string                `json:"endTimeStr,omitempty" msg:"-"`
 }
 
 type DoDSettleConnectionLifeTrack struct {
@@ -272,11 +296,21 @@ type DoDSettleConnectionLifeTrack struct {
 	Changed   *DoDSettleConnectionDynamicParam `json:"changed,omitempty" msg:"c"`
 }
 
+type DoDSettleDisconnectInfo struct {
+	OrderId      string  `json:"orderId,omitempty" msg:"oi"`
+	QuoteId      string  `json:"quoteId,omitempty" msg:"q"`
+	QuoteItemId  string  `json:"quoteItemId,omitempty" msg:"qi"`
+	Price        float64 `json:"price,omitempty" msg:"p"`
+	Currency     string  `json:"currency,omitempty" msg:"cr"`
+	DisconnectAt int64   `json:"disconnectAt,omitempty" msg:"d"`
+}
+
 type DoDSettleConnectionInfo struct {
 	DoDSettleConnectionStaticParam
-	Active *DoDSettleConnectionDynamicParam   `json:"active" msg:"ac"`
-	Done   []*DoDSettleConnectionDynamicParam `json:"done" msg:"do"`
-	Track  []*DoDSettleConnectionLifeTrack    `json:"track" msg:"t"`
+	Active     *DoDSettleConnectionDynamicParam   `json:"active" msg:"ac"`
+	Done       []*DoDSettleConnectionDynamicParam `json:"done" msg:"do"`
+	Disconnect *DoDSettleDisconnectInfo           `json:"disconnect" msg:"dis"`
+	Track      []*DoDSettleConnectionLifeTrack    `json:"track" msg:"t"`
 }
 
 type DoDSettleOrderLifeTrack struct {
@@ -291,7 +325,6 @@ type DoDSettleOrderInfo struct {
 	Buyer         *DoDSettleUser              `json:"buyer" msg:"b"`
 	Seller        *DoDSettleUser              `json:"seller" msg:"s"`
 	OrderId       string                      `json:"orderId,omitempty" msg:"oi"`
-	QuoteId       string                      `json:"quoteId,omitempty" msg:"qi"`
 	OrderType     DoDSettleOrderType          `json:"orderType,omitempty" msg:"ot"`
 	OrderState    DoDSettleOrderState         `json:"orderState" msg:"os"`
 	ContractState DoDSettleContractState      `json:"contractState" msg:"cs"`
@@ -309,8 +342,8 @@ func NewOrderInfo() *DoDSettleOrderInfo {
 }
 
 type DoDSettleProductItem struct {
-	ProductId string `json:"productId" msg:"p"`
-	ItemId    string `json:"itemId" msg:"i"`
+	ProductId      string `json:"productId" msg:"p"`
+	BuyerProductId string `json:"buyerProductId" msg:"b"`
 }
 
 type DoDSettleUpdateOrderInfoParam struct {
@@ -342,10 +375,6 @@ func (z *DoDSettleUpdateOrderInfoParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
-	if z.ProductIds == nil || len(z.ProductIds) == 0 {
-		return fmt.Errorf("no product")
-	}
-
 	if z.InternalId.IsZero() {
 		return fmt.Errorf("invalid internal id")
 	}
@@ -355,21 +384,36 @@ func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
 		return err
 	}
 
-	productIdMap := make(map[string]struct{})
-	for _, p := range z.ProductIds {
-		if _, ok := productIdMap[p.ItemId]; ok {
-			return fmt.Errorf("duplicate product id")
-		} else {
-			productIdMap[p.ItemId] = struct{}{}
-		}
+	ord, _ := DoDSettleGetOrderInfoByOrderId(ctx, order.Seller.Address, z.OrderId)
+	if ord != nil {
+		return fmt.Errorf("order exist (%s)", z.OrderId)
 	}
 
 	if order.OrderType == DoDSettleOrderTypeCreate {
+		if z.ProductIds == nil || len(z.ProductIds) == 0 {
+			return fmt.Errorf("no product")
+		}
+
+		productIdMap := make(map[string]struct{})
+
+		for _, p := range z.ProductIds {
+			if _, ok := productIdMap[p.ProductId]; ok {
+				return fmt.Errorf("duplicate product id")
+			} else {
+				productIdMap[p.ProductId] = struct{}{}
+			}
+
+			conn, _ := DoDSettleGetConnectionInfoByProductId(ctx, order.Seller.Address, p.ProductId)
+			if conn != nil {
+				return fmt.Errorf("product exist (%s)", p.ProductId)
+			}
+		}
+
 		for _, c := range order.Connections {
 			found := false
 
 			for _, p := range z.ProductIds {
-				if c.ItemId == p.ItemId {
+				if c.BuyerProductId == p.BuyerProductId {
 					found = true
 					break
 				}
@@ -385,15 +429,13 @@ func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
 }
 
 type DoDSettleChangeConnectionParam struct {
-	ProductId   string `json:"productId" msg:"p"`
-	QuoteItemId string `json:"quoteItemId" msg:"q"`
+	ProductId string `json:"productId" msg:"p"`
 	DoDSettleConnectionDynamicParam
 }
 
 type DoDSettleChangeOrderParam struct {
 	Buyer       *DoDSettleUser                    `json:"buyer" msg:"b"`
 	Seller      *DoDSettleUser                    `json:"seller" msg:"s"`
-	QuoteId     string                            `json:"quoteId" msg:"q"`
 	Connections []*DoDSettleChangeConnectionParam `json:"connections" msg:"c"`
 }
 
@@ -421,14 +463,14 @@ func (z *DoDSettleChangeOrderParam) Verify() error {
 		return fmt.Errorf("invalid param")
 	}
 
-	if len(z.QuoteId) == 0 {
-		return fmt.Errorf("quote id needed")
-	}
-
 	quoteItemIdMap := make(map[string]struct{})
 	for _, c := range z.Connections {
 		if len(c.ProductId) == 0 {
 			return fmt.Errorf("product id needed")
+		}
+
+		if len(c.QuoteId) == 0 {
+			return fmt.Errorf("quote id needed")
 		}
 
 		if len(c.QuoteItemId) == 0 {
@@ -455,9 +497,9 @@ type DoDSettleResponseParam struct {
 }
 
 type DoDSettleTerminateOrderParam struct {
-	Buyer     *DoDSettleUser `json:"buyer" msg:"b"`
-	Seller    *DoDSettleUser `json:"seller" msg:"s"`
-	ProductId []string       `json:"productId" msg:"p"`
+	Buyer       *DoDSettleUser                    `json:"buyer" msg:"b"`
+	Seller      *DoDSettleUser                    `json:"seller" msg:"s"`
+	Connections []*DoDSettleChangeConnectionParam `json:"connections" msg:"c"`
 }
 
 func (z *DoDSettleTerminateOrderParam) ToABI() ([]byte, error) {
@@ -480,20 +522,30 @@ func (z *DoDSettleTerminateOrderParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleTerminateOrderParam) Verify(ctx *vmstore.VMContext) error {
-	if z.ProductId == nil || len(z.ProductId) == 0 {
-		return fmt.Errorf("no product")
+	if z.Buyer == nil || z.Seller == nil || z.Connections == nil || len(z.Connections) == 0 {
+		return fmt.Errorf("invalid param")
 	}
 
-	for _, p := range z.ProductId {
+	for _, p := range z.Connections {
 		productKey := &DoDSettleProduct{
 			Seller:    z.Seller.Address,
-			ProductId: p,
+			ProductId: p.ProductId,
 		}
 		productHash := productKey.Hash()
 
-		_, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
+		conn, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 		if err != nil {
 			return fmt.Errorf("product is not active")
+		}
+
+		if conn.Active != nil && conn.Active.BillingType == DoDSettleBillingTypeDOD {
+			if len(p.QuoteId) == 0 {
+				return fmt.Errorf("quote id needed")
+			}
+
+			if len(p.QuoteItemId) == 0 {
+				return fmt.Errorf("quote item id needed")
+			}
 		}
 	}
 
@@ -539,10 +591,12 @@ func (z *DoDSettleResourceReadyParam) Verify() error {
 
 type DoDSettleInvoiceConnDynamic struct {
 	DoDSettleConnectionDynamicParam
-	InvoiceStartTime int64   `json:"invoiceStartTime,omitempty"`
-	InvoiceEndTime   int64   `json:"invoiceEndTime,omitempty"`
-	InvoiceUnitCount int     `json:"invoiceUnitCount,omitempty"`
-	Amount           float64 `json:"amount"`
+	InvoiceStartTime    int64   `json:"invoiceStartTime,omitempty"`
+	InvoiceStartTimeStr string  `json:"invoiceStartTimeStr,omitempty"`
+	InvoiceEndTime      int64   `json:"invoiceEndTime,omitempty"`
+	InvoiceEndTimeStr   string  `json:"invoiceEndTimeStr,omitempty"`
+	InvoiceUnitCount    int     `json:"invoiceUnitCount,omitempty"`
+	Amount              float64 `json:"amount"`
 }
 
 type DoDSettleInvoiceConnDetail struct {
@@ -592,8 +646,8 @@ type DoDSettleProductInvoice struct {
 }
 
 type DoDSettleConnectionActiveKey struct {
-	InternalId types.Hash `json:"internalId" msg:"i"`
-	ProductId  string     `json:"productId,omitempty" msg:"p"`
+	InternalId types.Hash
+	ProductId  string
 }
 
 func (z *DoDSettleConnectionActiveKey) Hash() types.Hash {

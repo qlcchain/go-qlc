@@ -83,15 +83,9 @@ func addDSChangeOrderCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "productId (separate by comma)",
 		Value: "",
 	}
-	quoteId := util.Flag{
-		Name:  "quoteId",
-		Must:  true,
-		Usage: "quoteId",
-		Value: "",
-	}
 
 	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, billingType, bandwidth, billingUnit, price,
-		startTime, endTime, productId, quoteId}
+		startTime, endTime, productId}
 	cmd := &ishell.Cmd{
 		Name:                "changeOrder",
 		Help:                "create a change order request",
@@ -117,10 +111,9 @@ func addDSChangeOrderCmdByShell(parentCmd *ishell.Cmd) {
 			startTimeP := util.StringVar(c.Args, startTime)
 			endTimeP := util.StringVar(c.Args, endTime)
 			productIdP := util.StringVar(c.Args, productId)
-			quoteIdP := util.StringVar(c.Args, quoteId)
 
 			if err := DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, startTimeP, endTimeP,
-				billingTypeP, bandwidthP, billingUnitP, priceP, productIdP, quoteIdP); err != nil {
+				billingTypeP, bandwidthP, billingUnitP, priceP, productIdP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -130,7 +123,7 @@ func addDSChangeOrderCmdByShell(parentCmd *ishell.Cmd) {
 }
 
 func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, startTimeP, endTimeP, billingTypeP,
-	bandwidthP, billingUnitP, priceP, productIdP, quoteIdP string) error {
+	bandwidthP, billingUnitP, priceP, productIdP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -191,7 +184,6 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 			Address: sellerAddress,
 			Name:    sellerNameP,
 		},
-		QuoteId:     quoteIdP,
 		Connections: make([]*abi.DoDSettleChangeConnectionParam, 0),
 	}
 
@@ -222,6 +214,7 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 		}
 
 		conn.ProductId = productId
+		conn.QuoteId = fmt.Sprintf("quote%d", rand.Int())
 		conn.QuoteItemId = fmt.Sprintf("quoteItem%d", rand.Int())
 		param.Connections = append(param.Connections, conn)
 	}

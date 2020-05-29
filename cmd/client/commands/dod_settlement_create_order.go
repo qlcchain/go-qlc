@@ -94,15 +94,9 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "num",
 		Value: "",
 	}
-	quoteId := util.Flag{
-		Name:  "quoteId",
-		Must:  true,
-		Usage: "quoteId",
-		Value: "",
-	}
 
 	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, srcPort, dstPort, billingType, bandwidth,
-		billingUnit, price, startTime, endTime, num, quoteId}
+		billingUnit, price, startTime, endTime, num}
 	cmd := &ishell.Cmd{
 		Name:                "createOrder",
 		Help:                "create a order request",
@@ -130,10 +124,9 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 			startTimeP := util.StringVar(c.Args, startTime)
 			endTimeP := util.StringVar(c.Args, endTime)
 			numP := util.StringVar(c.Args, num)
-			quoteIdP := util.StringVar(c.Args, quoteId)
 
 			if err := DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPortP, dstPortP,
-				billingTypeP, bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP, quoteIdP); err != nil {
+				billingTypeP, bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -143,7 +136,7 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 }
 
 func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPortP, dstPortP, billingTypeP,
-	bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP, quoteIdP string) error {
+	bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -207,7 +200,6 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 			Address: sellerAddress,
 			Name:    sellerNameP,
 		},
-		QuoteId:     quoteIdP,
 		Connections: make([]*abi.DoDSettleConnectionParam, 0),
 	}
 
@@ -217,6 +209,7 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 			conn = &abi.DoDSettleConnectionParam{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
 					ItemId:         fmt.Sprintf("item%d", rand.Int()),
+					BuyerProductId: fmt.Sprintf("buyerProduct%d", rand.Int()),
 					SrcCompanyName: "CBC",
 					SrcRegion:      "CHN",
 					SrcCity:        "HK",
@@ -230,6 +223,7 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					ConnectionName: fmt.Sprintf("connection%d", rand.Int()),
+					QuoteId:        fmt.Sprintf("quote%d", rand.Int()),
 					QuoteItemId:    fmt.Sprintf("quoteItem%d", rand.Int()),
 					Bandwidth:      bandwidthP,
 					BillingUnit:    billingUnit,
@@ -254,6 +248,7 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 			conn = &abi.DoDSettleConnectionParam{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
 					ItemId:         fmt.Sprintf("item%d", rand.Int()),
+					BuyerProductId: fmt.Sprintf("buyerProduct%d", rand.Int()),
 					SrcCompanyName: "CBC",
 					SrcRegion:      "CHN",
 					SrcCity:        "HK",
@@ -267,6 +262,7 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					ConnectionName: fmt.Sprintf("connection%d", rand.Int()),
+					QuoteId:        fmt.Sprintf("quote%d", rand.Int()),
 					QuoteItemId:    fmt.Sprintf("quoteItem%d", rand.Int()),
 					Bandwidth:      bandwidthP,
 					Price:          price,

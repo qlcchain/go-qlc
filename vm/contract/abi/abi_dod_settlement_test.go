@@ -132,21 +132,21 @@ func TestDodSettleCalcAmount(t *testing.T) {
 	be = 3600 * 10
 	s = 0
 	e = 3600 * 7
-	cp := DodSettleCalcAmount(bs, be, s, e, price, dc)
+	cp := DoDSettleCalcAmount(bs, be, s, e, price, dc)
 	if cp != 5 {
 		t.Fatal()
 	}
 
 	s = 3600 * 4
 	e = 3660 * 15
-	cp = DodSettleCalcAmount(bs, be, s, e, price, dc)
+	cp = DoDSettleCalcAmount(bs, be, s, e, price, dc)
 	if cp != 6 {
 		t.Fatal()
 	}
 
 	s = 3600 * 7
 	e = 3600 * 9
-	cp = DodSettleCalcAmount(bs, be, s, e, price, dc)
+	cp = DoDSettleCalcAmount(bs, be, s, e, price, dc)
 	if cp != 2 {
 		t.Fatal()
 	}
@@ -489,6 +489,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 			BillingType: DoDSettleBillingTypeDOD,
 			Currency:    "USD",
 			Price:       8.000,
+			Addition:   8.000,
 			StartTime:   1000,
 			EndTime:     9000,
 		},
@@ -506,16 +507,12 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	}
 	connInfo2 := &DoDSettleConnectionInfo{
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product002"},
-		Done: []*DoDSettleConnectionDynamicParam{
-			{
-				OrderId:     "order001",
-				BillingType: DoDSettleBillingTypeDOD,
-				Currency:    "USD",
-				Price:       4.000,
-				StartTime:   1000,
-				EndTime:     5000,
-			},
-		},
+		Disconnect: &DoDSettleDisconnectInfo{
+		OrderId:      "order001",
+		Price:        0,
+		Currency:     "USD",
+		DisconnectAt: 3000,
+	},
 	}
 	conn3 := &DoDSettleConnectionParam{
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product003"},
@@ -577,47 +574,47 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 
 	start := int64(500)
 	end := int64(8000)
-	invoice, err := DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end)
+	invoice, err := DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if invoice.TotalAmount != float64(23) {
+	if invoice.TotalAmount != float64(19) {
 		t.Fatal()
 	}
 
 	start = int64(2000)
 	end = int64(4000)
-	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end)
+	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if invoice.TotalAmount != float64(8) {
+	if invoice.TotalAmount != float64(4) {
 		t.Fatal()
 	}
 
 	start = int64(4000)
 	end = int64(10000)
-	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end)
+	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if invoice.TotalAmount != float64(14) {
+	if invoice.TotalAmount != 13 {
 		t.Fatal()
 	}
 
 	start = int64(4000)
 	end = int64(0)
-	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end)
+	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	start = int64(0)
 	end = int64(1000)
-	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end)
+	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, false, true)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -661,6 +658,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 			BillingType: DoDSettleBillingTypeDOD,
 			Currency:    "USD",
 			Price:       5.000,
+			Addition:5.000,
 			StartTime:   10000,
 			EndTime:     15000,
 		},
@@ -670,6 +668,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 				BillingType: DoDSettleBillingTypeDOD,
 				Currency:    "USD",
 				Price:       4.000,
+				Addition:   4.000,
 				StartTime:   1000,
 				EndTime:     5000,
 			},
@@ -678,9 +677,16 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 				BillingType: DoDSettleBillingTypeDOD,
 				Currency:    "USD",
 				Price:       3.000,
+				Addition:   3.000,
 				StartTime:   6000,
 				EndTime:     9000,
 			},
+		},
+		Disconnect: &DoDSettleDisconnectInfo{
+			OrderId:      "order004",
+			Price:        0,
+			Currency:     "USD",
+			DisconnectAt: 10000,
 		},
 		Track: []*DoDSettleConnectionLifeTrack{
 			{
@@ -735,7 +741,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 
 	start := int64(3000)
 	end := int64(12000)
-	invoice, err := DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end)
+	invoice, err := DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -746,28 +752,28 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 
 	start = int64(0)
 	end = int64(12000)
-	_, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end)
+	_, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
 	if err == nil {
 		t.Fatal(err)
 	}
 
 	start = int64(3000)
 	end = int64(0)
-	_, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end)
+	_, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	start = int64(12000)
 	end = int64(15000)
-	invoice, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn2.ProductId, start, end)
+	invoice, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn2.ProductId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	start = int64(3000)
 	end = int64(15000)
-	invoice, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn2.ProductId, start, end)
+	invoice, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn2.ProductId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -846,14 +852,14 @@ func TestDodSettleGenerateInvoiceByBuyer(t *testing.T) {
 
 	start := int64(0)
 	end := int64(8000)
-	_, err = DodSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end)
+	_, err = DodSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end, true, true)
 	if err == nil {
 		t.Fatal()
 	}
 
 	start = int64(1000)
 	end = int64(8000)
-	_, err = DodSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end)
+	_, err = DodSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end, true, true)
 	if err != nil {
 		t.Fatal()
 	}

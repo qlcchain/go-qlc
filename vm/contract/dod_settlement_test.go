@@ -44,11 +44,11 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 
 	cp := &abi.DoDSettleCreateOrderParam{
 		Seller:  &abi.DoDSettleUser{Address: mock.Address(), Name: "S1"},
-		QuoteId: "quote1",
 		Connections: []*abi.DoDSettleConnectionParam{
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
 					ItemId:         "item1",
+					BuyerProductId:"bp1",
 					SrcCompanyName: "CBC",
 					SrcRegion:      "CHN",
 					SrcCity:        "HK",
@@ -62,6 +62,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					ConnectionName: "conn1",
+					QuoteId: "quote1",
 					QuoteItemId:    "quoteItem1",
 					Bandwidth:      "200 Mbps",
 					BillingUnit:    abi.DoDSettleBillingUnitSecond,
@@ -75,6 +76,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
 					ItemId:         "item2",
+					BuyerProductId:"bp2",
 					SrcCompanyName: "CBC",
 					SrcRegion:      "CHN",
 					SrcCity:        "HK",
@@ -88,6 +90,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					ConnectionName: "conn2",
+					QuoteId: "quote1",
 					QuoteItemId:    "quoteItem2",
 					Bandwidth:      "200 Mbps",
 					Price:          1,
@@ -295,7 +298,7 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 	up := &abi.DoDSettleUpdateOrderInfoParam{
 		Buyer:      mock.Address(),
 		OrderId:    "order1",
-		ProductIds: []*abi.DoDSettleProductItem{{ProductId: "p1", ItemId: "i1"}},
+		ProductIds: []*abi.DoDSettleProductItem{{ProductId: "p1", BuyerProductId: "bp1"}},
 		Status:     abi.DoDSettleOrderStateSuccess,
 	}
 
@@ -325,7 +328,7 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 	order.OrderId = "order1"
 	order.OrderType = abi.DoDSettleOrderTypeCreate
 	conn := new(abi.DoDSettleConnectionParam)
-	conn.ItemId = "i1"
+	conn.BuyerProductId = "bp1"
 	conn.ProductId = "p1"
 	conn.BillingType = abi.DoDSettleBillingTypeDOD
 	order.Connections = append(order.Connections, conn)
@@ -369,9 +372,30 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = uo.ProcessSend(ctx, block)
+	order = abi.NewOrderInfo()
+	order.Buyer = &abi.DoDSettleUser{Address: block.Address}
+	order.Seller = &abi.DoDSettleUser{Address: mock.Address()}
+	order.OrderId = "order2"
+	order.OrderType = abi.DoDSettleOrderTypeCreate
+	conn = new(abi.DoDSettleConnectionParam)
+	conn.BuyerProductId = "bp1"
+	conn.ProductId = "p1"
+	conn.BillingType = abi.DoDSettleBillingTypeDOD
+	order.Connections = append(order.Connections, conn)
+	err = abi.DoDSettleUpdateOrder(ctx, order, up.InternalId)
 	if err != nil {
 		t.Fatal()
+	}
+
+	up.OrderId = "order002"
+	block.Data, err = up.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = uo.ProcessSend(ctx, block)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	order.OrderType = abi.DoDSettleOrderTypeChange
@@ -380,15 +404,27 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
+	up.OrderId = "order003"
+	block.Data, err = up.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, _, err = uo.ProcessSend(ctx, block)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	order.OrderType = abi.DoDSettleOrderTypeTerminate
 	err = abi.DoDSettleUpdateOrder(ctx, order, up.InternalId)
 	if err != nil {
 		t.Fatal()
+	}
+
+	up.OrderId = "order004"
+	block.Data, err = up.ToABI()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	_, _, err = uo.ProcessSend(ctx, block)
@@ -631,12 +667,12 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 	cp := &abi.DoDSettleChangeOrderParam{
 		Buyer:   &abi.DoDSettleUser{Address: mock.Address(), Name: "B1"},
 		Seller:  &abi.DoDSettleUser{Address: mock.Address(), Name: "S1"},
-		QuoteId: "",
 		Connections: []*abi.DoDSettleChangeConnectionParam{
 			{
 				ProductId:   "p1",
-				QuoteItemId: "qi1",
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					QuoteId: "",
+					QuoteItemId: "qi1",
 					Bandwidth: "100 Mbps",
 					Price:     10,
 					StartTime: time.Now().Unix(),
@@ -655,7 +691,7 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
-	cp.QuoteId = "q1"
+	cp.Connections[0].QuoteId = "q1"
 	block.Data, err = cp.ToABI()
 	if err != nil {
 		t.Fatal(err)
@@ -839,6 +875,9 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 	param := &abi.DoDSettleTerminateOrderParam{
 		Buyer:  &abi.DoDSettleUser{Address: mock.Address(), Name: "B1"},
 		Seller: &abi.DoDSettleUser{Address: mock.Address(), Name: "S1"},
+		Connections:[]*abi.DoDSettleChangeConnectionParam{
+			{},
+		},
 	}
 
 	block.Data, err = param.ToABI()
@@ -851,7 +890,7 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
-	param.ProductId = []string{"p1"}
+	param.Connections[0].ProductId = "p1"
 	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)

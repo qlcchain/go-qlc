@@ -486,14 +486,14 @@ func (d *DoDSettlementAPI) GetOrderIdListByAddressAndSeller(address, seller type
 	return orders, nil
 }
 
-func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64) (*abi.DoDSettleOrderInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByOrder(d.ctx, seller, orderId, start, end)
+func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64, flight, split bool) (*abi.DoDSettleOrderInvoice, error) {
+	return abi.DodSettleGenerateInvoiceByOrder(d.ctx, seller, orderId, start, end, flight, split)
 }
 
-func (d *DoDSettlementAPI) GenerateInvoiceByBuyer(seller, buyer types.Address, start, end int64) (*abi.DoDSettleBuyerInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByBuyer(d.ctx, seller, buyer, start, end)
+func (d *DoDSettlementAPI) GenerateInvoiceByBuyer(seller, buyer types.Address, start, end int64, flight, split bool) (*abi.DoDSettleBuyerInvoice, error) {
+	return abi.DodSettleGenerateInvoiceByBuyer(d.ctx, seller, buyer, start, end, flight, split)
 }
 
-func (d *DoDSettlementAPI) GenerateInvoiceByProductId(seller types.Address, productId string, start, end int64) (*abi.DoDSettleProductInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByProduct(d.ctx, seller, productId, start, end)
+func (d *DoDSettlementAPI) GenerateInvoiceByProductId(seller types.Address, productId string, start, end int64, flight, split bool) (*abi.DoDSettleProductInvoice, error) {
+	return abi.DodSettleGenerateInvoiceByProduct(d.ctx, seller, productId, start, end, flight, split)
 }
