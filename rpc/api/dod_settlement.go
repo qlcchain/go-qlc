@@ -293,7 +293,7 @@ func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoD
 	return abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
 }
 
-func (d *DoDSettlementAPI) GetConnectionInfoBySellerAndProductId(seller types.Address, productId string) (*abi.DoDSettleConnectionInfo, error) {
+func (d *DoDSettlementAPI) GetProductInfoBySellerAndProductId(seller types.Address, productId string) (*abi.DoDSettleConnectionInfo, error) {
 	return abi.DoDSettleGetConnectionInfoByProductId(d.ctx, seller, productId)
 }
 
@@ -484,6 +484,170 @@ func (d *DoDSettlementAPI) GetOrderIdListByAddressAndSeller(address, seller type
 	}
 
 	return orders, nil
+}
+
+func (d *DoDSettlementAPI) GetOrderCountByAddress(address types.Address) int {
+	order, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, address)
+	if err != nil {
+		return 0
+	} else {
+		return len(order)
+	}
+}
+
+func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, offset int) ([]*abi.DoDSettleOrderInfo, error) {
+	orders := make([]*abi.DoDSettleOrderInfo, 0)
+
+	internalIds, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, address)
+	if err != nil {
+		return nil, err
+	}
+
+	index := 0
+
+	for i := len(internalIds) - 1; i >= 0; i-- {
+		index++
+
+		if index <= offset {
+			continue
+		}
+
+		if index > offset+count {
+			break
+		}
+
+		order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, internalIds[i])
+		if err != nil {
+			return nil, err
+		}
+
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
+func (d *DoDSettlementAPI) GetOrderCountByAddressAndSeller(address, seller types.Address) int {
+	order, err := d.GetOrderIdListByAddressAndSeller(address, seller)
+	if err != nil {
+		return 0
+	} else {
+		return len(order)
+	}
+}
+
+func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.Address, count, offset int) ([]*abi.DoDSettleOrderInfo, error) {
+	orders := make([]*abi.DoDSettleOrderInfo, 0)
+
+	orderIds, err := d.GetOrderIdListByAddressAndSeller(address, seller)
+	if err != nil {
+		return nil, err
+	}
+
+	index := 0
+
+	for i := len(orderIds) - 1; i >= 0; i-- {
+		index++
+
+		if index <= offset {
+			continue
+		}
+
+		if index > offset+count {
+			break
+		}
+
+		order, err := abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, orderIds[i].OrderId)
+		if err != nil {
+			return nil, err
+		}
+
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
+func (d *DoDSettlementAPI) GetProductCountByAddress(address types.Address) int {
+	product, err := abi.DoDSettleGetProductIdListByAddress(d.ctx, address)
+	if err != nil {
+		return 0
+	} else {
+		return len(product)
+	}
+}
+
+func (d *DoDSettlementAPI) GetProductInfoByAddress(address types.Address, count, offset int) ([]*abi.DoDSettleConnectionInfo, error) {
+	products := make([]*abi.DoDSettleConnectionInfo, 0)
+
+	productIds, err := abi.DoDSettleGetProductIdListByAddress(d.ctx, address)
+	if err != nil {
+		return nil, err
+	}
+
+	index := 0
+
+	for i := len(productIds) - 1; i >= 0; i-- {
+		index++
+
+		if index <= offset {
+			continue
+		}
+
+		if index > offset+count {
+			break
+		}
+
+		product, err := abi.DoDSettleGetConnectionInfoByProductId(d.ctx, productIds[i].Seller, productIds[i].ProductId)
+		if err != nil {
+			return nil, err
+		}
+
+		products = append(products, product)
+	}
+
+	return products, nil
+}
+
+func (d *DoDSettlementAPI) GetProductCountByAddressAndSeller(address, seller types.Address) int {
+	product, err := d.GetProductIdListByAddressAndSeller(address, seller)
+	if err != nil {
+		return 0
+	} else {
+		return len(product)
+	}
+}
+
+func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller types.Address, count, offset int) ([]*abi.DoDSettleConnectionInfo, error) {
+	products := make([]*abi.DoDSettleConnectionInfo, 0)
+
+	productIds, err := d.GetProductIdListByAddressAndSeller(address, seller)
+	if err != nil {
+		return nil, err
+	}
+
+	index := 0
+
+	for i := len(productIds) - 1; i >= 0; i-- {
+		index++
+
+		if index <= offset {
+			continue
+		}
+
+		if index > offset+count {
+			break
+		}
+
+		product, err := abi.DoDSettleGetConnectionInfoByProductId(d.ctx, seller, productIds[i].ProductId)
+		if err != nil {
+			return nil, err
+		}
+
+		products = append(products, product)
+	}
+
+	return products, nil
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64, flight, split bool) (*abi.DoDSettleOrderInvoice, error) {
