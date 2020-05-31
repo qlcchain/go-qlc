@@ -5,9 +5,10 @@ import (
 	"strings"
 
 	_ "github.com/qlcchain/go-qlc/common/statedb"
-	"github.com/qlcchain/go-qlc/common/types"
 
 	"github.com/qlcchain/go-qlc/common"
+	_ "github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	_ "github.com/qlcchain/go-qlc/config"

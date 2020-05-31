@@ -4,7 +4,8 @@ package proto;
 import "google/api/annotations.proto";
 import "types/basic.proto";
 import "types/contract.proto";
-import "common.proto";
+import "google/protobuf/wrappers.proto";
+
 
 option go_package = ".;proto";
 
@@ -44,21 +45,21 @@ service RewardsAPI {
        };
     }
     
-    rpc IsAirdropRewards (Bytes) returns (Boolean) {
+    rpc IsAirdropRewards (google.protobuf.BytesValue) returns (google.protobuf.BoolValue) {
         option (google.api.http) = {
            post: "/rewards/isAirdropRewards"
            body: "*"
        };
     }
 
-    rpc GetTotalRewards (String) returns (Int64) {
+    rpc GetTotalRewards (google.protobuf.StringValue) returns (google.protobuf.Int64Value) {
         option (google.api.http) = {
            post: "/rewards/getTotalRewards"
            body: "*"
        };
     }
 
-    rpc GetRewardsDetail (String) returns (RewardsInfos) {
+    rpc GetRewardsDetail (google.protobuf.StringValue) returns (RewardsInfos) {
         option (google.api.http) = {
            post: "/rewards/getRewardsDetail"
            body: "*"

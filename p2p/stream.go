@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/topic"
-	ping "github.com/qlcchain/go-qlc/p2p/pinger"
-
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/qlcchain/go-qlc/common/topic"
+	ping "github.com/qlcchain/go-qlc/p2p/pinger"
 )
 
 // Stream Errors

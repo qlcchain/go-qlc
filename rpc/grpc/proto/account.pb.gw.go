@@ -15,8 +15,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -51,7 +53,7 @@ var (
 )
 
 func request_AccountAPI_ForPublicKey_0(ctx context.Context, marshaler runtime.Marshaler, client AccountAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq String
+	var protoReq wrappers.StringValue
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_AccountAPI_ForPublicKey_0); err != nil {
@@ -77,7 +79,7 @@ var (
 )
 
 func request_AccountAPI_NewAccounts_0(ctx context.Context, marshaler runtime.Marshaler, client AccountAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UInt32
+	var protoReq wrappers.UInt32Value
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_AccountAPI_NewAccounts_0); err != nil {
@@ -94,7 +96,7 @@ var (
 )
 
 func request_AccountAPI_PublicKey_0(ctx context.Context, marshaler runtime.Marshaler, client AccountAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq String
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_AccountAPI_PublicKey_0); err != nil {
@@ -111,7 +113,7 @@ var (
 )
 
 func request_AccountAPI_Validate_0(ctx context.Context, marshaler runtime.Marshaler, client AccountAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq String
+	var protoReq wrappers.StringValue
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_AccountAPI_Validate_0); err != nil {

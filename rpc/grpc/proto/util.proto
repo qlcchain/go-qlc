@@ -2,30 +2,31 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "common.proto";
+import "google/protobuf/wrappers.proto";
+
 
 option go_package = ".;proto";
 
 service UtilAPI{
-    rpc Decrypt(DecryptRequest) returns (String){
+    rpc Decrypt(DecryptRequest) returns (google.protobuf.StringValue){
         option (google.api.http) = {
               get: "/util/decrypt"
          };
     }
 
-    rpc Encrypt(EncryptRequest) returns (String){
+    rpc Encrypt(EncryptRequest) returns (google.protobuf.StringValue){
         option (google.api.http) = {
               get: "/util/encrypt"
          };
     }
 
-    rpc RawToBalance(RawBalance) returns (Float){
+    rpc RawToBalance(RawBalance) returns (google.protobuf.FloatValue){
         option (google.api.http) = {
               get: "/util/rawToBalance"
          };
     }
 
-    rpc BalanceToRaw(RawBalance) returns (Int64){
+    rpc BalanceToRaw(RawBalance) returns (google.protobuf.Int64Value){
         option (google.api.http) = {
               get: "/util/balanceToRaw"
          };
@@ -44,6 +45,6 @@ message EncryptRequest{
 
 message RawBalance{
     int64  balance   = 1;
-    string string    = 2;
+    string unit    = 2;
     string tokenName = 3;
 }

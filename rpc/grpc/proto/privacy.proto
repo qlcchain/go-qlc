@@ -2,34 +2,35 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
-import "common.proto";
+
 
 option go_package = ".;proto";
 
 service PrivacyAPI {
-    rpc DistributeRawPayload(PrivacyDistributeParam) returns (Bytes){
+    rpc DistributeRawPayload(PrivacyDistributeParam) returns (google.protobuf.BytesValue){
         option (google.api.http) = {
            post: "/privacy/distributeRawPayload"
            body: "*"
        };
     }
 
-    rpc GetRawPayload(Bytes) returns (Bytes){
+    rpc GetRawPayload(google.protobuf.BytesValue) returns (google.protobuf.BytesValue){
         option (google.api.http) = {
            post: "/privacy/getRawPayload"
            body: "*"
        };
     }
 
-    rpc GetBlockPrivatePayload(types.Hash) returns (Bytes){
+    rpc GetBlockPrivatePayload(types.Hash) returns (google.protobuf.BytesValue){
         option (google.api.http) = {
            post: "/privacy/getBlockPrivatePayload"
            body: "*"
        };
     }
 
-    rpc GetDemoKV(Bytes) returns (Bytes){
+    rpc GetDemoKV(google.protobuf.BytesValue) returns (google.protobuf.BytesValue){
         option (google.api.http) = {
            post: "/privacy/getDemoKV"
            body: "*"
@@ -38,8 +39,8 @@ service PrivacyAPI {
 }
 
 message PrivacyDistributeParam {
-    string rawPayload     = 1;
+    bytes  rawPayload     = 1;
     string privateFrom    = 2;
-    string privateFor     = 3;
+    repeated string privateFor  = 3;
     string privateGroupID = 4;
 }

@@ -6,8 +6,9 @@ import (
 	"log"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
 	"google.golang.org/grpc"
+
+	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
 )
 
 func main() {

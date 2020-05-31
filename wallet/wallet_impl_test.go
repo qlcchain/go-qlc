@@ -18,11 +18,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/storage"
-
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto"

@@ -12,11 +12,12 @@ import (
 	"context"
 	"io"
 	"net/http"
-	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -29,7 +30,7 @@ var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
-func request_MintageAPI_GetRewardData_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_MintageAPI_GetMintageData_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq MintageParams
 	var metadata runtime.ServerMetadata
 
@@ -41,7 +42,7 @@ func request_MintageAPI_GetRewardData_0(ctx context.Context, marshaler runtime.M
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetRewardData(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetMintageData(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
@@ -64,7 +65,7 @@ func request_MintageAPI_GetMintageBlock_0(ctx context.Context, marshaler runtime
 }
 
 func request_MintageAPI_GetRewardBlock_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.StateBlock
+	var protoReq types.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -81,7 +82,7 @@ func request_MintageAPI_GetRewardBlock_0(ctx context.Context, marshaler runtime.
 }
 
 func request_MintageAPI_GetWithdrawMintageData_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -98,7 +99,7 @@ func request_MintageAPI_GetWithdrawMintageData_0(ctx context.Context, marshaler 
 }
 
 func request_MintageAPI_ParseTokenInfo_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Bytes
+	var protoReq wrappers.BytesValue
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -132,7 +133,7 @@ func request_MintageAPI_GetWithdrawMintageBlock_0(ctx context.Context, marshaler
 }
 
 func request_MintageAPI_GetWithdrawRewardBlock_0(ctx context.Context, marshaler runtime.Marshaler, client MintageAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.StateBlock
+	var protoReq types.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -186,7 +187,7 @@ func RegisterMintageAPIHandler(ctx context.Context, mux *runtime.ServeMux, conn 
 // "MintageAPIClient" to call the correct interceptors.
 func RegisterMintageAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, client MintageAPIClient) error {
 
-	mux.Handle("POST", pattern_MintageAPI_GetRewardData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_MintageAPI_GetMintageData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -195,14 +196,14 @@ func RegisterMintageAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_MintageAPI_GetRewardData_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_MintageAPI_GetMintageData_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_MintageAPI_GetRewardData_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_MintageAPI_GetMintageData_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -330,7 +331,7 @@ func RegisterMintageAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 }
 
 var (
-	pattern_MintageAPI_GetRewardData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"miner", "getRewardData"}, ""))
+	pattern_MintageAPI_GetMintageData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"miner", "getMintageData"}, ""))
 
 	pattern_MintageAPI_GetMintageBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"miner", "getMintageBlock"}, ""))
 
@@ -346,7 +347,7 @@ var (
 )
 
 var (
-	forward_MintageAPI_GetRewardData_0 = runtime.ForwardResponseMessage
+	forward_MintageAPI_GetMintageData_0 = runtime.ForwardResponseMessage
 
 	forward_MintageAPI_GetMintageBlock_0 = runtime.ForwardResponseMessage
 

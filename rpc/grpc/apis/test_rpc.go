@@ -1,10 +1,12 @@
-package grpcServer
+package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/qlcchain/go-qlc/rpc/grpc/proto"
 	"time"
+
+	"github.com/golang/protobuf/ptypes/empty"
+
+	"github.com/qlcchain/go-qlc/rpc/grpc/proto"
 )
 
 type TestApi struct {

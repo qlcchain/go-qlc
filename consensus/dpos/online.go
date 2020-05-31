@@ -5,12 +5,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/qlcchain/go-qlc/consensus"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/consensus"
 	"github.com/qlcchain/go-qlc/p2p"
 )
 

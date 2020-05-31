@@ -12,12 +12,13 @@ import (
 	"context"
 	"io"
 	"net/http"
-	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -44,7 +45,7 @@ var (
 )
 
 func request_PovAPI_GetHeaderByHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UInt64
+	var protoReq wrappers.UInt64Value
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetHeaderByHeight_0); err != nil {
@@ -61,7 +62,7 @@ var (
 )
 
 func request_PovAPI_GetHeaderByHash_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetHeaderByHash_0); err != nil {
@@ -87,7 +88,7 @@ var (
 )
 
 func request_PovAPI_GetFittestHeader_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UInt64
+	var protoReq wrappers.UInt64Value
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetFittestHeader_0); err != nil {
@@ -172,7 +173,7 @@ var (
 )
 
 func request_PovAPI_GetTransaction_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetTransaction_0); err != nil {
@@ -240,7 +241,7 @@ var (
 )
 
 func request_PovAPI_GetLatestAccountState_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Address
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetLatestAccountState_0); err != nil {
@@ -291,7 +292,7 @@ var (
 )
 
 func request_PovAPI_GetAllRepStatesByStateHash_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetAllRepStatesByStateHash_0); err != nil {
@@ -308,7 +309,7 @@ var (
 )
 
 func request_PovAPI_GetAllRepStatesByBlockHash_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetAllRepStatesByBlockHash_0); err != nil {
@@ -325,7 +326,7 @@ var (
 )
 
 func request_PovAPI_GetAllRepStatesByBlockHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetAllRepStatesByBlockHeight_0); err != nil {
@@ -351,7 +352,7 @@ var (
 )
 
 func request_PovAPI_GetBlockTDByHash_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetBlockTDByHash_0); err != nil {
@@ -368,7 +369,7 @@ var (
 )
 
 func request_PovAPI_GetBlockTDByHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UInt64
+	var protoReq wrappers.UInt64Value
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetBlockTDByHeight_0); err != nil {
@@ -385,7 +386,7 @@ var (
 )
 
 func request_PovAPI_GetMinerStats_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Addresses
+	var protoReq types.Addresses
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetMinerStats_0); err != nil {
@@ -402,7 +403,7 @@ var (
 )
 
 func request_PovAPI_GetRepStats_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Addresses
+	var protoReq types.Addresses
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetRepStats_0); err != nil {
@@ -419,7 +420,7 @@ var (
 )
 
 func request_PovAPI_GetMinerDayStat_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UInt32
+	var protoReq wrappers.UInt32Value
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetMinerDayStat_0); err != nil {
@@ -436,7 +437,7 @@ var (
 )
 
 func request_PovAPI_GetMinerDayStatByHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UInt64
+	var protoReq wrappers.UInt64Value
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetMinerDayStatByHeight_0); err != nil {
@@ -453,7 +454,7 @@ var (
 )
 
 func request_PovAPI_GetDiffDayStat_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UInt32
+	var protoReq wrappers.UInt32Value
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetDiffDayStat_0); err != nil {
@@ -470,7 +471,7 @@ var (
 )
 
 func request_PovAPI_GetDiffDayStatByHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UInt64
+	var protoReq wrappers.UInt64Value
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetDiffDayStatByHeight_0); err != nil {
@@ -590,7 +591,7 @@ var (
 )
 
 func request_PovAPI_GetAllOnlineRepStates_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.PovHeader
+	var protoReq types.PovHeader
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetAllOnlineRepStates_0); err != nil {

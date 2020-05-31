@@ -3,9 +3,10 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
 import "types/pov.proto";
-import "common.proto";
+
 
 option go_package = ".;proto";
 
@@ -16,7 +17,7 @@ service PovAPI {
        };
     }
 
-    rpc GetHeaderByHeight (UInt64) returns (PovApiHeader) {
+    rpc GetHeaderByHeight (google.protobuf.UInt64Value) returns (PovApiHeader) {
         option (google.api.http) = {
            get: "/pov/getHeaderByHeight"
        };
@@ -34,7 +35,7 @@ service PovAPI {
        };
     }
 
-    rpc GetFittestHeader (UInt64) returns (PovApiHeader) {
+    rpc GetFittestHeader (google.protobuf.UInt64Value) returns (PovApiHeader) {
         option (google.api.http) = {
            get: "/pov/getFittestHeader"
        };
@@ -148,7 +149,7 @@ service PovAPI {
        };
     }
 
-    rpc GetBlockTDByHeight (UInt64) returns (PovApiTD) {
+    rpc GetBlockTDByHeight (google.protobuf.UInt64Value) returns (PovApiTD) {
         option (google.api.http) = {
            get: "/pov/getBlockTDByHeight"
        };
@@ -166,25 +167,25 @@ service PovAPI {
        };
     }
 
-    rpc GetMinerDayStat (UInt32) returns (types.PovMinerDayStat) {
+    rpc GetMinerDayStat (google.protobuf.UInt32Value) returns (types.PovMinerDayStat) {
         option (google.api.http) = {
            get: "/pov/getMinerDayStat"
        };
     }
 
-    rpc GetMinerDayStatByHeight (UInt64) returns (types.PovMinerDayStat) {
+    rpc GetMinerDayStatByHeight (google.protobuf.UInt64Value) returns (types.PovMinerDayStat) {
         option (google.api.http) = {
            get: "/pov/getMinerDayStatByHeight"
        };
     }
 
-    rpc GetDiffDayStat (UInt32) returns (types.PovDiffDayStat) {
+    rpc GetDiffDayStat (google.protobuf.UInt32Value) returns (types.PovDiffDayStat) {
         option (google.api.http) = {
            get: "/pov/getDiffDayStat"
        };
     }
 
-    rpc GetDiffDayStatByHeight (UInt64) returns (types.PovDiffDayStat) {
+    rpc GetDiffDayStatByHeight (google.protobuf.UInt64Value) returns (types.PovDiffDayStat) {
         option (google.api.http) = {
            get: "/pov/getDiffDayStatByHeight"
        };

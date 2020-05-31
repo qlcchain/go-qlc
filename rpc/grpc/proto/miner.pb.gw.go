@@ -12,11 +12,12 @@ import (
 	"context"
 	"io"
 	"net/http"
-	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -47,7 +48,7 @@ func request_MinerAPI_GetRewardData_0(ctx context.Context, marshaler runtime.Mar
 }
 
 func request_MinerAPI_UnpackRewardData_0(ctx context.Context, marshaler runtime.Marshaler, client MinerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Bytes
+	var protoReq wrappers.BytesValue
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -68,7 +69,7 @@ var (
 )
 
 func request_MinerAPI_GetAvailRewardInfo_0(ctx context.Context, marshaler runtime.Marshaler, client MinerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Address
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_MinerAPI_GetAvailRewardInfo_0); err != nil {
@@ -98,7 +99,7 @@ func request_MinerAPI_GetRewardSendBlock_0(ctx context.Context, marshaler runtim
 }
 
 func request_MinerAPI_GetRewardRecvBlock_0(ctx context.Context, marshaler runtime.Marshaler, client MinerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.StateBlock
+	var protoReq types.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -115,7 +116,7 @@ func request_MinerAPI_GetRewardRecvBlock_0(ctx context.Context, marshaler runtim
 }
 
 func request_MinerAPI_GetRewardRecvBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, client MinerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -132,7 +133,7 @@ func request_MinerAPI_GetRewardRecvBlockBySendHash_0(ctx context.Context, marsha
 }
 
 func request_MinerAPI_GetRewardHistory_0(ctx context.Context, marshaler runtime.Marshaler, client MinerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

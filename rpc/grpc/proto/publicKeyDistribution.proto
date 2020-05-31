@@ -3,9 +3,10 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
 import "types/pov.proto";
-import "common.proto";
+
 
 option go_package = ".;proto";
 
@@ -31,14 +32,14 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetVerifiersByType (String) returns (VerifierRegParams) {
+    rpc GetVerifiersByType (google.protobuf.StringValue) returns (VerifierRegParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getVerifiersByType"
            body: "*"
        };
     }
 
-    rpc GetActiveVerifiers (String) returns (VerifierRegParams) {
+    rpc GetActiveVerifiers (google.protobuf.StringValue) returns (VerifierRegParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getActiveVerifiers"
            body: "*"
@@ -59,14 +60,14 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetAllVerifierStatesByBlockHeight(UInt64) returns (PKDVerifierStateList) {
+    rpc GetAllVerifierStatesByBlockHeight (google.protobuf.UInt64Value) returns (PKDVerifierStateList) {
         option (google.api.http) = {
            post: "/pkdistribution/getAllVerifierStatesByBlockHeight"
            body: "*"
        };
     }
 
-    rpc GetPublishBlock(UInt64) returns (PKDVerifierStateList) {
+    rpc GetPublishBlock(PublishParam) returns (PublishRet) {
         option (google.api.http) = {
            post: "/pkdistribution/getPublishBlock"
            body: "*"
@@ -94,7 +95,7 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetPublishInfosByType(String) returns (PublishInfoStates) {
+    rpc GetPublishInfosByType(google.protobuf.StringValue) returns (PublishInfoStates) {
         option (google.api.http) = {
            post: "/pkdistribution/getPublishInfosByType"
            body: "*"
@@ -115,7 +116,7 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetOracleInfosByType(String) returns (OracleParams) {
+    rpc GetOracleInfosByType(google.protobuf.StringValue) returns (OracleParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getOracleInfosByType"
            body: "*"
@@ -136,14 +137,14 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc PackRewardData(PKDRewardParam) returns (Bytes) {
+    rpc PackRewardData(PKDRewardParam) returns (google.protobuf.BytesValue) {
         option (google.api.http) = {
            post: "/pkdistribution/packRewardData"
            body: "*"
        };
     }
 
-    rpc UnpackRewardData(Bytes) returns (PKDRewardParam) {
+    rpc UnpackRewardData(google.protobuf.BytesValue) returns (PKDRewardParam) {
         option (google.api.http) = {
            post: "/pkdistribution/unpackRewardData"
            body: "*"
@@ -286,7 +287,7 @@ message  PKDRewardParam  {
 message  PKDHistoryRewardInfo  {
     uint64 lastEndHeight   = 1;
     string lastBeneficial  = 2;
-    uint64 lastRewardTime  = 3;
+    int64 lastRewardTime  = 3;
     int64  rewardAmount    = 4;
 }
 
@@ -300,7 +301,7 @@ message  PKDAvailRewardInfo  {
 }
 
 message TypeAndIDParam {
-    string type = 1;
+    string pType = 1;
     string pID  = 2;
 }
 

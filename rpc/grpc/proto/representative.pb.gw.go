@@ -12,11 +12,12 @@ import (
 	"context"
 	"io"
 	"net/http"
-	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -47,7 +48,7 @@ func request_RepAPI_GetRewardData_0(ctx context.Context, marshaler runtime.Marsh
 }
 
 func request_RepAPI_UnpackRewardData_0(ctx context.Context, marshaler runtime.Marshaler, client RepAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Bytes
+	var protoReq wrappers.BytesValue
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -64,7 +65,7 @@ func request_RepAPI_UnpackRewardData_0(ctx context.Context, marshaler runtime.Ma
 }
 
 func request_RepAPI_GetAvailRewardInfo_0(ctx context.Context, marshaler runtime.Marshaler, client RepAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Address
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -98,7 +99,7 @@ func request_RepAPI_GetRewardSendBlock_0(ctx context.Context, marshaler runtime.
 }
 
 func request_RepAPI_GetRewardRecvBlock_0(ctx context.Context, marshaler runtime.Marshaler, client RepAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.StateBlock
+	var protoReq types.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -115,7 +116,7 @@ func request_RepAPI_GetRewardRecvBlock_0(ctx context.Context, marshaler runtime.
 }
 
 func request_RepAPI_GetRewardRecvBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, client RepAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -149,7 +150,7 @@ func request_RepAPI_GetRepStateWithHeight_0(ctx context.Context, marshaler runti
 }
 
 func request_RepAPI_GetRewardHistory_0(ctx context.Context, marshaler runtime.Marshaler, client RepAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Address
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

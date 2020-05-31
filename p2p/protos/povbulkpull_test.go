@@ -3,9 +3,8 @@ package protos
 import (
 	"testing"
 
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestPovBulkPullReq(t *testing.T) {

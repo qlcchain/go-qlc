@@ -3,12 +3,13 @@ package proto;
 
 import "google/api/annotations.proto";
 import "types/basic.proto";
+import "types/contract.proto";
 
 option go_package = ".;proto";
 
 
 service BlackHoleAPI {
-    rpc GetSendBlock (SendBlockRequest) returns (types.StateBlock) {
+    rpc GetSendBlock (DestroyParam) returns (types.StateBlock) {
         option (google.api.http) = {
            post: "/blockhole/getsendblock"
            body: "*"
@@ -29,7 +30,7 @@ service BlackHoleAPI {
        };
     }
 
-    rpc GetDestroyInfoDetail (types.Address) returns (DestroyInfoDetailResponse) {
+    rpc GetDestroyInfoDetail (types.Address) returns (types.DestroyInfos) {
         option (google.api.http) = {
            post: "/blockhole/getdestroyinfodetail"
            body: "*"
@@ -37,21 +38,10 @@ service BlackHoleAPI {
     }
 }
 
-message SendBlockRequest {
+message DestroyParam {
     string Owner     = 1;
     string Previous  = 2;
     string Token     = 3;
     int64  Amoun     = 4;
     string Sign      = 5;
-}
-
-message DestroyInfoDetailResponse{
-    message DestroyInfo  {
-        string Owner      = 1;
-        string Previous   = 2;
-        string Token      = 3;
-        int64  Amount      = 4;
-        int64 TimeStamp   = 5;
-    }
-    repeated DestroyInfo infos = 1;
 }

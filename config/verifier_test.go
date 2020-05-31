@@ -11,11 +11,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	"gopkg.in/validator.v2"
 
 	"github.com/qlcchain/go-qlc/common/types"
-
-	"gopkg.in/validator.v2"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 )
 
 type config struct {

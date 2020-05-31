@@ -1,6 +1,6 @@
 syntax = "proto3";
 package types;
-option go_package = ".;proto";
+option go_package = "github.com/qlcchain/go-qlc/rpc/grpc/proto/types;types";
 
 message RewardsInfo  {
     int32  type      = 1;
@@ -9,6 +9,18 @@ message RewardsInfo  {
     string txHeader  = 4;
     string rxHeader  = 5;
     int64  amount    = 6;
+}
+
+message DestroyInfo  {
+    string Owner      = 1;
+    string Previous   = 2;
+    string Token      = 3;
+    int64  Amount      = 4;
+    int64  TimeStamp   = 5;
+}
+
+message DestroyInfos {
+    repeated DestroyInfo infos = 1;
 }
 
 message Contractor {

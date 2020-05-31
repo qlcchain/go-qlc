@@ -7,15 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 
 	"github.com/qlcchain/go-qlc/common"
-
 	"github.com/qlcchain/go-qlc/common/types"
-
-	"github.com/google/uuid"
-
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )

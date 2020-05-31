@@ -5,13 +5,11 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 
-	"github.com/qlcchain/go-qlc/vm/contract/abi"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
+	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/ledger"
+	"github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
 // QlcService service for qlc p2p network

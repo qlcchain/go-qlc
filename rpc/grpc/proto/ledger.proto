@@ -3,19 +3,20 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
 
 service LedgerAPI{
-    rpc AccountBlocksCount(types.Address) returns (Int64){
+    rpc AccountBlocksCount(types.Address) returns (google.protobuf.Int64Value){
         option (google.api.http) = {
            get: "/ledger/accountBlocksCount"
        };
     }
 
-    rpc AccountHistoryTopn(AccountHistoryTopnRequest) returns (APIBlocks){
+    rpc AccountHistoryTopn(AccountHistoryTopnReq) returns (APIBlocks){
         option (google.api.http) = {
            get: "/ledger/accountHistoryTopn"
        };
@@ -45,25 +46,25 @@ service LedgerAPI{
        };
     }
 
-    rpc AccountsBalance(types.Addresses) returns (AccountsBalanceResponse){
+    rpc AccountsBalance(types.Addresses) returns (AccountsBalanceRsp){
         option (google.api.http) = {
            get: "/ledger/accountsBalance"
        };
     }
 
-    rpc AccountsFrontiers(types.Addresses) returns (AccountsFrontiersResponse){
+    rpc AccountsFrontiers(types.Addresses) returns (AccountsFrontiersRsp){
         option (google.api.http) = {
            get: "/ledger/accountsFrontiers"
        };
     }
 
-    rpc AccountsPending(AccountsPendingRequest) returns (AccountsPendingResponse){
+    rpc AccountsPending(AccountsPendingReq) returns (AccountsPendingRsp){
         option (google.api.http) = {
            get: "/ledger/accountsPending"
        };
     }
 
-    rpc AccountsCount(google.protobuf.Empty) returns (UInt64){
+    rpc AccountsCount(google.protobuf.Empty) returns (google.protobuf.UInt64Value){
         option (google.api.http) = {
            get: "/ledger/accountsCount"
        };
@@ -81,7 +82,7 @@ service LedgerAPI{
        };
     }
 
-    rpc BlockConfirmedStatus(types.Hash) returns (Boolean){
+    rpc BlockConfirmedStatus(types.Hash) returns (google.protobuf.BoolValue){
         option (google.api.http) = {
            get: "/ledger/blockConfirmedStatus"
        };
@@ -93,19 +94,19 @@ service LedgerAPI{
        };
     }
 
-    rpc BlocksCount(google.protobuf.Empty) returns (BlocksCountResponse){
+    rpc BlocksCount(google.protobuf.Empty) returns (BlocksCountRsp){
         option (google.api.http) = {
            get: "/ledger/blocksCount"
        };
     }
 
-    rpc BlocksCount2(google.protobuf.Empty) returns (BlocksCountResponse){
+    rpc BlocksCount2(google.protobuf.Empty) returns (BlocksCountRsp){
         option (google.api.http) = {
            get: "/ledger/blocksCount2"
        };
     }
 
-    rpc BlocksCountByType(google.protobuf.Empty) returns (BlocksCountResponse){
+    rpc BlocksCountByType(google.protobuf.Empty) returns (BlocksCountRsp){
         option (google.api.http) = {
            get: "/ledger/blocksCountByType"
        };
@@ -129,7 +130,7 @@ service LedgerAPI{
        };
     }
 
-    rpc Chain(ChainRequest) returns (types.Hashes){
+    rpc Chain(ChainReq) returns (types.Hashes){
         option (google.api.http) = {
            get: "/ledger/chain"
        };
@@ -141,7 +142,7 @@ service LedgerAPI{
        };
     }
 
-    rpc DelegatorsCount(types.Address) returns (Int64){
+    rpc DelegatorsCount(types.Address) returns (google.protobuf.Int64Value){
         option (google.api.http) = {
            get: "/ledger/delegatorsCount"
        };
@@ -153,7 +154,7 @@ service LedgerAPI{
        };
     }
 
-    rpc Representatives(Boolean) returns (APIRepresentatives){
+    rpc Representatives(google.protobuf.BoolValue) returns (APIRepresentatives){
         option (google.api.http) = {
            get: "/ledger/representatives"
        };
@@ -165,7 +166,7 @@ service LedgerAPI{
        };
     }
 
-    rpc TransactionsCount(google.protobuf.Empty) returns (BlocksCountResponse){
+    rpc TransactionsCount(google.protobuf.Empty) returns (BlocksCountRsp){
         option (google.api.http) = {
            get: "/ledger/transactionsCount"
        };
@@ -177,13 +178,13 @@ service LedgerAPI{
        };
     }
 
-    rpc TokenInfoByName(String) returns (types.TokenInfo){
+    rpc TokenInfoByName(google.protobuf.StringValue) returns (types.TokenInfo){
         option (google.api.http) = {
            get: "/ledger/tokenInfoByName"
        };
     }
 
-    rpc GetAccountOnlineBlock(types.Address) returns (types.StateBlock){
+    rpc GetAccountOnlineBlock(types.Address) returns (types.StateBlocks){
         option (google.api.http) = {
            get: "/ledger/getAccountOnlineBlock"
        };
@@ -255,46 +256,46 @@ service LedgerAPI{
        };
     }
 
-    rpc IsGenesisBlock(types.StateBlock) returns (Boolean){
+    rpc IsGenesisBlock(types.StateBlock) returns (google.protobuf.BoolValue){
         option (google.api.http) = {
            get: "/ledger/isGenesisBlock"
        };
     }
 
-    rpc IsGenesisToken(types.StateBlock) returns (Boolean){
+    rpc IsGenesisToken(types.Hash) returns (google.protobuf.BoolValue){
         option (google.api.http) = {
            get: "/ledger/isGenesisToken"
        };
     }
 
-    rpc AllGenesisBlocks(types.StateBlock) returns (types.StateBlocks){
+    rpc AllGenesisBlocks(google.protobuf.Empty) returns (types.StateBlocks){
         option (google.api.http) = {
            get: "/ledger/allGenesisBlocks"
        };
     }
 
-    rpc GenerateSendBlock(GenerateSendBlockRequest) returns (types.StateBlocks){
+    rpc GenerateSendBlock(GenerateSendBlockReq) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/ledger/generateSendBlock"
            body: "*"
        };
     }
 
-    rpc GenerateReceiveBlock(GenerateReceiveBlockRequest) returns (types.StateBlocks){
+    rpc GenerateReceiveBlock(GenerateReceiveBlockReq) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/ledger/generateReceiveBlock"
            body: "*"
        };
     }
 
-    rpc GenerateReceiveBlockByHash(GenerateReceiveBlockByHashRequest) returns (types.StateBlocks){
+    rpc GenerateReceiveBlockByHash(GenerateReceiveBlockByHashReq) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/ledger/generateReceiveBlockByHash"
            body: "*"
        };
     }
 
-    rpc GenerateChangeBlock(GenerateChangeBlockRequest) returns (types.StateBlocks){
+    rpc GenerateChangeBlock(GenerateChangeBlockReq) returns (types.StateBlock){
         option (google.api.http) = {
            post: "/ledger/generateChangeBlock"
            body: "*"
@@ -336,35 +337,29 @@ service LedgerAPI{
        };
     }
 
-    rpc Test(google.protobuf.Empty) returns (TestResponse){
-        option (google.api.http) = {
-           post: "/ledger/test"
-           body: "*"
-       };
-    }
-
 }
 
-message TestResponse {
+message TestRsp {
     string version = 1;
 }
 
-message AccountHistoryTopnRequest {
-    string    hash    = 1;
+message AccountHistoryTopnReq {
+    string    address = 1;
     int32     count   = 2;
+    int32     offset  = 3;
 }
 
-message AccountsPendingRequest {
+message AccountsPendingReq {
     types.Addresses  addresses = 1;
     int32      count     = 2;
 }
 
-message ChainRequest {
-    types.Addresses  addresses = 1;
+message ChainReq {
+    types.Hash hash = 1;
     int32      count     = 2;
 }
 
-message AccountsBalanceResponse{
+message AccountsBalanceRsp{
     message APIAccountsBalance  {
 	    int64  Balance  = 1;
         int64  Vote     = 2;
@@ -379,18 +374,18 @@ message AccountsBalanceResponse{
     map<string, balances> accountsBalances = 1;
 }
 
-message AccountsFrontiersResponse{
+message AccountsFrontiersRsp{
     message frontier{
         map<string, string> frontier = 1;
     }
     map<string, frontier> accountsFrontiers = 1;
 }
 
-message AccountsPendingResponse{
+message AccountsPendingRsp{
     map<string, APIPendings> accountsPendings = 1;
 }
 
-message BlocksCountResponse{
+message BlocksCountRsp{
     map<string, uint64> count = 1;
 }
 
@@ -406,22 +401,22 @@ message APISendBlockPara  {
     string  Message   = 7;
 }
 
-message GenerateSendBlockRequest {
+message GenerateSendBlockReq {
     APISendBlockPara para    = 1;
     string           prkStr  = 2;
 }
 
-message GenerateReceiveBlockRequest {
+message GenerateReceiveBlockReq {
     types.StateBlock block   = 1;
     string     prkStr  = 2;
 }
 
-message GenerateReceiveBlockByHashRequest {
+message GenerateReceiveBlockByHashReq {
     string    hash   = 1;
     string    prkStr  = 2;
 }
 
-message GenerateChangeBlockRequest {
+message GenerateChangeBlockReq {
     string    account          = 1;
     string    representative   = 2;
     string    prkStr           = 3;
@@ -430,13 +425,42 @@ message GenerateChangeBlockRequest {
 // common type
 
 message APIBlock {
-    types.StateBlock block  = 1;
-    string tokenName  = 2;
-    int64  amount     = 3;
-    string hash       = 4;
+    string    type    = 1;
+    string    token   = 2;
+    string    address = 3;
+    int64     balance = 4;
+    int64     vote    = 5;
+    int64     network = 6;
+    int64     storage = 7;
+    int64     oracle  = 8;
+    string    previous   = 9;
+    string    link       = 10;
+    bytes     sender     = 11;
+    bytes     receiver   = 12;
+    string    message    = 13;
+    bytes     data       = 14;
+    uint64    poVHeight  = 15;
+    int64     timestamp  = 16;
+    string    extra      = 17;
+    string    representative   = 18;
 
-    uint64 povConfirmHeight = 5;
-    uint64 povConfirmCount  = 6;
+    string    privateFrom      = 19;
+    repeated string privateFor = 20;
+    string    privateGroupID   = 21;
+
+    uint64    work           = 22;
+    string    signature      = 23;
+
+    uint64    flag           = 24;
+    bool      privateRecvRsp = 25;
+    bytes     privatePayload = 26;
+
+    string tokenName  = 27;
+    int64  amount     = 28;
+    string hash       = 29;
+
+    uint64 povConfirmHeight = 30;
+    uint64 povConfirmCount  = 31;
 }
 
 message APIBlocks {
@@ -444,9 +468,16 @@ message APIBlocks {
 }
 
 message APITokenMeta {
-    types.TokenMeta tokenMeta = 1;
-    string    tokenName = 2;
-    int64     pending   = 3;
+    string  type           = 1;
+    string  header         = 2;
+    string  representative = 3;
+    string  openBlock    = 4;
+    int64   balance      = 5;
+    string  belongTo     = 6;
+    int64   modified     = 7;
+    int64   blockCount   = 8;
+    string  tokenName    = 9;
+    int64   pending      = 10;
 }
 
 message APIAccount  {
@@ -456,7 +487,7 @@ message APIAccount  {
     int64  coinNetwork      = 4;
     int64  coinStorage      = 5;
     int64  coinOracle       = 6;
-    int64  representative   = 7;
+    string representative   = 7;
     repeated  APITokenMeta tokens   = 8;
 }
 
@@ -469,11 +500,14 @@ message APIAccountBalances {
 }
 
 message APIPending {
-    types.PendingKey    key   = 1;
-    types.PendingInfo   info  = 2;
-    string  TokenName  = 3;
-    int64   Timestamp  = 4;
-    bytes   BlockType  = 5;
+    string  address   = 1;
+    string  hash      = 2;
+    string  source    = 3;
+    int64   amount    = 4;
+    string  type      = 5;
+    string  TokenName  = 6;
+    int64   Timestamp  = 7;
+    string  BlockType  = 8;
 }
 
 message APIPendings {
@@ -493,3 +527,4 @@ message APIRepresentative {
 message APIRepresentatives {
     repeated APIRepresentative representatives = 1;
 }
+

@@ -6,27 +6,28 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/rpc/grpc/apis"
 	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 type GRPCServer struct {
 	rpc     *grpc.Server
 	ledger  ledger.Store
 	eb      event.EventBus
-	config  *config.Config
+	cfg     *config.Config
 	cfgFile string
-	lock    sync.RWMutex
+	cc      *chainctx.ChainContext
 	ctx     context.Context
 	cancel  context.CancelFunc
 	logger  *zap.SugaredLogger
@@ -48,48 +49,51 @@ func Start(cfgFile string) (*GRPCServer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen: %s", err)
 	}
-	gRpcServer := grpc.NewServer()
-	pb.RegisterTestAPIServer(gRpcServer, &TestApi{})
-	pb.RegisterLedgerAPIServer(gRpcServer, NewLedgerApi(ctx, l, eb, cc))
-	reflection.Register(gRpcServer)
-
-	go gRpcServer.Serve(lis)
-	if err := newGateway(address, cfg.RPC.GRPCConfig.ListenAddress); err != nil {
-		return nil, fmt.Errorf("start gateway: %s", err)
-	}
-	return &GRPCServer{
-		rpc:     gRpcServer,
+	grpcServer := grpc.NewServer()
+	qrpc := &GRPCServer{
+		rpc:     grpcServer,
 		ledger:  l,
 		eb:      eb,
-		config:  cfg,
+		cfg:     cfg,
 		cfgFile: cfgFile,
 		ctx:     ctx,
 		cancel:  cancel,
-		logger:  log.NewLogger("rpc"),
-	}, nil
+		cc:      cc,
+		logger:  log.NewLogger("grpc"),
+	}
+	qrpc.registerApi()
+	reflection.Register(grpcServer)
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			qrpc.logger.Errorf("grpc start error: %s", err)
+		}
+	}()
+	go func() {
+		if err := qrpc.newGateway(address); err != nil {
+			qrpc.logger.Errorf("grpc start error: %s", err)
+		}
+	}()
+	qrpc.logger.Info("grpc serve successfully")
+	return qrpc, nil
 }
 
-func newGateway(grpcAddress, gwAddress string) error {
+func (r *GRPCServer) newGateway(grpcAddress string) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	gwmux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithInsecure()}
-	err := pb.RegisterChainAPIHandlerFromEndpoint(ctx, gwmux, grpcAddress, opts)
-	if err != nil {
+
+	if err := registerGWApi(ctx, gwmux, grpcAddress, opts); err != nil {
 		return fmt.Errorf("gateway register: %s", err)
 	}
-	err = pb.RegisterLedgerAPIHandlerFromEndpoint(ctx, gwmux, grpcAddress, opts)
-	if err != nil {
-		return fmt.Errorf("gateway register: %s", err)
-	}
-	_, address, err := scheme(gwAddress)
+
+	_, address, err := scheme(r.cfg.RPC.GRPCConfig.ListenAddress)
 	if err != nil {
 		return err
 	}
-	http.ListenAndServe(address, gwmux)
-	return nil
+	return http.ListenAndServe(address, gwmux)
 }
 
 func (r *GRPCServer) Stop() {
@@ -102,4 +106,91 @@ func scheme(endpoint string) (string, string, error) {
 		return "", "", err
 	}
 	return u.Scheme, u.Host, nil
+}
+
+func (r *GRPCServer) registerApi() {
+	pb.RegisterAccountAPIServer(r.rpc, apis.NewAccountApi())
+	pb.RegisterBlackHoleAPIServer(r.rpc, apis.NewBlackHoleAPI(r.ledger, r.cc))
+	pb.RegisterChainAPIServer(r.rpc, apis.NewChainAPI(r.ledger))
+	pb.RegisterContractAPIServer(r.rpc, apis.NewContractAPI(r.cc, r.ledger))
+	pb.RegisterLedgerAPIServer(r.rpc, apis.NewLedgerApi(r.ctx, r.ledger, r.eb, r.cc))
+	pb.RegisterMetricsAPIServer(r.rpc, apis.NewMetricsAPI())
+	pb.RegisterMinerAPIServer(r.rpc, apis.NewMinerAPI(r.cfg, r.ledger))
+	pb.RegisterMintageAPIServer(r.rpc, apis.NewMintageAPI(r.cfgFile, r.ledger))
+	pb.RegisterNEP5PledgeAPIServer(r.rpc, apis.NewNEP5PledgeAPI(r.cfgFile, r.ledger))
+	pb.RegisterNetAPIServer(r.rpc, apis.NewNetApi(r.ledger, r.eb, r.cc))
+	pb.RegisterPermissionAPIServer(r.rpc, apis.NewPermissionAPI(r.cfgFile, r.ledger))
+	pb.RegisterPovAPIServer(r.rpc, apis.NewPovAPI(r.ctx, r.cfg, r.ledger, r.eb, r.cc))
+	pb.RegisterPrivacyAPIServer(r.rpc, apis.NewPrivacyAPI(r.cfg, r.ledger, r.eb, r.cc))
+	pb.RegisterPtmKeyAPIServer(r.rpc, apis.NewPtmKeyAPI(r.cfgFile, r.ledger))
+	pb.RegisterPublicKeyDistributionAPIServer(r.rpc, apis.NewPublicKeyDistributionAPI(r.cfgFile, r.ledger))
+	pb.RegisterRepAPIServer(r.rpc, apis.NewRepAPI(r.cfg, r.ledger))
+	pb.RegisterRewardsAPIServer(r.rpc, apis.NewRewardsAPI(r.ledger, r.cc))
+	pb.RegisterSettlementAPIServer(r.rpc, apis.NewSettlementAPI(r.ledger, r.cc))
+	pb.RegisterUtilAPIServer(r.rpc, apis.NewUtilApi(r.ledger))
+	pb.RegisterTestAPIServer(r.rpc, apis.TestApi{})
+}
+
+func registerGWApi(ctx context.Context, gwmux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error {
+	if err := pb.RegisterAccountAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterBlackHoleAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterChainAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterContractAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterLedgerAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterMetricsAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterMinerAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterMintageAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterNEP5PledgeAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterNetAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterPermissionAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterPovAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterPrivacyAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterPtmKeyAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterPublicKeyDistributionAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterRepAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterRewardsAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterSettlementAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterUtilAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	if err := pb.RegisterTestAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
+		return err
+	}
+	return nil
 }

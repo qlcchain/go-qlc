@@ -9,6 +9,7 @@ package proto
 import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
+	types "github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -90,11 +91,11 @@ type CreateContractParam struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PartyA    *Contractor        `protobuf:"bytes,1,opt,name=partyA,proto3" json:"partyA,omitempty"`
-	PartyB    *Contractor        `protobuf:"bytes,2,opt,name=partyB,proto3" json:"partyB,omitempty"`
-	Services  []*ContractService `protobuf:"bytes,3,rep,name=services,proto3" json:"services,omitempty"`
-	StartDate int64              `protobuf:"varint,4,opt,name=startDate,proto3" json:"startDate,omitempty"`
-	EndDate   int64              `protobuf:"varint,5,opt,name=endDate,proto3" json:"endDate,omitempty"`
+	PartyA    *types.Contractor        `protobuf:"bytes,1,opt,name=partyA,proto3" json:"partyA,omitempty"`
+	PartyB    *types.Contractor        `protobuf:"bytes,2,opt,name=partyB,proto3" json:"partyB,omitempty"`
+	Services  []*types.ContractService `protobuf:"bytes,3,rep,name=services,proto3" json:"services,omitempty"`
+	StartDate int64                    `protobuf:"varint,4,opt,name=startDate,proto3" json:"startDate,omitempty"`
+	EndDate   int64                    `protobuf:"varint,5,opt,name=endDate,proto3" json:"endDate,omitempty"`
 }
 
 func (x *CreateContractParam) Reset() {
@@ -129,21 +130,21 @@ func (*CreateContractParam) Descriptor() ([]byte, []int) {
 	return file_settlement_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CreateContractParam) GetPartyA() *Contractor {
+func (x *CreateContractParam) GetPartyA() *types.Contractor {
 	if x != nil {
 		return x.PartyA
 	}
 	return nil
 }
 
-func (x *CreateContractParam) GetPartyB() *Contractor {
+func (x *CreateContractParam) GetPartyB() *types.Contractor {
 	if x != nil {
 		return x.PartyB
 	}
 	return nil
 }
 
-func (x *CreateContractParam) GetServices() []*ContractService {
+func (x *CreateContractParam) GetServices() []*types.ContractService {
 	if x != nil {
 		return x.Services
 	}
@@ -169,8 +170,8 @@ type StopParam struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	StopParam *StopParam `protobuf:"bytes,1,opt,name=stopParam,proto3" json:"stopParam,omitempty"`
-	Address   string     `protobuf:"bytes,2,opt,name=Address,proto3" json:"Address,omitempty"`
+	StopParam *types.StopParam `protobuf:"bytes,1,opt,name=stopParam,proto3" json:"stopParam,omitempty"`
+	Address   string           `protobuf:"bytes,2,opt,name=Address,proto3" json:"Address,omitempty"`
 }
 
 func (x *StopParam) Reset() {
@@ -205,7 +206,7 @@ func (*StopParam) Descriptor() ([]byte, []int) {
 	return file_settlement_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *StopParam) GetStopParam() *StopParam {
+func (x *StopParam) GetStopParam() *types.StopParam {
 	if x != nil {
 		return x.StopParam
 	}
@@ -224,8 +225,8 @@ type UpdateStopParam struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UpdateStopParam *UpdateStopParam `protobuf:"bytes,1,opt,name=updateStopParam,proto3" json:"updateStopParam,omitempty"`
-	Address         string           `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	UpdateStopParam *types.UpdateStopParam `protobuf:"bytes,1,opt,name=updateStopParam,proto3" json:"updateStopParam,omitempty"`
+	Address         string                 `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 }
 
 func (x *UpdateStopParam) Reset() {
@@ -260,7 +261,7 @@ func (*UpdateStopParam) Descriptor() ([]byte, []int) {
 	return file_settlement_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *UpdateStopParam) GetUpdateStopParam() *UpdateStopParam {
+func (x *UpdateStopParam) GetUpdateStopParam() *types.UpdateStopParam {
 	if x != nil {
 		return x.UpdateStopParam
 	}
@@ -279,8 +280,8 @@ type SettlementContract struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ContractParam *ContractParam `protobuf:"bytes,1,opt,name=contractParam,proto3" json:"contractParam,omitempty"`
-	Address       string         `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	ContractParam *types.ContractParam `protobuf:"bytes,1,opt,name=contractParam,proto3" json:"contractParam,omitempty"`
+	Address       string               `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 }
 
 func (x *SettlementContract) Reset() {
@@ -315,7 +316,7 @@ func (*SettlementContract) Descriptor() ([]byte, []int) {
 	return file_settlement_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *SettlementContract) GetContractParam() *ContractParam {
+func (x *SettlementContract) GetContractParam() *types.ContractParam {
 	if x != nil {
 		return x.ContractParam
 	}
@@ -381,8 +382,8 @@ type TerminateParam struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	TerminateParam *TerminateParam `protobuf:"bytes,1,opt,name=terminateParam,proto3" json:"terminateParam,omitempty"`
-	Address        string          `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	TerminateParam *types.TerminateParam `protobuf:"bytes,1,opt,name=terminateParam,proto3" json:"terminateParam,omitempty"`
+	Address        string                `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 }
 
 func (x *TerminateParam) Reset() {
@@ -417,7 +418,7 @@ func (*TerminateParam) Descriptor() ([]byte, []int) {
 	return file_settlement_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *TerminateParam) GetTerminateParam() *TerminateParam {
+func (x *TerminateParam) GetTerminateParam() *types.TerminateParam {
 	if x != nil {
 		return x.TerminateParam
 	}
@@ -436,8 +437,8 @@ type CDRStatus struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Address   string     `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	CdrStatus *CDRStatus `protobuf:"bytes,2,opt,name=cdrStatus,proto3" json:"cdrStatus,omitempty"`
+	Address   string           `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	CdrStatus *types.CDRStatus `protobuf:"bytes,2,opt,name=cdrStatus,proto3" json:"cdrStatus,omitempty"`
 }
 
 func (x *CDRStatus) Reset() {
@@ -479,7 +480,7 @@ func (x *CDRStatus) GetAddress() string {
 	return ""
 }
 
-func (x *CDRStatus) GetCdrStatus() *CDRStatus {
+func (x *CDRStatus) GetCdrStatus() *types.CDRStatus {
 	if x != nil {
 		return x.CdrStatus
 	}
@@ -538,11 +539,11 @@ type RegisterAssetParam struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Owner     *Contractor `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
-	Assets    []*Asset    `protobuf:"bytes,2,rep,name=assets,proto3" json:"assets,omitempty"`
-	StartDate int64       `protobuf:"varint,3,opt,name=startDate,proto3" json:"startDate,omitempty"`
-	EndDate   int64       `protobuf:"varint,4,opt,name=endDate,proto3" json:"endDate,omitempty"`
-	Status    string      `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	Owner     *types.Contractor `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	Assets    []*types.Asset    `protobuf:"bytes,2,rep,name=assets,proto3" json:"assets,omitempty"`
+	StartDate int64             `protobuf:"varint,3,opt,name=startDate,proto3" json:"startDate,omitempty"`
+	EndDate   int64             `protobuf:"varint,4,opt,name=endDate,proto3" json:"endDate,omitempty"`
+	Status    string            `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 }
 
 func (x *RegisterAssetParam) Reset() {
@@ -577,14 +578,14 @@ func (*RegisterAssetParam) Descriptor() ([]byte, []int) {
 	return file_settlement_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *RegisterAssetParam) GetOwner() *Contractor {
+func (x *RegisterAssetParam) GetOwner() *types.Contractor {
 	if x != nil {
 		return x.Owner
 	}
 	return nil
 }
 
-func (x *RegisterAssetParam) GetAssets() []*Asset {
+func (x *RegisterAssetParam) GetAssets() []*types.Asset {
 	if x != nil {
 		return x.Assets
 	}
@@ -806,8 +807,8 @@ type ProcessCDRBlockRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Addr   string      `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
-	Params []*CDRParam `protobuf:"bytes,2,rep,name=params,proto3" json:"params,omitempty"`
+	Addr   string            `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
+	Params []*types.CDRParam `protobuf:"bytes,2,rep,name=params,proto3" json:"params,omitempty"`
 }
 
 func (x *ProcessCDRBlockRequest) Reset() {
@@ -849,7 +850,7 @@ func (x *ProcessCDRBlockRequest) GetAddr() string {
 	return ""
 }
 
-func (x *ProcessCDRBlockRequest) GetParams() []*CDRParam {
+func (x *ProcessCDRBlockRequest) GetParams() []*types.CDRParam {
 	if x != nil {
 		return x.Params
 	}
@@ -1484,19 +1485,19 @@ var file_settlement_proto_goTypes = []interface{}{
 	(*CDRStatusByCdrDataRequest)(nil),     // 15: proto.CDRStatusByCdrDataRequest
 	(*CDRStatusByDateRequest)(nil),        // 16: proto.CDRStatusByDateRequest
 	(*MultiPartyCDRStatusRequest)(nil),    // 17: proto.MultiPartyCDRStatusRequest
-	(*Contractor)(nil),                    // 18: types.Contractor
-	(*ContractService)(nil),               // 19: types.ContractService
-	(*StopParam)(nil),                     // 20: types.StopParam
-	(*UpdateStopParam)(nil),               // 21: types.UpdateStopParam
-	(*ContractParam)(nil),                 // 22: types.ContractParam
-	(*TerminateParam)(nil),                // 23: types.TerminateParam
-	(*CDRStatus)(nil),                     // 24: types.CDRStatus
-	(*Asset)(nil),                         // 25: types.Asset
-	(*CDRParam)(nil),                      // 26: types.CDRParam
-	(*Hash)(nil),                          // 27: types.Hash
+	(*types.Contractor)(nil),              // 18: types.Contractor
+	(*types.ContractService)(nil),         // 19: types.ContractService
+	(*types.StopParam)(nil),               // 20: types.StopParam
+	(*types.UpdateStopParam)(nil),         // 21: types.UpdateStopParam
+	(*types.ContractParam)(nil),           // 22: types.ContractParam
+	(*types.TerminateParam)(nil),          // 23: types.TerminateParam
+	(*types.CDRStatus)(nil),               // 24: types.CDRStatus
+	(*types.Asset)(nil),                   // 25: types.Asset
+	(*types.CDRParam)(nil),                // 26: types.CDRParam
+	(*types.Hash)(nil),                    // 27: types.Hash
 	(*Offset)(nil),                        // 28: proto.Offset
-	(*Address)(nil),                       // 29: types.Address
-	(*StateBlock)(nil),                    // 30: types.StateBlock
+	(*types.Address)(nil),                 // 29: types.Address
+	(*types.StateBlock)(nil),              // 30: types.StateBlock
 }
 var file_settlement_proto_depIdxs = []int32{
 	18, // 0: proto.CreateContractParam.partyA:type_name -> types.Contractor
@@ -1574,8 +1575,6 @@ func file_settlement_proto_init() {
 	if File_settlement_proto != nil {
 		return
 	}
-	file_types_basic_proto_init()
-	file_types_contract_proto_init()
 	file_common_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_settlement_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
@@ -1827,26 +1826,26 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type SettlementAPIClient interface {
-	ToAddress(ctx context.Context, in *CreateContractParam, opts ...grpc.CallOption) (*Address, error)
-	GetSettlementRewardsBlock(ctx context.Context, in *Hash, opts ...grpc.CallOption) (*StateBlock, error)
-	GetCreateContractBlock(ctx context.Context, in *CreateContractParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetSignContractBlock(ctx context.Context, in *SignContractParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetAddPreStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetRemovePreStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetUpdatePreStopBlock(ctx context.Context, in *UpdateStopParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetAddNextStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetRemoveNextStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetUpdateNextStopBlock(ctx context.Context, in *UpdateStopParam, opts ...grpc.CallOption) (*StateBlock, error)
+	ToAddress(ctx context.Context, in *CreateContractParam, opts ...grpc.CallOption) (*types.Address, error)
+	GetSettlementRewardsBlock(ctx context.Context, in *types.Hash, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetCreateContractBlock(ctx context.Context, in *CreateContractParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetSignContractBlock(ctx context.Context, in *SignContractParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetAddPreStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetRemovePreStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetUpdatePreStopBlock(ctx context.Context, in *UpdateStopParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetAddNextStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetRemoveNextStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetUpdateNextStopBlock(ctx context.Context, in *UpdateStopParam, opts ...grpc.CallOption) (*types.StateBlock, error)
 	GetAllContracts(ctx context.Context, in *Offset, opts ...grpc.CallOption) (*SettlementContracts, error)
 	GetContractsByAddress(ctx context.Context, in *ContractsByAddressRequest, opts ...grpc.CallOption) (*SettlementContracts, error)
 	GetContractsByStatus(ctx context.Context, in *ContractsByStatusRequest, opts ...grpc.CallOption) (*SettlementContracts, error)
 	GetExpiredContracts(ctx context.Context, in *ContractsByAddressRequest, opts ...grpc.CallOption) (*SettlementContracts, error)
 	GetContractsAsPartyA(ctx context.Context, in *ContractsByAddressRequest, opts ...grpc.CallOption) (*SettlementContracts, error)
 	GetContractsAsPartyB(ctx context.Context, in *ContractsByAddressRequest, opts ...grpc.CallOption) (*SettlementContracts, error)
-	GetContractAddressByPartyANextStop(ctx context.Context, in *ContractAddressByPartyRequest, opts ...grpc.CallOption) (*Address, error)
-	GetContractAddressByPartyBPreStop(ctx context.Context, in *ContractAddressByPartyRequest, opts ...grpc.CallOption) (*Address, error)
-	GetProcessCDRBlock(ctx context.Context, in *ProcessCDRBlockRequest, opts ...grpc.CallOption) (*StateBlock, error)
-	GetTerminateContractBlock(ctx context.Context, in *TerminateParam, opts ...grpc.CallOption) (*StateBlock, error)
+	GetContractAddressByPartyANextStop(ctx context.Context, in *ContractAddressByPartyRequest, opts ...grpc.CallOption) (*types.Address, error)
+	GetContractAddressByPartyBPreStop(ctx context.Context, in *ContractAddressByPartyRequest, opts ...grpc.CallOption) (*types.Address, error)
+	GetProcessCDRBlock(ctx context.Context, in *ProcessCDRBlockRequest, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetTerminateContractBlock(ctx context.Context, in *TerminateParam, opts ...grpc.CallOption) (*types.StateBlock, error)
 	GetCDRStatus(ctx context.Context, in *CDRStatusRequest, opts ...grpc.CallOption) (*CDRStatus, error)
 	GetCDRStatusByCdrData(ctx context.Context, in *CDRStatusByCdrDataRequest, opts ...grpc.CallOption) (*CDRStatus, error)
 	GetCDRStatusByDate(ctx context.Context, in *CDRStatusByDateRequest, opts ...grpc.CallOption) (*CDRStatuses, error)
@@ -1862,8 +1861,8 @@ func NewSettlementAPIClient(cc grpc.ClientConnInterface) SettlementAPIClient {
 	return &settlementAPIClient{cc}
 }
 
-func (c *settlementAPIClient) ToAddress(ctx context.Context, in *CreateContractParam, opts ...grpc.CallOption) (*Address, error) {
-	out := new(Address)
+func (c *settlementAPIClient) ToAddress(ctx context.Context, in *CreateContractParam, opts ...grpc.CallOption) (*types.Address, error) {
+	out := new(types.Address)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/ToAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1871,8 +1870,8 @@ func (c *settlementAPIClient) ToAddress(ctx context.Context, in *CreateContractP
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetSettlementRewardsBlock(ctx context.Context, in *Hash, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetSettlementRewardsBlock(ctx context.Context, in *types.Hash, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetSettlementRewardsBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1880,8 +1879,8 @@ func (c *settlementAPIClient) GetSettlementRewardsBlock(ctx context.Context, in 
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetCreateContractBlock(ctx context.Context, in *CreateContractParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetCreateContractBlock(ctx context.Context, in *CreateContractParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetCreateContractBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1889,8 +1888,8 @@ func (c *settlementAPIClient) GetCreateContractBlock(ctx context.Context, in *Cr
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetSignContractBlock(ctx context.Context, in *SignContractParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetSignContractBlock(ctx context.Context, in *SignContractParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetSignContractBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1898,8 +1897,8 @@ func (c *settlementAPIClient) GetSignContractBlock(ctx context.Context, in *Sign
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetAddPreStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetAddPreStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetAddPreStopBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1907,8 +1906,8 @@ func (c *settlementAPIClient) GetAddPreStopBlock(ctx context.Context, in *StopPa
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetRemovePreStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetRemovePreStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetRemovePreStopBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1916,8 +1915,8 @@ func (c *settlementAPIClient) GetRemovePreStopBlock(ctx context.Context, in *Sto
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetUpdatePreStopBlock(ctx context.Context, in *UpdateStopParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetUpdatePreStopBlock(ctx context.Context, in *UpdateStopParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetUpdatePreStopBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1925,8 +1924,8 @@ func (c *settlementAPIClient) GetUpdatePreStopBlock(ctx context.Context, in *Upd
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetAddNextStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetAddNextStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetAddNextStopBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1934,8 +1933,8 @@ func (c *settlementAPIClient) GetAddNextStopBlock(ctx context.Context, in *StopP
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetRemoveNextStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetRemoveNextStopBlock(ctx context.Context, in *StopParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetRemoveNextStopBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1943,8 +1942,8 @@ func (c *settlementAPIClient) GetRemoveNextStopBlock(ctx context.Context, in *St
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetUpdateNextStopBlock(ctx context.Context, in *UpdateStopParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetUpdateNextStopBlock(ctx context.Context, in *UpdateStopParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetUpdateNextStopBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -2006,8 +2005,8 @@ func (c *settlementAPIClient) GetContractsAsPartyB(ctx context.Context, in *Cont
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetContractAddressByPartyANextStop(ctx context.Context, in *ContractAddressByPartyRequest, opts ...grpc.CallOption) (*Address, error) {
-	out := new(Address)
+func (c *settlementAPIClient) GetContractAddressByPartyANextStop(ctx context.Context, in *ContractAddressByPartyRequest, opts ...grpc.CallOption) (*types.Address, error) {
+	out := new(types.Address)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetContractAddressByPartyANextStop", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -2015,8 +2014,8 @@ func (c *settlementAPIClient) GetContractAddressByPartyANextStop(ctx context.Con
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetContractAddressByPartyBPreStop(ctx context.Context, in *ContractAddressByPartyRequest, opts ...grpc.CallOption) (*Address, error) {
-	out := new(Address)
+func (c *settlementAPIClient) GetContractAddressByPartyBPreStop(ctx context.Context, in *ContractAddressByPartyRequest, opts ...grpc.CallOption) (*types.Address, error) {
+	out := new(types.Address)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetContractAddressByPartyBPreStop", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -2024,8 +2023,8 @@ func (c *settlementAPIClient) GetContractAddressByPartyBPreStop(ctx context.Cont
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetProcessCDRBlock(ctx context.Context, in *ProcessCDRBlockRequest, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetProcessCDRBlock(ctx context.Context, in *ProcessCDRBlockRequest, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetProcessCDRBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -2033,8 +2032,8 @@ func (c *settlementAPIClient) GetProcessCDRBlock(ctx context.Context, in *Proces
 	return out, nil
 }
 
-func (c *settlementAPIClient) GetTerminateContractBlock(ctx context.Context, in *TerminateParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *settlementAPIClient) GetTerminateContractBlock(ctx context.Context, in *TerminateParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.SettlementAPI/GetTerminateContractBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -2089,26 +2088,26 @@ func (c *settlementAPIClient) GetMultiPartyCDRStatus(ctx context.Context, in *Mu
 
 // SettlementAPIServer is the server API for SettlementAPI service.
 type SettlementAPIServer interface {
-	ToAddress(context.Context, *CreateContractParam) (*Address, error)
-	GetSettlementRewardsBlock(context.Context, *Hash) (*StateBlock, error)
-	GetCreateContractBlock(context.Context, *CreateContractParam) (*StateBlock, error)
-	GetSignContractBlock(context.Context, *SignContractParam) (*StateBlock, error)
-	GetAddPreStopBlock(context.Context, *StopParam) (*StateBlock, error)
-	GetRemovePreStopBlock(context.Context, *StopParam) (*StateBlock, error)
-	GetUpdatePreStopBlock(context.Context, *UpdateStopParam) (*StateBlock, error)
-	GetAddNextStopBlock(context.Context, *StopParam) (*StateBlock, error)
-	GetRemoveNextStopBlock(context.Context, *StopParam) (*StateBlock, error)
-	GetUpdateNextStopBlock(context.Context, *UpdateStopParam) (*StateBlock, error)
+	ToAddress(context.Context, *CreateContractParam) (*types.Address, error)
+	GetSettlementRewardsBlock(context.Context, *types.Hash) (*types.StateBlock, error)
+	GetCreateContractBlock(context.Context, *CreateContractParam) (*types.StateBlock, error)
+	GetSignContractBlock(context.Context, *SignContractParam) (*types.StateBlock, error)
+	GetAddPreStopBlock(context.Context, *StopParam) (*types.StateBlock, error)
+	GetRemovePreStopBlock(context.Context, *StopParam) (*types.StateBlock, error)
+	GetUpdatePreStopBlock(context.Context, *UpdateStopParam) (*types.StateBlock, error)
+	GetAddNextStopBlock(context.Context, *StopParam) (*types.StateBlock, error)
+	GetRemoveNextStopBlock(context.Context, *StopParam) (*types.StateBlock, error)
+	GetUpdateNextStopBlock(context.Context, *UpdateStopParam) (*types.StateBlock, error)
 	GetAllContracts(context.Context, *Offset) (*SettlementContracts, error)
 	GetContractsByAddress(context.Context, *ContractsByAddressRequest) (*SettlementContracts, error)
 	GetContractsByStatus(context.Context, *ContractsByStatusRequest) (*SettlementContracts, error)
 	GetExpiredContracts(context.Context, *ContractsByAddressRequest) (*SettlementContracts, error)
 	GetContractsAsPartyA(context.Context, *ContractsByAddressRequest) (*SettlementContracts, error)
 	GetContractsAsPartyB(context.Context, *ContractsByAddressRequest) (*SettlementContracts, error)
-	GetContractAddressByPartyANextStop(context.Context, *ContractAddressByPartyRequest) (*Address, error)
-	GetContractAddressByPartyBPreStop(context.Context, *ContractAddressByPartyRequest) (*Address, error)
-	GetProcessCDRBlock(context.Context, *ProcessCDRBlockRequest) (*StateBlock, error)
-	GetTerminateContractBlock(context.Context, *TerminateParam) (*StateBlock, error)
+	GetContractAddressByPartyANextStop(context.Context, *ContractAddressByPartyRequest) (*types.Address, error)
+	GetContractAddressByPartyBPreStop(context.Context, *ContractAddressByPartyRequest) (*types.Address, error)
+	GetProcessCDRBlock(context.Context, *ProcessCDRBlockRequest) (*types.StateBlock, error)
+	GetTerminateContractBlock(context.Context, *TerminateParam) (*types.StateBlock, error)
 	GetCDRStatus(context.Context, *CDRStatusRequest) (*CDRStatus, error)
 	GetCDRStatusByCdrData(context.Context, *CDRStatusByCdrDataRequest) (*CDRStatus, error)
 	GetCDRStatusByDate(context.Context, *CDRStatusByDateRequest) (*CDRStatuses, error)
@@ -2120,34 +2119,34 @@ type SettlementAPIServer interface {
 type UnimplementedSettlementAPIServer struct {
 }
 
-func (*UnimplementedSettlementAPIServer) ToAddress(context.Context, *CreateContractParam) (*Address, error) {
+func (*UnimplementedSettlementAPIServer) ToAddress(context.Context, *CreateContractParam) (*types.Address, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ToAddress not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetSettlementRewardsBlock(context.Context, *Hash) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetSettlementRewardsBlock(context.Context, *types.Hash) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSettlementRewardsBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetCreateContractBlock(context.Context, *CreateContractParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetCreateContractBlock(context.Context, *CreateContractParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCreateContractBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetSignContractBlock(context.Context, *SignContractParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetSignContractBlock(context.Context, *SignContractParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSignContractBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetAddPreStopBlock(context.Context, *StopParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetAddPreStopBlock(context.Context, *StopParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAddPreStopBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetRemovePreStopBlock(context.Context, *StopParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetRemovePreStopBlock(context.Context, *StopParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRemovePreStopBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetUpdatePreStopBlock(context.Context, *UpdateStopParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetUpdatePreStopBlock(context.Context, *UpdateStopParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUpdatePreStopBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetAddNextStopBlock(context.Context, *StopParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetAddNextStopBlock(context.Context, *StopParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAddNextStopBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetRemoveNextStopBlock(context.Context, *StopParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetRemoveNextStopBlock(context.Context, *StopParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRemoveNextStopBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetUpdateNextStopBlock(context.Context, *UpdateStopParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetUpdateNextStopBlock(context.Context, *UpdateStopParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUpdateNextStopBlock not implemented")
 }
 func (*UnimplementedSettlementAPIServer) GetAllContracts(context.Context, *Offset) (*SettlementContracts, error) {
@@ -2168,16 +2167,16 @@ func (*UnimplementedSettlementAPIServer) GetContractsAsPartyA(context.Context, *
 func (*UnimplementedSettlementAPIServer) GetContractsAsPartyB(context.Context, *ContractsByAddressRequest) (*SettlementContracts, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContractsAsPartyB not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetContractAddressByPartyANextStop(context.Context, *ContractAddressByPartyRequest) (*Address, error) {
+func (*UnimplementedSettlementAPIServer) GetContractAddressByPartyANextStop(context.Context, *ContractAddressByPartyRequest) (*types.Address, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContractAddressByPartyANextStop not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetContractAddressByPartyBPreStop(context.Context, *ContractAddressByPartyRequest) (*Address, error) {
+func (*UnimplementedSettlementAPIServer) GetContractAddressByPartyBPreStop(context.Context, *ContractAddressByPartyRequest) (*types.Address, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContractAddressByPartyBPreStop not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetProcessCDRBlock(context.Context, *ProcessCDRBlockRequest) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetProcessCDRBlock(context.Context, *ProcessCDRBlockRequest) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProcessCDRBlock not implemented")
 }
-func (*UnimplementedSettlementAPIServer) GetTerminateContractBlock(context.Context, *TerminateParam) (*StateBlock, error) {
+func (*UnimplementedSettlementAPIServer) GetTerminateContractBlock(context.Context, *TerminateParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTerminateContractBlock not implemented")
 }
 func (*UnimplementedSettlementAPIServer) GetCDRStatus(context.Context, *CDRStatusRequest) (*CDRStatus, error) {
@@ -2219,7 +2218,7 @@ func _SettlementAPI_ToAddress_Handler(srv interface{}, ctx context.Context, dec 
 }
 
 func _SettlementAPI_GetSettlementRewardsBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Hash)
+	in := new(types.Hash)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2231,7 +2230,7 @@ func _SettlementAPI_GetSettlementRewardsBlock_Handler(srv interface{}, ctx conte
 		FullMethod: "/proto.SettlementAPI/GetSettlementRewardsBlock",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SettlementAPIServer).GetSettlementRewardsBlock(ctx, req.(*Hash))
+		return srv.(SettlementAPIServer).GetSettlementRewardsBlock(ctx, req.(*types.Hash))
 	}
 	return interceptor(ctx, in, info, handler)
 }

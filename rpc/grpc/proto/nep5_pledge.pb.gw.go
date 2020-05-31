@@ -12,12 +12,13 @@ import (
 	"context"
 	"io"
 	"net/http"
-	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -65,7 +66,7 @@ func request_NEP5PledgeAPI_GetPledgeBlock_0(ctx context.Context, marshaler runti
 }
 
 func request_NEP5PledgeAPI_GetPledgeRewardBlock_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.StateBlock
+	var protoReq types.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -82,7 +83,7 @@ func request_NEP5PledgeAPI_GetPledgeRewardBlock_0(ctx context.Context, marshaler
 }
 
 func request_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -133,7 +134,7 @@ func request_NEP5PledgeAPI_GetWithdrawPledgeBlock_0(ctx context.Context, marshal
 }
 
 func request_NEP5PledgeAPI_GetWithdrawRewardBlock_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.StateBlock
+	var protoReq types.StateBlock
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -150,7 +151,7 @@ func request_NEP5PledgeAPI_GetWithdrawRewardBlock_0(ctx context.Context, marshal
 }
 
 func request_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -167,7 +168,7 @@ func request_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0(ctx context.Contex
 }
 
 func request_NEP5PledgeAPI_ParsePledgeInfo_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Bytes
+	var protoReq wrappers.BytesValue
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -184,7 +185,7 @@ func request_NEP5PledgeAPI_ParsePledgeInfo_0(ctx context.Context, marshaler runt
 }
 
 func request_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Address
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -201,7 +202,7 @@ func request_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0(ctx context.Context, 
 }
 
 func request_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Address
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -218,7 +219,7 @@ func request_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0(ctx context.Context,
 }
 
 func request_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Address
+	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

@@ -1,7 +1,6 @@
 syntax = "proto3";
 package types;
-option go_package = ".;proto";
-
+option go_package = "github.com/qlcchain/go-qlc/rpc/grpc/proto/types;types";
 
 message PovVerifierState  {
     uint64 totalVerify     = 1;

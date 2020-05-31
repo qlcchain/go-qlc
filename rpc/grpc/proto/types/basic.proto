@@ -1,6 +1,6 @@
 syntax = "proto3";
 package types;
-option go_package = ".;proto";
+option go_package = "github.com/qlcchain/go-qlc/rpc/grpc/proto/types;types";
 
 message  Address {
     string address = 1;
@@ -29,10 +29,10 @@ message StateBlock  {
     int64     oracle  = 8;
     string    previous   = 9;
     string    link       = 10;
-    string    sender     = 11;
-    string    receiver   = 12;
+    bytes     sender     = 11;
+    bytes     receiver   = 12;
     string    message    = 13;
-    string    data       = 14;
+    bytes     data       = 14;
     uint64    poVHeight  = 15;
     int64     timestamp  = 16;
     string    extra      = 17;
@@ -47,7 +47,7 @@ message StateBlock  {
 
     uint64    flag           = 24;
     bool      privateRecvRsp = 25;
-    string    privatePayload = 26;
+    bytes     privatePayload = 26;
 }
 
 message TokenMeta {

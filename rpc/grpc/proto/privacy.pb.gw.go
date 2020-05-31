@@ -12,11 +12,12 @@ import (
 	"context"
 	"io"
 	"net/http"
-	proto_0 "types"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -47,7 +48,7 @@ func request_PrivacyAPI_DistributeRawPayload_0(ctx context.Context, marshaler ru
 }
 
 func request_PrivacyAPI_GetRawPayload_0(ctx context.Context, marshaler runtime.Marshaler, client PrivacyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Bytes
+	var protoReq wrappers.BytesValue
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -64,7 +65,7 @@ func request_PrivacyAPI_GetRawPayload_0(ctx context.Context, marshaler runtime.M
 }
 
 func request_PrivacyAPI_GetBlockPrivatePayload_0(ctx context.Context, marshaler runtime.Marshaler, client PrivacyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq proto_0.Hash
+	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -81,7 +82,7 @@ func request_PrivacyAPI_GetBlockPrivatePayload_0(ctx context.Context, marshaler 
 }
 
 func request_PrivacyAPI_GetDemoKV_0(ctx context.Context, marshaler runtime.Marshaler, client PrivacyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Bytes
+	var protoReq wrappers.BytesValue
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

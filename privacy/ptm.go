@@ -6,10 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bluele/gcache"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
-
-	"github.com/bluele/gcache"
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/config"

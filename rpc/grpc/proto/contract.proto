@@ -3,26 +3,27 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
-import "common.proto";
+
 
 option go_package = ".;proto";
 
 service ContractAPI{
-    rpc GetAbiByContractAddress (types.Address) returns (String) {
+    rpc GetAbiByContractAddress (types.Address) returns (google.protobuf.StringValue) {
         option (google.api.http) = {
            get: "/contract/getAbiByContractAddress"
         };
     }
 
-    rpc PackContractData (PackContractDataRequest) returns (Bytes) {
+    rpc PackContractData (PackContractDataRequest) returns (google.protobuf.BytesValue) {
         option (google.api.http) = {
            post: "/contract/packContractData"
            body: "*"
         };
     }
 
-    rpc PackChainContractData (PackChainContractDataRequest) returns (Bytes) {
+    rpc PackChainContractData (PackChainContractDataRequest) returns (google.protobuf.BytesValue) {
         option (google.api.http) = {
            post: "/contract/packChainContractData"
            body: "*"
@@ -54,13 +55,13 @@ service ContractAPI{
 message PackContractDataRequest {
     string abiStr      = 1;
     string methodName  = 2;
-    bytes  params      = 3;
+    repeated string params = 3;
 }
 
 message PackChainContractDataRequest {
     string contractAddress = 1;
     string methodName      = 2;
-    bytes  params          = 3;
+    repeated string  params          = 3;
 }
 
 message ContractSendBlockPara  {
@@ -68,12 +69,12 @@ message ContractSendBlockPara  {
     string tokenName   = 2;
     string to          = 3;
     int64  amount      = 4;
-    string data        = 5;
+    bytes  data        = 5;
 
     string privateFrom         = 6;
     repeated string privateFor = 7;
-    string  string             = 8;
-    string  enclaveKey         = 9;
+    string  privateGroupID     = 8;
+    bytes  enclaveKey          = 9;
 }
 
 message ContractRewardBlockPara  {

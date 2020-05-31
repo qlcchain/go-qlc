@@ -3,21 +3,23 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
+	grpcServer "github.com/qlcchain/go-qlc/rpc/grpc/server"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 
+	rpc "github.com/qlcchain/jsonrpc2"
+	"go.uber.org/zap"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
-	"github.com/qlcchain/go-qlc/rpc/grpc/server"
 	"github.com/qlcchain/go-qlc/wallet"
-	rpc "github.com/qlcchain/jsonrpc2"
-	"go.uber.org/zap"
 )
 
 type RPC struct {
@@ -260,7 +262,7 @@ func (r *RPC) StartRPC() error {
 	if r.config.RPC.Enable && r.config.RPC.GRPCConfig.Enable {
 		grpc, err := grpcServer.Start(r.cfgFile)
 		if err != nil {
-			return err
+			return fmt.Errorf("grpcserver start error: %s", err)
 		}
 		r.grpc = grpc
 	}

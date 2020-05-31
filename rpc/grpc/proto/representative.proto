@@ -2,21 +2,22 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
 import "types/pov.proto";
-import "common.proto";
+
 
 option go_package = ".;proto";
 
 service RepAPI {
-    rpc GetRewardData (RepRewardParam) returns (Bytes) {
+    rpc GetRewardData (RepRewardParam) returns (google.protobuf.BytesValue) {
         option (google.api.http) = {
            post: "/rep/getRewardData"
            body: "*"
        };
     }
 
-    rpc UnpackRewardData (Bytes) returns (RepRewardParam) {
+    rpc UnpackRewardData (google.protobuf.BytesValue) returns (RepRewardParam) {
         option (google.api.http) = {
            post: "/rep/unpackRewardData"
            body: "*"
@@ -90,7 +91,7 @@ message RepAvailRewardInfo  {
 message RepHistoryRewardInfo  {
     uint64 lastEndHeight  = 1;
     uint64 rewardBlocks   = 2;
-    string rewardAmount   = 3;
+    int64  rewardAmount   = 3;
     int64  lastRewardTime = 4;
 }
 

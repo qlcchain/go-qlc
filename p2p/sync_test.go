@@ -8,15 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/ledger/process"
-
-	"github.com/qlcchain/go-qlc/mock"
-
 	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger/process"
+	"github.com/qlcchain/go-qlc/mock"
 )
 
 func TestServiceSync(t *testing.T) {

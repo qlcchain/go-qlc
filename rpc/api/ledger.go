@@ -389,16 +389,16 @@ func (l *LedgerAPI) AccountsCount() (uint64, error) {
 	return l.ledger.CountAccountMetas()
 }
 
-func (l *LedgerAPI) Accounts(count int, offset *int) ([]*types.Address, error) {
+func (l *LedgerAPI) Accounts(count int, offset *int) ([]types.Address, error) {
 	c, o, err := checkOffset(count, offset)
 	if err != nil {
 		return nil, err
 	}
-	as := make([]*types.Address, 0)
+	as := make([]types.Address, 0)
 	index := 0
 	err = l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
 		if index >= o && index < o+c {
-			as = append(as, &am.Address)
+			as = append(as, am.Address)
 		}
 		index = index + 1
 		return nil

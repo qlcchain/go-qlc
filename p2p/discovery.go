@@ -7,7 +7,6 @@ import (
 	corediscovery "github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery"
 

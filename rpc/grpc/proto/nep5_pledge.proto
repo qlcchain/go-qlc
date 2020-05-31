@@ -3,13 +3,14 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
-import "common.proto";
+
 
 option go_package = ".;proto";
 
 service NEP5PledgeAPI{
-    rpc GetPledgeData(PledgeParam) returns (Bytes){
+    rpc GetPledgeData(PledgeParam) returns (google.protobuf.BytesValue){
         option (google.api.http) = {
            post: "/pledge/getPledgeData"
            body: "*"
@@ -37,7 +38,7 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc GetWithdrawPledgeData(WithdrawPledgeParam) returns (Bytes){
+    rpc GetWithdrawPledgeData(WithdrawPledgeParam) returns (google.protobuf.BytesValue){
         option (google.api.http) = {
            post: "/pledge/getWithdrawPledgeData"
            body: "*"
@@ -65,7 +66,7 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc ParsePledgeInfo(Bytes) returns (NEP5PledgeInfo){
+    rpc ParsePledgeInfo(google.protobuf.BytesValue) returns (NEP5PledgeInfo){
         option (google.api.http) = {
            post: "/pledge/parsePledgeInfo"
            body: "*"
@@ -79,7 +80,7 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc GetPledgeBeneficialTotalAmount(types.Address) returns (Int64){
+    rpc GetPledgeBeneficialTotalAmount(types.Address) returns (google.protobuf.Int64Value){
         option (google.api.http) = {
            post: "/pledge/getPledgeBeneficialTotalAmount"
            body: "*"
@@ -100,7 +101,7 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc GetPledgeBeneficialAmount(BeneficialPledgeRequest) returns (Int64){
+    rpc GetPledgeBeneficialAmount(BeneficialPledgeRequest) returns (google.protobuf.Int64Value){
         option (google.api.http) = {
            post: "/pledge/getPledgeBeneficialAmount"
            body: "*"
@@ -135,7 +136,7 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc GetTotalPledgeAmount(google.protobuf.Empty) returns (Int64){
+    rpc GetTotalPledgeAmount(google.protobuf.Empty) returns (google.protobuf.Int64Value){
         option (google.api.http) = {
            post: "/pledge/getTotalPledgeAmount"
            body: "*"

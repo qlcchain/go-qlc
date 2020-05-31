@@ -9,6 +9,7 @@ package proto
 import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
+	types "github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -269,8 +270,8 @@ var file_ptmkey_proto_goTypes = []interface{}{
 	(*PtmKeyUpdateParam)(nil),            // 0: proto.PtmKeyUpdateParam
 	(*PtmKeyUpdateParams)(nil),           // 1: proto.PtmKeyUpdateParams
 	(*PtmKeyByAccountAndBtypeParam)(nil), // 2: proto.PtmKeyByAccountAndBtypeParam
-	(*Address)(nil),                      // 3: types.Address
-	(*StateBlock)(nil),                   // 4: types.StateBlock
+	(*types.Address)(nil),                // 3: types.Address
+	(*types.StateBlock)(nil),             // 4: types.StateBlock
 }
 var file_ptmkey_proto_depIdxs = []int32{
 	0, // 0: proto.PtmKeyUpdateParams.params:type_name -> proto.PtmKeyUpdateParam
@@ -294,7 +295,6 @@ func file_ptmkey_proto_init() {
 	if File_ptmkey_proto != nil {
 		return
 	}
-	file_types_basic_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_ptmkey_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PtmKeyUpdateParam); i {
@@ -365,9 +365,9 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type PtmKeyAPIClient interface {
-	GetPtmKeyUpdateBlock(ctx context.Context, in *PtmKeyUpdateParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetPtmKeyDeleteBlock(ctx context.Context, in *PtmKeyByAccountAndBtypeParam, opts ...grpc.CallOption) (*StateBlock, error)
-	GetPtmKeyByAccount(ctx context.Context, in *Address, opts ...grpc.CallOption) (*PtmKeyUpdateParams, error)
+	GetPtmKeyUpdateBlock(ctx context.Context, in *PtmKeyUpdateParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetPtmKeyDeleteBlock(ctx context.Context, in *PtmKeyByAccountAndBtypeParam, opts ...grpc.CallOption) (*types.StateBlock, error)
+	GetPtmKeyByAccount(ctx context.Context, in *types.Address, opts ...grpc.CallOption) (*PtmKeyUpdateParams, error)
 	GetPtmKeyByAccountAndBtype(ctx context.Context, in *PtmKeyByAccountAndBtypeParam, opts ...grpc.CallOption) (*PtmKeyUpdateParams, error)
 }
 
@@ -379,8 +379,8 @@ func NewPtmKeyAPIClient(cc grpc.ClientConnInterface) PtmKeyAPIClient {
 	return &ptmKeyAPIClient{cc}
 }
 
-func (c *ptmKeyAPIClient) GetPtmKeyUpdateBlock(ctx context.Context, in *PtmKeyUpdateParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *ptmKeyAPIClient) GetPtmKeyUpdateBlock(ctx context.Context, in *PtmKeyUpdateParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.PtmKeyAPI/GetPtmKeyUpdateBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -388,8 +388,8 @@ func (c *ptmKeyAPIClient) GetPtmKeyUpdateBlock(ctx context.Context, in *PtmKeyUp
 	return out, nil
 }
 
-func (c *ptmKeyAPIClient) GetPtmKeyDeleteBlock(ctx context.Context, in *PtmKeyByAccountAndBtypeParam, opts ...grpc.CallOption) (*StateBlock, error) {
-	out := new(StateBlock)
+func (c *ptmKeyAPIClient) GetPtmKeyDeleteBlock(ctx context.Context, in *PtmKeyByAccountAndBtypeParam, opts ...grpc.CallOption) (*types.StateBlock, error) {
+	out := new(types.StateBlock)
 	err := c.cc.Invoke(ctx, "/proto.PtmKeyAPI/GetPtmKeyDeleteBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -397,7 +397,7 @@ func (c *ptmKeyAPIClient) GetPtmKeyDeleteBlock(ctx context.Context, in *PtmKeyBy
 	return out, nil
 }
 
-func (c *ptmKeyAPIClient) GetPtmKeyByAccount(ctx context.Context, in *Address, opts ...grpc.CallOption) (*PtmKeyUpdateParams, error) {
+func (c *ptmKeyAPIClient) GetPtmKeyByAccount(ctx context.Context, in *types.Address, opts ...grpc.CallOption) (*PtmKeyUpdateParams, error) {
 	out := new(PtmKeyUpdateParams)
 	err := c.cc.Invoke(ctx, "/proto.PtmKeyAPI/GetPtmKeyByAccount", in, out, opts...)
 	if err != nil {
@@ -417,9 +417,9 @@ func (c *ptmKeyAPIClient) GetPtmKeyByAccountAndBtype(ctx context.Context, in *Pt
 
 // PtmKeyAPIServer is the server API for PtmKeyAPI service.
 type PtmKeyAPIServer interface {
-	GetPtmKeyUpdateBlock(context.Context, *PtmKeyUpdateParam) (*StateBlock, error)
-	GetPtmKeyDeleteBlock(context.Context, *PtmKeyByAccountAndBtypeParam) (*StateBlock, error)
-	GetPtmKeyByAccount(context.Context, *Address) (*PtmKeyUpdateParams, error)
+	GetPtmKeyUpdateBlock(context.Context, *PtmKeyUpdateParam) (*types.StateBlock, error)
+	GetPtmKeyDeleteBlock(context.Context, *PtmKeyByAccountAndBtypeParam) (*types.StateBlock, error)
+	GetPtmKeyByAccount(context.Context, *types.Address) (*PtmKeyUpdateParams, error)
 	GetPtmKeyByAccountAndBtype(context.Context, *PtmKeyByAccountAndBtypeParam) (*PtmKeyUpdateParams, error)
 }
 
@@ -427,13 +427,13 @@ type PtmKeyAPIServer interface {
 type UnimplementedPtmKeyAPIServer struct {
 }
 
-func (*UnimplementedPtmKeyAPIServer) GetPtmKeyUpdateBlock(context.Context, *PtmKeyUpdateParam) (*StateBlock, error) {
+func (*UnimplementedPtmKeyAPIServer) GetPtmKeyUpdateBlock(context.Context, *PtmKeyUpdateParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPtmKeyUpdateBlock not implemented")
 }
-func (*UnimplementedPtmKeyAPIServer) GetPtmKeyDeleteBlock(context.Context, *PtmKeyByAccountAndBtypeParam) (*StateBlock, error) {
+func (*UnimplementedPtmKeyAPIServer) GetPtmKeyDeleteBlock(context.Context, *PtmKeyByAccountAndBtypeParam) (*types.StateBlock, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPtmKeyDeleteBlock not implemented")
 }
-func (*UnimplementedPtmKeyAPIServer) GetPtmKeyByAccount(context.Context, *Address) (*PtmKeyUpdateParams, error) {
+func (*UnimplementedPtmKeyAPIServer) GetPtmKeyByAccount(context.Context, *types.Address) (*PtmKeyUpdateParams, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPtmKeyByAccount not implemented")
 }
 func (*UnimplementedPtmKeyAPIServer) GetPtmKeyByAccountAndBtype(context.Context, *PtmKeyByAccountAndBtypeParam) (*PtmKeyUpdateParams, error) {
@@ -481,7 +481,7 @@ func _PtmKeyAPI_GetPtmKeyDeleteBlock_Handler(srv interface{}, ctx context.Contex
 }
 
 func _PtmKeyAPI_GetPtmKeyByAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Address)
+	in := new(types.Address)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -493,7 +493,7 @@ func _PtmKeyAPI_GetPtmKeyByAccount_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/proto.PtmKeyAPI/GetPtmKeyByAccount",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PtmKeyAPIServer).GetPtmKeyByAccount(ctx, req.(*Address))
+		return srv.(PtmKeyAPIServer).GetPtmKeyByAccount(ctx, req.(*types.Address))
 	}
 	return interceptor(ctx, in, info, handler)
 }

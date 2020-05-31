@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/monitor/influxdb"
-
 	"github.com/rcrowley/go-metrics"
+
+	"github.com/qlcchain/go-qlc/monitor/influxdb"
 )
 
 func TestMetrics(t *testing.T) {
