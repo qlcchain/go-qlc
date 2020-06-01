@@ -676,12 +676,12 @@ func TestDoDSettlementAPI_GetOrderInfoByAddress(t *testing.T) {
 	addDoDSettleTestOrder(t, ds.ctx, address, mock.Address(), 10)
 
 	ois, err := ds.GetOrderInfoByAddress(address, 1, 0)
-	if err != nil || ois[0].OrderId != "order9" {
+	if err != nil || ois.OrderInfo[0].OrderId != "order9" {
 		t.Fatal()
 	}
 
 	ois, err = ds.GetOrderInfoByAddress(address, 2, 3)
-	if err != nil || len(ois) != 2 || ois[0].OrderId != "order6" {
+	if err != nil || ois.TotalOrders != 2 || len(ois.OrderInfo) != 2 || ois.OrderInfo[0].OrderId != "order6" {
 		t.Fatal()
 	}
 }
@@ -719,12 +719,12 @@ func TestDoDSettlementAPI_GetOrderInfoByAddressAndSeller(t *testing.T) {
 	addDoDSettleTestOrder(t, ds.ctx, address, seller, 10)
 
 	ois, err := ds.GetOrderInfoByAddressAndSeller(address, seller, 1, 0)
-	if err != nil || ois[0].OrderId != "order9" {
+	if err != nil || ois.OrderInfo[0].OrderId != "order9" {
 		t.Fatal()
 	}
 
 	ois, err = ds.GetOrderInfoByAddressAndSeller(address, seller, 2, 3)
-	if err != nil || len(ois) != 2 || ois[0].OrderId != "order6" {
+	if err != nil || ois.TotalOrders != 2 || len(ois.OrderInfo) != 2 || ois.OrderInfo[0].OrderId != "order6" {
 		t.Fatal()
 	}
 }
@@ -762,12 +762,12 @@ func TestDoDSettlementAPI_GetProductInfoByAddress(t *testing.T) {
 	addDoDSettleTestConnection(t, ds.ctx, address, seller, 10)
 
 	pds, err := ds.GetProductInfoByAddress(address, 1, 0)
-	if err != nil || pds[0].ProductId != "product9" {
+	if err != nil || pds.ProductInfo[0].ProductId != "product9" {
 		t.Fatal()
 	}
 
 	pds, err = ds.GetProductInfoByAddress(address, 2, 3)
-	if err != nil || len(pds) != 2 || pds[0].ProductId != "product6" {
+	if err != nil || pds.TotalProducts != 2 || len(pds.ProductInfo) != 2 || pds.ProductInfo[0].ProductId != "product6" {
 		t.Fatal()
 	}
 }
@@ -805,12 +805,12 @@ func TestDoDSettlementAPI_GetProductInfoByAddressAndSeller(t *testing.T) {
 	addDoDSettleTestConnection(t, ds.ctx, address, seller, 10)
 
 	pds, err := ds.GetProductInfoByAddressAndSeller(address, seller, 1, 0)
-	if err != nil || pds[0].ProductId != "product9" {
+	if err != nil || pds.ProductInfo[0].ProductId != "product9" {
 		t.Fatal()
 	}
 
 	pds, err = ds.GetProductInfoByAddressAndSeller(address, seller, 2, 3)
-	if err != nil || len(pds) != 2 || pds[0].ProductId != "product6" {
+	if err != nil || pds.TotalProducts != 2 || len(pds.ProductInfo) != 2 || pds.ProductInfo[0].ProductId != "product6" {
 		t.Fatal()
 	}
 }
