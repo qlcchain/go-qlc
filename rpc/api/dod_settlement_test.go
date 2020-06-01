@@ -681,7 +681,7 @@ func TestDoDSettlementAPI_GetOrderInfoByAddress(t *testing.T) {
 	}
 
 	ois, err = ds.GetOrderInfoByAddress(address, 2, 3)
-	if err != nil || ois.TotalOrders != 2 || len(ois.OrderInfo) != 2 || ois.OrderInfo[0].OrderId != "order6" {
+	if err != nil || ois.TotalOrders != 10 || len(ois.OrderInfo) != 2 || ois.OrderInfo[0].OrderId != "order6" {
 		t.Fatal()
 	}
 }
@@ -724,7 +724,7 @@ func TestDoDSettlementAPI_GetOrderInfoByAddressAndSeller(t *testing.T) {
 	}
 
 	ois, err = ds.GetOrderInfoByAddressAndSeller(address, seller, 2, 3)
-	if err != nil || ois.TotalOrders != 2 || len(ois.OrderInfo) != 2 || ois.OrderInfo[0].OrderId != "order6" {
+	if err != nil || ois.TotalOrders != 10 || len(ois.OrderInfo) != 2 || ois.OrderInfo[0].OrderId != "order6" {
 		t.Fatal()
 	}
 }
@@ -767,7 +767,7 @@ func TestDoDSettlementAPI_GetProductInfoByAddress(t *testing.T) {
 	}
 
 	pds, err = ds.GetProductInfoByAddress(address, 2, 3)
-	if err != nil || pds.TotalProducts != 2 || len(pds.ProductInfo) != 2 || pds.ProductInfo[0].ProductId != "product6" {
+	if err != nil || pds.TotalProducts != 10 || len(pds.ProductInfo) != 2 || pds.ProductInfo[0].ProductId != "product6" {
 		t.Fatal()
 	}
 }
@@ -810,7 +810,7 @@ func TestDoDSettlementAPI_GetProductInfoByAddressAndSeller(t *testing.T) {
 	}
 
 	pds, err = ds.GetProductInfoByAddressAndSeller(address, seller, 2, 3)
-	if err != nil || pds.TotalProducts != 2 || len(pds.ProductInfo) != 2 || pds.ProductInfo[0].ProductId != "product6" {
+	if err != nil || pds.TotalProducts != 10 || len(pds.ProductInfo) != 2 || pds.ProductInfo[0].ProductId != "product6" {
 		t.Fatal()
 	}
 }

@@ -529,7 +529,7 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, o
 		orders = append(orders, order)
 	}
 
-	return &DoDSettlementOrderInfoResp{OrderInfo: orders, TotalOrders: len(orders)}, nil
+	return &DoDSettlementOrderInfoResp{OrderInfo: orders, TotalOrders: len(internalIds)}, nil
 }
 
 func (d *DoDSettlementAPI) GetOrderCountByAddressAndSeller(address, seller types.Address) int {
@@ -570,7 +570,7 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.
 		orders = append(orders, order)
 	}
 
-	return &DoDSettlementOrderInfoResp{OrderInfo: orders, TotalOrders: len(orders)}, nil
+	return &DoDSettlementOrderInfoResp{OrderInfo: orders, TotalOrders: len(orderIds)}, nil
 }
 
 type DoDSettlementProductInfoResp struct {
@@ -616,7 +616,7 @@ func (d *DoDSettlementAPI) GetProductInfoByAddress(address types.Address, count,
 		products = append(products, product)
 	}
 
-	return &DoDSettlementProductInfoResp{ProductInfo: products, TotalProducts: len(products)}, nil
+	return &DoDSettlementProductInfoResp{ProductInfo: products, TotalProducts: len(productIds)}, nil
 }
 
 func (d *DoDSettlementAPI) GetProductCountByAddressAndSeller(address, seller types.Address) int {
@@ -657,7 +657,7 @@ func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller type
 		products = append(products, product)
 	}
 
-	return &DoDSettlementProductInfoResp{ProductInfo: products, TotalProducts: len(products)}, nil
+	return &DoDSettlementProductInfoResp{ProductInfo: products, TotalProducts: len(productIds)}, nil
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64, flight, split bool) (*abi.DoDSettleOrderInvoice, error) {
