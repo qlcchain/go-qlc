@@ -3,7 +3,6 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
 import "common.proto";
 
@@ -31,14 +30,14 @@ service PermissionAPI {
        };
     }
 
-    rpc GetNode(google.protobuf.StringValue) returns (NodeInfo){
+    rpc GetNode(String) returns (NodeInfo){
         option (google.api.http) = {
            post: "/permission/getNode"
            body: "*"
        };
     }
 
-    rpc GetNodesCount(google.protobuf.Empty) returns (google.protobuf.Int32Value){
+    rpc GetNodesCount(google.protobuf.Empty) returns (Int32){
         option (google.api.http) = {
            post: "/permission/getNodesCount"
            body: "*"

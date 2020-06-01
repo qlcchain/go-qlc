@@ -2,7 +2,7 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
+
 	"math/big"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -32,7 +32,7 @@ func NewLedgerApi(ctx context.Context, l ledger.Store, eb event.EventBus, cc *ch
 	return &ledgerApi
 }
 
-func (l *LedgerAPI) AccountBlocksCount(ctx context.Context, addr *pbtypes.Address) (*wrappers.Int64Value, error) {
+func (l *LedgerAPI) AccountBlocksCount(ctx context.Context, addr *pbtypes.Address) (*pb.Int64, error) {
 	address, err := types.HexToAddress(addr.GetAddress())
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (l *LedgerAPI) AccountBlocksCount(ctx context.Context, addr *pbtypes.Addres
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.Int64Value{Value: r}, nil
+	return &pb.Int64{Value: r}, nil
 }
 
 func (l *LedgerAPI) AccountHistoryTopn(ctx context.Context, para *pb.AccountHistoryTopnReq) (*pb.APIBlocks, error) {
@@ -121,12 +121,12 @@ func (l *LedgerAPI) AccountVotingWeight(ctx context.Context, addr *pbtypes.Addre
 	}, nil
 }
 
-func (l *LedgerAPI) AccountsCount(context.Context, *empty.Empty) (*wrappers.UInt64Value, error) {
+func (l *LedgerAPI) AccountsCount(context.Context, *empty.Empty) (*pb.UInt64, error) {
 	r, err := l.ledger.AccountsCount()
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.UInt64Value{
+	return &pb.UInt64{
 		Value: r,
 	}, nil
 }
@@ -253,7 +253,7 @@ func (l *LedgerAPI) BlockAccount(ctx context.Context, hash *pbtypes.Hash) (*pbty
 	return toAddress(r), nil
 }
 
-func (l *LedgerAPI) BlockConfirmedStatus(ctx context.Context, hash *pbtypes.Hash) (*wrappers.BoolValue, error) {
+func (l *LedgerAPI) BlockConfirmedStatus(ctx context.Context, hash *pbtypes.Hash) (*pb.Boolean, error) {
 	h, err := toOriginHash(hash)
 	if err != nil {
 		return nil, err
@@ -262,7 +262,7 @@ func (l *LedgerAPI) BlockConfirmedStatus(ctx context.Context, hash *pbtypes.Hash
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BoolValue{
+	return &pb.Boolean{
 		Value: r,
 	}, nil
 }
@@ -396,7 +396,7 @@ func (l *LedgerAPI) Delegators(ctx context.Context, addr *pbtypes.Address) (*pb.
 	return &pb.APIAccountBalances{Balances: result}, nil
 }
 
-func (l *LedgerAPI) DelegatorsCount(ctx context.Context, addr *pbtypes.Address) (*wrappers.Int64Value, error) {
+func (l *LedgerAPI) DelegatorsCount(ctx context.Context, addr *pbtypes.Address) (*pb.Int64, error) {
 	address, err := toOriginAddress(addr)
 	if err != nil {
 		return nil, err
@@ -405,7 +405,7 @@ func (l *LedgerAPI) DelegatorsCount(ctx context.Context, addr *pbtypes.Address) 
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.Int64Value{
+	return &pb.Int64{
 		Value: r,
 	}, nil
 
@@ -419,7 +419,7 @@ func (l *LedgerAPI) Pendings(context.Context, *empty.Empty) (*pb.APIPendings, er
 	return toAPIPendings(r), nil
 }
 
-func (l *LedgerAPI) Representatives(ctx context.Context, b *wrappers.BoolValue) (*pb.APIRepresentatives, error) {
+func (l *LedgerAPI) Representatives(ctx context.Context, b *pb.Boolean) (*pb.APIRepresentatives, error) {
 	t := b.GetValue()
 	r, err := l.ledger.Representatives(&t)
 	if err != nil {
@@ -458,7 +458,7 @@ func (l *LedgerAPI) TokenInfoById(ctx context.Context, id *pbtypes.Hash) (*pbtyp
 	return toTokenInfo(r.TokenInfo), nil
 }
 
-func (l *LedgerAPI) TokenInfoByName(ctx context.Context, name *wrappers.StringValue) (*pbtypes.TokenInfo, error) {
+func (l *LedgerAPI) TokenInfoByName(ctx context.Context, name *pb.String) (*pbtypes.TokenInfo, error) {
 	n := name.GetValue()
 	r, err := l.ledger.TokenInfoByName(n)
 	if err != nil {
@@ -534,24 +534,24 @@ func (l *LedgerAPI) GasBlock(context.Context, *empty.Empty) (*pbtypes.StateBlock
 	return toStateBlock(&r), nil
 }
 
-func (l *LedgerAPI) IsGenesisBlock(ctx context.Context, block *pbtypes.StateBlock) (*wrappers.BoolValue, error) {
+func (l *LedgerAPI) IsGenesisBlock(ctx context.Context, block *pbtypes.StateBlock) (*pb.Boolean, error) {
 	blk, err := toOriginStateBlock(block)
 	if err != nil {
 		return nil, err
 	}
 	r := l.ledger.IsGenesisBlock(blk)
-	return &wrappers.BoolValue{
+	return &pb.Boolean{
 		Value: r,
 	}, nil
 }
 
-func (l *LedgerAPI) IsGenesisToken(ctx context.Context, hash *pbtypes.Hash) (*wrappers.BoolValue, error) {
+func (l *LedgerAPI) IsGenesisToken(ctx context.Context, hash *pbtypes.Hash) (*pb.Boolean, error) {
 	h, err := toOriginHash(hash)
 	if err != nil {
 		return nil, err
 	}
 	r := l.ledger.IsGenesisToken(h)
-	return &wrappers.BoolValue{
+	return &pb.Boolean{
 		Value: r,
 	}, nil
 }

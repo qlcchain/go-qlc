@@ -2,21 +2,21 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "google/protobuf/wrappers.proto";
+import "common.proto";
 import "types/basic.proto";
 
 
 option go_package = ".;proto";
 
 service MinerAPI{
-    rpc GetRewardData(RewardParam) returns (google.protobuf.BytesValue){
+    rpc GetRewardData(RewardParam) returns (Bytes){
         option (google.api.http) = {
            post: "/miner/getRewardData"
            body: "*"
        };
     }
 
-    rpc UnpackRewardData(google.protobuf.BytesValue) returns (RewardParam) {
+    rpc UnpackRewardData(Bytes) returns (RewardParam) {
         option (google.api.http) = {
            post: "/miner/unpackRewardData"
            body: "*"

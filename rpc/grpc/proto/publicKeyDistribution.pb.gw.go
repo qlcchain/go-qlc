@@ -15,7 +15,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
@@ -83,7 +82,7 @@ func request_PublicKeyDistributionAPI_GetAllVerifiers_0(ctx context.Context, mar
 }
 
 func request_PublicKeyDistributionAPI_GetVerifiersByType_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.StringValue
+	var protoReq String
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -100,7 +99,7 @@ func request_PublicKeyDistributionAPI_GetVerifiersByType_0(ctx context.Context, 
 }
 
 func request_PublicKeyDistributionAPI_GetActiveVerifiers_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.StringValue
+	var protoReq String
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -151,7 +150,7 @@ func request_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0(ctx contex
 }
 
 func request_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.UInt64Value
+	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -236,7 +235,7 @@ func request_PublicKeyDistributionAPI_GetRecommendPubKey_0(ctx context.Context, 
 }
 
 func request_PublicKeyDistributionAPI_GetPublishInfosByType_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.StringValue
+	var protoReq String
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -287,7 +286,7 @@ func request_PublicKeyDistributionAPI_GetOracleBlock_0(ctx context.Context, mars
 }
 
 func request_PublicKeyDistributionAPI_GetOracleInfosByType_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.StringValue
+	var protoReq String
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -355,7 +354,7 @@ func request_PublicKeyDistributionAPI_PackRewardData_0(ctx context.Context, mars
 }
 
 func request_PublicKeyDistributionAPI_UnpackRewardData_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.BytesValue
+	var protoReq Bytes
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

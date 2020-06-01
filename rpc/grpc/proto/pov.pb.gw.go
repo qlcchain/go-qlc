@@ -15,7 +15,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
@@ -45,7 +44,7 @@ var (
 )
 
 func request_PovAPI_GetHeaderByHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.UInt64Value
+	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetHeaderByHeight_0); err != nil {
@@ -88,7 +87,7 @@ var (
 )
 
 func request_PovAPI_GetFittestHeader_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.UInt64Value
+	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetFittestHeader_0); err != nil {
@@ -369,7 +368,7 @@ var (
 )
 
 func request_PovAPI_GetBlockTDByHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.UInt64Value
+	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetBlockTDByHeight_0); err != nil {
@@ -420,7 +419,7 @@ var (
 )
 
 func request_PovAPI_GetMinerDayStat_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.UInt32Value
+	var protoReq UInt32
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetMinerDayStat_0); err != nil {
@@ -437,7 +436,7 @@ var (
 )
 
 func request_PovAPI_GetMinerDayStatByHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.UInt64Value
+	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetMinerDayStatByHeight_0); err != nil {
@@ -454,7 +453,7 @@ var (
 )
 
 func request_PovAPI_GetDiffDayStat_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.UInt32Value
+	var protoReq UInt32
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetDiffDayStat_0); err != nil {
@@ -471,7 +470,7 @@ var (
 )
 
 func request_PovAPI_GetDiffDayStatByHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.UInt64Value
+	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetDiffDayStatByHeight_0); err != nil {

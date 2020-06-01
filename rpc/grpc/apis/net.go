@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
@@ -89,16 +88,16 @@ func (n *NetAPI) GetBandwidthStats(context.Context, *empty.Empty) (*pb.EventBand
 	}, nil
 }
 
-func (n *NetAPI) Syncing(context.Context, *empty.Empty) (*wrappers.BoolValue, error) {
+func (n *NetAPI) Syncing(context.Context, *empty.Empty) (*pb.Boolean, error) {
 	r := n.net.Syncing()
-	return &wrappers.BoolValue{
+	return &pb.Boolean{
 		Value: r,
 	}, nil
 }
 
-func (n *NetAPI) GetPeerId(context.Context, *empty.Empty) (*wrappers.StringValue, error) {
+func (n *NetAPI) GetPeerId(context.Context, *empty.Empty) (*pb.String, error) {
 	r := n.net.GetPeerId()
-	return &wrappers.StringValue{
+	return &pb.String{
 		Value: r,
 	}, nil
 }

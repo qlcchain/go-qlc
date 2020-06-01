@@ -3,7 +3,6 @@ package apis
 import (
 	"context"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -36,7 +35,7 @@ func (a *AccountApi) Create(ctx context.Context, para *pb.CreateRequest) (*pb.Cr
 	}, nil
 }
 
-func (a *AccountApi) ForPublicKey(ctx context.Context, str *wrappers.StringValue) (*pbtypes.Address, error) {
+func (a *AccountApi) ForPublicKey(ctx context.Context, str *pb.String) (*pbtypes.Address, error) {
 	pubStr := str.GetValue()
 	r, err := a.account.ForPublicKey(pubStr)
 	if err != nil {
@@ -47,40 +46,40 @@ func (a *AccountApi) ForPublicKey(ctx context.Context, str *wrappers.StringValue
 	}, nil
 }
 
-func (a *AccountApi) NewSeed(context.Context, *empty.Empty) (*wrappers.StringValue, error) {
+func (a *AccountApi) NewSeed(context.Context, *empty.Empty) (*pb.String, error) {
 	r, err := a.account.NewSeed()
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.StringValue{
+	return &pb.String{
 		Value: r,
 	}, nil
 }
 
-func (a *AccountApi) NewAccounts(ctx context.Context, count *wrappers.UInt32Value) (*pb.AccountsResponse, error) {
-	c := count.GetValue()
-	r, err := a.account.NewAccounts(&c)
+func (a *AccountApi) NewAccounts(ctx context.Context, count *pb.UInt32) (*pb.AccountsResponse, error) {
+	c := toUInt32PointByProto(count)
+	r, err := a.account.NewAccounts(c)
 	if err != nil {
 		return nil, err
 	}
 	return toAccounts(r), nil
 }
 
-func (a *AccountApi) PublicKey(ctx context.Context, addr *pbtypes.Address) (*wrappers.StringValue, error) {
+func (a *AccountApi) PublicKey(ctx context.Context, addr *pbtypes.Address) (*pb.String, error) {
 	address, err := toOriginAddress(addr)
 	if err != nil {
 		return nil, err
 	}
 	r := a.account.PublicKey(address)
-	return &wrappers.StringValue{
+	return &pb.String{
 		Value: r,
 	}, nil
 }
 
-func (a *AccountApi) Validate(ctx context.Context, str *wrappers.StringValue) (*wrappers.BoolValue, error) {
+func (a *AccountApi) Validate(ctx context.Context, str *pb.String) (*pb.Boolean, error) {
 	addStr := str.GetValue()
 	r := a.account.Validate(addStr)
-	return &wrappers.BoolValue{
+	return &pb.Boolean{
 		Value: r,
 	}, nil
 }

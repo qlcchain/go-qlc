@@ -260,7 +260,7 @@ func (r *RPC) StartRPC() error {
 	}
 
 	if r.config.RPC.Enable && r.config.RPC.GRPCConfig.Enable {
-		grpc, err := grpcServer.Start(r.cfgFile)
+		grpc, err := grpcServer.Start(r.cfgFile, r.ctx)
 		if err != nil {
 			return fmt.Errorf("grpcserver start error: %s", err)
 		}

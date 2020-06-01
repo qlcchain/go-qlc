@@ -14,7 +14,6 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
@@ -48,7 +47,7 @@ func request_RepAPI_GetRewardData_0(ctx context.Context, marshaler runtime.Marsh
 }
 
 func request_RepAPI_UnpackRewardData_0(ctx context.Context, marshaler runtime.Marshaler, client RepAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.BytesValue
+	var protoReq Bytes
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

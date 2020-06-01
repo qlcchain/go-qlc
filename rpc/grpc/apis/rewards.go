@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"go.uber.org/zap"
 
@@ -92,24 +91,24 @@ func (r *RewardsAPI) GetReceiveRewardBlock(ctx context.Context, param *pbtypes.H
 	return toStateBlock(result), nil
 }
 
-func (r *RewardsAPI) IsAirdropRewards(ctx context.Context, param *wrappers.BytesValue) (*wrappers.BoolValue, error) {
+func (r *RewardsAPI) IsAirdropRewards(ctx context.Context, param *pb.Bytes) (*pb.Boolean, error) {
 	result := r.reward.IsAirdropRewards(param.GetValue())
-	return &wrappers.BoolValue{
+	return &pb.Boolean{
 		Value: result,
 	}, nil
 }
 
-func (r *RewardsAPI) GetTotalRewards(ctx context.Context, param *wrappers.StringValue) (*wrappers.Int64Value, error) {
+func (r *RewardsAPI) GetTotalRewards(ctx context.Context, param *pb.String) (*pb.Int64, error) {
 	result, err := r.reward.GetTotalRewards(param.GetValue())
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.Int64Value{
+	return &pb.Int64{
 		Value: result.Int64(),
 	}, nil
 }
 
-func (r *RewardsAPI) GetRewardsDetail(ctx context.Context, param *wrappers.StringValue) (*pb.RewardsInfos, error) {
+func (r *RewardsAPI) GetRewardsDetail(ctx context.Context, param *pb.String) (*pb.RewardsInfos, error) {
 	result, err := r.reward.GetRewardsDetail(param.GetValue())
 	if err != nil {
 		return nil, err

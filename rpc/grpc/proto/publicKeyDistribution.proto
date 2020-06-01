@@ -3,7 +3,7 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/wrappers.proto";
+import "common.proto";
 import "types/basic.proto";
 import "types/pov.proto";
 
@@ -32,14 +32,14 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetVerifiersByType (google.protobuf.StringValue) returns (VerifierRegParams) {
+    rpc GetVerifiersByType (String) returns (VerifierRegParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getVerifiersByType"
            body: "*"
        };
     }
 
-    rpc GetActiveVerifiers (google.protobuf.StringValue) returns (VerifierRegParams) {
+    rpc GetActiveVerifiers (String) returns (VerifierRegParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getActiveVerifiers"
            body: "*"
@@ -60,7 +60,7 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetAllVerifierStatesByBlockHeight (google.protobuf.UInt64Value) returns (PKDVerifierStateList) {
+    rpc GetAllVerifierStatesByBlockHeight (UInt64) returns (PKDVerifierStateList) {
         option (google.api.http) = {
            post: "/pkdistribution/getAllVerifierStatesByBlockHeight"
            body: "*"
@@ -95,7 +95,7 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetPublishInfosByType(google.protobuf.StringValue) returns (PublishInfoStates) {
+    rpc GetPublishInfosByType(String) returns (PublishInfoStates) {
         option (google.api.http) = {
            post: "/pkdistribution/getPublishInfosByType"
            body: "*"
@@ -116,7 +116,7 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc GetOracleInfosByType(google.protobuf.StringValue) returns (OracleParams) {
+    rpc GetOracleInfosByType(String) returns (OracleParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getOracleInfosByType"
            body: "*"
@@ -137,14 +137,14 @@ service PublicKeyDistributionAPI {
        };
     }
 
-    rpc PackRewardData(PKDRewardParam) returns (google.protobuf.BytesValue) {
+    rpc PackRewardData(PKDRewardParam) returns (Bytes) {
         option (google.api.http) = {
            post: "/pkdistribution/packRewardData"
            body: "*"
        };
     }
 
-    rpc UnpackRewardData(google.protobuf.BytesValue) returns (PKDRewardParam) {
+    rpc UnpackRewardData(Bytes) returns (PKDRewardParam) {
         option (google.api.http) = {
            post: "/pkdistribution/unpackRewardData"
            body: "*"

@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
@@ -59,7 +58,7 @@ func (p *PublicKeyDistributionAPI) GetAllVerifiers(ctx context.Context, param *e
 	return toVerifierRegParams(r), nil
 }
 
-func (p *PublicKeyDistributionAPI) GetVerifiersByType(ctx context.Context, param *wrappers.StringValue) (*pb.VerifierRegParams, error) {
+func (p *PublicKeyDistributionAPI) GetVerifiersByType(ctx context.Context, param *pb.String) (*pb.VerifierRegParams, error) {
 	r, err := p.pkd.GetVerifiersByType(param.GetValue())
 	if err != nil {
 		return nil, err
@@ -67,7 +66,7 @@ func (p *PublicKeyDistributionAPI) GetVerifiersByType(ctx context.Context, param
 	return toVerifierRegParams(r), nil
 }
 
-func (p *PublicKeyDistributionAPI) GetActiveVerifiers(ctx context.Context, param *wrappers.StringValue) (*pb.VerifierRegParams, error) {
+func (p *PublicKeyDistributionAPI) GetActiveVerifiers(ctx context.Context, param *pb.String) (*pb.VerifierRegParams, error) {
 	r, err := p.pkd.GetActiveVerifiers(param.GetValue())
 	if err != nil {
 		return nil, err
@@ -99,7 +98,7 @@ func (p *PublicKeyDistributionAPI) GetVerifierStateByBlockHeight(ctx context.Con
 	return toPovVerifierState(r), nil
 }
 
-func (p *PublicKeyDistributionAPI) GetAllVerifierStatesByBlockHeight(ctx context.Context, param *wrappers.UInt64Value) (*pb.PKDVerifierStateList, error) {
+func (p *PublicKeyDistributionAPI) GetAllVerifierStatesByBlockHeight(ctx context.Context, param *pb.UInt64) (*pb.PKDVerifierStateList, error) {
 	r, err := p.pkd.GetAllVerifierStatesByBlockHeight(param.GetValue())
 	if err != nil {
 		return nil, err
@@ -147,7 +146,7 @@ func (p *PublicKeyDistributionAPI) GetRecommendPubKey(ctx context.Context, param
 	return toPublishInfoState(r), nil
 }
 
-func (p *PublicKeyDistributionAPI) GetPublishInfosByType(ctx context.Context, param *wrappers.StringValue) (*pb.PublishInfoStates, error) {
+func (p *PublicKeyDistributionAPI) GetPublishInfosByType(ctx context.Context, param *pb.String) (*pb.PublishInfoStates, error) {
 	r, err := p.pkd.GetPublishInfosByType(param.GetValue())
 	if err != nil {
 		return nil, err
@@ -187,7 +186,7 @@ func (p *PublicKeyDistributionAPI) GetOracleBlock(ctx context.Context, param *pb
 	return toStateBlock(r), nil
 }
 
-func (p *PublicKeyDistributionAPI) GetOracleInfosByType(ctx context.Context, param *wrappers.StringValue) (*pb.OracleParams, error) {
+func (p *PublicKeyDistributionAPI) GetOracleInfosByType(ctx context.Context, param *pb.String) (*pb.OracleParams, error) {
 	r, err := p.pkd.GetOracleInfosByType(param.GetValue())
 	if err != nil {
 		return nil, err
@@ -211,7 +210,7 @@ func (p *PublicKeyDistributionAPI) GetOracleInfosByHash(ctx context.Context, par
 	return toOracleParams(r), nil
 }
 
-func (p *PublicKeyDistributionAPI) PackRewardData(ctx context.Context, param *pb.PKDRewardParam) (*wrappers.BytesValue, error) {
+func (p *PublicKeyDistributionAPI) PackRewardData(ctx context.Context, param *pb.PKDRewardParam) (*pb.Bytes, error) {
 	rewardPara, err := toOriginPackRewardData(param)
 	if err != nil {
 		return nil, err
@@ -220,10 +219,10 @@ func (p *PublicKeyDistributionAPI) PackRewardData(ctx context.Context, param *pb
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{Value: r}, nil
+	return &pb.Bytes{Value: r}, nil
 }
 
-func (p *PublicKeyDistributionAPI) UnpackRewardData(ctx context.Context, param *wrappers.BytesValue) (*pb.PKDRewardParam, error) {
+func (p *PublicKeyDistributionAPI) UnpackRewardData(ctx context.Context, param *pb.Bytes) (*pb.PKDRewardParam, error) {
 	r, err := p.pkd.UnpackRewardData(param.GetValue())
 	if err != nil {
 		return nil, err

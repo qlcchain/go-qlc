@@ -2,14 +2,14 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "google/protobuf/wrappers.proto";
+import "common.proto";
 import "types/basic.proto";
 
 
 option go_package = ".;proto";
 
 service MintageAPI {
-    rpc GetMintageData (MintageParams) returns (google.protobuf.BytesValue) {
+    rpc GetMintageData (MintageParams) returns (Bytes) {
         option (google.api.http) = {
            post: "/miner/getMintageData"
            body: "*"
@@ -30,14 +30,14 @@ service MintageAPI {
        };
     }
 
-    rpc GetWithdrawMintageData (types.Hash) returns (google.protobuf.BytesValue) {
+    rpc GetWithdrawMintageData (types.Hash) returns (Bytes) {
         option (google.api.http) = {
            post: "/miner/getWithdrawMintageData"
            body: "*"
        };
     }
 
-    rpc ParseTokenInfo (google.protobuf.BytesValue) returns (types.TokenInfo) {
+    rpc ParseTokenInfo (Bytes) returns (types.TokenInfo) {
         option (google.api.http) = {
            post: "/miner/getWithdrawMintageData"
            body: "*"

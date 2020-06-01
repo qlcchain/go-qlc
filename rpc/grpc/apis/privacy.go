@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"go.uber.org/zap"
 
@@ -28,7 +27,7 @@ func NewPrivacyAPI(cfg *config.Config, l ledger.Store, eb event.EventBus, cc *ch
 	}
 }
 
-func (p *PrivacyAPI) DistributeRawPayload(ctx context.Context, param *pb.PrivacyDistributeParam) (*wrappers.BytesValue, error) {
+func (p *PrivacyAPI) DistributeRawPayload(ctx context.Context, param *pb.PrivacyDistributeParam) (*pb.Bytes, error) {
 	r, err := p.privacy.DistributeRawPayload(&api.PrivacyDistributeParam{
 		RawPayload:     param.GetRawPayload(),
 		PrivateFrom:    param.GetPrivateFrom(),
@@ -38,22 +37,22 @@ func (p *PrivacyAPI) DistributeRawPayload(ctx context.Context, param *pb.Privacy
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
 
-func (p *PrivacyAPI) GetRawPayload(ctx context.Context, param *wrappers.BytesValue) (*wrappers.BytesValue, error) {
+func (p *PrivacyAPI) GetRawPayload(ctx context.Context, param *pb.Bytes) (*pb.Bytes, error) {
 	r, err := p.privacy.GetRawPayload(param.GetValue())
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
 
-func (p *PrivacyAPI) GetBlockPrivatePayload(ctx context.Context, param *pbtypes.Hash) (*wrappers.BytesValue, error) {
+func (p *PrivacyAPI) GetBlockPrivatePayload(ctx context.Context, param *pbtypes.Hash) (*pb.Bytes, error) {
 	hash, err := toOriginHash(param)
 	if err != nil {
 		return nil, err
@@ -62,17 +61,17 @@ func (p *PrivacyAPI) GetBlockPrivatePayload(ctx context.Context, param *pbtypes.
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
 
-func (p *PrivacyAPI) GetDemoKV(ctx context.Context, param *wrappers.BytesValue) (*wrappers.BytesValue, error) {
+func (p *PrivacyAPI) GetDemoKV(ctx context.Context, param *pb.Bytes) (*pb.Bytes, error) {
 	r, err := p.privacy.GetDemoKV(param.GetValue())
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }

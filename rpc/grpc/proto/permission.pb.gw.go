@@ -15,7 +15,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"google.golang.org/grpc"
@@ -82,7 +81,7 @@ func request_PermissionAPI_GetNodeUpdateBlock_0(ctx context.Context, marshaler r
 }
 
 func request_PermissionAPI_GetNode_0(ctx context.Context, marshaler runtime.Marshaler, client PermissionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.StringValue
+	var protoReq String
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

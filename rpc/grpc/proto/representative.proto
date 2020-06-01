@@ -2,7 +2,7 @@ syntax = "proto3";
 package proto;
 
 import "google/api/annotations.proto";
-import "google/protobuf/wrappers.proto";
+import "common.proto";
 import "types/basic.proto";
 import "types/pov.proto";
 
@@ -10,14 +10,14 @@ import "types/pov.proto";
 option go_package = ".;proto";
 
 service RepAPI {
-    rpc GetRewardData (RepRewardParam) returns (google.protobuf.BytesValue) {
+    rpc GetRewardData (RepRewardParam) returns (Bytes) {
         option (google.api.http) = {
            post: "/rep/getRewardData"
            body: "*"
        };
     }
 
-    rpc UnpackRewardData (google.protobuf.BytesValue) returns (RepRewardParam) {
+    rpc UnpackRewardData (Bytes) returns (RepRewardParam) {
         option (google.api.http) = {
            post: "/rep/unpackRewardData"
            body: "*"

@@ -15,7 +15,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
@@ -404,7 +403,7 @@ var (
 )
 
 func request_LedgerAPI_Representatives_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.BoolValue
+	var protoReq Boolean
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_Representatives_0); err != nil {
@@ -456,7 +455,7 @@ var (
 )
 
 func request_LedgerAPI_TokenInfoByName_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq wrappers.StringValue
+	var protoReq String
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_TokenInfoByName_0); err != nil {

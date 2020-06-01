@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
@@ -28,7 +27,7 @@ func NewNEP5PledgeAPI(cfgFile string, l ledger.Store) *NEP5PledgeAPI {
 	}
 }
 
-func (n *NEP5PledgeAPI) GetPledgeData(ctx context.Context, param *pb.PledgeParam) (*wrappers.BytesValue, error) {
+func (n *NEP5PledgeAPI) GetPledgeData(ctx context.Context, param *pb.PledgeParam) (*pb.Bytes, error) {
 	block, err := toOriginPledgeParam(param)
 	if err != nil {
 		return nil, err
@@ -37,7 +36,7 @@ func (n *NEP5PledgeAPI) GetPledgeData(ctx context.Context, param *pb.PledgeParam
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
@@ -78,7 +77,7 @@ func (n *NEP5PledgeAPI) GetPledgeRewardBlockBySendHash(ctx context.Context, para
 	return toStateBlock(r), nil
 }
 
-func (n *NEP5PledgeAPI) GetWithdrawPledgeData(ctx context.Context, param *pb.WithdrawPledgeParam) (*wrappers.BytesValue, error) {
+func (n *NEP5PledgeAPI) GetWithdrawPledgeData(ctx context.Context, param *pb.WithdrawPledgeParam) (*pb.Bytes, error) {
 	p, err := toOriginWithdrawPledgeParam(param)
 	if err != nil {
 		return nil, err
@@ -87,7 +86,7 @@ func (n *NEP5PledgeAPI) GetWithdrawPledgeData(ctx context.Context, param *pb.Wit
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
@@ -128,7 +127,7 @@ func (n *NEP5PledgeAPI) GetWithdrawRewardBlockBySendHash(ctx context.Context, pa
 	return toStateBlock(r), nil
 }
 
-func (n *NEP5PledgeAPI) ParsePledgeInfo(ctx context.Context, param *wrappers.BytesValue) (*pb.NEP5PledgeInfo, error) {
+func (n *NEP5PledgeAPI) ParsePledgeInfo(ctx context.Context, param *pb.Bytes) (*pb.NEP5PledgeInfo, error) {
 	r, err := n.nep5.ParsePledgeInfo(param.GetValue())
 	if err != nil {
 		return nil, err
@@ -145,7 +144,7 @@ func (n *NEP5PledgeAPI) GetPledgeInfosByPledgeAddress(ctx context.Context, param
 	return toPledgeInfos(r), nil
 }
 
-func (n *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(ctx context.Context, param *pbtypes.Address) (*wrappers.Int64Value, error) {
+func (n *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(ctx context.Context, param *pbtypes.Address) (*pb.Int64, error) {
 	addr, err := types.HexToAddress(param.GetAddress())
 	if err != nil {
 		return nil, err
@@ -154,7 +153,7 @@ func (n *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(ctx context.Context, para
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.Int64Value{
+	return &pb.Int64{
 		Value: r.Int64(),
 	}, nil
 }
@@ -180,7 +179,7 @@ func (n *NEP5PledgeAPI) GetBeneficialPledgeInfos(ctx context.Context, param *pb.
 	return toPledgeInfos(r), nil
 }
 
-func (n *NEP5PledgeAPI) GetPledgeBeneficialAmount(ctx context.Context, param *pb.BeneficialPledgeRequest) (*wrappers.Int64Value, error) {
+func (n *NEP5PledgeAPI) GetPledgeBeneficialAmount(ctx context.Context, param *pb.BeneficialPledgeRequest) (*pb.Int64, error) {
 	addr, err := types.HexToAddress(param.GetBeneficial())
 	if err != nil {
 		return nil, err
@@ -189,7 +188,7 @@ func (n *NEP5PledgeAPI) GetPledgeBeneficialAmount(ctx context.Context, param *pb
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.Int64Value{
+	return &pb.Int64{
 		Value: r.Int64(),
 	}, nil
 }
@@ -238,12 +237,12 @@ func (n *NEP5PledgeAPI) GetAllPledgeInfo(context.Context, *empty.Empty) (*pb.NEP
 	return toNEP5PledgeInfos(r), nil
 }
 
-func (n *NEP5PledgeAPI) GetTotalPledgeAmount(context.Context, *empty.Empty) (*wrappers.Int64Value, error) {
+func (n *NEP5PledgeAPI) GetTotalPledgeAmount(context.Context, *empty.Empty) (*pb.Int64, error) {
 	r, err := n.nep5.GetTotalPledgeAmount()
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.Int64Value{
+	return &pb.Int64{
 		Value: r.Int64(),
 	}, nil
 }

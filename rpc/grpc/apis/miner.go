@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"go.uber.org/zap"
 
@@ -26,7 +25,7 @@ func NewMinerAPI(cfg *config.Config, ledger ledger.Store) *MinerAPI {
 	}
 }
 
-func (m *MinerAPI) GetRewardData(ctx context.Context, params *pb.RewardParam) (*wrappers.BytesValue, error) {
+func (m *MinerAPI) GetRewardData(ctx context.Context, params *pb.RewardParam) (*pb.Bytes, error) {
 	rewardParam, err := toOriginRewardParam(params)
 	if err != nil {
 		return nil, err
@@ -35,7 +34,7 @@ func (m *MinerAPI) GetRewardData(ctx context.Context, params *pb.RewardParam) (*
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
@@ -48,7 +47,7 @@ func toRewardParam(param *api.RewardParam) *pb.RewardParam {
 	return &pb.RewardParam{}
 }
 
-func (m *MinerAPI) UnpackRewardData(ctx context.Context, params *wrappers.BytesValue) (*pb.RewardParam, error) {
+func (m *MinerAPI) UnpackRewardData(ctx context.Context, params *pb.Bytes) (*pb.RewardParam, error) {
 	r, err := m.miner.UnpackRewardData(params.GetValue())
 	if err != nil {
 		return nil, err

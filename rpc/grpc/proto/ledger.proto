@@ -3,14 +3,14 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/wrappers.proto";
+
 import "types/basic.proto";
 import "common.proto";
 
 option go_package = ".;proto";
 
 service LedgerAPI{
-    rpc AccountBlocksCount(types.Address) returns (google.protobuf.Int64Value){
+    rpc AccountBlocksCount(types.Address) returns (Int64){
         option (google.api.http) = {
            get: "/ledger/accountBlocksCount"
        };
@@ -64,7 +64,7 @@ service LedgerAPI{
        };
     }
 
-    rpc AccountsCount(google.protobuf.Empty) returns (google.protobuf.UInt64Value){
+    rpc AccountsCount(google.protobuf.Empty) returns (UInt64){
         option (google.api.http) = {
            get: "/ledger/accountsCount"
        };
@@ -82,7 +82,7 @@ service LedgerAPI{
        };
     }
 
-    rpc BlockConfirmedStatus(types.Hash) returns (google.protobuf.BoolValue){
+    rpc BlockConfirmedStatus(types.Hash) returns (Boolean){
         option (google.api.http) = {
            get: "/ledger/blockConfirmedStatus"
        };
@@ -142,7 +142,7 @@ service LedgerAPI{
        };
     }
 
-    rpc DelegatorsCount(types.Address) returns (google.protobuf.Int64Value){
+    rpc DelegatorsCount(types.Address) returns (Int64){
         option (google.api.http) = {
            get: "/ledger/delegatorsCount"
        };
@@ -154,7 +154,7 @@ service LedgerAPI{
        };
     }
 
-    rpc Representatives(google.protobuf.BoolValue) returns (APIRepresentatives){
+    rpc Representatives(Boolean) returns (APIRepresentatives){
         option (google.api.http) = {
            get: "/ledger/representatives"
        };
@@ -178,7 +178,7 @@ service LedgerAPI{
        };
     }
 
-    rpc TokenInfoByName(google.protobuf.StringValue) returns (types.TokenInfo){
+    rpc TokenInfoByName(String) returns (types.TokenInfo){
         option (google.api.http) = {
            get: "/ledger/tokenInfoByName"
        };
@@ -256,13 +256,13 @@ service LedgerAPI{
        };
     }
 
-    rpc IsGenesisBlock(types.StateBlock) returns (google.protobuf.BoolValue){
+    rpc IsGenesisBlock(types.StateBlock) returns (Boolean){
         option (google.api.http) = {
            get: "/ledger/isGenesisBlock"
        };
     }
 
-    rpc IsGenesisToken(types.Hash) returns (google.protobuf.BoolValue){
+    rpc IsGenesisToken(types.Hash) returns (Boolean){
         option (google.api.http) = {
            get: "/ledger/isGenesisToken"
        };

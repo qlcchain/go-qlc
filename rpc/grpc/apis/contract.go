@@ -2,7 +2,7 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
+
 	"math/big"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -29,7 +29,7 @@ func NewContractAPI(cc *chainctx.ChainContext, l ledger.Store) *ContractAPI {
 	}
 }
 
-func (c *ContractAPI) GetAbiByContractAddress(ctx context.Context, param *pbtypes.Address) (*wrappers.StringValue, error) {
+func (c *ContractAPI) GetAbiByContractAddress(ctx context.Context, param *pbtypes.Address) (*pb.String, error) {
 	addr, err := toOriginAddress(param)
 	if err != nil {
 		return nil, err
@@ -38,12 +38,12 @@ func (c *ContractAPI) GetAbiByContractAddress(ctx context.Context, param *pbtype
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.StringValue{
+	return &pb.String{
 		Value: r,
 	}, nil
 }
 
-func (c *ContractAPI) PackContractData(ctx context.Context, param *pb.PackContractDataRequest) (*wrappers.BytesValue, error) {
+func (c *ContractAPI) PackContractData(ctx context.Context, param *pb.PackContractDataRequest) (*pb.Bytes, error) {
 	abiStr := param.GetAbiStr()
 	methodStr := param.GetMethodName()
 	params := param.GetParams()
@@ -51,12 +51,12 @@ func (c *ContractAPI) PackContractData(ctx context.Context, param *pb.PackContra
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
 
-func (c *ContractAPI) PackChainContractData(ctx context.Context, param *pb.PackChainContractDataRequest) (*wrappers.BytesValue, error) {
+func (c *ContractAPI) PackChainContractData(ctx context.Context, param *pb.PackChainContractDataRequest) (*pb.Bytes, error) {
 	addr := param.GetContractAddress()
 	address, err := types.HexToAddress(addr)
 	if err != nil {
@@ -68,7 +68,7 @@ func (c *ContractAPI) PackChainContractData(ctx context.Context, param *pb.PackC
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }

@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"go.uber.org/zap"
 
@@ -24,27 +23,27 @@ func NewUtilApi(l ledger.Store) *UtilApi {
 	}
 }
 
-func (u *UtilApi) Decrypt(ctx context.Context, param *pb.DecryptRequest) (*wrappers.StringValue, error) {
+func (u *UtilApi) Decrypt(ctx context.Context, param *pb.DecryptRequest) (*pb.String, error) {
 	r, err := u.util.Decrypt(param.GetCryptograph(), param.GetPassphrase())
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.StringValue{
+	return &pb.String{
 		Value: r,
 	}, nil
 }
 
-func (u *UtilApi) Encrypt(ctx context.Context, param *pb.EncryptRequest) (*wrappers.StringValue, error) {
+func (u *UtilApi) Encrypt(ctx context.Context, param *pb.EncryptRequest) (*pb.String, error) {
 	r, err := u.util.Encrypt(param.GetRaw(), param.GetPassphrase())
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.StringValue{
+	return &pb.String{
 		Value: r,
 	}, nil
 }
 
-func (u *UtilApi) RawToBalance(ctx context.Context, param *pb.RawBalance) (*wrappers.FloatValue, error) {
+func (u *UtilApi) RawToBalance(ctx context.Context, param *pb.RawBalance) (*pb.Float, error) {
 	amount := toOriginBalance(param.GetBalance())
 	token := param.GetTokenName()
 	r, err := u.util.RawToBalance(amount, param.GetUnit(), &token)
@@ -52,19 +51,19 @@ func (u *UtilApi) RawToBalance(ctx context.Context, param *pb.RawBalance) (*wrap
 		return nil, err
 	}
 	b, _ := r.Float32()
-	return &wrappers.FloatValue{
+	return &pb.Float{
 		Value: b,
 	}, nil
 }
 
-func (u *UtilApi) BalanceToRaw(ctx context.Context, param *pb.RawBalance) (*wrappers.Int64Value, error) {
+func (u *UtilApi) BalanceToRaw(ctx context.Context, param *pb.RawBalance) (*pb.Int64, error) {
 	amount := toOriginBalance(param.GetBalance())
 	token := param.GetTokenName()
 	r, err := u.util.BalanceToRaw(amount, param.GetUnit(), &token)
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.Int64Value{
+	return &pb.Int64{
 		Value: r.Int64(),
 	}, nil
 }

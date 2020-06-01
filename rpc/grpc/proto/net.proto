@@ -3,7 +3,7 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/wrappers.proto";
+
 import "types/basic.proto";
 import "common.proto";
 
@@ -52,13 +52,13 @@ service NetAPI {
          };
     }
 
-    rpc Syncing(google.protobuf.Empty) returns (google.protobuf.BoolValue){
+    rpc Syncing(google.protobuf.Empty) returns (Boolean){
         option (google.api.http) = {
               get: "/net/syncing"
          };
     }
 
-    rpc GetPeerId(google.protobuf.Empty) returns (google.protobuf.StringValue){
+    rpc GetPeerId(google.protobuf.Empty) returns (String){
         option (google.api.http) = {
               get: "/net/getPeerId"
          };

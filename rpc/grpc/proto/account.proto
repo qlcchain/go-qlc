@@ -3,9 +3,8 @@ package proto;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/wrappers.proto";
 import "types/basic.proto";
-
+import "common.proto";
 
 option go_package = ".;proto";
 
@@ -16,31 +15,31 @@ service AccountAPI{
        };
     }
 
-    rpc ForPublicKey(google.protobuf.StringValue) returns (types.Address){
+    rpc ForPublicKey(String) returns (types.Address){
         option (google.api.http) = {
            get: "/account/forPublicKey"
        };
     }
 
-    rpc NewSeed(google.protobuf.Empty) returns (google.protobuf.StringValue){
+    rpc NewSeed(google.protobuf.Empty) returns (String){
         option (google.api.http) = {
            get: "/account/newSeed"
        };
     }
 
-    rpc NewAccounts(google.protobuf.UInt32Value) returns (AccountsResponse){
+    rpc NewAccounts(UInt32) returns (AccountsResponse){
         option (google.api.http) = {
            get: "/account/newAccounts"
        };
     }
 
-    rpc PublicKey(types.Address) returns (google.protobuf.StringValue){
+    rpc PublicKey(types.Address) returns (String){
         option (google.api.http) = {
            get: "/account/publicKey"
        };
     }
 
-    rpc Validate(google.protobuf.StringValue) returns (google.protobuf.BoolValue){
+    rpc Validate(String) returns (Boolean){
         option (google.api.http) = {
            get: "/account/validate"
        };

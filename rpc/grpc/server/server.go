@@ -29,14 +29,12 @@ type GRPCServer struct {
 	cfgFile string
 	cc      *chainctx.ChainContext
 	ctx     context.Context
-	cancel  context.CancelFunc
 	logger  *zap.SugaredLogger
 }
 
-func Start(cfgFile string) (*GRPCServer, error) {
+func Start(cfgFile string, ctx context.Context) (*GRPCServer, error) {
 	cc := chainctx.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
-	ctx, cancel := context.WithCancel(context.Background())
 	l := ledger.NewLedger(cfgFile)
 	eb := cc.EventBus()
 
@@ -49,6 +47,7 @@ func Start(cfgFile string) (*GRPCServer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen: %s", err)
 	}
+
 	grpcServer := grpc.NewServer()
 	qrpc := &GRPCServer{
 		rpc:     grpcServer,
@@ -57,7 +56,6 @@ func Start(cfgFile string) (*GRPCServer, error) {
 		cfg:     cfg,
 		cfgFile: cfgFile,
 		ctx:     ctx,
-		cancel:  cancel,
 		cc:      cc,
 		logger:  log.NewLogger("grpc"),
 	}

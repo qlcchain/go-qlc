@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"go.uber.org/zap"
 
@@ -27,7 +26,7 @@ func NewRepAPI(cfg *config.Config, ledger ledger.Store) *RepAPI {
 	}
 }
 
-func (p *RepAPI) GetRewardData(ctx context.Context, param *pb.RepRewardParam) (*wrappers.BytesValue, error) {
+func (p *RepAPI) GetRewardData(ctx context.Context, param *pb.RepRewardParam) (*pb.Bytes, error) {
 	rewardPara, err := toOriginRepRewardParam(param)
 	if err != nil {
 		return nil, err
@@ -36,12 +35,12 @@ func (p *RepAPI) GetRewardData(ctx context.Context, param *pb.RepRewardParam) (*
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
 
-func (p *RepAPI) UnpackRewardData(ctx context.Context, param *wrappers.BytesValue) (*pb.RepRewardParam, error) {
+func (p *RepAPI) UnpackRewardData(ctx context.Context, param *pb.Bytes) (*pb.RepRewardParam, error) {
 	r, err := p.rep.UnpackRewardData(param.GetValue())
 	if err != nil {
 		return nil, err

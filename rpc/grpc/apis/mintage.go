@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"go.uber.org/zap"
 
@@ -25,13 +24,13 @@ func NewMintageAPI(cfgFile string, l ledger.Store) *MintageAPI {
 	}
 }
 
-func (m *MintageAPI) GetMintageData(ctx context.Context, param *pb.MintageParams) (*wrappers.BytesValue, error) {
+func (m *MintageAPI) GetMintageData(ctx context.Context, param *pb.MintageParams) (*pb.Bytes, error) {
 	p := toOriginMintageParams(param)
 	r, err := m.mintage.GetMintageData(p)
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
@@ -57,7 +56,7 @@ func (m *MintageAPI) GetRewardBlock(ctx context.Context, param *pbtypes.StateBlo
 	return toStateBlock(r), nil
 }
 
-func (m *MintageAPI) GetWithdrawMintageData(ctx context.Context, param *pbtypes.Hash) (*wrappers.BytesValue, error) {
+func (m *MintageAPI) GetWithdrawMintageData(ctx context.Context, param *pbtypes.Hash) (*pb.Bytes, error) {
 	hash, err := toOriginHash(param)
 	if err != nil {
 		return nil, err
@@ -66,12 +65,12 @@ func (m *MintageAPI) GetWithdrawMintageData(ctx context.Context, param *pbtypes.
 	if err != nil {
 		return nil, err
 	}
-	return &wrappers.BytesValue{
+	return &pb.Bytes{
 		Value: r,
 	}, nil
 }
 
-func (m *MintageAPI) ParseTokenInfo(ctx context.Context, param *wrappers.BytesValue) (*pbtypes.TokenInfo, error) {
+func (m *MintageAPI) ParseTokenInfo(ctx context.Context, param *pb.Bytes) (*pbtypes.TokenInfo, error) {
 	r, err := m.mintage.ParseTokenInfo(param.GetValue())
 	if err != nil {
 		return nil, err

@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
@@ -33,7 +32,7 @@ func (p *PovAPI) GetPovStatus(ctx context.Context, param *empty.Empty) (*pb.PovS
 	panic("implement me")
 }
 
-func (p *PovAPI) GetHeaderByHeight(ctx context.Context, param *wrappers.UInt64Value) (*pb.PovApiHeader, error) {
+func (p *PovAPI) GetHeaderByHeight(ctx context.Context, param *pb.UInt64) (*pb.PovApiHeader, error) {
 	panic("implement me")
 }
 
@@ -45,7 +44,7 @@ func (p *PovAPI) GetLatestHeader(ctx context.Context, param *empty.Empty) (*pb.P
 	panic("implement me")
 }
 
-func (p *PovAPI) GetFittestHeader(ctx context.Context, param *wrappers.UInt64Value) (*pb.PovApiHeader, error) {
+func (p *PovAPI) GetFittestHeader(ctx context.Context, param *pb.UInt64) (*pb.PovApiHeader, error) {
 	panic("implement me")
 }
 
@@ -113,7 +112,7 @@ func (p *PovAPI) GetBlockTDByHash(ctx context.Context, param *pbtypes.Hash) (*pb
 	panic("implement me")
 }
 
-func (p *PovAPI) GetBlockTDByHeight(ctx context.Context, param *wrappers.UInt64Value) (*pb.PovApiTD, error) {
+func (p *PovAPI) GetBlockTDByHeight(ctx context.Context, param *pb.UInt64) (*pb.PovApiTD, error) {
 	panic("implement me")
 }
 
@@ -125,19 +124,19 @@ func (p *PovAPI) GetRepStats(ctx context.Context, param *pbtypes.Addresses) (*pb
 	panic("implement me")
 }
 
-func (p *PovAPI) GetMinerDayStat(ctx context.Context, param *wrappers.UInt32Value) (*pbtypes.PovMinerDayStat, error) {
+func (p *PovAPI) GetMinerDayStat(ctx context.Context, param *pb.UInt32) (*pbtypes.PovMinerDayStat, error) {
 	panic("implement me")
 }
 
-func (p *PovAPI) GetMinerDayStatByHeight(ctx context.Context, param *wrappers.UInt64Value) (*pbtypes.PovMinerDayStat, error) {
+func (p *PovAPI) GetMinerDayStatByHeight(ctx context.Context, param *pb.UInt64) (*pbtypes.PovMinerDayStat, error) {
 	panic("implement me")
 }
 
-func (p *PovAPI) GetDiffDayStat(ctx context.Context, param *wrappers.UInt32Value) (*pbtypes.PovDiffDayStat, error) {
+func (p *PovAPI) GetDiffDayStat(ctx context.Context, param *pb.UInt32) (*pbtypes.PovDiffDayStat, error) {
 	panic("implement me")
 }
 
-func (p *PovAPI) GetDiffDayStatByHeight(ctx context.Context, param *wrappers.UInt64Value) (*pbtypes.PovDiffDayStat, error) {
+func (p *PovAPI) GetDiffDayStatByHeight(ctx context.Context, param *pb.UInt64) (*pbtypes.PovDiffDayStat, error) {
 	panic("implement me")
 }
 

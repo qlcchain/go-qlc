@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
@@ -75,7 +74,7 @@ func (p *PermissionAPI) GetNodeUpdateBlock(ctx context.Context, params *pb.NodeP
 	return toStateBlock(r), nil
 }
 
-func (p *PermissionAPI) GetNode(ctx context.Context, params *wrappers.StringValue) (*pb.NodeInfo, error) {
+func (p *PermissionAPI) GetNode(ctx context.Context, params *pb.String) (*pb.NodeInfo, error) {
 	r, err := p.permission.GetNode(params.GetValue())
 	if err != nil {
 		return nil, err
@@ -87,9 +86,9 @@ func (p *PermissionAPI) GetNode(ctx context.Context, params *wrappers.StringValu
 	}, nil
 }
 
-func (p *PermissionAPI) GetNodesCount(ctx context.Context, params *empty.Empty) (*wrappers.Int32Value, error) {
+func (p *PermissionAPI) GetNodesCount(ctx context.Context, params *empty.Empty) (*pb.Int32, error) {
 	r := p.permission.GetNodesCount()
-	return &wrappers.Int32Value{
+	return &pb.Int32{
 		Value: int32(r),
 	}, nil
 }
