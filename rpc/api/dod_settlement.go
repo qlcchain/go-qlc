@@ -486,6 +486,11 @@ func (d *DoDSettlementAPI) GetOrderIdListByAddressAndSeller(address, seller type
 	return orders, nil
 }
 
+type DoDSettlementOrderInfoResp struct {
+	OrderInfo   []*abi.DoDSettleOrderInfo `json:"orderInfo"`
+	TotalOrders int                       `json:"totalOrders"`
+}
+
 func (d *DoDSettlementAPI) GetOrderCountByAddress(address types.Address) int {
 	order, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, address)
 	if err != nil {
@@ -495,7 +500,7 @@ func (d *DoDSettlementAPI) GetOrderCountByAddress(address types.Address) int {
 	}
 }
 
-func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, offset int) ([]*abi.DoDSettleOrderInfo, error) {
+func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, offset int) (*DoDSettlementOrderInfoResp, error) {
 	orders := make([]*abi.DoDSettleOrderInfo, 0)
 
 	internalIds, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, address)
@@ -524,7 +529,7 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, o
 		orders = append(orders, order)
 	}
 
-	return orders, nil
+	return &DoDSettlementOrderInfoResp{OrderInfo: orders, TotalOrders: len(orders)}, nil
 }
 
 func (d *DoDSettlementAPI) GetOrderCountByAddressAndSeller(address, seller types.Address) int {
@@ -536,7 +541,7 @@ func (d *DoDSettlementAPI) GetOrderCountByAddressAndSeller(address, seller types
 	}
 }
 
-func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.Address, count, offset int) ([]*abi.DoDSettleOrderInfo, error) {
+func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.Address, count, offset int) (*DoDSettlementOrderInfoResp, error) {
 	orders := make([]*abi.DoDSettleOrderInfo, 0)
 
 	orderIds, err := d.GetOrderIdListByAddressAndSeller(address, seller)
@@ -565,7 +570,12 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.
 		orders = append(orders, order)
 	}
 
-	return orders, nil
+	return &DoDSettlementOrderInfoResp{OrderInfo: orders, TotalOrders: len(orders)}, nil
+}
+
+type DoDSettlementProductInfoResp struct {
+	ProductInfo   []*abi.DoDSettleConnectionInfo `json:"productInfo"`
+	TotalProducts int                            `json:"totalProducts"`
 }
 
 func (d *DoDSettlementAPI) GetProductCountByAddress(address types.Address) int {
@@ -577,7 +587,7 @@ func (d *DoDSettlementAPI) GetProductCountByAddress(address types.Address) int {
 	}
 }
 
-func (d *DoDSettlementAPI) GetProductInfoByAddress(address types.Address, count, offset int) ([]*abi.DoDSettleConnectionInfo, error) {
+func (d *DoDSettlementAPI) GetProductInfoByAddress(address types.Address, count, offset int) (*DoDSettlementProductInfoResp, error) {
 	products := make([]*abi.DoDSettleConnectionInfo, 0)
 
 	productIds, err := abi.DoDSettleGetProductIdListByAddress(d.ctx, address)
@@ -606,7 +616,7 @@ func (d *DoDSettlementAPI) GetProductInfoByAddress(address types.Address, count,
 		products = append(products, product)
 	}
 
-	return products, nil
+	return &DoDSettlementProductInfoResp{ProductInfo: products, TotalProducts: len(products)}, nil
 }
 
 func (d *DoDSettlementAPI) GetProductCountByAddressAndSeller(address, seller types.Address) int {
@@ -618,7 +628,7 @@ func (d *DoDSettlementAPI) GetProductCountByAddressAndSeller(address, seller typ
 	}
 }
 
-func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller types.Address, count, offset int) ([]*abi.DoDSettleConnectionInfo, error) {
+func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller types.Address, count, offset int) (*DoDSettlementProductInfoResp, error) {
 	products := make([]*abi.DoDSettleConnectionInfo, 0)
 
 	productIds, err := d.GetProductIdListByAddressAndSeller(address, seller)
@@ -647,7 +657,7 @@ func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller type
 		products = append(products, product)
 	}
 
-	return products, nil
+	return &DoDSettlementProductInfoResp{ProductInfo: products, TotalProducts: len(products)}, nil
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64, flight, split bool) (*abi.DoDSettleOrderInvoice, error) {
