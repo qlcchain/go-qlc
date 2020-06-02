@@ -709,6 +709,14 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	conn := new(abi.DoDSettleConnectionParam)
+	conn.BillingType = abi.DoDSettleBillingTypeDOD
+	pk := abi.DoDSettleProduct{Seller: cp.Seller.Address, ProductId: "p1"}
+	err = abi.DoDSettleUpdateConnectionRawParam(ctx, conn, pk.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, _, err = co.ProcessSend(ctx, block)
 	if err != nil {
 		t.Fatal()
@@ -912,6 +920,14 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 
 	param.Buyer.Address = block.Address
 	block.Data, err = param.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cp := new(abi.DoDSettleConnectionParam)
+	cp.BillingType = abi.DoDSettleBillingTypeDOD
+	pk := abi.DoDSettleProduct{Seller: param.Seller.Address, ProductId: "p1"}
+	err = abi.DoDSettleUpdateConnectionRawParam(ctx, cp, pk.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}

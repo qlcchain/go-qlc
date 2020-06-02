@@ -153,6 +153,23 @@ func TestDodSettleCalcAmount(t *testing.T) {
 	}
 }
 
+func TestDoDSettleCalcAdditionPrice(t *testing.T) {
+	conn := &DoDSettleConnectionInfo{
+		Active: &DoDSettleConnectionDynamicParam{
+			BillingType: DoDSettleBillingTypeDOD,
+			Price:       200,
+			Addition:    200,
+			StartTime:   0,
+			EndTime:     200,
+		},
+	}
+
+	add, err := DoDSettleCalcAdditionPrice(100, 150, 80, conn)
+	if err != nil || add != 30 {
+		t.Fatal()
+	}
+}
+
 func TestDoDSettleGetOrderInfoByInternalId(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
@@ -316,6 +333,27 @@ func TestDoDSettleUpdateConnectionRawParam(t *testing.T) {
 	if crp2.ConnectionName != cp2.ConnectionName || crp2.PaymentType != cp2.PaymentType || crp2.BillingType != cp2.BillingType ||
 		crp2.Currency != cp2.Currency || crp2.ServiceClass != cp2.ServiceClass || crp2.Bandwidth != cp2.Bandwidth ||
 		crp2.Price != cp2.Price || crp2.StartTime != cp2.StartTime || crp2.EndTime != cp2.EndTime {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettleInheritRawParam(t *testing.T) {
+	dst := new(DoDSettleConnectionParam)
+	src := &DoDSettleConnectionRawParam{
+		ConnectionName: "conn1",
+		PaymentType:    DoDSettlePaymentTypeStableCoin,
+		BillingType:    DoDSettleBillingTypeDOD,
+		Currency:       "USD",
+		ServiceClass:   DoDSettleServiceClassSilver,
+		Bandwidth:      "100 Mbps",
+		BillingUnit:    DoDSettleBillingUnitMonth,
+	}
+
+	DoDSettleInheritRawParam(src, dst)
+
+	if dst.ConnectionName != src.ConnectionName || dst.PaymentType != src.PaymentType || dst.BillingType != src.BillingType ||
+		dst.Currency != src.Currency || dst.ServiceClass != src.ServiceClass || dst.Bandwidth != src.Bandwidth ||
+		dst.BillingUnit != src.BillingUnit {
 		t.Fatal()
 	}
 }

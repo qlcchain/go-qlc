@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -282,17 +281,7 @@ func (d *DoDSettlementAPI) GetResourceReadyRewardBlock(param *DoDSettleResponseP
 }
 
 func (d *DoDSettlementAPI) GetOrderInfoBySellerAndOrderId(seller types.Address, orderId string) (*abi.DoDSettleOrderInfo, error) {
-	order, err := abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, orderId)
-	if err != nil {
-		return nil, err
-	}
-
-	err = d.fillProductParams(order)
-	if err != nil {
-		return nil, err
-	}
-
-	return order, nil
+	return abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, orderId)
 }
 
 func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoDSettleOrderInfo, error) {
@@ -302,11 +291,6 @@ func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoD
 	}
 
 	order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	err = d.fillProductParams(order)
 	if err != nil {
 		return nil, err
 	}
@@ -512,92 +496,6 @@ type DoDSettlementOrderInfoResp struct {
 	TotalOrders int                       `json:"totalOrders"`
 }
 
-func (d *DoDSettlementAPI) fillProductParams(order *abi.DoDSettleOrderInfo) error {
-	for _, c := range order.Connections {
-		pk := abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: c.ProductId}
-		ci, err := abi.DoDSettleGetConnectionInfoByProductHash(d.ctx, pk.Hash())
-		if err != nil {
-			return err
-		}
-
-		c.ItemId = ci.ItemId
-		c.BuyerProductId = ci.BuyerProductId
-		c.SrcCompanyName = ci.SrcCompanyName
-		c.SrcRegion = ci.SrcRegion
-		c.SrcCity = ci.SrcCity
-		c.SrcDataCenter = ci.SrcDataCenter
-		c.SrcPort = ci.SrcPort
-		c.DstCompanyName = ci.DstCompanyName
-		c.DstRegion = ci.DstRegion
-		c.DstCity = ci.DstCity
-		c.DstDataCenter = ci.DstDataCenter
-		c.DstPort = ci.DstPort
-
-		var dcp *abi.DoDSettleConnectionDynamicParam
-		if ci.Active != nil && ci.Active.OrderId == order.OrderId {
-			dcp = ci.Active
-		} else if ci.Disconnect != nil && ci.Disconnect.OrderId == order.OrderId {
-			if ci.Active != nil {
-				dcp = ci.Active
-			} else if ci.Done != nil {
-				dcp = ci.Done[len(ci.Done)-1]
-			}
-		} else {
-			for _, d := range ci.Done {
-				if d.OrderId == order.OrderId {
-					dcp = d
-				}
-			}
-		}
-
-		if dcp == nil {
-			return fmt.Errorf("get order param err")
-		}
-
-		if len(c.ConnectionName) == 0 {
-			c.ConnectionName = dcp.ConnectionName
-		}
-
-		if len(c.Currency) == 0 {
-			c.Currency = dcp.Currency
-		}
-
-		if c.BillingType == 0 {
-			c.BillingType = dcp.BillingType
-		}
-
-		if c.BillingUnit == 0 {
-			c.BillingUnit = dcp.BillingUnit
-		}
-
-		if len(c.Bandwidth) == 0 {
-			c.Bandwidth = dcp.Bandwidth
-		}
-
-		if c.ServiceClass == 0 {
-			c.ServiceClass = dcp.ServiceClass
-		}
-
-		if c.PaymentType == 0 {
-			c.PaymentType = dcp.PaymentType
-		}
-
-		if c.BillingType == abi.DoDSettleBillingTypeDOD {
-			if c.StartTime == 0 {
-				c.StartTime = dcp.StartTime
-			}
-
-			if c.EndTime == 0 {
-				c.EndTime = dcp.EndTime
-			}
-		}
-
-		c.Addition = dcp.Addition
-	}
-
-	return nil
-}
-
 func (d *DoDSettlementAPI) GetOrderCountByAddress(address types.Address) int {
 	order, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, address)
 	if err != nil {
@@ -629,11 +527,6 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, o
 		}
 
 		order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, internalIds[i])
-		if err != nil {
-			return nil, err
-		}
-
-		err = d.fillProductParams(order)
 		if err != nil {
 			return nil, err
 		}
@@ -675,11 +568,6 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.
 		}
 
 		order, err := abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, orderIds[i].OrderId)
-		if err != nil {
-			return nil, err
-		}
-
-		err = d.fillProductParams(order)
 		if err != nil {
 			return nil, err
 		}

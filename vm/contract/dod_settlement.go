@@ -154,6 +154,11 @@ func (co *DoDSettleCreateOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 				EndTime:        c.EndTime,
 			},
 		}
+
+		if conn.BillingType == abi.DoDSettleBillingTypeDOD {
+			conn.Addition = c.Price
+		}
+
 		order.Connections = append(order.Connections, conn)
 	}
 
@@ -370,18 +375,15 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 		for _, cp := range order.Connections {
 			var conn *abi.DoDSettleConnectionInfo
 
-			productKey := &abi.DoDSettleProduct{
-				Seller:    order.Seller.Address,
-				ProductId: cp.ProductId,
-			}
+			productKey := &abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: cp.ProductId}
 			productHash := productKey.Hash()
 
-			err = abi.DoDSettleUpdateConnectionRawParam(ctx, cp, productHash)
-			if err != nil {
-				return nil, nil, err
-			}
-
 			if order.OrderType == abi.DoDSettleOrderTypeCreate {
+				err = abi.DoDSettleUpdateConnectionRawParam(ctx, cp, productHash)
+				if err != nil {
+					return nil, nil, err
+				}
+
 				// only update dod
 				if cp.BillingType == abi.DoDSettleBillingTypePAYG {
 					continue
@@ -418,7 +420,7 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 						Bandwidth:      cp.Bandwidth,
 						BillingUnit:    cp.BillingUnit,
 						Price:          cp.Price,
-						Addition:       cp.Price,
+						Addition:       cp.Addition,
 						StartTime:      cp.StartTime,
 						EndTime:        cp.EndTime,
 					},
@@ -432,13 +434,8 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 				}
 
 				// only update dod
-				if conn.Active.BillingType == abi.DoDSettleBillingTypePAYG {
+				if conn.Active != nil && conn.Active.BillingType == abi.DoDSettleBillingTypePAYG {
 					continue
-				}
-
-				addition, err := abi.DoDSettleCalcAdditionPrice(cp.StartTime, cp.EndTime, cp.Price, conn)
-				if err != nil {
-					return nil, nil, fmt.Errorf("calc old invocie err")
 				}
 
 				newActive := &abi.DoDSettleConnectionDynamicParam{
@@ -451,12 +448,10 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 					Bandwidth:      cp.Bandwidth,
 					BillingUnit:    cp.BillingUnit,
 					Price:          cp.Price,
-					Addition:       addition,
+					Addition:       cp.Addition,
 					StartTime:      cp.StartTime,
 					EndTime:        cp.EndTime,
 				}
-
-				abi.DoDSettleInheritParam(conn.Active, newActive)
 
 				conn.Done = append(conn.Done, conn.Active)
 				conn.Active = newActive
@@ -775,9 +770,29 @@ func (co *DoDSettleChangeOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 	order.ContractState = abi.DoDSettleContractStateRequest
 
 	for _, c := range param.Connections {
+		productKey := &abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: c.ProductId}
+		productHash := productKey.Hash()
+
+		rp, err := abi.DoDSettleGetConnectionRawParam(ctx, productHash)
+		if err != nil {
+			return err
+		}
+
 		conn := &abi.DoDSettleConnectionParam{
 			DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-				ProductId: c.ProductId,
+				ItemId:         rp.ItemId,
+				BuyerProductId: rp.BuyerProductId,
+				ProductId:      c.ProductId,
+				SrcCompanyName: rp.SrcCompanyName,
+				SrcRegion:      rp.SrcRegion,
+				SrcCity:        rp.SrcCity,
+				SrcDataCenter:  rp.SrcDataCenter,
+				SrcPort:        rp.SrcPort,
+				DstCompanyName: rp.DstCompanyName,
+				DstRegion:      rp.DstRegion,
+				DstCity:        rp.DstCity,
+				DstDataCenter:  rp.DstDataCenter,
+				DstPort:        rp.DstPort,
 			},
 			DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 				QuoteId:        c.QuoteId,
@@ -794,6 +809,21 @@ func (co *DoDSettleChangeOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 				EndTime:        c.EndTime,
 			},
 		}
+
+		abi.DoDSettleInheritRawParam(rp, conn)
+
+		err = abi.DoDSettleUpdateConnectionRawParam(ctx, conn, productHash)
+		if err != nil {
+			return err
+		}
+
+		if conn.BillingType == abi.DoDSettleBillingTypeDOD {
+			ci, _ := abi.DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
+			if ci != nil {
+				conn.Addition, _ = abi.DoDSettleCalcAdditionPrice(c.StartTime, c.EndTime, c.Price, ci)
+			}
+		}
+
 		order.Connections = append(order.Connections, conn)
 	}
 
@@ -999,9 +1029,29 @@ func (to *DoDSettleTerminateOrder) setStorage(ctx *vmstore.VMContext, param *abi
 	order.ContractState = abi.DoDSettleContractStateRequest
 
 	for _, c := range param.Connections {
+		productKey := &abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: c.ProductId}
+		productHash := productKey.Hash()
+
+		rp, err := abi.DoDSettleGetConnectionRawParam(ctx, productHash)
+		if err != nil {
+			return err
+		}
+
 		conn := &abi.DoDSettleConnectionParam{
 			DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-				ProductId: c.ProductId,
+				ItemId:         rp.ItemId,
+				BuyerProductId: rp.BuyerProductId,
+				ProductId:      c.ProductId,
+				SrcCompanyName: rp.SrcCompanyName,
+				SrcRegion:      rp.SrcRegion,
+				SrcCity:        rp.SrcCity,
+				SrcDataCenter:  rp.SrcDataCenter,
+				SrcPort:        rp.SrcPort,
+				DstCompanyName: rp.DstCompanyName,
+				DstRegion:      rp.DstRegion,
+				DstCity:        rp.DstCity,
+				DstDataCenter:  rp.DstDataCenter,
+				DstPort:        rp.DstPort,
 			},
 			DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 				QuoteId:     c.QuoteId,
@@ -1010,6 +1060,13 @@ func (to *DoDSettleTerminateOrder) setStorage(ctx *vmstore.VMContext, param *abi
 				Price:       c.Price,
 			},
 		}
+
+		abi.DoDSettleInheritRawParam(rp, conn)
+
+		if conn.BillingType == abi.DoDSettleBillingTypeDOD {
+			conn.Addition = c.Price
+		}
+
 		order.Connections = append(order.Connections, conn)
 	}
 

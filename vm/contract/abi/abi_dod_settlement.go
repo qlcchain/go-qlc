@@ -428,6 +428,36 @@ func DoDSettleGetConnectionRawParam(ctx *vmstore.VMContext, id types.Hash) (*DoD
 	return cp, nil
 }
 
+func DoDSettleInheritRawParam(src *DoDSettleConnectionRawParam, dst *DoDSettleConnectionParam) {
+	if len(dst.ConnectionName) == 0 {
+		dst.ConnectionName = src.ConnectionName
+	}
+
+	if len(dst.Currency) == 0 {
+		dst.Currency = src.Currency
+	}
+
+	if dst.BillingType == 0 {
+		dst.BillingType = src.BillingType
+	}
+
+	if dst.BillingUnit == 0 {
+		dst.BillingUnit = src.BillingUnit
+	}
+
+	if len(dst.Bandwidth) == 0 {
+		dst.Bandwidth = src.Bandwidth
+	}
+
+	if dst.ServiceClass == 0 {
+		dst.ServiceClass = src.ServiceClass
+	}
+
+	if dst.PaymentType == 0 {
+		dst.PaymentType = src.PaymentType
+	}
+}
+
 func DoDSettleInheritParam(src, dst *DoDSettleConnectionDynamicParam) {
 	if len(dst.ConnectionName) == 0 {
 		dst.ConnectionName = src.ConnectionName
