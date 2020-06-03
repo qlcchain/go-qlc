@@ -61,11 +61,11 @@ message ContractParam  {
 message CreateContractParam  {
     Contractor partyA     = 1;
     Contractor partyB     = 2;
-    //Previous  types.Hash        `msg:"pre,extension" json:"-"`
-    repeated ContractService services  = 3;
-    int64 signDate        = 4;
-    int64 startDate       = 5;
-    int64 endDate         = 6;
+    string     Previous   = 3;
+    repeated ContractService services  = 4;
+    int64 signDate        = 5;
+    int64 startDate       = 6;
+    int64 endDate         = 7;
 }
 
 message Terminator  {
@@ -100,7 +100,7 @@ message CDRStatus  {
 
 message CDRParam  {
     uint64 index          = 1;
-    uint64 smsDt          = 2;
+    int64  smsDt          = 2;
     string account        = 3;
     string sender         = 4;
     string customer       = 5;

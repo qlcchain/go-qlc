@@ -33,7 +33,7 @@ func NewLedgerApi(ctx context.Context, l ledger.Store, eb event.EventBus, cc *ch
 }
 
 func (l *LedgerAPI) AccountBlocksCount(ctx context.Context, addr *pbtypes.Address) (*pb.Int64, error) {
-	address, err := types.HexToAddress(addr.GetAddress())
+	address, err := toOriginAddressByValue(addr.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -44,14 +44,13 @@ func (l *LedgerAPI) AccountBlocksCount(ctx context.Context, addr *pbtypes.Addres
 	return &pb.Int64{Value: r}, nil
 }
 
-func (l *LedgerAPI) AccountHistoryTopn(ctx context.Context, para *pb.AccountHistoryTopnReq) (*pb.APIBlocks, error) {
-	address, err := types.HexToAddress(para.GetAddress())
+func (l *LedgerAPI) AccountHistoryTopn(ctx context.Context, param *pb.AccountHistoryTopnReq) (*pb.APIBlocks, error) {
+	address, err := toOriginAddressByValue(param.GetAddress())
 	if err != nil {
 		return nil, err
 	}
-	count := int(para.GetCount())
-	offset := int(para.GetOffset())
-	r, err := l.ledger.AccountHistoryTopn(address, count, &offset)
+	count, offset := toOffset(param.GetCount(), param.GetOffset())
+	r, err := l.ledger.AccountHistoryTopn(address, count, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +58,7 @@ func (l *LedgerAPI) AccountHistoryTopn(ctx context.Context, para *pb.AccountHist
 }
 
 func (l *LedgerAPI) AccountInfo(ctx context.Context, addr *pbtypes.Address) (*pb.APIAccount, error) {
-	address, err := types.HexToAddress(addr.GetAddress())
+	address, err := toOriginAddressByValue(addr.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +81,7 @@ func (l *LedgerAPI) ConfirmedAccountInfo(ctx context.Context, addr *pbtypes.Addr
 	//		},
 	//	},
 	//}, nil
-	address, err := types.HexToAddress(addr.GetAddress())
+	address, err := toOriginAddressByValue(addr.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +93,7 @@ func (l *LedgerAPI) ConfirmedAccountInfo(ctx context.Context, addr *pbtypes.Addr
 }
 
 func (l *LedgerAPI) AccountRepresentative(ctx context.Context, addr *pbtypes.Address) (*pbtypes.Address, error) {
-	address, err := types.HexToAddress(addr.GetAddress())
+	address, err := toOriginAddressByValue(addr.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -102,13 +101,11 @@ func (l *LedgerAPI) AccountRepresentative(ctx context.Context, addr *pbtypes.Add
 	if err != nil {
 		return nil, err
 	}
-	return &pbtypes.Address{
-		Address: r.String(),
-	}, nil
+	return toAddress(r), nil
 }
 
 func (l *LedgerAPI) AccountVotingWeight(ctx context.Context, addr *pbtypes.Address) (*pbtypes.Balance, error) {
-	address, err := types.HexToAddress(addr.GetAddress())
+	address, err := toOriginAddressByValue(addr.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +113,7 @@ func (l *LedgerAPI) AccountVotingWeight(ctx context.Context, addr *pbtypes.Addre
 	if err != nil {
 		return nil, err
 	}
-	return &pbtypes.Balance{
-		Balance: r.Int64(),
-	}, nil
+	return toBalance(r), nil
 }
 
 func (l *LedgerAPI) AccountsCount(context.Context, *empty.Empty) (*pb.UInt64, error) {
@@ -132,9 +127,8 @@ func (l *LedgerAPI) AccountsCount(context.Context, *empty.Empty) (*pb.UInt64, er
 }
 
 func (l *LedgerAPI) Accounts(ctx context.Context, para *pb.Offset) (*pbtypes.Addresses, error) {
-	count := int(para.GetCount())
-	offset := int(para.GetOffset())
-	r, err := l.ledger.Accounts(count, &offset)
+	count, offset := toOffsetByProto(para)
+	r, err := l.ledger.Accounts(count, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -155,25 +149,25 @@ func (l *LedgerAPI) AccountsBalance(ctx context.Context, addresses *pbtypes.Addr
 		fi := make(map[string]*pb.AccountsBalanceRsp_APIAccountsBalance)
 		for tokenName, ba := range info {
 			pt := &pb.AccountsBalanceRsp_APIAccountsBalance{
-				Balance: ba.Balance.Int64(),
-				Pending: ba.Pending.Int64(),
+				Balance: toBalanceValue(ba.Balance),
+				Pending: toBalanceValue(ba.Pending),
 			}
 			if ba.Vote != nil {
-				pt.Vote = ba.Vote.Int64()
+				pt.Vote = toBalanceValue(*ba.Vote)
 			}
 			if ba.Network != nil {
-				pt.Network = ba.Network.Int64()
+				pt.Network = toBalanceValue(*ba.Network)
 			}
 			if ba.Storage != nil {
-				pt.Storage = ba.Storage.Int64()
+				pt.Storage = toBalanceValue(*ba.Storage)
 			}
 			if ba.Oracle != nil {
-				pt.Oracle = ba.Oracle.Int64()
+				pt.Oracle = toBalanceValue(*ba.Oracle)
 			}
 			fi[tokenName] = pt
 		}
 		aff := &pb.AccountsBalanceRspBalances{Balances: fi}
-		result[addr.String()] = aff
+		result[toAddressValue(addr)] = aff
 	}
 	return &pb.AccountsBalanceRsp{AccountsBalances: result}, nil
 	//return &pb.AccountsBalanceRsp{
@@ -215,10 +209,10 @@ func (l *LedgerAPI) AccountsFrontiers(ctx context.Context, addresses *pbtypes.Ad
 	for addr, frontier := range r {
 		fi := make(map[string]string)
 		for tokenName, header := range frontier {
-			fi[tokenName] = header.String()
+			fi[tokenName] = toHashValue(header)
 		}
 		aff := &pb.AccountsFrontiersRspFrontier{Frontier: fi}
-		result[addr.String()] = aff
+		result[toAddressValue(addr)] = aff
 	}
 	return &pb.AccountsFrontiersRsp{AccountsFrontiers: result}, nil
 }
@@ -236,7 +230,7 @@ func (l *LedgerAPI) AccountsPending(ctx context.Context, ap *pb.AccountsPendingR
 	aps := &pb.AccountsPendingRsp{}
 	aps.AccountsPendings = make(map[string]*pb.APIPendings)
 	for addr, pendings := range r {
-		aps.AccountsPendings[addr.String()] = toAPIPendings(pendings)
+		aps.AccountsPendings[toAddressValue(addr)] = toAPIPendings(pendings)
 	}
 	return aps, nil
 }
@@ -273,9 +267,7 @@ func (l *LedgerAPI) BlockHash(ctx context.Context, block *pbtypes.StateBlock) (*
 		return nil, err
 	}
 	r := l.ledger.BlockHash(*blk)
-	return &pbtypes.Hash{
-		Hash: r.String(),
-	}, nil
+	return toHash(result), nil
 }
 
 func (l *LedgerAPI) BlocksInfo(ctx context.Context, hashes *pbtypes.Hashes) (*pb.APIBlocks, error) {
@@ -323,10 +315,9 @@ func (l *LedgerAPI) ConfirmedBlocksInfo(ctx context.Context, hashes *pbtypes.Has
 	//}, nil
 }
 
-func (l *LedgerAPI) Blocks(ctx context.Context, offset *pb.Offset) (*pb.APIBlocks, error) {
-	count := int(offset.GetCount())
-	os := int(offset.GetOffset())
-	r, err := l.ledger.Blocks(count, &os)
+func (l *LedgerAPI) Blocks(ctx context.Context, param *pb.Offset) (*pb.APIBlocks, error) {
+	count, offset := toOffsetByProto(param)
+	r, err := l.ledger.Blocks(count, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -388,8 +379,8 @@ func (l *LedgerAPI) Delegators(ctx context.Context, addr *pbtypes.Address) (*pb.
 	result := make([]*pb.APIAccountBalances_APIAccountBalance, 0)
 	for _, b := range r {
 		bt := &pb.APIAccountBalances_APIAccountBalance{
-			Address: b.Address.String(),
-			Balance: b.Balance.Int64(),
+			Address: toAddressValue(b.Address),
+			Balance: toBalanceValue(b.Balance),
 		}
 		result = append(result, bt)
 	}
@@ -566,17 +557,17 @@ func (l *LedgerAPI) AllGenesisBlocks(context.Context, *empty.Empty) (*pbtypes.St
 }
 
 func (l *LedgerAPI) GenerateSendBlock(ctx context.Context, para *pb.GenerateSendBlockReq) (*pbtypes.StateBlock, error) {
-	from, err := types.HexToAddress(para.GetPara().GetFrom())
+	from, err := toOriginAddressByValue(para.GetPara().GetFrom())
 	if err != nil {
 		return nil, err
 	}
-	to, err := types.HexToAddress(para.GetPara().GetTo())
+	to, err := toOriginAddressByValue(para.GetPara().GetTo())
 	if err != nil {
 		return nil, err
 	}
 	message := types.ZeroHash
 	if para.GetPara().GetMessage() != "" {
-		message, err = types.NewHash(para.GetPara().GetMessage())
+		message, err = toOriginHashByValue(para.GetPara().GetMessage())
 		if err != nil {
 			return nil, err
 		}
@@ -609,7 +600,7 @@ func (l *LedgerAPI) GenerateReceiveBlock(ctx context.Context, para *pb.GenerateR
 }
 
 func (l *LedgerAPI) GenerateReceiveBlockByHash(ctx context.Context, para *pb.GenerateReceiveBlockByHashReq) (*pbtypes.StateBlock, error) {
-	hash, err := types.NewHash(para.GetHash())
+	hash, err := toOriginHashByValue(para.GetHash())
 	if err != nil {
 		return nil, err
 	}
@@ -621,11 +612,11 @@ func (l *LedgerAPI) GenerateReceiveBlockByHash(ctx context.Context, para *pb.Gen
 }
 
 func (l *LedgerAPI) GenerateChangeBlock(ctx context.Context, para *pb.GenerateChangeBlockReq) (*pbtypes.StateBlock, error) {
-	acc, err := types.HexToAddress(para.GetAccount())
+	acc, err := toOriginAddressByValue(para.GetAccount())
 	if err != nil {
 		return nil, err
 	}
-	rep, err := types.HexToAddress(para.GetRepresentative())
+	rep, err := toOriginAddressByValue(para.GetRepresentative())
 	if err != nil {
 		return nil, err
 	}
@@ -645,9 +636,7 @@ func (l *LedgerAPI) Process(ctx context.Context, block *pbtypes.StateBlock) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return &pbtypes.Hash{
-		Hash: r.String(),
-	}, nil
+	return toHash(result), nil
 }
 
 func (l *LedgerAPI) NewBlock(*empty.Empty, pb.LedgerAPI_NewBlockServer) error {
@@ -666,153 +655,37 @@ func (l *LedgerAPI) NewPending(*pbtypes.Address, pb.LedgerAPI_NewPendingServer) 
 	panic("implement me")
 }
 
-// StateBlock
-
-func toStateBlock(blk *types.StateBlock) *pbtypes.StateBlock {
-	return &pbtypes.StateBlock{
-		Type:           blk.GetType().String(),
-		Token:          blk.GetToken().String(),
-		Address:        blk.GetAddress().String(),
-		Balance:        blk.GetBalance().Int64(),
-		Vote:           blk.GetVote().Int64(),
-		Network:        blk.GetNetwork().Int64(),
-		Storage:        blk.GetStorage().Int64(),
-		Oracle:         blk.GetOracle().Int64(),
-		Previous:       blk.GetPrevious().String(),
-		Link:           blk.GetLink().String(),
-		Sender:         blk.GetSender(),
-		Receiver:       blk.GetReceiver(),
-		Message:        blk.GetMessage().String(),
-		Data:           blk.GetData(),
-		PoVHeight:      blk.PoVHeight,
-		Timestamp:      blk.GetTimestamp(),
-		Extra:          blk.GetExtra().String(),
-		Representative: blk.GetRepresentative().String(),
-		PrivateFrom:    blk.PrivateFrom,
-		PrivateFor:     blk.PrivateFor,
-		PrivateGroupID: blk.PrivateGroupID,
-		Work:           uint64(blk.GetWork()),
-		Signature:      blk.GetSignature().String(),
-		Flag:           blk.Flag,
-		PrivateRecvRsp: blk.PrivateRecvRsp,
-		PrivatePayload: blk.PrivatePayload,
-	}
-}
-
-func toStateBlocks(blocks []*types.StateBlock) *pbtypes.StateBlocks {
-	blk := make([]*pbtypes.StateBlock, 0)
-	for _, b := range blocks {
-		blk = append(blk, toStateBlock(b))
-	}
-	return &pbtypes.StateBlocks{StateBlocks: blk}
-}
-
-func toOriginStateBlock(blk *pbtypes.StateBlock) (*types.StateBlock, error) {
-	token, err := types.NewHash(blk.GetToken())
-	if err != nil {
-		return nil, err
-	}
-	addr, err := types.HexToAddress(blk.GetAddress())
-	if err != nil {
-		return nil, err
-	}
-	pre, err := types.NewHash(blk.GetPrevious())
-	if err != nil {
-		return nil, err
-	}
-	link, err := types.NewHash(blk.GetLink())
-	if err != nil {
-		return nil, err
-	}
-	message, err := types.NewHash(blk.GetMessage())
-	if err != nil {
-		return nil, err
-	}
-	extra, err := types.NewHash(blk.GetExtra())
-	if err != nil {
-		return nil, err
-	}
-	rep, err := types.HexToAddress(blk.GetRepresentative())
-	if err != nil {
-		return nil, err
-	}
-	sign, err := types.NewSignature(blk.GetSignature())
-	if err != nil {
-		return nil, err
-	}
-	return &types.StateBlock{
-		Type:           types.BlockTypeFromStr(blk.GetType()),
-		Token:          token,
-		Address:        addr,
-		Balance:        types.Balance{Int: big.NewInt(blk.GetBalance())},
-		Vote:           types.Balance{Int: big.NewInt(blk.GetVote())},
-		Network:        types.Balance{Int: big.NewInt(blk.GetNetwork())},
-		Storage:        types.Balance{Int: big.NewInt(blk.GetStorage())},
-		Oracle:         types.Balance{Int: big.NewInt(blk.GetOracle())},
-		Previous:       pre,
-		Link:           link,
-		Sender:         blk.GetSender(),
-		Receiver:       blk.GetReceiver(),
-		Message:        message,
-		Data:           blk.GetData(),
-		PoVHeight:      blk.GetPoVHeight(),
-		Timestamp:      blk.GetTimestamp(),
-		Extra:          extra,
-		Representative: rep,
-		PrivateFrom:    blk.GetPrivateFrom(),
-		PrivateFor:     blk.GetPrivateFor(),
-		PrivateGroupID: blk.GetPrivateGroupID(),
-		Work:           types.Work(blk.GetWork()),
-		Signature:      sign,
-		Flag:           blk.GetFlag(),
-		PrivateRecvRsp: blk.GetPrivateRecvRsp(),
-		PrivatePayload: blk.GetPrivatePayload(),
-	}, nil
-}
-
-func toOriginStateBlocks(blks []*pbtypes.StateBlock) ([]*types.StateBlock, error) {
-	blocks := make([]*types.StateBlock, 0)
-	for _, b := range blks {
-		bt, err := toOriginStateBlock(b)
-		if err != nil {
-			return nil, err
-		}
-		blocks = append(blocks, bt)
-	}
-	return blocks, nil
-}
-
 func toAPIBlock(blk *api.APIBlock) *pb.APIBlock {
 	return &pb.APIBlock{
 		Type:             blk.GetType().String(),
-		Token:            blk.GetToken().String(),
-		Address:          blk.GetAddress().String(),
-		Balance:          blk.GetBalance().Int64(),
-		Vote:             blk.GetVote().Int64(),
-		Network:          blk.GetNetwork().Int64(),
-		Storage:          blk.GetStorage().Int64(),
-		Oracle:           blk.GetOracle().Int64(),
-		Previous:         blk.GetPrevious().String(),
-		Link:             blk.GetLink().String(),
+		Token:            toHashValue(blk.GetToken()),
+		Address:          toAddressValue(blk.GetAddress()),
+		Balance:          toBalanceValue(blk.GetBalance()),
+		Vote:             toBalanceValue(blk.GetVote()),
+		Network:          toBalanceValue(blk.GetNetwork()),
+		Storage:          toBalanceValue(blk.GetStorage()),
+		Oracle:           toBalanceValue(blk.GetOracle()),
+		Previous:         toHashValue(blk.GetPrevious()),
+		Link:             toHashValue(blk.GetLink()),
 		Sender:           blk.GetSender(),
 		Receiver:         blk.GetReceiver(),
-		Message:          blk.GetMessage().String(),
+		Message:          toHashValue(blk.GetMessage()),
 		Data:             blk.GetData(),
 		PoVHeight:        blk.PoVHeight,
 		Timestamp:        blk.GetTimestamp(),
-		Extra:            blk.GetExtra().String(),
-		Representative:   blk.GetRepresentative().String(),
+		Extra:            toHashValue(blk.GetExtra()),
+		Representative:   toAddressValue(blk.GetRepresentative()),
 		PrivateFrom:      blk.PrivateFrom,
 		PrivateFor:       blk.PrivateFor,
 		PrivateGroupID:   blk.PrivateGroupID,
-		Work:             uint64(blk.GetWork()),
-		Signature:        blk.GetSignature().String(),
+		Work:             toWorkValue(blk.GetWork()),
+		Signature:        toSignatureValue(blk.GetSignature()),
 		Flag:             blk.Flag,
 		PrivateRecvRsp:   blk.PrivateRecvRsp,
 		PrivatePayload:   blk.PrivatePayload,
 		TokenName:        blk.TokenName,
-		Amount:           blk.Amount.Int64(),
-		Hash:             blk.Hash.String(),
+		Amount:           toBalanceValue(blk.Amount),
+		Hash:             toHashValue(blk.Hash),
 		PovConfirmHeight: blk.PovConfirmHeight,
 		PovConfirmCount:  blk.PovConfirmCount,
 	}
@@ -826,116 +699,46 @@ func toAPIBlocks(blks []*api.APIBlock) *pb.APIBlocks {
 	return &pb.APIBlocks{Blocks: blk}
 }
 
-// Address
-
-func toAddress(addr types.Address) *pbtypes.Address {
-	return &pbtypes.Address{
-		Address: addr.String(),
-	}
-}
-
-func toOriginAddress(addr *pbtypes.Address) (types.Address, error) {
-	address, err := types.HexToAddress(addr.GetAddress())
-	if err != nil {
-		return types.ZeroAddress, nil
-	}
-	return address, nil
-}
-
-func toAddresses(addrs []types.Address) *pbtypes.Addresses {
-	as := make([]string, 0)
-	for _, addr := range addrs {
-		as = append(as, addr.String())
-	}
-	return &pbtypes.Addresses{Addresses: as}
-}
-
-func toOriginAddresses(addrs *pbtypes.Addresses) ([]types.Address, error) {
-	as := make([]types.Address, 0)
-	for _, addr := range addrs.GetAddresses() {
-		a, err := types.HexToAddress(addr)
-		if err != nil {
-			return nil, err
-		}
-		as = append(as, a)
-	}
-	return as, nil
-}
-
 func toAPIAccount(acc *api.APIAccount) *pb.APIAccount {
 	tms := make([]*pb.APITokenMeta, 0)
 	for _, tm := range acc.Tokens {
 		t := &pb.APITokenMeta{
 			Type:           tm.Type.String(),
-			Header:         tm.Header.String(),
-			Representative: tm.Representative.String(),
-			OpenBlock:      tm.OpenBlock.String(),
-			Balance:        tm.Balance.Int64(),
-			BelongTo:       tm.BelongTo.String(),
+			Header:         toHashValue(tm.Header),
+			Representative: toAddressValue(tm.Representative),
+			OpenBlock:      toHashValue(tm.OpenBlock),
+			Balance:        toBalanceValue(tm.Balance),
+			BelongTo:       toAddressValue(tm.BelongTo),
 			Modified:       tm.Modified,
 			BlockCount:     tm.BlockCount,
 			TokenName:      tm.TokenName,
-			Pending:        tm.Pending.Int64(),
+			Pending:        toBalanceValue(tm.Pending),
 		}
 		tms = append(tms, t)
 	}
 	r := &pb.APIAccount{
-		Address: acc.Address.String(),
+		Address: toAddressValue(acc.Address),
 		Tokens:  tms,
 	}
 	if acc.CoinBalance != nil {
-		r.CoinBalance = acc.CoinBalance.Int64()
+		r.CoinBalance = toBalanceValue(*acc.CoinBalance)
 	}
 	if acc.CoinVote != nil {
-		r.CoinVote = acc.CoinVote.Int64()
+		r.CoinVote = toBalanceValue(*acc.CoinVote)
 	}
 	if acc.CoinNetwork != nil {
-		r.CoinNetwork = acc.CoinNetwork.Int64()
+		r.CoinNetwork = toBalanceValue(*acc.CoinNetwork)
 	}
 	if acc.CoinStorage != nil {
-		r.CoinStorage = acc.CoinStorage.Int64()
+		r.CoinStorage = toBalanceValue(*acc.CoinStorage)
 	}
 	if acc.CoinOracle != nil {
-		r.CoinOracle = acc.CoinOracle.Int64()
+		r.CoinOracle = toBalanceValue(*acc.CoinOracle)
 	}
 	if acc.Representative != nil {
-		r.Representative = acc.Representative.String()
+		r.Representative = toAddressValue(acc.Representative)
 	}
 	return r
-}
-
-// Hash
-
-func toHash(hash types.Hash) *pbtypes.Hash {
-	return &pbtypes.Hash{Hash: hash.String()}
-}
-
-func toOriginHash(hash *pbtypes.Hash) (types.Hash, error) {
-	h, err := types.NewHash(hash.GetHash())
-	if err != nil {
-		return types.ZeroHash, err
-	}
-	return h, nil
-}
-
-func toHashes(hashes []types.Hash) *pbtypes.Hashes {
-	hs := make([]string, 0)
-	for _, h := range hashes {
-		hs = append(hs, h.String())
-	}
-	return &pbtypes.Hashes{Hashes: hs}
-}
-
-func toOriginHashes(hashes *pbtypes.Hashes) ([]types.Hash, error) {
-	hs := make([]types.Hash, 0)
-	for _, h := range hashes.GetHashes() {
-		h, err := types.NewHash(h)
-		if err != nil {
-			return nil, err
-		}
-		hs = append(hs, h)
-	}
-	return hs, nil
 }
 
 // Pending
@@ -944,11 +747,11 @@ func toAPIPendings(pendings []*api.APIPending) *pb.APIPendings {
 	ps := make([]*pb.APIPending, 0)
 	for _, pending := range pendings {
 		pt := &pb.APIPending{
-			Address:   pending.Address.String(),
-			Hash:      pending.Hash.String(),
-			Source:    pending.Source.String(),
+			Address:   toAddressValue(pending.Address),
+			Hash:      toHashValue(pending.Hash),
+			Source:    toAddressValue(pending.Source),
 			Amount:    pending.Amount.Int64(),
-			Type:      pending.Type.String(),
+			Type:      toHashValue(pending.Type),
 			TokenName: pending.TokenName,
 			Timestamp: pending.Timestamp,
 			BlockType: pending.BlockType.String(),
@@ -964,7 +767,7 @@ func toAPIRepresentatives(reps []*api.APIRepresentative) *pb.APIRepresentatives 
 	rs := make([]*pb.APIRepresentative, 0)
 	for _, r := range reps {
 		rt := &pb.APIRepresentative{
-			Address: r.Address.String(),
+			Address: toAddressValue(r.Address),
 			Balance: r.Balance.Int64(),
 			Vote:    r.Vote.Int64(),
 			Network: r.Network.Int64(),
@@ -981,15 +784,15 @@ func toAPIRepresentatives(reps []*api.APIRepresentative) *pb.APIRepresentatives 
 
 func toTokenInfo(token types.TokenInfo) *pbtypes.TokenInfo {
 	return &pbtypes.TokenInfo{
-		TokenId:       token.TokenId.String(),
+		TokenId:       toHashValue(token.TokenId),
 		TokenName:     token.TokenName,
 		TokenSymbol:   token.TokenSymbol,
 		TotalSupply:   token.TotalSupply.Int64(),
 		Decimals:      int32(token.Decimals),
-		Owner:         token.Owner.String(),
+		Owner:         toAddressValue(token.Owner),
 		PledgeAmount:  token.PledgeAmount.Int64(),
 		WithdrawTime:  token.WithdrawTime,
-		PledgeAddress: token.PledgeAddress.String(),
+		PledgeAddress: toAddressValue(token.PledgeAddress),
 		NEP5TxId:      token.NEP5TxId,
 	}
 }
@@ -1000,10 +803,4 @@ func toTokenInfos(tokens []*types.TokenInfo) *pbtypes.TokenInfos {
 		ts = append(ts, toTokenInfo(*token))
 	}
 	return &pbtypes.TokenInfos{TokenInfos: ts}
-}
-
-// balance
-
-func toOriginBalance(b int64) types.Balance {
-	return types.Balance{Int: big.NewInt(b)}
 }

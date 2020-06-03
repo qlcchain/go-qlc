@@ -41,9 +41,7 @@ func (a *AccountApi) ForPublicKey(ctx context.Context, str *pb.String) (*pbtypes
 	if err != nil {
 		return nil, err
 	}
-	return &pbtypes.Address{
-		Address: r.String(),
-	}, nil
+	return toAddress(r), nil
 }
 
 func (a *AccountApi) NewSeed(context.Context, *empty.Empty) (*pb.String, error) {

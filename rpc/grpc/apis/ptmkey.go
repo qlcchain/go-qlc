@@ -26,7 +26,7 @@ func NewPtmKeyAPI(cfgFile string, l ledger.Store) *PtmKeyAPI {
 }
 
 func (p *PtmKeyAPI) GetPtmKeyUpdateBlock(ctx context.Context, param *pb.PtmKeyUpdateParam) (*pbtypes.StateBlock, error) {
-	addr, err := types.HexToAddress(param.GetAccount())
+	addr, err := toOriginAddressByValue(param.GetAccount())
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (p *PtmKeyAPI) GetPtmKeyUpdateBlock(ctx context.Context, param *pb.PtmKeyUp
 }
 
 func (p *PtmKeyAPI) GetPtmKeyDeleteBlock(ctx context.Context, param *pb.PtmKeyByAccountAndBtypeParam) (*pbtypes.StateBlock, error) {
-	addr, err := types.HexToAddress(param.GetAccount())
+	addr, err := toOriginAddressByValue(param.GetAccount())
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (p *PtmKeyAPI) GetPtmKeyDeleteBlock(ctx context.Context, param *pb.PtmKeyBy
 }
 
 func (p *PtmKeyAPI) GetPtmKeyByAccount(ctx context.Context, param *pbtypes.Address) (*pb.PtmKeyUpdateParams, error) {
-	addr, err := types.HexToAddress(param.GetAddress())
+	addr, err := toOriginAddressByValue(param.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (p *PtmKeyAPI) GetPtmKeyByAccount(ctx context.Context, param *pbtypes.Addre
 }
 
 func (p *PtmKeyAPI) GetPtmKeyByAccountAndBtype(ctx context.Context, param *pb.PtmKeyByAccountAndBtypeParam) (*pb.PtmKeyUpdateParams, error) {
-	addr, err := types.HexToAddress(param.GetAccount())
+	addr, err := toOriginAddressByValue(param.GetAccount())
 	if err != nil {
 		return nil, err
 	}

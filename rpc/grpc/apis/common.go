@@ -1,6 +1,11 @@
 package apis
 
-import pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
+import (
+	"github.com/qlcchain/go-qlc/common/types"
+	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
+	pbtypes "github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
+	"math/big"
+)
 
 func toStringPoint(s string) *string {
 	if s != "" {
@@ -15,4 +20,256 @@ func toUInt32PointByProto(c *pb.UInt32) *uint32 {
 	}
 	r := c.GetValue()
 	return &r
+}
+
+func toOffsetByProto(o *pb.Offset) (int, *int) {
+	count := int(o.GetCount())
+	offset := int(o.GetOffset())
+	return count, &offset
+}
+
+func toOffset(c int32, o int32) (int, *int) {
+	count := int(c)
+	offset := int(o)
+	return count, &offset
+}
+
+// StateBlock
+
+func toStateBlock(blk *types.StateBlock) *pbtypes.StateBlock {
+	return &pbtypes.StateBlock{
+		Type:           blk.GetType().String(),
+		Token:          toHashValue(blk.GetToken()),
+		Address:        toAddressValue(blk.GetAddress()),
+		Balance:        toBalanceValue(blk.GetBalance()),
+		Vote:           toBalanceValue(blk.GetVote()),
+		Network:        toBalanceValue(blk.GetNetwork()),
+		Storage:        toBalanceValue(blk.GetStorage()),
+		Oracle:         toBalanceValue(blk.GetOracle()),
+		Previous:       toHashValue(blk.GetPrevious()),
+		Link:           toHashValue(blk.GetLink()),
+		Sender:         blk.GetSender(),
+		Receiver:       blk.GetReceiver(),
+		Message:        toHashValue(blk.GetMessage()),
+		Data:           blk.GetData(),
+		PoVHeight:      blk.PoVHeight,
+		Timestamp:      blk.GetTimestamp(),
+		Extra:          toHashValue(blk.GetExtra()),
+		Representative: toAddressValue(blk.GetRepresentative()),
+		PrivateFrom:    blk.PrivateFrom,
+		PrivateFor:     blk.PrivateFor,
+		PrivateGroupID: blk.PrivateGroupID,
+		Work:           toWorkValue(blk.GetWork()),
+		Signature:      toSignatureValue(blk.GetSignature()),
+		Flag:           blk.Flag,
+		PrivateRecvRsp: blk.PrivateRecvRsp,
+		PrivatePayload: blk.PrivatePayload,
+	}
+}
+
+func toStateBlocks(blocks []*types.StateBlock) *pbtypes.StateBlocks {
+	blk := make([]*pbtypes.StateBlock, 0)
+	for _, b := range blocks {
+		blk = append(blk, toStateBlock(b))
+	}
+	return &pbtypes.StateBlocks{StateBlocks: blk}
+}
+
+func toOriginStateBlock(blk *pbtypes.StateBlock) (*types.StateBlock, error) {
+	token, err := toOriginHashByValue(blk.GetToken())
+	if err != nil {
+		return nil, err
+	}
+	addr, err := toOriginAddressByValue(blk.GetAddress())
+	if err != nil {
+		return nil, err
+	}
+	pre, err := toOriginHashByValue(blk.GetPrevious())
+	if err != nil {
+		return nil, err
+	}
+	link, err := toOriginHashByValue(blk.GetLink())
+	if err != nil {
+		return nil, err
+	}
+	message, err := toOriginHashByValue(blk.GetMessage())
+	if err != nil {
+		return nil, err
+	}
+	extra, err := toOriginHashByValue(blk.GetExtra())
+	if err != nil {
+		return nil, err
+	}
+	rep, err := toOriginAddressByValue(blk.GetRepresentative())
+	if err != nil {
+		return nil, err
+	}
+	sign, err := toOriginSignatureByValue(blk.GetSignature())
+	if err != nil {
+		return nil, err
+	}
+	return &types.StateBlock{
+		Type:           types.BlockTypeFromStr(blk.GetType()),
+		Token:          token,
+		Address:        addr,
+		Balance:        types.Balance{Int: big.NewInt(blk.GetBalance())},
+		Vote:           types.Balance{Int: big.NewInt(blk.GetVote())},
+		Network:        types.Balance{Int: big.NewInt(blk.GetNetwork())},
+		Storage:        types.Balance{Int: big.NewInt(blk.GetStorage())},
+		Oracle:         types.Balance{Int: big.NewInt(blk.GetOracle())},
+		Previous:       pre,
+		Link:           link,
+		Sender:         blk.GetSender(),
+		Receiver:       blk.GetReceiver(),
+		Message:        message,
+		Data:           blk.GetData(),
+		PoVHeight:      blk.GetPoVHeight(),
+		Timestamp:      blk.GetTimestamp(),
+		Extra:          extra,
+		Representative: rep,
+		PrivateFrom:    blk.GetPrivateFrom(),
+		PrivateFor:     blk.GetPrivateFor(),
+		PrivateGroupID: blk.GetPrivateGroupID(),
+		Work:           toOriginWork(blk.GetWork()),
+		Signature:      sign,
+		Flag:           blk.GetFlag(),
+		PrivateRecvRsp: blk.GetPrivateRecvRsp(),
+		PrivatePayload: blk.GetPrivatePayload(),
+	}, nil
+}
+
+func toOriginStateBlocks(blks []*pbtypes.StateBlock) ([]*types.StateBlock, error) {
+	blocks := make([]*types.StateBlock, 0)
+	for _, b := range blks {
+		bt, err := toOriginStateBlock(b)
+		if err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, bt)
+	}
+	return blocks, nil
+}
+
+// Address
+
+func toAddress(addr types.Address) *pbtypes.Address {
+	return &pbtypes.Address{
+		Address: addr.String(),
+	}
+}
+
+func toAddressValue(addr types.Address) string {
+	return addr.String()
+}
+
+func toOriginAddress(addr *pbtypes.Address) (types.Address, error) {
+	address, err := toOriginAddressByValue(addr.GetAddress())
+	if err != nil {
+		return types.ZeroAddress, nil
+	}
+	return address, nil
+}
+
+func toOriginAddressByValue(addr string) (types.Address, error) {
+	return types.HexToAddress(addr)
+}
+
+func toAddresses(addrs []types.Address) *pbtypes.Addresses {
+	as := make([]string, 0)
+	for _, addr := range addrs {
+		as = append(as, addr.String())
+	}
+	return &pbtypes.Addresses{Addresses: as}
+}
+
+func toOriginAddresses(addrs *pbtypes.Addresses) ([]types.Address, error) {
+	as := make([]types.Address, 0)
+	for _, addr := range addrs.GetAddresses() {
+		a, err := toOriginAddressByValue(addr)
+		if err != nil {
+			return nil, err
+		}
+		as = append(as, a)
+	}
+	return as, nil
+}
+
+// Hash
+
+func toHash(hash types.Hash) *pbtypes.Hash {
+	return &pbtypes.Hash{Hash: hash.String()}
+}
+
+func toHashValue(hash types.Hash) string {
+	return hash.String()
+}
+
+func toOriginHash(hash *pbtypes.Hash) (types.Hash, error) {
+	h, err := toOriginHashByValue(hash.GetHash())
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	return h, nil
+}
+
+func toOriginHashByValue(hash string) (types.Hash, error) {
+	return types.NewHash(hash)
+}
+
+func toHashes(hashes []types.Hash) *pbtypes.Hashes {
+	hs := make([]string, 0)
+	for _, h := range hashes {
+		hs = append(hs, h.String())
+	}
+	return &pbtypes.Hashes{Hashes: hs}
+}
+
+func toOriginHashes(hashes *pbtypes.Hashes) ([]types.Hash, error) {
+	hs := make([]types.Hash, 0)
+	for _, h := range hashes.GetHashes() {
+		h, err := toOriginHashByValue(h)
+		if err != nil {
+			return nil, err
+		}
+		hs = append(hs, h)
+	}
+	return hs, nil
+}
+
+// balance
+
+func toBalance(b types.Balance) *pbtypes.Balance {
+	return &pbtypes.Balance{Balance: b.Int64()}
+}
+
+func toBalanceValue(b types.Balance) int64 {
+	return b.Int64()
+}
+
+func toOriginBalance(b int64) types.Balance {
+	return types.Balance{Int: big.NewInt(b)}
+}
+
+// signature
+
+func toSignatureValue(b types.Signature) string {
+	return b.String()
+}
+
+func toOriginSignatureByValue(s string) (types.Signature, error) {
+	sign, err := toOriginSignatureByValue(s)
+	if err != nil {
+		return types.ZeroSignature, err
+	}
+	return sign, nil
+}
+
+// work
+
+func toWorkValue(b types.Work) uint64 {
+	return uint64(b)
+}
+
+func toOriginWork(v uint64) types.Work {
+	return types.Work(v)
 }

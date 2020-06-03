@@ -58,7 +58,7 @@ func (c *ContractAPI) PackContractData(ctx context.Context, param *pb.PackContra
 
 func (c *ContractAPI) PackChainContractData(ctx context.Context, param *pb.PackChainContractDataRequest) (*pb.Bytes, error) {
 	addr := param.GetContractAddress()
-	address, err := types.HexToAddress(addr)
+	address, err := toOriginAddressByValue(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -79,11 +79,11 @@ func (c *ContractAPI) ContractAddressList(ctx context.Context, param *empty.Empt
 }
 
 func (c *ContractAPI) GenerateSendBlock(ctx context.Context, param *pb.ContractSendBlockPara) (*pbtypes.StateBlock, error) {
-	addr, err := types.HexToAddress(param.GetAddress())
+	addr, err := toOriginAddressByValue(param.GetAddress())
 	if err != nil {
 		return nil, err
 	}
-	to, err := types.HexToAddress(param.GetTo())
+	to, err := toOriginAddressByValue(param.GetTo())
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (c *ContractAPI) GenerateSendBlock(ctx context.Context, param *pb.ContractS
 }
 
 func (c *ContractAPI) GenerateRewardBlock(ctx context.Context, param *pb.ContractRewardBlockPara) (*pbtypes.StateBlock, error) {
-	hash, err := types.NewHash(param.GetSendHash())
+	hash, err := toOriginHashByValue(param.GetSendHash())
 	if err != nil {
 		return nil, err
 	}

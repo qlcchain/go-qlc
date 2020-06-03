@@ -5,7 +5,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -97,7 +96,7 @@ func (p *RepAPI) GetRewardRecvBlockBySendHash(ctx context.Context, param *pbtype
 }
 
 func (p *RepAPI) GetRepStateWithHeight(ctx context.Context, param *pb.RepStateParams) (*pbtypes.PovRepState, error) {
-	account, err := types.HexToAddress(param.GetAccount())
+	account, err := toOriginAddressByValue(param.GetAccount())
 	if err != nil {
 		return nil, err
 	}
@@ -110,20 +109,20 @@ func (p *RepAPI) GetRepStateWithHeight(ctx context.Context, param *pb.RepStatePa
 		return nil, err
 	}
 	return &pbtypes.PovRepState{
-		Account: r.Account.String(),
-		Balance: r.Balance.Int64(),
-		Vote:    r.Vote.Int64(),
-		Network: r.Network.Int64(),
-		Storage: r.Storage.Int64(),
-		Oracle:  r.Oracle.Int64(),
-		Total:   r.Total.Int64(),
+		Account: toAddressValue(r.Account),
+		Balance: toBalanceValue(r.Balance),
+		Vote:    toBalanceValue(r.Vote),
+		Network: toBalanceValue(r.Network),
+		Storage: toBalanceValue(r.Storage),
+		Oracle:  toBalanceValue(r.Oracle),
+		Total:   toBalanceValue(r.Total),
 		Status:  r.Status,
 		Height:  r.Height,
 	}, nil
 }
 
 func (p *RepAPI) GetRewardHistory(ctx context.Context, param *pbtypes.Address) (*pb.RepHistoryRewardInfo, error) {
-	account, err := types.HexToAddress(param.GetAddress())
+	account, err := toOriginAddressByValue(param.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +134,7 @@ func (p *RepAPI) GetRewardHistory(ctx context.Context, param *pbtypes.Address) (
 		LastEndHeight:  r.LastEndHeight,
 		RewardBlocks:   r.RewardBlocks,
 		LastRewardTime: r.LastRewardTime,
-		RewardAmount:   r.RewardAmount.Int64(),
+		RewardAmount:   toBalanceValue(r.RewardAmount),
 	}, nil
 }
 

@@ -6,7 +6,6 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/rpc/api"
@@ -27,11 +26,11 @@ func NewPermissionAPI(cfgFile string, l ledger.Store) *PermissionAPI {
 }
 
 func (p *PermissionAPI) GetAdminHandoverBlock(ctx context.Context, params *pb.AdminUpdateParam) (*pbtypes.StateBlock, error) {
-	admin, err := types.HexToAddress(params.GetAdmin())
+	admin, err := toOriginAddressByValue(params.GetAdmin())
 	if err != nil {
 		return nil, err
 	}
-	successor, err := types.HexToAddress(params.GetSuccessor())
+	successor, err := toOriginAddressByValue(params.GetSuccessor())
 	if err != nil {
 		return nil, err
 	}
@@ -52,13 +51,13 @@ func (p *PermissionAPI) GetAdmin(ctx context.Context, params *empty.Empty) (*pb.
 		return nil, err
 	}
 	return &pb.AdminUser{
-		Account: r.Account.String(),
+		Account: toAddressValue(r.Account),
 		Comment: r.Comment,
 	}, nil
 }
 
 func (p *PermissionAPI) GetNodeUpdateBlock(ctx context.Context, params *pb.NodeParam) (*pbtypes.StateBlock, error) {
-	addr, err := types.HexToAddress(params.GetAdmin())
+	addr, err := toOriginAddressByValue(params.GetAdmin())
 	if err != nil {
 		return nil, err
 	}

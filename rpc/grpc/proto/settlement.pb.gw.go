@@ -30,7 +30,7 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 func request_SettlementAPI_ToAddress_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateContractParam
+	var protoReq types.CreateContractParam
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)

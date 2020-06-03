@@ -87,7 +87,7 @@ func (p *PublicKeyDistributionAPI) GetVerifiersByAccount(ctx context.Context, pa
 }
 
 func (p *PublicKeyDistributionAPI) GetVerifierStateByBlockHeight(ctx context.Context, param *pb.VerifierStateByBlockHeightRequest) (*pbtypes.PovVerifierState, error) {
-	addr, err := types.HexToAddress(param.GetAddress())
+	addr, err := toOriginAddressByValue(param.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (p *PublicKeyDistributionAPI) GetPublishInfosByType(ctx context.Context, pa
 }
 
 func (p *PublicKeyDistributionAPI) GetPublishInfosByAccountAndType(ctx context.Context, param *pb.AccountAndTypeParam) (*pb.PublishInfoStates, error) {
-	addr, err := types.HexToAddress(param.GetAccount())
+	addr, err := toOriginAddressByValue(param.GetAccount())
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (p *PublicKeyDistributionAPI) GetPublishInfosByAccountAndType(ctx context.C
 }
 
 func (p *PublicKeyDistributionAPI) GetOracleBlock(ctx context.Context, param *pb.OracleParam) (*pbtypes.StateBlock, error) {
-	addr, err := types.HexToAddress(param.GetAccount())
+	addr, err := toOriginAddressByValue(param.GetAccount())
 	if err != nil {
 		return nil, err
 	}
@@ -277,9 +277,9 @@ func (p *PublicKeyDistributionAPI) GetRewardHistory(ctx context.Context, param *
 	}
 	return &pb.PKDHistoryRewardInfo{
 		LastEndHeight:  r.LastEndHeight,
-		LastBeneficial: r.LastBeneficial.String(),
+		LastBeneficial: toAddressValue(r.LastBeneficial),
 		LastRewardTime: r.LastRewardTime,
-		RewardAmount:   r.RewardAmount.Int64(),
+		RewardAmount:   toBalanceValue(r.RewardAmount),
 	}, nil
 }
 
@@ -297,13 +297,13 @@ func (p *PublicKeyDistributionAPI) GetAvailRewardInfo(ctx context.Context, param
 		LatestBlockHeight: r.LatestBlockHeight,
 		NodeRewardHeight:  r.NodeRewardHeight,
 		AvailEndHeight:    r.AvailEndHeight,
-		AvailRewardAmount: r.AvailRewardAmount.Int64(),
+		AvailRewardAmount: toBalanceValue(r.AvailRewardAmount),
 		NeedCallReward:    r.NeedCallReward,
 	}, nil
 }
 
 func (p *PublicKeyDistributionAPI) GetVerifierHeartBlock(ctx context.Context, param *pb.VerifierHeartBlockRequest) (*pbtypes.StateBlock, error) {
-	addr, err := types.HexToAddress(param.GetAccount())
+	addr, err := toOriginAddressByValue(param.GetAccount())
 	if err != nil {
 		return nil, err
 	}

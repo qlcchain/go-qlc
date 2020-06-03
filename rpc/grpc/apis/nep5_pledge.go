@@ -136,7 +136,7 @@ func (n *NEP5PledgeAPI) ParsePledgeInfo(ctx context.Context, param *pb.Bytes) (*
 }
 
 func (n *NEP5PledgeAPI) GetPledgeInfosByPledgeAddress(ctx context.Context, param *pbtypes.Address) (*pb.PledgeInfos, error) {
-	addr, err := types.HexToAddress(param.GetAddress())
+	addr, err := toOriginAddressByValue(param.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (n *NEP5PledgeAPI) GetPledgeInfosByPledgeAddress(ctx context.Context, param
 }
 
 func (n *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(ctx context.Context, param *pbtypes.Address) (*pb.Int64, error) {
-	addr, err := types.HexToAddress(param.GetAddress())
+	addr, err := toOriginAddressByValue(param.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (n *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(ctx context.Context, para
 }
 
 func (n *NEP5PledgeAPI) GetBeneficialPledgeInfosByAddress(ctx context.Context, param *pbtypes.Address) (*pb.PledgeInfos, error) {
-	addr, err := types.HexToAddress(param.GetAddress())
+	addr, err := toOriginAddressByValue(param.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (n *NEP5PledgeAPI) GetBeneficialPledgeInfosByAddress(ctx context.Context, p
 }
 
 func (n *NEP5PledgeAPI) GetBeneficialPledgeInfos(ctx context.Context, param *pb.BeneficialPledgeRequest) (*pb.PledgeInfos, error) {
-	addr, err := types.HexToAddress(param.GetBeneficial())
+	addr, err := toOriginAddressByValue(param.GetBeneficial())
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (n *NEP5PledgeAPI) GetBeneficialPledgeInfos(ctx context.Context, param *pb.
 }
 
 func (n *NEP5PledgeAPI) GetPledgeBeneficialAmount(ctx context.Context, param *pb.BeneficialPledgeRequest) (*pb.Int64, error) {
-	addr, err := types.HexToAddress(param.GetBeneficial())
+	addr, err := toOriginAddressByValue(param.GetBeneficial())
 	if err != nil {
 		return nil, err
 	}

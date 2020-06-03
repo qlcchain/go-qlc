@@ -71,7 +71,7 @@ func (m *MinerAPI) GetAvailRewardInfo(ctx context.Context, params *pbtypes.Addre
 		AvailStartHeight:  r.AvailStartHeight,
 		AvailEndHeight:    r.AvailEndHeight,
 		AvailRewardBlocks: r.AvailRewardBlocks,
-		AvailRewardAmount: r.AvailRewardAmount.Int64(),
+		AvailRewardAmount: toBalanceValue(r.AvailRewardAmount),
 		NeedCallReward:    r.NeedCallReward,
 	}, nil
 
@@ -125,7 +125,7 @@ func (m *MinerAPI) GetRewardHistory(ctx context.Context, params *pbtypes.Address
 	return &pb.MinerHistoryRewardInfo{
 		LastEndHeight:  r.LastEndHeight,
 		RewardBlocks:   r.RewardBlocks,
-		RewardAmount:   r.RewardAmount.Int64(),
+		RewardAmount:   toBalanceValue(r.RewardAmount),
 		LastRewardTime: r.LastRewardTime,
 	}, nil
 }

@@ -36,9 +36,7 @@ func (r *RewardsAPI) GetUnsignedRewardData(ctx context.Context, param *pb.Reward
 	if err != nil {
 		return nil, err
 	}
-	return &pbtypes.Hash{
-		Hash: result.String(),
-	}, nil
+	return toHash(result), nil
 }
 
 func (r *RewardsAPI) GetUnsignedConfidantData(ctx context.Context, param *pb.RewardsParam) (*pbtypes.Hash, error) {
@@ -50,9 +48,7 @@ func (r *RewardsAPI) GetUnsignedConfidantData(ctx context.Context, param *pb.Rew
 	if err != nil {
 		return nil, err
 	}
-	return &pbtypes.Hash{
-		Hash: result.String(),
-	}, nil
+	return toHash(result), nil
 }
 
 func (r *RewardsAPI) GetSendRewardBlock(ctx context.Context, param *pb.RewardsParamWithSign) (*pbtypes.StateBlock, error) {

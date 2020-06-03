@@ -39,9 +39,8 @@ func (n *NetAPI) OnlineRepsInfo(context.Context, *empty.Empty) (*pb.OnlineRepTot
 }
 
 func (n *NetAPI) ConnectPeersInfo(ctx context.Context, param *pb.Offset) (*pb.PeerInfos, error) {
-	count := int(param.GetCount())
-	offset := int(param.GetOffset())
-	r, err := n.net.ConnectPeersInfo(count, &offset)
+	count, offset := toOffsetByProto(param)
+	r, err := n.net.ConnectPeersInfo(count, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -49,9 +48,8 @@ func (n *NetAPI) ConnectPeersInfo(ctx context.Context, param *pb.Offset) (*pb.Pe
 }
 
 func (n *NetAPI) GetOnlinePeersInfo(ctx context.Context, param *pb.Offset) (*pb.PeerInfos, error) {
-	count := int(param.GetCount())
-	offset := int(param.GetOffset())
-	r, err := n.net.GetOnlinePeersInfo(count, &offset)
+	count, offset := toOffsetByProto(param)
+	r, err := n.net.GetOnlinePeersInfo(count, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +57,8 @@ func (n *NetAPI) GetOnlinePeersInfo(ctx context.Context, param *pb.Offset) (*pb.
 }
 
 func (n *NetAPI) GetAllPeersInfo(ctx context.Context, param *pb.Offset) (*pb.PeerInfos, error) {
-	count := int(param.GetCount())
-	offset := int(param.GetOffset())
-	r, err := n.net.GetAllPeersInfo(count, &offset)
+	count, offset := toOffsetByProto(param)
+	r, err := n.net.GetAllPeersInfo(count, offset)
 	if err != nil {
 		return nil, err
 	}
