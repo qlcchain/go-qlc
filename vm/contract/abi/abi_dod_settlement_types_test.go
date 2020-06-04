@@ -46,6 +46,13 @@ func TestDoDSettleCreateOrderParam(t *testing.T) {
 		t.Fatal()
 	}
 
+	cop.Connections[0].ProductOfferingId = "po0"
+	cop.Connections[1].ProductOfferingId = "po1"
+	err = cop.Verify()
+	if err == nil {
+		t.Fatal()
+	}
+
 	cop.Connections[0].ItemId = "item0"
 	cop.Connections[1].ItemId = "item0"
 	err = cop.Verify()

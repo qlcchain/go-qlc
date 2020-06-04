@@ -431,26 +431,25 @@ func (d *DoDSettlementAPI) GetPlacingOrder(buyer, seller types.Address, count, o
 	resp.OrderList = make([]*DoDPlacingOrderInfo, 0)
 	ol := make([]*DoDPlacingOrderInfo, 0)
 
-	orders, err := d.GetOrderIdListByAddressAndSeller(buyer, seller)
+	internalIds, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, buyer)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, o := range orders {
-		oi, _ := abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, o.OrderId)
+	for _, id := range internalIds {
+		oi, _ := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
 		if oi == nil {
 			continue
 		}
 
-		internalId, err := abi.DoDSettleGetInternalIdByOrderId(d.ctx, seller, o.OrderId)
-		if err != nil {
+		if oi.Seller.Address != seller {
 			continue
 		}
 
 		if oi.ContractState == abi.DoDSettleContractStateRequest ||
 			(oi.ContractState == abi.DoDSettleContractStateConfirmed && oi.OrderState == abi.DoDSettleOrderStateNull) {
 			poi := &DoDPlacingOrderInfo{
-				InternalId: internalId,
+				InternalId: id,
 				OrderInfo:  oi,
 			}
 			ol = append(ol, poi)

@@ -384,6 +384,7 @@ func DoDSettleUpdateConnectionRawParam(ctx *vmstore.VMContext, param *DoDSettleC
 	} else {
 		cp.ItemId = param.ItemId
 		cp.BuyerProductId = param.BuyerProductId
+		cp.ProductOfferingId = param.ProductOfferingId
 		cp.SrcCompanyName = param.SrcCompanyName
 		cp.SrcRegion = param.SrcRegion
 		cp.SrcCity = param.SrcCity

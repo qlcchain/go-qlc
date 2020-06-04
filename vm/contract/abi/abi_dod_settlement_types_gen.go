@@ -2984,6 +2984,12 @@ func (z *DoDSettleConnectionRawParam) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "BuyerProductId")
 				return
 			}
+		case "po":
+			z.ProductOfferingId, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ProductOfferingId")
+				return
+			}
 		case "scn":
 			z.SrcCompanyName, err = dc.ReadString()
 			if err != nil {
@@ -3133,9 +3139,9 @@ func (z *DoDSettleConnectionRawParam) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleConnectionRawParam) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 22
+	// map header, size 23
 	// write "ii"
-	err = en.Append(0xde, 0x0, 0x16, 0xa2, 0x69, 0x69)
+	err = en.Append(0xde, 0x0, 0x17, 0xa2, 0x69, 0x69)
 	if err != nil {
 		return
 	}
@@ -3152,6 +3158,16 @@ func (z *DoDSettleConnectionRawParam) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteString(z.BuyerProductId)
 	if err != nil {
 		err = msgp.WrapError(err, "BuyerProductId")
+		return
+	}
+	// write "po"
+	err = en.Append(0xa2, 0x70, 0x6f)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ProductOfferingId)
+	if err != nil {
+		err = msgp.WrapError(err, "ProductOfferingId")
 		return
 	}
 	// write "scn"
@@ -3360,13 +3376,16 @@ func (z *DoDSettleConnectionRawParam) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleConnectionRawParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 22
+	// map header, size 23
 	// string "ii"
-	o = append(o, 0xde, 0x0, 0x16, 0xa2, 0x69, 0x69)
+	o = append(o, 0xde, 0x0, 0x17, 0xa2, 0x69, 0x69)
 	o = msgp.AppendString(o, z.ItemId)
 	// string "bp"
 	o = append(o, 0xa2, 0x62, 0x70)
 	o = msgp.AppendString(o, z.BuyerProductId)
+	// string "po"
+	o = append(o, 0xa2, 0x70, 0x6f)
+	o = msgp.AppendString(o, z.ProductOfferingId)
 	// string "scn"
 	o = append(o, 0xa3, 0x73, 0x63, 0x6e)
 	o = msgp.AppendString(o, z.SrcCompanyName)
@@ -3458,6 +3477,12 @@ func (z *DoDSettleConnectionRawParam) UnmarshalMsg(bts []byte) (o []byte, err er
 			z.BuyerProductId, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BuyerProductId")
+				return
+			}
+		case "po":
+			z.ProductOfferingId, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProductOfferingId")
 				return
 			}
 		case "scn":
@@ -3610,7 +3635,7 @@ func (z *DoDSettleConnectionRawParam) UnmarshalMsg(bts []byte) (o []byte, err er
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleConnectionRawParam) Msgsize() (s int) {
-	s = 3 + 3 + msgp.StringPrefixSize + len(z.ItemId) + 3 + msgp.StringPrefixSize + len(z.BuyerProductId) + 4 + msgp.StringPrefixSize + len(z.SrcCompanyName) + 3 + msgp.StringPrefixSize + len(z.SrcRegion) + 3 + msgp.StringPrefixSize + len(z.SrcCity) + 4 + msgp.StringPrefixSize + len(z.SrcDataCenter) + 3 + msgp.StringPrefixSize + len(z.SrcPort) + 4 + msgp.StringPrefixSize + len(z.DstCompanyName) + 3 + msgp.StringPrefixSize + len(z.DstRegion) + 3 + msgp.StringPrefixSize + len(z.DstCity) + 4 + msgp.StringPrefixSize + len(z.DstDataCenter) + 3 + msgp.StringPrefixSize + len(z.DstPort) + 3 + msgp.StringPrefixSize + len(z.ConnectionName) + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.Currency) + 4 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.Bandwidth) + 3 + msgp.IntSize + 2 + msgp.Float64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size
+	s = 3 + 3 + msgp.StringPrefixSize + len(z.ItemId) + 3 + msgp.StringPrefixSize + len(z.BuyerProductId) + 3 + msgp.StringPrefixSize + len(z.ProductOfferingId) + 4 + msgp.StringPrefixSize + len(z.SrcCompanyName) + 3 + msgp.StringPrefixSize + len(z.SrcRegion) + 3 + msgp.StringPrefixSize + len(z.SrcCity) + 4 + msgp.StringPrefixSize + len(z.SrcDataCenter) + 3 + msgp.StringPrefixSize + len(z.SrcPort) + 4 + msgp.StringPrefixSize + len(z.DstCompanyName) + 3 + msgp.StringPrefixSize + len(z.DstRegion) + 3 + msgp.StringPrefixSize + len(z.DstCity) + 4 + msgp.StringPrefixSize + len(z.DstDataCenter) + 3 + msgp.StringPrefixSize + len(z.DstPort) + 3 + msgp.StringPrefixSize + len(z.ConnectionName) + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.Currency) + 4 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.Bandwidth) + 3 + msgp.IntSize + 2 + msgp.Float64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size
 	return
 }
 
@@ -3642,6 +3667,12 @@ func (z *DoDSettleConnectionStaticParam) DecodeMsg(dc *msgp.Reader) (err error) 
 			z.BuyerProductId, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "BuyerProductId")
+				return
+			}
+		case "po":
+			z.ProductOfferingId, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ProductOfferingId")
 				return
 			}
 		case "pi":
@@ -3723,9 +3754,9 @@ func (z *DoDSettleConnectionStaticParam) DecodeMsg(dc *msgp.Reader) (err error) 
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleConnectionStaticParam) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 13
+	// map header, size 14
 	// write "ii"
-	err = en.Append(0x8d, 0xa2, 0x69, 0x69)
+	err = en.Append(0x8e, 0xa2, 0x69, 0x69)
 	if err != nil {
 		return
 	}
@@ -3742,6 +3773,16 @@ func (z *DoDSettleConnectionStaticParam) EncodeMsg(en *msgp.Writer) (err error) 
 	err = en.WriteString(z.BuyerProductId)
 	if err != nil {
 		err = msgp.WrapError(err, "BuyerProductId")
+		return
+	}
+	// write "po"
+	err = en.Append(0xa2, 0x70, 0x6f)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ProductOfferingId)
+	if err != nil {
+		err = msgp.WrapError(err, "ProductOfferingId")
 		return
 	}
 	// write "pi"
@@ -3860,13 +3901,16 @@ func (z *DoDSettleConnectionStaticParam) EncodeMsg(en *msgp.Writer) (err error) 
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleConnectionStaticParam) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 13
+	// map header, size 14
 	// string "ii"
-	o = append(o, 0x8d, 0xa2, 0x69, 0x69)
+	o = append(o, 0x8e, 0xa2, 0x69, 0x69)
 	o = msgp.AppendString(o, z.ItemId)
 	// string "bp"
 	o = append(o, 0xa2, 0x62, 0x70)
 	o = msgp.AppendString(o, z.BuyerProductId)
+	// string "po"
+	o = append(o, 0xa2, 0x70, 0x6f)
+	o = msgp.AppendString(o, z.ProductOfferingId)
 	// string "pi"
 	o = append(o, 0xa2, 0x70, 0x69)
 	o = msgp.AppendString(o, z.ProductId)
@@ -3931,6 +3975,12 @@ func (z *DoDSettleConnectionStaticParam) UnmarshalMsg(bts []byte) (o []byte, err
 			z.BuyerProductId, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BuyerProductId")
+				return
+			}
+		case "po":
+			z.ProductOfferingId, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProductOfferingId")
 				return
 			}
 		case "pi":
@@ -4013,7 +4063,7 @@ func (z *DoDSettleConnectionStaticParam) UnmarshalMsg(bts []byte) (o []byte, err
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleConnectionStaticParam) Msgsize() (s int) {
-	s = 1 + 3 + msgp.StringPrefixSize + len(z.ItemId) + 3 + msgp.StringPrefixSize + len(z.BuyerProductId) + 3 + msgp.StringPrefixSize + len(z.ProductId) + 4 + msgp.StringPrefixSize + len(z.SrcCompanyName) + 3 + msgp.StringPrefixSize + len(z.SrcRegion) + 3 + msgp.StringPrefixSize + len(z.SrcCity) + 4 + msgp.StringPrefixSize + len(z.SrcDataCenter) + 3 + msgp.StringPrefixSize + len(z.SrcPort) + 4 + msgp.StringPrefixSize + len(z.DstCompanyName) + 3 + msgp.StringPrefixSize + len(z.DstRegion) + 3 + msgp.StringPrefixSize + len(z.DstCity) + 4 + msgp.StringPrefixSize + len(z.DstDataCenter) + 3 + msgp.StringPrefixSize + len(z.DstPort)
+	s = 1 + 3 + msgp.StringPrefixSize + len(z.ItemId) + 3 + msgp.StringPrefixSize + len(z.BuyerProductId) + 3 + msgp.StringPrefixSize + len(z.ProductOfferingId) + 3 + msgp.StringPrefixSize + len(z.ProductId) + 4 + msgp.StringPrefixSize + len(z.SrcCompanyName) + 3 + msgp.StringPrefixSize + len(z.SrcRegion) + 3 + msgp.StringPrefixSize + len(z.SrcCity) + 4 + msgp.StringPrefixSize + len(z.SrcDataCenter) + 3 + msgp.StringPrefixSize + len(z.SrcPort) + 4 + msgp.StringPrefixSize + len(z.DstCompanyName) + 3 + msgp.StringPrefixSize + len(z.DstRegion) + 3 + msgp.StringPrefixSize + len(z.DstCity) + 4 + msgp.StringPrefixSize + len(z.DstDataCenter) + 3 + msgp.StringPrefixSize + len(z.DstPort)
 	return
 }
 
