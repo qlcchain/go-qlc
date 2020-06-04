@@ -221,6 +221,8 @@ func TestDoDSettleGetConnectionInfoByProductHash(t *testing.T) {
 	seller := mock.Address()
 	conn := new(DoDSettleConnectionInfo)
 	conn.ProductId = "product001"
+	conn.Active = &DoDSettleConnectionDynamicParam{OrderId: "o1"}
+	conn.Done = []*DoDSettleConnectionDynamicParam{{OrderId: "o1"}}
 
 	productKey := &DoDSettleProduct{Seller: seller, ProductId: conn.ProductId}
 	productHash := productKey.Hash()
@@ -236,6 +238,11 @@ func TestDoDSettleGetConnectionInfoByProductHash(t *testing.T) {
 	}
 
 	addDoDSettleTestConnection(t, ctx, conn, seller)
+
+	err = DoDSettleUpdatePAYGTimeSpan(ctx, conn.ProductId, "o1", 10, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ci, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 	if err != nil || ci.ProductId != conn.ProductId {
@@ -613,7 +620,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 
 	start := int64(500)
 	end := int64(8000)
-	invoice, err := DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, true)
+	invoice, err := DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -624,7 +631,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 
 	start = int64(2000)
 	end = int64(4000)
-	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, false)
+	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -635,7 +642,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 
 	start = int64(4000)
 	end = int64(10000)
-	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, true)
+	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -646,14 +653,14 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 
 	start = int64(4000)
 	end = int64(0)
-	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, false)
+	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	start = int64(0)
 	end = int64(1000)
-	invoice, err = DodSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, false, true)
+	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, false, true)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -780,7 +787,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 
 	start := int64(3000)
 	end := int64(12000)
-	invoice, err := DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
+	invoice, err := DoDSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -791,28 +798,28 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 
 	start = int64(0)
 	end = int64(12000)
-	_, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
+	_, err = DoDSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
 	if err == nil {
 		t.Fatal(err)
 	}
 
 	start = int64(3000)
 	end = int64(0)
-	_, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
+	_, err = DoDSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	start = int64(12000)
 	end = int64(15000)
-	invoice, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn2.ProductId, start, end, true, true)
+	invoice, err = DoDSettleGenerateInvoiceByProduct(ctx, seller, conn2.ProductId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	start = int64(3000)
 	end = int64(15000)
-	invoice, err = DodSettleGenerateInvoiceByProduct(ctx, seller, conn2.ProductId, start, end, true, true)
+	invoice, err = DoDSettleGenerateInvoiceByProduct(ctx, seller, conn2.ProductId, start, end, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -891,14 +898,14 @@ func TestDodSettleGenerateInvoiceByBuyer(t *testing.T) {
 
 	start := int64(0)
 	end := int64(8000)
-	_, err = DodSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end, true, true)
+	_, err = DoDSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end, true, true)
 	if err == nil {
 		t.Fatal()
 	}
 
 	start = int64(1000)
 	end = int64(8000)
-	_, err = DodSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end, true, true)
+	_, err = DoDSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end, true, true)
 	if err != nil {
 		t.Fatal()
 	}
@@ -913,13 +920,35 @@ func TestDodSettleGetSellerConnectionActive(t *testing.T) {
 	active.ActiveAt = time.Now().Unix()
 	id := mock.Hash()
 
-	err := DodSettleSetSellerConnectionActive(ctx, active, id)
+	err := DoDSettleSetSellerConnectionActive(ctx, active, id)
 	if err != nil {
 		t.Fatal()
 	}
 
-	ac, err := DodSettleGetSellerConnectionActive(ctx, id)
+	ac, err := DoDSettleGetSellerConnectionActive(ctx, id)
 	if err != nil || ac.ActiveAt != active.ActiveAt {
 		t.Fatal(err)
+	}
+}
+
+func TestDoDSettleUpdatePAYGTimeSpan(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.DoDSettlementAddress)
+
+	err := DoDSettleUpdatePAYGTimeSpan(ctx, "p1", "o1", 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = DoDSettleUpdatePAYGTimeSpan(ctx, "p1", "o1", 20, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ts, err := DoDSettleGetPAYGTimeSpan(ctx, "p1", "o1")
+	if err != nil || ts.StartTime != 20 || ts.EndTime != 30 {
+		t.Fatal()
 	}
 }

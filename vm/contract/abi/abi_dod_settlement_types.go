@@ -105,6 +105,7 @@ const (
 	DoDSettleDBTableSellerConnActive
 	DoDSettleDBTableBuyerConnActive
 	DoDSettleDBTableConnRawParam
+	DoDSettleDBTablePAYGTimeSpan
 )
 
 //go:generate msgp
@@ -216,8 +217,8 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
 
-		if c.BillingType == DoDSettleBillingTypeDOD && c.StartTime == c.EndTime {
-			return fmt.Errorf("starttime equal endtime")
+		if c.BillingType == DoDSettleBillingTypeDOD && (c.StartTime == 0 || c.EndTime == 0 || c.StartTime == c.EndTime) {
+			return fmt.Errorf("invalid starttime endtime")
 		}
 	}
 
@@ -483,8 +484,8 @@ func (z *DoDSettleChangeOrderParam) Verify() error {
 			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
 
-		if c.BillingType == DoDSettleBillingTypeDOD && c.StartTime == c.EndTime {
-			return fmt.Errorf("starttime equal endtime")
+		if c.BillingType == DoDSettleBillingTypeDOD && (c.StartTime == 0 || c.EndTime == 0 || c.StartTime == c.EndTime) {
+			return fmt.Errorf("invalid starttime endtime")
 		}
 	}
 
@@ -591,12 +592,13 @@ func (z *DoDSettleResourceReadyParam) Verify() error {
 
 type DoDSettleInvoiceConnDynamic struct {
 	DoDSettleConnectionDynamicParam
-	InvoiceStartTime    int64   `json:"invoiceStartTime,omitempty"`
-	InvoiceStartTimeStr string  `json:"invoiceStartTimeStr,omitempty"`
-	InvoiceEndTime      int64   `json:"invoiceEndTime,omitempty"`
-	InvoiceEndTimeStr   string  `json:"invoiceEndTimeStr,omitempty"`
-	InvoiceUnitCount    int     `json:"invoiceUnitCount,omitempty"`
-	Amount              float64 `json:"amount"`
+	InvoiceStartTime    int64              `json:"invoiceStartTime,omitempty"`
+	InvoiceStartTimeStr string             `json:"invoiceStartTimeStr,omitempty"`
+	InvoiceEndTime      int64              `json:"invoiceEndTime,omitempty"`
+	InvoiceEndTimeStr   string             `json:"invoiceEndTimeStr,omitempty"`
+	InvoiceUnitCount    int                `json:"invoiceUnitCount,omitempty"`
+	OrderType           DoDSettleOrderType `json:"orderType,omitempty"`
+	Amount              float64            `json:"amount"`
 }
 
 type DoDSettleInvoiceConnDetail struct {
@@ -657,4 +659,19 @@ func (z *DoDSettleConnectionActiveKey) Hash() types.Hash {
 
 type DoDSettleConnectionActive struct {
 	ActiveAt int64 `json:"activeAt" msg:"a"`
+}
+
+type DoDSettlePAYGTimeSpan struct {
+	StartTime int64 `msg:"s"`
+	EndTime   int64 `msg:"e"`
+}
+
+type DoDSettlePAYGTimeSpanKey struct {
+	ProductId string
+	OrderId   string
+}
+
+func (z *DoDSettlePAYGTimeSpanKey) Hash() types.Hash {
+	data := append([]byte(z.ProductId), []byte(z.OrderId)...)
+	return types.HashData(data)
 }

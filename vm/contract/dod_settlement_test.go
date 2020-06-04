@@ -1179,6 +1179,7 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 	}
 
 	order.OrderType = abi.DoDSettleOrderTypeChange
+	order.OrderId = "o3"
 	order.Connections = []*abi.DoDSettleConnectionParam{
 		{
 			DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
@@ -1197,9 +1198,7 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	order.OrderState = abi.DoDSettleOrderStateFail
 	order.OrderState = abi.DoDSettleOrderStateSuccess
-
 	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
 	if err != nil {
 		t.Fatal(err)
@@ -1212,21 +1211,42 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 
 	ph := abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: "p2"}
 
-	crp := &abi.DoDSettleConnectionParam{
+	ci := &abi.DoDSettleConnectionInfo{
 		DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{},
-		DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+		Active: &abi.DoDSettleConnectionDynamicParam{
+			OrderId:     "o3",
 			BillingType: abi.DoDSettleBillingTypePAYG,
 			BillingUnit: abi.DoDSettleBillingUnitSecond,
+			Price:       2,
+			StartTime:   0,
+			EndTime:     0,
+		},
+		Done: []*abi.DoDSettleConnectionDynamicParam{
+			{
+				OrderId:     "o1",
+				BillingType: abi.DoDSettleBillingTypeDOD,
+				Price:       2,
+				StartTime:   40,
+				EndTime:     50,
+			},
+			{
+				OrderId:     "o2",
+				BillingType: abi.DoDSettleBillingTypePAYG,
+				BillingUnit: abi.DoDSettleBillingUnitSecond,
+				Price:       2,
+				StartTime:   10,
+				EndTime:     0,
+			},
 		},
 	}
-	err = abi.DoDSettleUpdateConnectionRawParam(ctx, crp, ph.Hash())
+	err = abi.DoDSettleUpdateConnection(ctx, ci, ph.Hash())
 	if err != nil {
 		t.Fatal()
 	}
 
 	_, _, err = rr.ProcessSend(ctx, block)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	conn := &abi.DoDSettleConnectionInfo{

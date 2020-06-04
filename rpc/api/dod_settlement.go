@@ -396,7 +396,7 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 					pai := &DoDSettleProductWithActiveInfo{ProductId: p.ProductId, Active: false}
 
 					ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: p.ProductId}
-					_, err := abi.DodSettleGetSellerConnectionActive(d.ctx, ak.Hash())
+					_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
 					if err == nil {
 						pai.Active = true
 					}
@@ -666,13 +666,13 @@ func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller type
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64, flight, split bool) (*abi.DoDSettleOrderInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByOrder(d.ctx, seller, orderId, start, end, flight, split)
+	return abi.DoDSettleGenerateInvoiceByOrder(d.ctx, seller, orderId, start, end, flight, split)
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByBuyer(seller, buyer types.Address, start, end int64, flight, split bool) (*abi.DoDSettleBuyerInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByBuyer(d.ctx, seller, buyer, start, end, flight, split)
+	return abi.DoDSettleGenerateInvoiceByBuyer(d.ctx, seller, buyer, start, end, flight, split)
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByProductId(seller types.Address, productId string, start, end int64, flight, split bool) (*abi.DoDSettleProductInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByProduct(d.ctx, seller, productId, start, end, flight, split)
+	return abi.DoDSettleGenerateInvoiceByProduct(d.ctx, seller, productId, start, end, flight, split)
 }

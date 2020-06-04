@@ -196,6 +196,7 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 			conn = &abi.DoDSettleChangeConnectionParam{
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					Bandwidth:   bandwidthP,
+					BillingType: billingType,
 					BillingUnit: billingUnit,
 					Price:       price,
 					Currency:    "USD",
@@ -204,11 +205,12 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 		} else {
 			conn = &abi.DoDSettleChangeConnectionParam{
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
-					Bandwidth: bandwidthP,
-					StartTime: startTime,
-					EndTime:   endTime,
-					Price:     price,
-					Currency:  "USD",
+					Bandwidth:   bandwidthP,
+					BillingType: billingType,
+					StartTime:   startTime,
+					EndTime:     endTime,
+					Price:       price,
+					Currency:    "USD",
 				},
 			}
 		}

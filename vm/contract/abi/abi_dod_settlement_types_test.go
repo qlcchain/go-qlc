@@ -267,7 +267,9 @@ func TestDoDSettleChangeOrderParam(t *testing.T) {
 	}
 
 	cop.Connections[0].StartTime = 10
+	cop.Connections[0].EndTime = 20
 	cop.Connections[1].StartTime = 10
+	cop.Connections[1].EndTime = 20
 	err = cop.Verify()
 	if err != nil {
 		t.Fatal()
