@@ -421,34 +421,57 @@ type DoDPlacingOrderInfo struct {
 	OrderInfo  *abi.DoDSettleOrderInfo `json:"orderInfo"`
 }
 
-func (d *DoDSettlementAPI) GetPlacingOrder(buyer, seller types.Address) ([]*DoDPlacingOrderInfo, error) {
-	orderInfo := make([]*DoDPlacingOrderInfo, 0)
+type DoDPlacingOrderResp struct {
+	TotalOrders int                    `json:"totalOrders"`
+	OrderList   []*DoDPlacingOrderInfo `json:"orderList"`
+}
 
-	internalIds, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, buyer)
+func (d *DoDSettlementAPI) GetPlacingOrder(buyer, seller types.Address, count, offset int) (*DoDPlacingOrderResp, error) {
+	resp := new(DoDPlacingOrderResp)
+	resp.OrderList = make([]*DoDPlacingOrderInfo, 0)
+	ol := make([]*DoDPlacingOrderInfo, 0)
+
+	orders, err := d.GetOrderIdListByAddressAndSeller(buyer, seller)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, id := range internalIds {
-		oi, _ := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
+	for _, o := range orders {
+		oi, _ := abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, o.OrderId)
 		if oi == nil {
 			continue
 		}
 
-		if oi.Seller.Address != seller {
+		internalId, err := abi.DoDSettleGetInternalIdByOrderId(d.ctx, seller, o.OrderId)
+		if err != nil {
 			continue
 		}
 
-		if oi.ContractState == abi.DoDSettleContractStateConfirmed && oi.OrderState == abi.DoDSettleOrderStateNull {
+		if oi.ContractState == abi.DoDSettleContractStateRequest ||
+			(oi.ContractState == abi.DoDSettleContractStateConfirmed && oi.OrderState == abi.DoDSettleOrderStateNull) {
 			poi := &DoDPlacingOrderInfo{
-				InternalId: id,
+				InternalId: internalId,
 				OrderInfo:  oi,
 			}
-			orderInfo = append(orderInfo, poi)
+			ol = append(ol, poi)
 		}
 	}
 
-	return orderInfo, nil
+	resp.TotalOrders = len(ol)
+
+	for i, o := range ol {
+		if i+1 <= offset {
+			continue
+		}
+
+		if i+1 > offset+count {
+			break
+		}
+
+		resp.OrderList = append(resp.OrderList, o)
+	}
+
+	return resp, nil
 }
 
 func (d *DoDSettlementAPI) GetProductIdListByAddress(address types.Address) ([]*abi.DoDSettleProduct, error) {

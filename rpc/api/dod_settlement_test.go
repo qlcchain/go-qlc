@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"testing"
 
@@ -386,9 +387,10 @@ func TestDoDSettlementAPI_GetPlacingOrder(t *testing.T) {
 
 	buyer := mock.Address()
 	seller := mock.Address()
-	id := mock.Hash()
+	id1 := mock.Hash()
+	id2 := mock.Hash()
 
-	_, err := ds.GetPlacingOrder(buyer, seller)
+	_, err := ds.GetPlacingOrder(buyer, seller, 1, 0)
 	if err == nil {
 		t.Fatal()
 	}
@@ -402,8 +404,9 @@ func TestDoDSettlementAPI_GetPlacingOrder(t *testing.T) {
 	userInfo.ProductIds = make([]*abi.DoDSettleProduct, 0)
 	userInfo.OrderIds = make([]*abi.DoDSettleOrder, 0)
 
-	internalId := &abi.DoDSettleInternalIdWrap{InternalId: id}
-	userInfo.InternalIds = append(userInfo.InternalIds, internalId)
+	orderId1 := &abi.DoDSettleOrder{Seller: seller, OrderId: "o1"}
+	orderId2 := &abi.DoDSettleOrder{Seller: seller, OrderId: "o2"}
+	userInfo.OrderIds = append(userInfo.OrderIds, orderId1, orderId2)
 
 	data, err := userInfo.MarshalMsg(nil)
 	if err != nil {
@@ -415,28 +418,64 @@ func TestDoDSettlementAPI_GetPlacingOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.GetPlacingOrder(buyer, seller)
-	if err != nil {
-		t.Fatal()
-	}
+	order1Key := &abi.DoDSettleOrder{Seller: seller, OrderId: "o1"}
 
-	order := abi.NewOrderInfo()
-	err = abi.DoDSettleUpdateOrder(ds.ctx, order, id)
+	key = key[0:0]
+	key = append(key, abi.DoDSettleDBTableOrderIdMap)
+	key = append(key, order1Key.Hash().Bytes()...)
+
+	err = ds.ctx.SetStorage(nil, key, id1.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	order.Seller = &abi.DoDSettleUser{Address: seller}
-	order.ContractState = abi.DoDSettleContractStateConfirmed
-	order.OrderState = abi.DoDSettleOrderStateNull
-	err = abi.DoDSettleUpdateOrder(ds.ctx, order, id)
+	order2Key := &abi.DoDSettleOrder{Seller: seller, OrderId: "o2"}
+
+	key = key[0:0]
+	key = append(key, abi.DoDSettleDBTableOrderIdMap)
+	key = append(key, order2Key.Hash().Bytes()...)
+
+	err = ds.ctx.SetStorage(nil, key, id2.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = ds.GetPlacingOrder(buyer, seller)
+	_, err = ds.GetPlacingOrder(buyer, seller, 1, 0)
 	if err != nil {
 		t.Fatal()
+	}
+
+	order1 := abi.NewOrderInfo()
+	order1.OrderId = "o1"
+	order1.ContractState = abi.DoDSettleContractStateConfirmed
+	order1.OrderState = abi.DoDSettleOrderStateNull
+	err = abi.DoDSettleUpdateOrder(ds.ctx, order1, id1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	order2 := abi.NewOrderInfo()
+	order2.OrderId = "o2"
+	order2.ContractState = abi.DoDSettleContractStateConfirmed
+	order2.OrderState = abi.DoDSettleOrderStateNull
+	err = abi.DoDSettleUpdateOrder(ds.ctx, order2, id2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := ds.GetPlacingOrder(buyer, seller, 1, 1)
+	if err != nil || resp.TotalOrders != 2 || resp.OrderList[0].InternalId != id2 {
+		t.Fatal(util.ToIndentString(resp))
+	}
+
+	resp, err = ds.GetPlacingOrder(buyer, seller, 1, 0)
+	if err != nil || resp.TotalOrders != 2 || resp.OrderList[0].InternalId != id1 {
+		t.Fatal(util.ToIndentString(resp))
+	}
+
+	resp, err = ds.GetPlacingOrder(buyer, seller, 2, 0)
+	if err != nil || resp.TotalOrders != 2 || resp.OrderList[0].InternalId != id1 {
+		t.Fatal(util.ToIndentString(resp))
 	}
 }
 
