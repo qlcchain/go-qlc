@@ -100,9 +100,36 @@ func (n *NetAPI) GetPeerId(context.Context, *empty.Empty) (*pb.String, error) {
 }
 
 func toOnlineRepTotal(rep *api.OnlineRepTotal) *pb.OnlineRepTotal {
-	return &pb.OnlineRepTotal{}
+	r := &pb.OnlineRepTotal{
+		Reps:              nil,
+		ValidVotes:        toBalanceValue(rep.ValidVotes),
+		ValidVotesPercent: rep.ValidVotesPercent,
+	}
+	if rep.Reps != nil {
+		os := make([]*pb.OnlineRepInfo, 0)
+		for _, r := range rep.Reps {
+			rt := &pb.OnlineRepInfo{
+				Account: toAddressValue(r.Account),
+				Vote:    toBalanceValue(r.Vote),
+			}
+			os = append(os, rt)
+		}
+		r.Reps = os
+	}
+	return r
 }
 
 func toPeerInfos(peers []*types.PeerInfo) *pb.PeerInfos {
-	return &pb.PeerInfos{}
+	ps := make([]*pb.PeerInfo, 0)
+	for _, p := range peers {
+		pt := &pb.PeerInfo{
+			PeerID:         p.PeerID,
+			Address:        p.Address,
+			Version:        p.Version,
+			Rtt:            p.Rtt,
+			LastUpdateTime: p.LastUpdateTime,
+		}
+		ps = append(ps, pt)
+	}
+	return &pb.PeerInfos{PeerInfos: ps}
 }

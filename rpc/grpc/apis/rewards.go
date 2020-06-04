@@ -149,13 +149,48 @@ func (r *RewardsAPI) GetConfidantRewordsDetail(ctx context.Context, param *pbtyp
 }
 
 func toOriginRewardsParam(param *pb.RewardsParam) (*api.RewardsParam, error) {
-	return &api.RewardsParam{}, nil
+	amount := toOriginBalanceByValue(param.GetAmount())
+	self, err := toOriginAddressByValue(param.GetSelf())
+	if err != nil {
+		return nil, err
+	}
+	to, err := toOriginAddressByValue(param.GetTo())
+	if err != nil {
+		return nil, err
+	}
+	return &api.RewardsParam{
+		Id:     param.GetId(),
+		Amount: amount,
+		Self:   self,
+		To:     to,
+	}, nil
 }
 
 func toOriginRewardsParamWithSign(param *pb.RewardsParamWithSign) (*api.RewardsParam, *types.Signature, error) {
-	return &api.RewardsParam{}, &types.Signature{}, nil
+	rewardPara, err := toOriginRewardsParam(param.GetPara())
+	if err != nil {
+		return nil, nil, err
+	}
+	sign, err := toOriginSignatureByValue(param.GetSign())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return rewardPara, &sign, nil
 }
 
 func toRewardsInfos(infos []*abi.RewardsInfo) *pb.RewardsInfos {
-	return &pb.RewardsInfos{}
+	rs := make([]*pbtypes.RewardsInfo, 0)
+	for _, r := range infos {
+		rt := &pbtypes.RewardsInfo{
+			Type:     int32(r.Type),
+			From:     toAddressValue(r.From),
+			To:       toAddressValue(r.To),
+			TxHeader: toHashValue(r.TxHeader),
+			RxHeader: toHashValue(r.RxHeader),
+			Amount:   r.Amount.Int64(),
+		}
+		rs = append(rs, rt)
+	}
+	return &pb.RewardsInfos{Infos: rs}
 }

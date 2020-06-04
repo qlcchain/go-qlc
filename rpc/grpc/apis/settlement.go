@@ -174,7 +174,7 @@ func (s *SettlementAPI) GetContractsByStatus(ctx context.Context, param *pb.Cont
 		return nil, err
 	}
 	status := param.GetStatus()
-	count, offset := toOffset(param.GetCount(), param.GetOffset())
+	count, offset := toOffsetByValue(param.GetCount(), param.GetOffset())
 
 	r, err := s.settlement.GetContractsByStatus(&addr, status, count, offset)
 	if err != nil {
@@ -311,7 +311,7 @@ func (s *SettlementAPI) GetCDRStatusByDate(ctx context.Context, param *pb.CDRSta
 	}
 	start := param.GetStart()
 	end := param.GetEnd()
-	count, offset := toOffset(param.GetCount(), param.GetOffset())
+	count, offset := toOffsetByValue(param.GetCount(), param.GetOffset())
 	r, err := s.settlement.GetCDRStatusByDate(&addr, start, end, count, offset)
 	if err != nil {
 		return nil, err
@@ -324,7 +324,7 @@ func (s *SettlementAPI) GetAllCDRStatus(ctx context.Context, param *pb.Contracts
 	if err != nil {
 		return nil, err
 	}
-	count, offset := toOffset(param.GetCount(), param.GetOffset())
+	count, offset := toOffsetByValue(param.GetCount(), param.GetOffset())
 	r, err := s.settlement.GetAllCDRStatus(&addr, count, offset)
 	if err != nil {
 		return nil, err
@@ -341,7 +341,7 @@ func (s *SettlementAPI) GetMultiPartyCDRStatus(ctx context.Context, param *pb.Mu
 	if err != nil {
 		return nil, err
 	}
-	count, offset := toOffset(param.GetCount(), param.GetOffset())
+	count, offset := toOffsetByValue(param.GetCount(), param.GetOffset())
 	r, err := s.settlement.GetMultiPartyCDRStatus(&addr1, &addr2, count, offset)
 	if err != nil {
 		return nil, err
@@ -487,7 +487,7 @@ func toOriginContractsByAddressRequest(param *pb.ContractsByAddressRequest) (*ty
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	c, o := toOffset(param.GetCount(), param.GetOffset())
+	c, o := toOffsetByValue(param.GetCount(), param.GetOffset())
 	return &addr, c, o, nil
 }
 

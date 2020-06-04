@@ -2,6 +2,7 @@ package apis
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
@@ -315,57 +316,210 @@ func (p *PublicKeyDistributionAPI) GetVerifierHeartBlock(ctx context.Context, pa
 }
 
 func toOriginVerifierRegParam(para *pb.VerifierRegParam) (*api.VerifierRegParam, error) {
-	return &api.VerifierRegParam{}, nil
+	addr, err := toOriginAddressByValue(para.GetAccount())
+	if err != nil {
+		return nil, err
+	}
+	return &api.VerifierRegParam{
+		Account: addr,
+		VType:   para.GetType(),
+		VInfo:   para.GetId(),
+		VKey:    para.GetKey(),
+	}, nil
 }
 
 func toOriginVerifierUnRegParam(para *pb.VerifierUnRegParam) (*api.VerifierUnRegParam, error) {
-	return &api.VerifierUnRegParam{}, nil
+	addr, err := toOriginAddressByValue(para.GetAccount())
+	if err != nil {
+		return nil, err
+	}
+	return &api.VerifierUnRegParam{
+		Account: addr,
+		VType:   para.GetType(),
+	}, nil
 }
 
 func toVerifierRegParam(para *api.VerifierRegParam) *pb.VerifierRegParam {
-	return &pb.VerifierRegParam{}
+	return &pb.VerifierRegParam{
+		Account: toAddressValue(para.Account),
+		Type:    para.VType,
+		Id:      para.VInfo,
+		Key:     para.VKey,
+	}
 }
 
 func toVerifierRegParams(para []*api.VerifierRegParam) *pb.VerifierRegParams {
-	return &pb.VerifierRegParams{}
+	vs := make([]*pb.VerifierRegParam, 0)
+	for _, v := range para {
+		vs = append(vs, toVerifierRegParam(v))
+	}
+	return &pb.VerifierRegParams{Params: vs}
 }
 
 func toPovVerifierState(state *types.PovVerifierState) *pbtypes.PovVerifierState {
-	return &pbtypes.PovVerifierState{}
+	r := &pbtypes.PovVerifierState{
+		TotalVerify:  state.TotalVerify,
+		TotalReward:  state.TotalReward.Int64(),
+		ActiveHeight: state.ActiveHeight,
+	}
+	return r
 }
 
 func toPKDVerifierStateList(list *api.PKDVerifierStateList) *pb.PKDVerifierStateList {
-	return &pb.PKDVerifierStateList{}
+	r := &pb.PKDVerifierStateList{
+		VerifierNum:  int32(list.VerifierNum),
+		AllVerifiers: nil,
+	}
+	if list.AllVerifiers != nil {
+		rMap := make(map[string]*pbtypes.PovVerifierState)
+		for k, v := range list.AllVerifiers {
+			rMap[toAddressValue(k)] = toPovVerifierState(v)
+		}
+		r.AllVerifiers = rMap
+	}
+	return r
 }
 
 func toOriginPublishParam(param *pb.PublishParam) (*api.PublishParam, error) {
-	return &api.PublishParam{}, nil
+	addr, err := toOriginAddressByValue(param.GetAccount())
+	if err != nil {
+		return nil, err
+	}
+	fee := toOriginBalanceByValue(param.GetFee())
+	vers, err := toOriginAddressesByValues(param.GetVerifiers())
+	if err != nil {
+		return nil, err
+	}
+	codes, err := toOriginHashesByValues(param.GetCodes())
+	if err != nil {
+		return nil, err
+	}
+	return &api.PublishParam{
+		Account:   addr,
+		PType:     param.GetType(),
+		PID:       param.GetId(),
+		PubKey:    param.GetPubKey(),
+		KeyType:   param.GetKeyType(),
+		Fee:       fee,
+		Verifiers: vers,
+		Codes:     codes,
+		Hash:      "",
+	}, nil
 }
 
 func toPublishRet(ret *api.PublishRet) *pb.PublishRet {
-	return &pb.PublishRet{}
+	r := &pb.PublishRet{}
+	if ret.Block != nil {
+		r.Block = toStateBlock(ret.Block)
+	}
+	if ret.Verifiers != nil {
+		cMap := make(map[string]*pb.VerifierContent)
+		for k, v := range ret.Verifiers {
+			ct := &pb.VerifierContent{
+				Account: toAddressValue(v.Account),
+				PubKey:  v.PubKey,
+				Code:    v.Code,
+				Hash:    toHashValue(v.Hash),
+			}
+			cMap[k] = ct
+		}
+		r.Verifiers = cMap
+	}
+	return r
 }
 
 func toOracleParams(params []*api.OracleParam) *pb.OracleParams {
-	return &pb.OracleParams{}
+	os := make([]*pb.OracleParam, 0)
+	for _, p := range params {
+		ot := &pb.OracleParam{
+			Account: toAddressValue(p.Account),
+			Type:    p.OType,
+			Id:      p.OID,
+			KeyType: p.KeyType,
+			PubKey:  p.PubKey,
+			Code:    p.Code,
+			Hash:    p.Hash,
+		}
+		os = append(os, ot)
+	}
+	return &pb.OracleParams{
+		Params: os,
+	}
 }
 
 func toOriginUnPublishParam(param *pb.UnPublishParam) (*api.UnPublishParam, error) {
-	return &api.UnPublishParam{}, nil
+	addr, err := toOriginAddressByValue(param.GetAccount())
+	if err != nil {
+		return nil, err
+	}
+	return &api.UnPublishParam{
+		Account: addr,
+		PType:   param.GetType(),
+		PID:     param.GetId(),
+		PubKey:  param.GetPubKey(),
+		KeyType: param.GetKeyType(),
+		Hash:    param.GetHash(),
+	}, nil
 }
 
 func toPublishInfoStates(states []*api.PublishInfoState) *pb.PublishInfoStates {
-	return &pb.PublishInfoStates{}
+	ps := make([]*pb.PublishInfoState, 0)
+	for _, p := range states {
+		pt := toPublishInfoState(p)
+		ps = append(ps, pt)
+	}
+	return &pb.PublishInfoStates{States: ps}
 }
 
 func toPublishInfoState(state *api.PublishInfoState) *pb.PublishInfoState {
-	return &pb.PublishInfoState{}
+	r := &pb.PublishInfoState{
+		Account:   toAddressValue(state.Account),
+		Type:      state.PType,
+		Id:        state.PID,
+		PubKey:    state.PubKey,
+		KeyType:   state.KeyType,
+		Fee:       toBalanceValue(state.Fee),
+		Verifiers: toAddressValues(state.Verifiers),
+		Codes:     toHashValues(state.Codes),
+		Hash:      state.Hash,
+		State:     nil,
+	}
+	if state.State != nil {
+		p := &pbtypes.PovPublishState{
+			OracleAccounts: toAddressValues(state.State.OracleAccounts),
+			PublishHeight:  state.State.PublishHeight,
+			VerifiedHeight: state.State.VerifiedHeight,
+			VerifiedStatus: int32(state.State.VerifiedStatus),
+			BonusFee:       state.State.BonusFee.Int64(),
+		}
+		r.State = p
+	}
+	return r
 }
 
 func toOriginPackRewardData(param *pb.PKDRewardParam) (*api.PKDRewardParam, error) {
-	return &api.PKDRewardParam{}, nil
+	acc, err := toOriginAddressByValue(param.GetAccount())
+	if err != nil {
+		return nil, err
+	}
+	bene, err := toOriginAddressByValue(param.GetBeneficial())
+	if err != nil {
+		return nil, err
+	}
+	amount := big.NewInt(param.GetRewardAmount())
+	return &api.PKDRewardParam{
+		Account:      acc,
+		Beneficial:   bene,
+		EndHeight:    param.GetEndHeight(),
+		RewardAmount: amount,
+	}, nil
 }
 
 func toPackRewardData(param *api.PKDRewardParam) *pb.PKDRewardParam {
-	return &pb.PKDRewardParam{}
+	return &pb.PKDRewardParam{
+		Account:      toAddressValue(param.Account),
+		Beneficial:   toAddressValue(param.Beneficial),
+		EndHeight:    param.EndHeight,
+		RewardAmount: param.RewardAmount.Int64(),
+	}
 }

@@ -3,8 +3,6 @@ package apis
 import (
 	"context"
 
-	"math/big"
-
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
 
@@ -49,7 +47,7 @@ func (l *LedgerAPI) AccountHistoryTopn(ctx context.Context, param *pb.AccountHis
 	if err != nil {
 		return nil, err
 	}
-	count, offset := toOffset(param.GetCount(), param.GetOffset())
+	count, offset := toOffsetByValue(param.GetCount(), param.GetOffset())
 	r, err := l.ledger.AccountHistoryTopn(address, count, offset)
 	if err != nil {
 		return nil, err
@@ -267,7 +265,7 @@ func (l *LedgerAPI) BlockHash(ctx context.Context, block *pbtypes.StateBlock) (*
 		return nil, err
 	}
 	r := l.ledger.BlockHash(*blk)
-	return toHash(result), nil
+	return toHash(r), nil
 }
 
 func (l *LedgerAPI) BlocksInfo(ctx context.Context, hashes *pbtypes.Hashes) (*pb.APIBlocks, error) {
@@ -576,7 +574,7 @@ func (l *LedgerAPI) GenerateSendBlock(ctx context.Context, para *pb.GenerateSend
 		From:      from,
 		TokenName: para.GetPara().GetTokenName(),
 		To:        to,
-		Amount:    toOriginBalance(para.GetPara().GetAmount()),
+		Amount:    toOriginBalanceByValue(para.GetPara().GetAmount()),
 		Sender:    para.GetPara().GetSender(),
 		Receiver:  para.GetPara().GetReceiver(),
 		Message:   message,
@@ -636,7 +634,7 @@ func (l *LedgerAPI) Process(ctx context.Context, block *pbtypes.StateBlock) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return toHash(result), nil
+	return toHash(r), nil
 }
 
 func (l *LedgerAPI) NewBlock(*empty.Empty, pb.LedgerAPI_NewBlockServer) error {
@@ -703,7 +701,7 @@ func toAPIAccount(acc *api.APIAccount) *pb.APIAccount {
 	tms := make([]*pb.APITokenMeta, 0)
 	for _, tm := range acc.Tokens {
 		t := &pb.APITokenMeta{
-			Type:           tm.Type.String(),
+			Type:           toHashValue(tm.Type),
 			Header:         toHashValue(tm.Header),
 			Representative: toAddressValue(tm.Representative),
 			OpenBlock:      toHashValue(tm.OpenBlock),
@@ -736,7 +734,7 @@ func toAPIAccount(acc *api.APIAccount) *pb.APIAccount {
 		r.CoinOracle = toBalanceValue(*acc.CoinOracle)
 	}
 	if acc.Representative != nil {
-		r.Representative = toAddressValue(acc.Representative)
+		r.Representative = toAddressValue(*acc.Representative)
 	}
 	return r
 }
@@ -754,7 +752,7 @@ func toAPIPendings(pendings []*api.APIPending) *pb.APIPendings {
 			Type:      toHashValue(pending.Type),
 			TokenName: pending.TokenName,
 			Timestamp: pending.Timestamp,
-			BlockType: pending.BlockType.String(),
+			BlockType: toBlockTypeValue(pending.BlockType),
 		}
 		ps = append(ps, pt)
 	}

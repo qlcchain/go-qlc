@@ -84,8 +84,8 @@ message RepAvailRewardInfo  {
     uint64 availStartHeight   = 4;
     uint64 availEndHeight     = 5;
     uint64 availRewardBlocks  = 6;
-    string availRewardAmount  = 7;
-    bool   NneedCallReward    = 8;
+    int64  availRewardAmount  = 7;
+    bool   needCallReward     = 8;
 }
 
 message RepHistoryRewardInfo  {

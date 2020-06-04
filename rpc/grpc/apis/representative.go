@@ -2,8 +2,8 @@ package apis
 
 import (
 	"context"
-
 	"go.uber.org/zap"
+	"math/big"
 
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
@@ -139,13 +139,45 @@ func (p *RepAPI) GetRewardHistory(ctx context.Context, param *pbtypes.Address) (
 }
 
 func toOriginRepRewardParam(param *pb.RepRewardParam) (*api.RepRewardParam, error) {
-	return &api.RepRewardParam{}, nil
+	addr, err := toOriginAddressByValue(param.GetAccount())
+	if err != nil {
+		return nil, err
+	}
+	bene, err := toOriginAddressByValue(param.GetBeneficial())
+	if err != nil {
+		return nil, err
+	}
+	amount := big.NewInt(param.GetRewardAmount())
+	return &api.RepRewardParam{
+		Account:      addr,
+		Beneficial:   bene,
+		StartHeight:  param.GetStartHeight(),
+		EndHeight:    param.GetEndHeight(),
+		RewardBlocks: param.GetRewardBlocks(),
+		RewardAmount: amount,
+	}, nil
 }
 
 func toRepRewardParam(param *api.RepRewardParam) *pb.RepRewardParam {
-	return &pb.RepRewardParam{}
+	return &pb.RepRewardParam{
+		Account:      toAddressValue(param.Account),
+		Beneficial:   toAddressValue(param.Beneficial),
+		StartHeight:  param.StartHeight,
+		EndHeight:    param.EndHeight,
+		RewardBlocks: param.RewardBlocks,
+		RewardAmount: param.RewardAmount.Int64(),
+	}
 }
 
 func toRepAvailRewardInfo(r *api.RepAvailRewardInfo) *pb.RepAvailRewardInfo {
-	return &pb.RepAvailRewardInfo{}
+	return &pb.RepAvailRewardInfo{
+		LastEndHeight:     r.LastEndHeight,
+		LatestBlockHeight: r.LatestBlockHeight,
+		NodeRewardHeight:  r.NodeRewardHeight,
+		AvailStartHeight:  r.AvailStartHeight,
+		AvailEndHeight:    r.AvailEndHeight,
+		AvailRewardBlocks: r.AvailRewardBlocks,
+		AvailRewardAmount: toBalanceValue(r.AvailRewardAmount),
+		NeedCallReward:    r.NeedCallReward,
+	}
 }

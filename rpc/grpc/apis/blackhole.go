@@ -98,7 +98,7 @@ func (b *BlackHoleAPI) GetDestroyInfoDetail(ctx context.Context, param *pbtypes.
 		t.Owner = toAddressValue(info.Owner)
 		t.Token = toHashValue(info.Token)
 		t.Previous = toHashValue(info.Previous)
-		t.Amount = toBalanceValue(info.Amount)
+		t.Amount = info.Amount.Int64()
 		t.TimeStamp = info.TimeStamp
 		infos = append(infos, t)
 	}

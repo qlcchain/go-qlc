@@ -2,6 +2,7 @@ package apis
 
 import (
 	"context"
+	"math/big"
 
 	"go.uber.org/zap"
 
@@ -37,14 +38,6 @@ func (m *MinerAPI) GetRewardData(ctx context.Context, params *pb.RewardParam) (*
 	return &pb.Bytes{
 		Value: r,
 	}, nil
-}
-
-func toOriginRewardParam(param *pb.RewardParam) (*api.RewardParam, error) {
-	return &api.RewardParam{}, nil
-}
-
-func toRewardParam(param *api.RewardParam) *pb.RewardParam {
-	return &pb.RewardParam{}
 }
 
 func (m *MinerAPI) UnpackRewardData(ctx context.Context, params *pb.Bytes) (*pb.RewardParam, error) {
@@ -128,4 +121,35 @@ func (m *MinerAPI) GetRewardHistory(ctx context.Context, params *pbtypes.Address
 		RewardAmount:   toBalanceValue(r.RewardAmount),
 		LastRewardTime: r.LastRewardTime,
 	}, nil
+}
+
+func toOriginRewardParam(param *pb.RewardParam) (*api.RewardParam, error) {
+	coinBase, err := toOriginAddressByValue(param.GetCoinbase())
+	if err != nil {
+		return nil, err
+	}
+	bene, err := toOriginAddressByValue(param.GetBeneficial())
+	if err != nil {
+		return nil, err
+	}
+	amount := big.NewInt(param.GetRewardAmount())
+	return &api.RewardParam{
+		Coinbase:     coinBase,
+		Beneficial:   bene,
+		StartHeight:  param.GetStartHeight(),
+		EndHeight:    param.GetEndHeight(),
+		RewardBlocks: param.GetRewardBlocks(),
+		RewardAmount: amount,
+	}, nil
+}
+
+func toRewardParam(param *api.RewardParam) *pb.RewardParam {
+	return &pb.RewardParam{
+		Coinbase:     toAddressValue(param.Coinbase),
+		Beneficial:   toAddressValue(param.Beneficial),
+		StartHeight:  param.StartHeight,
+		EndHeight:    param.EndHeight,
+		RewardBlocks: param.RewardBlocks,
+		RewardAmount: param.RewardAmount.Int64(),
+	}
 }

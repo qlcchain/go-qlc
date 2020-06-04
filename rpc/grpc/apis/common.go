@@ -28,7 +28,7 @@ func toOffsetByProto(o *pb.Offset) (int, *int) {
 	return count, &offset
 }
 
-func toOffset(c int32, o int32) (int, *int) {
+func toOffsetByValue(c int32, o int32) (int, *int) {
 	count := int(c)
 	offset := int(o)
 	return count, &offset
@@ -38,7 +38,7 @@ func toOffset(c int32, o int32) (int, *int) {
 
 func toStateBlock(blk *types.StateBlock) *pbtypes.StateBlock {
 	return &pbtypes.StateBlock{
-		Type:           blk.GetType().String(),
+		Type:           toBlockTypeValue(blk.GetType()),
 		Token:          toHashValue(blk.GetToken()),
 		Address:        toAddressValue(blk.GetAddress()),
 		Balance:        toBalanceValue(blk.GetBalance()),
@@ -109,7 +109,7 @@ func toOriginStateBlock(blk *pbtypes.StateBlock) (*types.StateBlock, error) {
 		return nil, err
 	}
 	return &types.StateBlock{
-		Type:           types.BlockTypeFromStr(blk.GetType()),
+		Type:           toOriginBlockValue(blk.GetType()),
 		Token:          token,
 		Address:        addr,
 		Balance:        types.Balance{Int: big.NewInt(blk.GetBalance())},
@@ -130,7 +130,7 @@ func toOriginStateBlock(blk *pbtypes.StateBlock) (*types.StateBlock, error) {
 		PrivateFrom:    blk.GetPrivateFrom(),
 		PrivateFor:     blk.GetPrivateFor(),
 		PrivateGroupID: blk.GetPrivateGroupID(),
-		Work:           toOriginWork(blk.GetWork()),
+		Work:           toOriginWorkByValue(blk.GetWork()),
 		Signature:      sign,
 		Flag:           blk.GetFlag(),
 		PrivateRecvRsp: blk.GetPrivateRecvRsp(),
@@ -150,6 +150,16 @@ func toOriginStateBlocks(blks []*pbtypes.StateBlock) ([]*types.StateBlock, error
 	return blocks, nil
 }
 
+// BlockType
+
+func toBlockTypeValue(b types.BlockType) string {
+	return b.String()
+}
+
+func toOriginBlockValue(b string) types.BlockType {
+	return types.BlockTypeFromStr(b)
+}
+
 // Address
 
 func toAddress(addr types.Address) *pbtypes.Address {
@@ -158,8 +168,24 @@ func toAddress(addr types.Address) *pbtypes.Address {
 	}
 }
 
+func toAddresses(addrs []types.Address) *pbtypes.Addresses {
+	as := make([]string, 0)
+	for _, addr := range addrs {
+		as = append(as, addr.String())
+	}
+	return &pbtypes.Addresses{Addresses: as}
+}
+
 func toAddressValue(addr types.Address) string {
 	return addr.String()
+}
+
+func toAddressValues(addrs []types.Address) []string {
+	r := make([]string, 0)
+	for _, a := range addrs {
+		r = append(r, toAddressValue(a))
+	}
+	return r
 }
 
 func toOriginAddress(addr *pbtypes.Address) (types.Address, error) {
@@ -168,18 +194,6 @@ func toOriginAddress(addr *pbtypes.Address) (types.Address, error) {
 		return types.ZeroAddress, nil
 	}
 	return address, nil
-}
-
-func toOriginAddressByValue(addr string) (types.Address, error) {
-	return types.HexToAddress(addr)
-}
-
-func toAddresses(addrs []types.Address) *pbtypes.Addresses {
-	as := make([]string, 0)
-	for _, addr := range addrs {
-		as = append(as, addr.String())
-	}
-	return &pbtypes.Addresses{Addresses: as}
 }
 
 func toOriginAddresses(addrs *pbtypes.Addresses) ([]types.Address, error) {
@@ -194,26 +208,26 @@ func toOriginAddresses(addrs *pbtypes.Addresses) ([]types.Address, error) {
 	return as, nil
 }
 
+func toOriginAddressByValue(addr string) (types.Address, error) {
+	return types.HexToAddress(addr)
+}
+
+func toOriginAddressesByValues(addrs []string) ([]types.Address, error) {
+	rs := make([]types.Address, 0)
+	for _, r := range addrs {
+		rt, err := toOriginAddressByValue(r)
+		if err != nil {
+			return nil, err
+		}
+		rs = append(rs, rt)
+	}
+	return rs, nil
+}
+
 // Hash
 
 func toHash(hash types.Hash) *pbtypes.Hash {
 	return &pbtypes.Hash{Hash: hash.String()}
-}
-
-func toHashValue(hash types.Hash) string {
-	return hash.String()
-}
-
-func toOriginHash(hash *pbtypes.Hash) (types.Hash, error) {
-	h, err := toOriginHashByValue(hash.GetHash())
-	if err != nil {
-		return types.ZeroHash, err
-	}
-	return h, nil
-}
-
-func toOriginHashByValue(hash string) (types.Hash, error) {
-	return types.NewHash(hash)
 }
 
 func toHashes(hashes []types.Hash) *pbtypes.Hashes {
@@ -222,6 +236,26 @@ func toHashes(hashes []types.Hash) *pbtypes.Hashes {
 		hs = append(hs, h.String())
 	}
 	return &pbtypes.Hashes{Hashes: hs}
+}
+
+func toHashValue(hash types.Hash) string {
+	return hash.String()
+}
+
+func toHashValues(addrs []types.Hash) []string {
+	r := make([]string, 0)
+	for _, h := range addrs {
+		r = append(r, toHashValue(h))
+	}
+	return r
+}
+
+func toOriginHash(hash *pbtypes.Hash) (types.Hash, error) {
+	h, err := toOriginHashByValue(hash.GetHash())
+	if err != nil {
+		return types.ZeroHash, err
+	}
+	return h, nil
 }
 
 func toOriginHashes(hashes *pbtypes.Hashes) ([]types.Hash, error) {
@@ -236,6 +270,22 @@ func toOriginHashes(hashes *pbtypes.Hashes) ([]types.Hash, error) {
 	return hs, nil
 }
 
+func toOriginHashByValue(hash string) (types.Hash, error) {
+	return types.NewHash(hash)
+}
+
+func toOriginHashesByValues(hs []string) ([]types.Hash, error) {
+	rs := make([]types.Hash, 0)
+	for _, r := range hs {
+		rt, err := toOriginHashByValue(r)
+		if err != nil {
+			return nil, err
+		}
+		rs = append(rs, rt)
+	}
+	return rs, nil
+}
+
 // balance
 
 func toBalance(b types.Balance) *pbtypes.Balance {
@@ -246,7 +296,7 @@ func toBalanceValue(b types.Balance) int64 {
 	return b.Int64()
 }
 
-func toOriginBalance(b int64) types.Balance {
+func toOriginBalanceByValue(b int64) types.Balance {
 	return types.Balance{Int: big.NewInt(b)}
 }
 
@@ -270,6 +320,6 @@ func toWorkValue(b types.Work) uint64 {
 	return uint64(b)
 }
 
-func toOriginWork(v uint64) types.Work {
+func toOriginWorkByValue(v uint64) types.Work {
 	return types.Work(v)
 }

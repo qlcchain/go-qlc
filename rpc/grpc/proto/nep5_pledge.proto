@@ -5,7 +5,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "common.proto";
 import "types/basic.proto";
-
+import "types/contract.proto";
 
 option go_package = ".;proto";
 
@@ -66,7 +66,7 @@ service NEP5PledgeAPI{
        };
     }
 
-    rpc ParsePledgeInfo(Bytes) returns (NEP5PledgeInfo){
+    rpc ParsePledgeInfo(Bytes) returns (types.NEP5PledgeInfo){
         option (google.api.http) = {
            post: "/pledge/parsePledgeInfo"
            body: "*"
@@ -166,9 +166,9 @@ message WithdrawPledgeParam  {
 
 
 message NEP5PledgeInfo  {
-    int32 pType        = 1;
+    string pType       = 1;
     int64 Amount       = 2;
-    int64 WithdrawTime = 3;
+    string WithdrawTime = 3;
     string Beneficial  = 4;
     string PledgeAddress  = 5;
     string NEP5TxId       = 6;

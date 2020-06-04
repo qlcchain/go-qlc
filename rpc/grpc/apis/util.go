@@ -44,7 +44,7 @@ func (u *UtilApi) Encrypt(ctx context.Context, param *pb.EncryptRequest) (*pb.St
 }
 
 func (u *UtilApi) RawToBalance(ctx context.Context, param *pb.RawBalance) (*pb.Float, error) {
-	amount := toOriginBalance(param.GetBalance())
+	amount := toOriginBalanceByValue(param.GetBalance())
 	token := param.GetTokenName()
 	r, err := u.util.RawToBalance(amount, param.GetUnit(), &token)
 	if err != nil {
@@ -57,7 +57,7 @@ func (u *UtilApi) RawToBalance(ctx context.Context, param *pb.RawBalance) (*pb.F
 }
 
 func (u *UtilApi) BalanceToRaw(ctx context.Context, param *pb.RawBalance) (*pb.Int64, error) {
-	amount := toOriginBalance(param.GetBalance())
+	amount := toOriginBalanceByValue(param.GetBalance())
 	token := toStringPoint(param.GetTokenName())
 	r, err := u.util.BalanceToRaw(amount, param.GetUnit(), token)
 	if err != nil {

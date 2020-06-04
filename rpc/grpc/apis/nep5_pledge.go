@@ -2,11 +2,9 @@ package apis
 
 import (
 	"context"
-
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/rpc/api"
@@ -127,7 +125,7 @@ func (n *NEP5PledgeAPI) GetWithdrawRewardBlockBySendHash(ctx context.Context, pa
 	return toStateBlock(r), nil
 }
 
-func (n *NEP5PledgeAPI) ParsePledgeInfo(ctx context.Context, param *pb.Bytes) (*pb.NEP5PledgeInfo, error) {
+func (n *NEP5PledgeAPI) ParsePledgeInfo(ctx context.Context, param *pb.Bytes) (*pbtypes.NEP5PledgeInfo, error) {
 	r, err := n.nep5.ParsePledgeInfo(param.GetValue())
 	if err != nil {
 		return nil, err
@@ -248,25 +246,88 @@ func (n *NEP5PledgeAPI) GetTotalPledgeAmount(context.Context, *empty.Empty) (*pb
 }
 
 func toPledgeInfos(info *api.PledgeInfos) *pb.PledgeInfos {
-	return &pb.PledgeInfos{}
+	r := &pb.PledgeInfos{
+		PledgeInfos:  nil,
+		TotalAmounts: info.TotalAmounts.Int64(),
+	}
+	if info.PledgeInfo != nil {
+		infos := make([]*pb.NEP5PledgeInfo, 0)
+		for _, i := range info.PledgeInfo {
+			it := &pb.NEP5PledgeInfo{
+				PType:         i.PType,
+				Amount:        i.Amount.Int64(),
+				WithdrawTime:  i.WithdrawTime,
+				Beneficial:    toAddressValue(i.Beneficial),
+				PledgeAddress: toAddressValue(i.PledgeAddress),
+				NEP5TxId:      i.NEP5TxId,
+			}
+			infos = append(infos, it)
+		}
+		r.PledgeInfos = infos
+	}
+	return r
 }
 
 func toOriginPledgeParam(param *pb.PledgeParam) (*api.PledgeParam, error) {
-	return &api.PledgeParam{}, nil
+	bene, err := toOriginAddressByValue(param.GetBeneficial())
+	if err != nil {
+		return nil, err
+	}
+	pledge, err := toOriginAddressByValue(param.GetPledgeAddress())
+	if err != nil {
+		return nil, err
+	}
+	amount := toOriginBalanceByValue(param.GetAmount())
+	return &api.PledgeParam{
+		Beneficial:    bene,
+		PledgeAddress: pledge,
+		Amount:        amount,
+		PType:         param.GetPType(),
+		NEP5TxId:      param.GetNep5TxId(),
+	}, nil
 }
 
 func toOriginWithdrawPledgeParam(param *pb.WithdrawPledgeParam) (*api.WithdrawPledgeParam, error) {
-	return &api.WithdrawPledgeParam{}, nil
+	bene, err := toOriginAddressByValue(param.GetBeneficial())
+	if err != nil {
+		return nil, err
+	}
+	amount := toOriginBalanceByValue(param.GetAmount())
+	return &api.WithdrawPledgeParam{
+		Beneficial: bene,
+		Amount:     amount,
+		PType:      param.GetPType(),
+		NEP5TxId:   param.GetNep5TxId(),
+	}, nil
 }
 
 func toNEP5PledgeInfo(info *api.NEP5PledgeInfo) *pb.NEP5PledgeInfo {
-	return &pb.NEP5PledgeInfo{}
+	return &pb.NEP5PledgeInfo{
+		PType:         info.PType,
+		Amount:        info.Amount.Int64(),
+		WithdrawTime:  info.WithdrawTime,
+		Beneficial:    toAddressValue(info.Beneficial),
+		PledgeAddress: toAddressValue(info.PledgeAddress),
+		NEP5TxId:      info.NEP5TxId,
+	}
 }
 
-func toNEP5PledgeInfo2(info *abi.NEP5PledgeInfo) *pb.NEP5PledgeInfo {
-	return &pb.NEP5PledgeInfo{}
+func toNEP5PledgeInfo2(info *abi.NEP5PledgeInfo) *pbtypes.NEP5PledgeInfo {
+	return &pbtypes.NEP5PledgeInfo{
+		PType:         int32(info.PType),
+		Amount:        info.Amount.Int64(),
+		WithdrawTime:  info.WithdrawTime,
+		Beneficial:    toAddressValue(info.Beneficial),
+		PledgeAddress: toAddressValue(info.PledgeAddress),
+		NEP5TxId:      info.NEP5TxId,
+	}
 }
 
 func toNEP5PledgeInfos(infos []*api.NEP5PledgeInfo) *pb.NEP5PledgeInfos {
-	return &pb.NEP5PledgeInfos{}
+	ps := make([]*pb.NEP5PledgeInfo, 0)
+	for _, p := range infos {
+		pt := toNEP5PledgeInfo(p)
+		ps = append(ps, pt)
+	}
+	return &pb.NEP5PledgeInfos{PledgeInfos: ps}
 }

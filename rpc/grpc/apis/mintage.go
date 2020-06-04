@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/ledger"
@@ -25,7 +24,10 @@ func NewMintageAPI(cfgFile string, l ledger.Store) *MintageAPI {
 }
 
 func (m *MintageAPI) GetMintageData(ctx context.Context, param *pb.MintageParams) (*pb.Bytes, error) {
-	p := toOriginMintageParams(param)
+	p, err := toOriginMintageParams(param)
+	if err != nil {
+		return nil, err
+	}
 	r, err := m.mintage.GetMintageData(p)
 	if err != nil {
 		return nil, err
@@ -36,7 +38,10 @@ func (m *MintageAPI) GetMintageData(ctx context.Context, param *pb.MintageParams
 }
 
 func (m *MintageAPI) GetMintageBlock(ctx context.Context, param *pb.MintageParams) (*pbtypes.StateBlock, error) {
-	p := toOriginMintageParams(param)
+	p, err := toOriginMintageParams(param)
+	if err != nil {
+		return nil, err
+	}
 	r, err := m.mintage.GetMintageBlock(p)
 	if err != nil {
 		return nil, err
@@ -79,7 +84,10 @@ func (m *MintageAPI) ParseTokenInfo(ctx context.Context, param *pb.Bytes) (*pbty
 }
 
 func (m *MintageAPI) GetWithdrawMintageBlock(ctx context.Context, param *pb.WithdrawParams) (*pbtypes.StateBlock, error) {
-	p := toOriginWithdrawParams(param)
+	p, err := toOriginWithdrawParams(param)
+	if err != nil {
+		return nil, err
+	}
 	r, err := m.mintage.GetWithdrawMintageBlock(p)
 	if err != nil {
 		return nil, err
@@ -99,10 +107,42 @@ func (m *MintageAPI) GetWithdrawRewardBlock(ctx context.Context, param *pbtypes.
 	return toStateBlock(r), nil
 }
 
-func toOriginMintageParams(param *pb.MintageParams) *api.MintageParams {
-	return &api.MintageParams{}
+func toOriginMintageParams(param *pb.MintageParams) (*api.MintageParams, error) {
+	selfAddr, err := toOriginAddressByValue(param.GetSelfAddr())
+	if err != nil {
+		return nil, err
+	}
+	prevHash, err := toOriginHashByValue(param.GetPrevHash())
+	if err != nil {
+		return nil, err
+	}
+	benefit, err := toOriginAddressByValue(param.GetBeneficial())
+	if err != nil {
+		return nil, err
+	}
+	return &api.MintageParams{
+		SelfAddr:    selfAddr,
+		PrevHash:    prevHash,
+		TokenName:   param.GetTokenName(),
+		TokenSymbol: param.GetTokenSymbol(),
+		TotalSupply: param.GetTotalSupply(),
+		Decimals:    uint8(param.GetDecimals()),
+		Beneficial:  benefit,
+		NEP5TxId:    param.GetNEP5TxId(),
+	}, nil
 }
 
-func toOriginWithdrawParams(param *pb.WithdrawParams) *api.WithdrawParams {
-	return &api.WithdrawParams{}
+func toOriginWithdrawParams(param *pb.WithdrawParams) (*api.WithdrawParams, error) {
+	selfAddr, err := toOriginAddressByValue(param.GetSelfAddr())
+	if err != nil {
+		return nil, err
+	}
+	tokenId, err := toOriginHashByValue(param.GetTokenId())
+	if err != nil {
+		return nil, err
+	}
+	return &api.WithdrawParams{
+		SelfAddr: selfAddr,
+		TokenId:  tokenId,
+	}, nil
 }

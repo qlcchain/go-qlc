@@ -5,7 +5,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/rpc/api"
@@ -81,5 +80,14 @@ func (p *PtmKeyAPI) GetPtmKeyByAccountAndBtype(ctx context.Context, param *pb.Pt
 }
 
 func toPtmKeyUpdateParams(params []*api.PtmKeyUpdateParam) *pb.PtmKeyUpdateParams {
-	return &pb.PtmKeyUpdateParams{}
+	ps := make([]*pb.PtmKeyUpdateParam, 0)
+	for _, p := range params {
+		pt := &pb.PtmKeyUpdateParam{
+			Account: toAddressValue(p.Account),
+			Btype:   p.Btype,
+			Pubkey:  p.Pubkey,
+		}
+		ps = append(ps, pt)
+	}
+	return &pb.PtmKeyUpdateParams{Params: ps}
 }

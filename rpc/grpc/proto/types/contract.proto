@@ -23,6 +23,15 @@ message DestroyInfos {
     repeated DestroyInfo infos = 1;
 }
 
+message NEP5PledgeInfo  {
+    int32  pType        = 1;
+    int64  Amount       = 2;
+    int64  WithdrawTime = 3;
+    string Beneficial   = 4;
+    string PledgeAddress  = 5;
+    string NEP5TxId       = 6;
+}
+
 message Contractor {
     string Address  = 1;
     string Name     = 2;

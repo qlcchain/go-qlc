@@ -39,7 +39,7 @@ service MetricsAPI {
 }
 
 message InfoStats {
-    repeated InfoStat infos = 1;
+    repeated InfoStat stats = 1;
 }
 
 message InfoStat  {
