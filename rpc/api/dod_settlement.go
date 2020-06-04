@@ -290,7 +290,12 @@ func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoD
 		return nil, err
 	}
 
-	return abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
+	order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return order, nil
 }
 
 func (d *DoDSettlementAPI) GetProductInfoBySellerAndProductId(seller types.Address, productId string) (*abi.DoDSettleConnectionInfo, error) {
@@ -391,7 +396,7 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 					pai := &DoDSettleProductWithActiveInfo{ProductId: p.ProductId, Active: false}
 
 					ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: p.ProductId}
-					_, err := abi.DodSettleGetSellerConnectionActive(d.ctx, ak.Hash())
+					_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
 					if err == nil {
 						pai.Active = true
 					}
@@ -416,8 +421,15 @@ type DoDPlacingOrderInfo struct {
 	OrderInfo  *abi.DoDSettleOrderInfo `json:"orderInfo"`
 }
 
-func (d *DoDSettlementAPI) GetPlacingOrder(buyer, seller types.Address) ([]*DoDPlacingOrderInfo, error) {
-	orderInfo := make([]*DoDPlacingOrderInfo, 0)
+type DoDPlacingOrderResp struct {
+	TotalOrders int                    `json:"totalOrders"`
+	OrderList   []*DoDPlacingOrderInfo `json:"orderList"`
+}
+
+func (d *DoDSettlementAPI) GetPlacingOrder(buyer, seller types.Address, count, offset int) (*DoDPlacingOrderResp, error) {
+	resp := new(DoDPlacingOrderResp)
+	resp.OrderList = make([]*DoDPlacingOrderInfo, 0)
+	ol := make([]*DoDPlacingOrderInfo, 0)
 
 	internalIds, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, buyer)
 	if err != nil {
@@ -434,16 +446,31 @@ func (d *DoDSettlementAPI) GetPlacingOrder(buyer, seller types.Address) ([]*DoDP
 			continue
 		}
 
-		if oi.ContractState == abi.DoDSettleContractStateConfirmed && oi.OrderState == abi.DoDSettleOrderStateNull {
+		if oi.ContractState == abi.DoDSettleContractStateRequest ||
+			(oi.ContractState == abi.DoDSettleContractStateConfirmed && oi.OrderState == abi.DoDSettleOrderStateNull) {
 			poi := &DoDPlacingOrderInfo{
 				InternalId: id,
 				OrderInfo:  oi,
 			}
-			orderInfo = append(orderInfo, poi)
+			ol = append(ol, poi)
 		}
 	}
 
-	return orderInfo, nil
+	resp.TotalOrders = len(ol)
+
+	for i, o := range ol {
+		if i+1 <= offset {
+			continue
+		}
+
+		if i+1 > offset+count {
+			break
+		}
+
+		resp.OrderList = append(resp.OrderList, o)
+	}
+
+	return resp, nil
 }
 
 func (d *DoDSettlementAPI) GetProductIdListByAddress(address types.Address) ([]*abi.DoDSettleProduct, error) {
@@ -486,6 +513,11 @@ func (d *DoDSettlementAPI) GetOrderIdListByAddressAndSeller(address, seller type
 	return orders, nil
 }
 
+type DoDSettlementOrderInfoResp struct {
+	OrderInfo   []*abi.DoDSettleOrderInfo `json:"orderInfo"`
+	TotalOrders int                       `json:"totalOrders"`
+}
+
 func (d *DoDSettlementAPI) GetOrderCountByAddress(address types.Address) int {
 	order, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, address)
 	if err != nil {
@@ -495,7 +527,7 @@ func (d *DoDSettlementAPI) GetOrderCountByAddress(address types.Address) int {
 	}
 }
 
-func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, offset int) ([]*abi.DoDSettleOrderInfo, error) {
+func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, offset int) (*DoDSettlementOrderInfoResp, error) {
 	orders := make([]*abi.DoDSettleOrderInfo, 0)
 
 	internalIds, err := abi.DoDSettleGetInternalIdListByAddress(d.ctx, address)
@@ -524,7 +556,7 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, o
 		orders = append(orders, order)
 	}
 
-	return orders, nil
+	return &DoDSettlementOrderInfoResp{OrderInfo: orders, TotalOrders: len(internalIds)}, nil
 }
 
 func (d *DoDSettlementAPI) GetOrderCountByAddressAndSeller(address, seller types.Address) int {
@@ -536,7 +568,7 @@ func (d *DoDSettlementAPI) GetOrderCountByAddressAndSeller(address, seller types
 	}
 }
 
-func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.Address, count, offset int) ([]*abi.DoDSettleOrderInfo, error) {
+func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.Address, count, offset int) (*DoDSettlementOrderInfoResp, error) {
 	orders := make([]*abi.DoDSettleOrderInfo, 0)
 
 	orderIds, err := d.GetOrderIdListByAddressAndSeller(address, seller)
@@ -565,7 +597,12 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.
 		orders = append(orders, order)
 	}
 
-	return orders, nil
+	return &DoDSettlementOrderInfoResp{OrderInfo: orders, TotalOrders: len(orderIds)}, nil
+}
+
+type DoDSettlementProductInfoResp struct {
+	ProductInfo   []*abi.DoDSettleConnectionInfo `json:"productInfo"`
+	TotalProducts int                            `json:"totalProducts"`
 }
 
 func (d *DoDSettlementAPI) GetProductCountByAddress(address types.Address) int {
@@ -577,7 +614,7 @@ func (d *DoDSettlementAPI) GetProductCountByAddress(address types.Address) int {
 	}
 }
 
-func (d *DoDSettlementAPI) GetProductInfoByAddress(address types.Address, count, offset int) ([]*abi.DoDSettleConnectionInfo, error) {
+func (d *DoDSettlementAPI) GetProductInfoByAddress(address types.Address, count, offset int) (*DoDSettlementProductInfoResp, error) {
 	products := make([]*abi.DoDSettleConnectionInfo, 0)
 
 	productIds, err := abi.DoDSettleGetProductIdListByAddress(d.ctx, address)
@@ -606,7 +643,7 @@ func (d *DoDSettlementAPI) GetProductInfoByAddress(address types.Address, count,
 		products = append(products, product)
 	}
 
-	return products, nil
+	return &DoDSettlementProductInfoResp{ProductInfo: products, TotalProducts: len(productIds)}, nil
 }
 
 func (d *DoDSettlementAPI) GetProductCountByAddressAndSeller(address, seller types.Address) int {
@@ -618,7 +655,7 @@ func (d *DoDSettlementAPI) GetProductCountByAddressAndSeller(address, seller typ
 	}
 }
 
-func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller types.Address, count, offset int) ([]*abi.DoDSettleConnectionInfo, error) {
+func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller types.Address, count, offset int) (*DoDSettlementProductInfoResp, error) {
 	products := make([]*abi.DoDSettleConnectionInfo, 0)
 
 	productIds, err := d.GetProductIdListByAddressAndSeller(address, seller)
@@ -647,17 +684,17 @@ func (d *DoDSettlementAPI) GetProductInfoByAddressAndSeller(address, seller type
 		products = append(products, product)
 	}
 
-	return products, nil
+	return &DoDSettlementProductInfoResp{ProductInfo: products, TotalProducts: len(productIds)}, nil
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByOrderId(seller types.Address, orderId string, start, end int64, flight, split bool) (*abi.DoDSettleOrderInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByOrder(d.ctx, seller, orderId, start, end, flight, split)
+	return abi.DoDSettleGenerateInvoiceByOrder(d.ctx, seller, orderId, start, end, flight, split)
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByBuyer(seller, buyer types.Address, start, end int64, flight, split bool) (*abi.DoDSettleBuyerInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByBuyer(d.ctx, seller, buyer, start, end, flight, split)
+	return abi.DoDSettleGenerateInvoiceByBuyer(d.ctx, seller, buyer, start, end, flight, split)
 }
 
 func (d *DoDSettlementAPI) GenerateInvoiceByProductId(seller types.Address, productId string, start, end int64, flight, split bool) (*abi.DoDSettleProductInvoice, error) {
-	return abi.DodSettleGenerateInvoiceByProduct(d.ctx, seller, productId, start, end, flight, split)
+	return abi.DoDSettleGenerateInvoiceByProduct(d.ctx, seller, productId, start, end, flight, split)
 }

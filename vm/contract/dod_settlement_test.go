@@ -48,18 +48,19 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 		Connections: []*abi.DoDSettleConnectionParam{
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-					ItemId:         "item1",
-					BuyerProductId: "bp1",
-					SrcCompanyName: "CBC",
-					SrcRegion:      "CHN",
-					SrcCity:        "HK",
-					SrcDataCenter:  "DCX",
-					SrcPort:        "sp001",
-					DstCompanyName: "CBC",
-					DstRegion:      "USA",
-					DstCity:        "NYC",
-					DstDataCenter:  "DCY",
-					DstPort:        "dp001",
+					ItemId:            "item1",
+					BuyerProductId:    "bp1",
+					ProductOfferingId: "po1",
+					SrcCompanyName:    "CBC",
+					SrcRegion:         "CHN",
+					SrcCity:           "HK",
+					SrcDataCenter:     "DCX",
+					SrcPort:           "sp001",
+					DstCompanyName:    "CBC",
+					DstRegion:         "USA",
+					DstCity:           "NYC",
+					DstDataCenter:     "DCY",
+					DstPort:           "dp001",
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					ConnectionName: "conn1",
@@ -76,18 +77,19 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 			},
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-					ItemId:         "item2",
-					BuyerProductId: "bp2",
-					SrcCompanyName: "CBC",
-					SrcRegion:      "CHN",
-					SrcCity:        "HK",
-					SrcDataCenter:  "DCX",
-					SrcPort:        "sp001",
-					DstCompanyName: "CBC",
-					DstRegion:      "USA",
-					DstCity:        "NYC",
-					DstDataCenter:  "DCY",
-					DstPort:        "dp001",
+					ItemId:            "item2",
+					BuyerProductId:    "bp2",
+					ProductOfferingId: "po2",
+					SrcCompanyName:    "CBC",
+					SrcRegion:         "CHN",
+					SrcCity:           "HK",
+					SrcDataCenter:     "DCX",
+					SrcPort:           "sp001",
+					DstCompanyName:    "CBC",
+					DstRegion:         "USA",
+					DstCity:           "NYC",
+					DstDataCenter:     "DCY",
+					DstPort:           "dp001",
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					ConnectionName: "conn2",
@@ -709,6 +711,14 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	conn := new(abi.DoDSettleConnectionParam)
+	conn.BillingType = abi.DoDSettleBillingTypeDOD
+	pk := abi.DoDSettleProduct{Seller: cp.Seller.Address, ProductId: "p1"}
+	err = abi.DoDSettleUpdateConnectionRawParam(ctx, conn, pk.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, _, err = co.ProcessSend(ctx, block)
 	if err != nil {
 		t.Fatal()
@@ -912,6 +922,14 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 
 	param.Buyer.Address = block.Address
 	block.Data, err = param.ToABI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cp := new(abi.DoDSettleConnectionParam)
+	cp.BillingType = abi.DoDSettleBillingTypeDOD
+	pk := abi.DoDSettleProduct{Seller: param.Seller.Address, ProductId: "p1"}
+	err = abi.DoDSettleUpdateConnectionRawParam(ctx, cp, pk.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1163,6 +1181,7 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 	}
 
 	order.OrderType = abi.DoDSettleOrderTypeChange
+	order.OrderId = "o3"
 	order.Connections = []*abi.DoDSettleConnectionParam{
 		{
 			DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
@@ -1181,9 +1200,7 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	order.OrderState = abi.DoDSettleOrderStateFail
 	order.OrderState = abi.DoDSettleOrderStateSuccess
-
 	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
 	if err != nil {
 		t.Fatal(err)
@@ -1196,21 +1213,42 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 
 	ph := abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: "p2"}
 
-	crp := &abi.DoDSettleConnectionParam{
+	ci := &abi.DoDSettleConnectionInfo{
 		DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{},
-		DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+		Active: &abi.DoDSettleConnectionDynamicParam{
+			OrderId:     "o3",
 			BillingType: abi.DoDSettleBillingTypePAYG,
 			BillingUnit: abi.DoDSettleBillingUnitSecond,
+			Price:       2,
+			StartTime:   0,
+			EndTime:     0,
+		},
+		Done: []*abi.DoDSettleConnectionDynamicParam{
+			{
+				OrderId:     "o1",
+				BillingType: abi.DoDSettleBillingTypeDOD,
+				Price:       2,
+				StartTime:   40,
+				EndTime:     50,
+			},
+			{
+				OrderId:     "o2",
+				BillingType: abi.DoDSettleBillingTypePAYG,
+				BillingUnit: abi.DoDSettleBillingUnitSecond,
+				Price:       2,
+				StartTime:   10,
+				EndTime:     0,
+			},
 		},
 	}
-	err = abi.DoDSettleUpdateConnectionRawParam(ctx, crp, ph.Hash())
+	err = abi.DoDSettleUpdateConnection(ctx, ci, ph.Hash())
 	if err != nil {
 		t.Fatal()
 	}
 
 	_, _, err = rr.ProcessSend(ctx, block)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	conn := &abi.DoDSettleConnectionInfo{

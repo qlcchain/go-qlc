@@ -105,6 +105,7 @@ const (
 	DoDSettleDBTableSellerConnActive
 	DoDSettleDBTableBuyerConnActive
 	DoDSettleDBTableConnRawParam
+	DoDSettleDBTablePAYGTimeSpan
 )
 
 //go:generate msgp
@@ -182,6 +183,10 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 	productBuyerProductIdMap := make(map[string]struct{})
 
 	for _, c := range z.Connections {
+		if len(c.ProductOfferingId) == 0 {
+			return fmt.Errorf("product offering id needed")
+		}
+
 		if len(c.ItemId) == 0 {
 			return fmt.Errorf("item id needed")
 		}
@@ -216,8 +221,8 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
 
-		if c.BillingType == DoDSettleBillingTypeDOD && c.StartTime == c.EndTime {
-			return fmt.Errorf("starttime equal endtime")
+		if c.BillingType == DoDSettleBillingTypeDOD && (c.StartTime == 0 || c.EndTime == 0 || c.StartTime == c.EndTime) {
+			return fmt.Errorf("invalid starttime endtime")
 		}
 	}
 
@@ -225,28 +230,29 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 }
 
 type DoDSettleConnectionRawParam struct {
-	ItemId         string                `json:"itemId,omitempty" msg:"ii"`
-	BuyerProductId string                `json:"buyerProductId,omitempty" msg:"bp"`
-	SrcCompanyName string                `json:"srcCompanyName,omitempty" msg:"scn"`
-	SrcRegion      string                `json:"srcRegion,omitempty" msg:"sr"`
-	SrcCity        string                `json:"srcCity,omitempty" msg:"sc"`
-	SrcDataCenter  string                `json:"srcDataCenter,omitempty" msg:"sdc"`
-	SrcPort        string                `json:"srcPort,omitempty" msg:"sp"`
-	DstCompanyName string                `json:"dstCompanyName,omitempty" msg:"dcn"`
-	DstRegion      string                `json:"dstRegion,omitempty" msg:"dr"`
-	DstCity        string                `json:"dstCity,omitempty" msg:"dc"`
-	DstDataCenter  string                `json:"dstDataCenter,omitempty" msg:"ddc"`
-	DstPort        string                `json:"dstPort,omitempty" msg:"dp"`
-	ConnectionName string                `json:"connectionName,omitempty" msg:"cn"`
-	PaymentType    DoDSettlePaymentType  `json:"paymentType,omitempty" msg:"pt"`
-	BillingType    DoDSettleBillingType  `json:"billingType,omitempty" msg:"bt"`
-	Currency       string                `json:"currency,omitempty" msg:"cr"`
-	ServiceClass   DoDSettleServiceClass `json:"serviceClass,omitempty" msg:"scs"`
-	Bandwidth      string                `json:"bandwidth,omitempty" msg:"bw"`
-	BillingUnit    DoDSettleBillingUnit  `json:"billingUnit,omitempty" msg:"bu"`
-	Price          float64               `json:"price,omitempty" msg:"p"`
-	StartTime      int64                 `json:"startTime" msg:"st"`
-	EndTime        int64                 `json:"endTime" msg:"et"`
+	ItemId            string                `json:"itemId,omitempty" msg:"ii"`
+	BuyerProductId    string                `json:"buyerProductId,omitempty" msg:"bp"`
+	ProductOfferingId string                `json:"productOfferingId,omitempty" msg:"po"`
+	SrcCompanyName    string                `json:"srcCompanyName,omitempty" msg:"scn"`
+	SrcRegion         string                `json:"srcRegion,omitempty" msg:"sr"`
+	SrcCity           string                `json:"srcCity,omitempty" msg:"sc"`
+	SrcDataCenter     string                `json:"srcDataCenter,omitempty" msg:"sdc"`
+	SrcPort           string                `json:"srcPort,omitempty" msg:"sp"`
+	DstCompanyName    string                `json:"dstCompanyName,omitempty" msg:"dcn"`
+	DstRegion         string                `json:"dstRegion,omitempty" msg:"dr"`
+	DstCity           string                `json:"dstCity,omitempty" msg:"dc"`
+	DstDataCenter     string                `json:"dstDataCenter,omitempty" msg:"ddc"`
+	DstPort           string                `json:"dstPort,omitempty" msg:"dp"`
+	ConnectionName    string                `json:"connectionName,omitempty" msg:"cn"`
+	PaymentType       DoDSettlePaymentType  `json:"paymentType,omitempty" msg:"pt"`
+	BillingType       DoDSettleBillingType  `json:"billingType,omitempty" msg:"bt"`
+	Currency          string                `json:"currency,omitempty" msg:"cr"`
+	ServiceClass      DoDSettleServiceClass `json:"serviceClass,omitempty" msg:"scs"`
+	Bandwidth         string                `json:"bandwidth,omitempty" msg:"bw"`
+	BillingUnit       DoDSettleBillingUnit  `json:"billingUnit,omitempty" msg:"bu"`
+	Price             float64               `json:"price,omitempty" msg:"p"`
+	StartTime         int64                 `json:"startTime" msg:"st"`
+	EndTime           int64                 `json:"endTime" msg:"et"`
 }
 
 type DoDSettleConnectionParam struct {
@@ -255,19 +261,20 @@ type DoDSettleConnectionParam struct {
 }
 
 type DoDSettleConnectionStaticParam struct {
-	ItemId         string `json:"itemId,omitempty" msg:"ii"`
-	BuyerProductId string `json:"buyerProductId,omitempty" msg:"bp"`
-	ProductId      string `json:"productId,omitempty" msg:"pi"`
-	SrcCompanyName string `json:"srcCompanyName,omitempty" msg:"scn"`
-	SrcRegion      string `json:"srcRegion,omitempty" msg:"sr"`
-	SrcCity        string `json:"srcCity,omitempty" msg:"sc"`
-	SrcDataCenter  string `json:"srcDataCenter,omitempty" msg:"sdc"`
-	SrcPort        string `json:"srcPort,omitempty" msg:"sp"`
-	DstCompanyName string `json:"dstCompanyName,omitempty" msg:"dcn"`
-	DstRegion      string `json:"dstRegion,omitempty" msg:"dr"`
-	DstCity        string `json:"dstCity,omitempty" msg:"dc"`
-	DstDataCenter  string `json:"dstDataCenter,omitempty" msg:"ddc"`
-	DstPort        string `json:"dstPort,omitempty" msg:"dp"`
+	ItemId            string `json:"itemId,omitempty" msg:"ii"`
+	BuyerProductId    string `json:"buyerProductId,omitempty" msg:"bp"`
+	ProductOfferingId string `json:"productOfferingId,omitempty" msg:"po"`
+	ProductId         string `json:"productId,omitempty" msg:"pi"`
+	SrcCompanyName    string `json:"srcCompanyName,omitempty" msg:"scn"`
+	SrcRegion         string `json:"srcRegion,omitempty" msg:"sr"`
+	SrcCity           string `json:"srcCity,omitempty" msg:"sc"`
+	SrcDataCenter     string `json:"srcDataCenter,omitempty" msg:"sdc"`
+	SrcPort           string `json:"srcPort,omitempty" msg:"sp"`
+	DstCompanyName    string `json:"dstCompanyName,omitempty" msg:"dcn"`
+	DstRegion         string `json:"dstRegion,omitempty" msg:"dr"`
+	DstCity           string `json:"dstCity,omitempty" msg:"dc"`
+	DstDataCenter     string `json:"dstDataCenter,omitempty" msg:"ddc"`
+	DstPort           string `json:"dstPort,omitempty" msg:"dp"`
 }
 
 type DoDSettleConnectionDynamicParam struct {
@@ -483,8 +490,8 @@ func (z *DoDSettleChangeOrderParam) Verify() error {
 			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
 
-		if c.BillingType == DoDSettleBillingTypeDOD && c.StartTime == c.EndTime {
-			return fmt.Errorf("starttime equal endtime")
+		if c.BillingType == DoDSettleBillingTypeDOD && (c.StartTime == 0 || c.EndTime == 0 || c.StartTime == c.EndTime) {
+			return fmt.Errorf("invalid starttime endtime")
 		}
 	}
 
@@ -591,12 +598,13 @@ func (z *DoDSettleResourceReadyParam) Verify() error {
 
 type DoDSettleInvoiceConnDynamic struct {
 	DoDSettleConnectionDynamicParam
-	InvoiceStartTime    int64   `json:"invoiceStartTime,omitempty"`
-	InvoiceStartTimeStr string  `json:"invoiceStartTimeStr,omitempty"`
-	InvoiceEndTime      int64   `json:"invoiceEndTime,omitempty"`
-	InvoiceEndTimeStr   string  `json:"invoiceEndTimeStr,omitempty"`
-	InvoiceUnitCount    int     `json:"invoiceUnitCount,omitempty"`
-	Amount              float64 `json:"amount"`
+	InvoiceStartTime    int64              `json:"invoiceStartTime,omitempty"`
+	InvoiceStartTimeStr string             `json:"invoiceStartTimeStr,omitempty"`
+	InvoiceEndTime      int64              `json:"invoiceEndTime,omitempty"`
+	InvoiceEndTimeStr   string             `json:"invoiceEndTimeStr,omitempty"`
+	InvoiceUnitCount    int                `json:"invoiceUnitCount,omitempty"`
+	OrderType           DoDSettleOrderType `json:"orderType,omitempty"`
+	Amount              float64            `json:"amount"`
 }
 
 type DoDSettleInvoiceConnDetail struct {
@@ -657,4 +665,19 @@ func (z *DoDSettleConnectionActiveKey) Hash() types.Hash {
 
 type DoDSettleConnectionActive struct {
 	ActiveAt int64 `json:"activeAt" msg:"a"`
+}
+
+type DoDSettlePAYGTimeSpan struct {
+	StartTime int64 `msg:"s"`
+	EndTime   int64 `msg:"e"`
+}
+
+type DoDSettlePAYGTimeSpanKey struct {
+	ProductId string
+	OrderId   string
+}
+
+func (z *DoDSettlePAYGTimeSpanKey) Hash() types.Hash {
+	data := append([]byte(z.ProductId), []byte(z.OrderId)...)
+	return types.HashData(data)
 }

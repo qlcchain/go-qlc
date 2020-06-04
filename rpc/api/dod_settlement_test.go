@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"testing"
 
@@ -386,9 +387,10 @@ func TestDoDSettlementAPI_GetPlacingOrder(t *testing.T) {
 
 	buyer := mock.Address()
 	seller := mock.Address()
-	id := mock.Hash()
+	id1 := mock.Hash()
+	id2 := mock.Hash()
 
-	_, err := ds.GetPlacingOrder(buyer, seller)
+	_, err := ds.GetPlacingOrder(buyer, seller, 1, 0)
 	if err == nil {
 		t.Fatal()
 	}
@@ -402,8 +404,9 @@ func TestDoDSettlementAPI_GetPlacingOrder(t *testing.T) {
 	userInfo.ProductIds = make([]*abi.DoDSettleProduct, 0)
 	userInfo.OrderIds = make([]*abi.DoDSettleOrder, 0)
 
-	internalId := &abi.DoDSettleInternalIdWrap{InternalId: id}
-	userInfo.InternalIds = append(userInfo.InternalIds, internalId)
+	internalId1 := &abi.DoDSettleInternalIdWrap{InternalId: id1}
+	internalId2 := &abi.DoDSettleInternalIdWrap{InternalId: id2}
+	userInfo.InternalIds = append(userInfo.InternalIds, internalId1, internalId2)
 
 	data, err := userInfo.MarshalMsg(nil)
 	if err != nil {
@@ -415,28 +418,36 @@ func TestDoDSettlementAPI_GetPlacingOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.GetPlacingOrder(buyer, seller)
-	if err != nil {
-		t.Fatal()
-	}
-
-	order := abi.NewOrderInfo()
-	err = abi.DoDSettleUpdateOrder(ds.ctx, order, id)
+	order1 := abi.NewOrderInfo()
+	order1.Seller = &abi.DoDSettleUser{Address: seller}
+	order1.ContractState = abi.DoDSettleContractStateRequest
+	err = abi.DoDSettleUpdateOrder(ds.ctx, order1, id1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	order.Seller = &abi.DoDSettleUser{Address: seller}
-	order.ContractState = abi.DoDSettleContractStateConfirmed
-	order.OrderState = abi.DoDSettleOrderStateNull
-	err = abi.DoDSettleUpdateOrder(ds.ctx, order, id)
+	order2 := abi.NewOrderInfo()
+	order2.Seller = &abi.DoDSettleUser{Address: seller}
+	order2.ContractState = abi.DoDSettleContractStateConfirmed
+	order2.OrderState = abi.DoDSettleOrderStateNull
+	err = abi.DoDSettleUpdateOrder(ds.ctx, order2, id2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = ds.GetPlacingOrder(buyer, seller)
-	if err != nil {
-		t.Fatal()
+	resp, err := ds.GetPlacingOrder(buyer, seller, 1, 1)
+	if err != nil || resp.TotalOrders != 2 || resp.OrderList[0].InternalId != id2 {
+		t.Fatal(util.ToIndentString(resp))
+	}
+
+	resp, err = ds.GetPlacingOrder(buyer, seller, 1, 0)
+	if err != nil || resp.TotalOrders != 2 || resp.OrderList[0].InternalId != id1 {
+		t.Fatal(util.ToIndentString(resp))
+	}
+
+	resp, err = ds.GetPlacingOrder(buyer, seller, 2, 0)
+	if err != nil || resp.TotalOrders != 2 || resp.OrderList[0].InternalId != id1 {
+		t.Fatal(util.ToIndentString(resp))
 	}
 }
 
@@ -676,12 +687,12 @@ func TestDoDSettlementAPI_GetOrderInfoByAddress(t *testing.T) {
 	addDoDSettleTestOrder(t, ds.ctx, address, mock.Address(), 10)
 
 	ois, err := ds.GetOrderInfoByAddress(address, 1, 0)
-	if err != nil || ois[0].OrderId != "order9" {
+	if err != nil || ois.OrderInfo[0].OrderId != "order9" {
 		t.Fatal()
 	}
 
 	ois, err = ds.GetOrderInfoByAddress(address, 2, 3)
-	if err != nil || len(ois) != 2 || ois[0].OrderId != "order6" {
+	if err != nil || ois.TotalOrders != 10 || len(ois.OrderInfo) != 2 || ois.OrderInfo[0].OrderId != "order6" {
 		t.Fatal()
 	}
 }
@@ -719,12 +730,12 @@ func TestDoDSettlementAPI_GetOrderInfoByAddressAndSeller(t *testing.T) {
 	addDoDSettleTestOrder(t, ds.ctx, address, seller, 10)
 
 	ois, err := ds.GetOrderInfoByAddressAndSeller(address, seller, 1, 0)
-	if err != nil || ois[0].OrderId != "order9" {
+	if err != nil || ois.OrderInfo[0].OrderId != "order9" {
 		t.Fatal()
 	}
 
 	ois, err = ds.GetOrderInfoByAddressAndSeller(address, seller, 2, 3)
-	if err != nil || len(ois) != 2 || ois[0].OrderId != "order6" {
+	if err != nil || ois.TotalOrders != 10 || len(ois.OrderInfo) != 2 || ois.OrderInfo[0].OrderId != "order6" {
 		t.Fatal()
 	}
 }
@@ -762,12 +773,12 @@ func TestDoDSettlementAPI_GetProductInfoByAddress(t *testing.T) {
 	addDoDSettleTestConnection(t, ds.ctx, address, seller, 10)
 
 	pds, err := ds.GetProductInfoByAddress(address, 1, 0)
-	if err != nil || pds[0].ProductId != "product9" {
+	if err != nil || pds.ProductInfo[0].ProductId != "product9" {
 		t.Fatal()
 	}
 
 	pds, err = ds.GetProductInfoByAddress(address, 2, 3)
-	if err != nil || len(pds) != 2 || pds[0].ProductId != "product6" {
+	if err != nil || pds.TotalProducts != 10 || len(pds.ProductInfo) != 2 || pds.ProductInfo[0].ProductId != "product6" {
 		t.Fatal()
 	}
 }
@@ -805,12 +816,12 @@ func TestDoDSettlementAPI_GetProductInfoByAddressAndSeller(t *testing.T) {
 	addDoDSettleTestConnection(t, ds.ctx, address, seller, 10)
 
 	pds, err := ds.GetProductInfoByAddressAndSeller(address, seller, 1, 0)
-	if err != nil || pds[0].ProductId != "product9" {
+	if err != nil || pds.ProductInfo[0].ProductId != "product9" {
 		t.Fatal()
 	}
 
 	pds, err = ds.GetProductInfoByAddressAndSeller(address, seller, 2, 3)
-	if err != nil || len(pds) != 2 || pds[0].ProductId != "product6" {
+	if err != nil || pds.TotalProducts != 10 || len(pds.ProductInfo) != 2 || pds.ProductInfo[0].ProductId != "product6" {
 		t.Fatal()
 	}
 }
