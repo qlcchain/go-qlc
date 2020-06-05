@@ -159,7 +159,12 @@ func (d *DoDSettlementAPI) GetUpdateOrderInfoRewardBlock(param *DoDSettleRespons
 		return nil, fmt.Errorf("unpack data err %s", err)
 	}
 
-	for _, p := range pm.ProductIds {
+	order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, pm.InternalId)
+	if err != nil {
+		return nil, fmt.Errorf("get order by internalId err %s", pm.InternalId)
+	}
+
+	for _, p := range order.Connections {
 		ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: p.ProductId}
 		_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
 		if err != nil {

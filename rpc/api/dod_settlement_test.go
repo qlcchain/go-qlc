@@ -104,6 +104,14 @@ func TestDoDSettlementAPI_GetUpdateOrderInfoRewardBlock(t *testing.T) {
 		t.Fatal()
 	}
 
+	order := abi.NewOrderInfo()
+	order.Connections = []*abi.DoDSettleConnectionParam{{}}
+	order.Connections[0].ProductId = "p1"
+	err = abi.DoDSettleUpdateOrder(ds.ctx, order, pm.InternalId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: "p1"}
 	err = abi.DoDSettleSetSellerConnectionActive(ds.ctx, &abi.DoDSettleConnectionActive{ActiveAt: 111}, ak.Hash())
 	if err != nil {
