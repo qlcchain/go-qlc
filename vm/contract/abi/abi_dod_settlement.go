@@ -1075,6 +1075,15 @@ func DoDSettleGenerateInvoiceByProduct(ctx *vmstore.VMContext, seller types.Addr
 		return nil, err
 	}
 
+	for _, u := range productOrder.Usage {
+		internalId, err := DoDSettleGetInternalIdByOrderId(ctx, seller, u.OrderId)
+		if err != nil {
+			return nil, err
+		}
+
+		u.InternalId = internalId
+	}
+
 	invoice.StartTime = start
 	invoice.EndTime = end
 	invoice.Currency = order.Connections[0].Currency

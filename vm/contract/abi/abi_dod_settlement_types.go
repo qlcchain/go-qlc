@@ -309,6 +309,7 @@ type DoDSettleConnectionStaticParam struct {
 
 type DoDSettleConnectionDynamicParam struct {
 	OrderId        string                `json:"orderId,omitempty" msg:"oi"`
+	InternalId     types.Hash            `json:"internalId,omitempty" msg:"-"`
 	QuoteId        string                `json:"quoteId,omitempty" msg:"q"`
 	QuoteItemId    string                `json:"quoteItemId,omitempty" msg:"qi"`
 	ConnectionName string                `json:"connectionName,omitempty" msg:"cn"`

@@ -128,6 +128,12 @@ func (z *DoDSettleBuyerInvoice) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "InvoiceId":
+			err = z.InvoiceId.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "InvoiceId")
+				return
+			}
 		case "OrderCount":
 			z.OrderCount, err = dc.ReadInt()
 			if err != nil {
@@ -302,9 +308,19 @@ func (z *DoDSettleBuyerInvoice) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleBuyerInvoice) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 9
+	// map header, size 10
+	// write "InvoiceId"
+	err = en.Append(0x8a, 0xa9, 0x49, 0x6e, 0x76, 0x6f, 0x69, 0x63, 0x65, 0x49, 0x64)
+	if err != nil {
+		return
+	}
+	err = z.InvoiceId.EncodeMsg(en)
+	if err != nil {
+		err = msgp.WrapError(err, "InvoiceId")
+		return
+	}
 	// write "OrderCount"
-	err = en.Append(0x89, 0xaa, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	err = en.Append(0xaa, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
@@ -459,9 +475,16 @@ func (z *DoDSettleBuyerInvoice) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleBuyerInvoice) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 9
+	// map header, size 10
+	// string "InvoiceId"
+	o = append(o, 0x8a, 0xa9, 0x49, 0x6e, 0x76, 0x6f, 0x69, 0x63, 0x65, 0x49, 0x64)
+	o, err = z.InvoiceId.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "InvoiceId")
+		return
+	}
 	// string "OrderCount"
-	o = append(o, 0x89, 0xaa, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	o = append(o, 0xaa, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 	o = msgp.AppendInt(o, z.OrderCount)
 	// string "TotalConnectionCount"
 	o = append(o, 0xb4, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
@@ -547,6 +570,12 @@ func (z *DoDSettleBuyerInvoice) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "InvoiceId":
+			bts, err = z.InvoiceId.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InvoiceId")
+				return
+			}
 		case "OrderCount":
 			z.OrderCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
@@ -719,7 +748,7 @@ func (z *DoDSettleBuyerInvoice) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleBuyerInvoice) Msgsize() (s int) {
-	s = 1 + 11 + msgp.IntSize + 21 + msgp.IntSize + 12 + msgp.Float64Size + 9 + msgp.StringPrefixSize + len(z.Currency) + 10 + msgp.Int64Size + 8 + msgp.Int64Size + 6
+	s = 1 + 10 + z.InvoiceId.Msgsize() + 11 + msgp.IntSize + 21 + msgp.IntSize + 12 + msgp.Float64Size + 9 + msgp.StringPrefixSize + len(z.Currency) + 10 + msgp.Int64Size + 8 + msgp.Int64Size + 6
 	if z.Buyer == nil {
 		s += msgp.NilSize
 	} else {
@@ -5572,6 +5601,12 @@ func (z *DoDSettleInvoiceOrderDetail) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "OrderId")
 				return
 			}
+		case "InternalId":
+			err = z.InternalId.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "InternalId")
+				return
+			}
 		case "ConnectionCount":
 			z.ConnectionCount, err = dc.ReadInt()
 			if err != nil {
@@ -5628,15 +5663,25 @@ func (z *DoDSettleInvoiceOrderDetail) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleInvoiceOrderDetail) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 5
 	// write "OrderId"
-	err = en.Append(0x84, 0xa7, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x49, 0x64)
+	err = en.Append(0x85, 0xa7, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x49, 0x64)
 	if err != nil {
 		return
 	}
 	err = en.WriteString(z.OrderId)
 	if err != nil {
 		err = msgp.WrapError(err, "OrderId")
+		return
+	}
+	// write "InternalId"
+	err = en.Append(0xaa, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x49, 0x64)
+	if err != nil {
+		return
+	}
+	err = z.InternalId.EncodeMsg(en)
+	if err != nil {
+		err = msgp.WrapError(err, "InternalId")
 		return
 	}
 	// write "ConnectionCount"
@@ -5689,10 +5734,17 @@ func (z *DoDSettleInvoiceOrderDetail) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleInvoiceOrderDetail) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 5
 	// string "OrderId"
-	o = append(o, 0x84, 0xa7, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x49, 0x64)
+	o = append(o, 0x85, 0xa7, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x49, 0x64)
 	o = msgp.AppendString(o, z.OrderId)
+	// string "InternalId"
+	o = append(o, 0xaa, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x49, 0x64)
+	o, err = z.InternalId.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "InternalId")
+		return
+	}
 	// string "ConnectionCount"
 	o = append(o, 0xaf, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 	o = msgp.AppendInt(o, z.ConnectionCount)
@@ -5738,6 +5790,12 @@ func (z *DoDSettleInvoiceOrderDetail) UnmarshalMsg(bts []byte) (o []byte, err er
 			z.OrderId, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "OrderId")
+				return
+			}
+		case "InternalId":
+			bts, err = z.InternalId.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InternalId")
 				return
 			}
 		case "ConnectionCount":
@@ -5796,7 +5854,7 @@ func (z *DoDSettleInvoiceOrderDetail) UnmarshalMsg(bts []byte) (o []byte, err er
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleInvoiceOrderDetail) Msgsize() (s int) {
-	s = 1 + 8 + msgp.StringPrefixSize + len(z.OrderId) + 16 + msgp.IntSize + 12 + msgp.Float64Size + 12 + msgp.ArrayHeaderSize
+	s = 1 + 8 + msgp.StringPrefixSize + len(z.OrderId) + 11 + z.InternalId.Msgsize() + 16 + msgp.IntSize + 12 + msgp.Float64Size + 12 + msgp.ArrayHeaderSize
 	for za0001 := range z.Connections {
 		if z.Connections[za0001] == nil {
 			s += msgp.NilSize
@@ -6754,6 +6812,12 @@ func (z *DoDSettleOrderInvoice) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "InvoiceId":
+			err = z.InvoiceId.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "InvoiceId")
+				return
+			}
 		case "TotalConnectionCount":
 			z.TotalConnectionCount, err = dc.ReadInt()
 			if err != nil {
@@ -6909,9 +6973,19 @@ func (z *DoDSettleOrderInvoice) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleOrderInvoice) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 8
+	// map header, size 9
+	// write "InvoiceId"
+	err = en.Append(0x89, 0xa9, 0x49, 0x6e, 0x76, 0x6f, 0x69, 0x63, 0x65, 0x49, 0x64)
+	if err != nil {
+		return
+	}
+	err = z.InvoiceId.EncodeMsg(en)
+	if err != nil {
+		err = msgp.WrapError(err, "InvoiceId")
+		return
+	}
 	// write "TotalConnectionCount"
-	err = en.Append(0x88, 0xb4, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	err = en.Append(0xb4, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
@@ -7049,9 +7123,16 @@ func (z *DoDSettleOrderInvoice) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleOrderInvoice) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 8
+	// map header, size 9
+	// string "InvoiceId"
+	o = append(o, 0x89, 0xa9, 0x49, 0x6e, 0x76, 0x6f, 0x69, 0x63, 0x65, 0x49, 0x64)
+	o, err = z.InvoiceId.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "InvoiceId")
+		return
+	}
 	// string "TotalConnectionCount"
-	o = append(o, 0x88, 0xb4, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	o = append(o, 0xb4, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 	o = msgp.AppendInt(o, z.TotalConnectionCount)
 	// string "TotalAmount"
 	o = append(o, 0xab, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x6d, 0x6f, 0x75, 0x6e, 0x74)
@@ -7131,6 +7212,12 @@ func (z *DoDSettleOrderInvoice) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "InvoiceId":
+			bts, err = z.InvoiceId.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InvoiceId")
+				return
+			}
 		case "TotalConnectionCount":
 			z.TotalConnectionCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
@@ -7284,7 +7371,7 @@ func (z *DoDSettleOrderInvoice) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleOrderInvoice) Msgsize() (s int) {
-	s = 1 + 21 + msgp.IntSize + 12 + msgp.Float64Size + 9 + msgp.StringPrefixSize + len(z.Currency) + 10 + msgp.Int64Size + 8 + msgp.Int64Size + 6
+	s = 1 + 10 + z.InvoiceId.Msgsize() + 21 + msgp.IntSize + 12 + msgp.Float64Size + 9 + msgp.StringPrefixSize + len(z.Currency) + 10 + msgp.Int64Size + 8 + msgp.Int64Size + 6
 	if z.Buyer == nil {
 		s += msgp.NilSize
 	} else {
@@ -8090,6 +8177,12 @@ func (z *DoDSettleProductInvoice) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "InvoiceId":
+			err = z.InvoiceId.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "InvoiceId")
+				return
+			}
 		case "TotalAmount":
 			z.TotalAmount, err = dc.ReadFloat64()
 			if err != nil {
@@ -8239,9 +8332,19 @@ func (z *DoDSettleProductInvoice) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleProductInvoice) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
+	// map header, size 8
+	// write "InvoiceId"
+	err = en.Append(0x88, 0xa9, 0x49, 0x6e, 0x76, 0x6f, 0x69, 0x63, 0x65, 0x49, 0x64)
+	if err != nil {
+		return
+	}
+	err = z.InvoiceId.EncodeMsg(en)
+	if err != nil {
+		err = msgp.WrapError(err, "InvoiceId")
+		return
+	}
 	// write "TotalAmount"
-	err = en.Append(0x87, 0xab, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x6d, 0x6f, 0x75, 0x6e, 0x74)
+	err = en.Append(0xab, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x6d, 0x6f, 0x75, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
@@ -8369,9 +8472,16 @@ func (z *DoDSettleProductInvoice) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleProductInvoice) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
+	// map header, size 8
+	// string "InvoiceId"
+	o = append(o, 0x88, 0xa9, 0x49, 0x6e, 0x76, 0x6f, 0x69, 0x63, 0x65, 0x49, 0x64)
+	o, err = z.InvoiceId.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "InvoiceId")
+		return
+	}
 	// string "TotalAmount"
-	o = append(o, 0x87, 0xab, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x6d, 0x6f, 0x75, 0x6e, 0x74)
+	o = append(o, 0xab, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x6d, 0x6f, 0x75, 0x6e, 0x74)
 	o = msgp.AppendFloat64(o, z.TotalAmount)
 	// string "Currency"
 	o = append(o, 0xa8, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x63, 0x79)
@@ -8448,6 +8558,12 @@ func (z *DoDSettleProductInvoice) UnmarshalMsg(bts []byte) (o []byte, err error)
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "InvoiceId":
+			bts, err = z.InvoiceId.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InvoiceId")
+				return
+			}
 		case "TotalAmount":
 			z.TotalAmount, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
@@ -8595,7 +8711,7 @@ func (z *DoDSettleProductInvoice) UnmarshalMsg(bts []byte) (o []byte, err error)
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DoDSettleProductInvoice) Msgsize() (s int) {
-	s = 1 + 12 + msgp.Float64Size + 9 + msgp.StringPrefixSize + len(z.Currency) + 10 + msgp.Int64Size + 8 + msgp.Int64Size + 6
+	s = 1 + 10 + z.InvoiceId.Msgsize() + 12 + msgp.Float64Size + 9 + msgp.StringPrefixSize + len(z.Currency) + 10 + msgp.Int64Size + 8 + msgp.Int64Size + 6
 	if z.Buyer == nil {
 		s += msgp.NilSize
 	} else {
