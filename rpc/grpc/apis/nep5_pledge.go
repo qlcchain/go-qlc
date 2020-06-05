@@ -268,6 +268,16 @@ func toPledgeInfos(info *api.PledgeInfos) *pb.PledgeInfos {
 	return r
 }
 
+func toPledgeParam(param *api.PledgeParam) *pb.PledgeParam {
+	return &pb.PledgeParam{
+		Beneficial:    toAddressValue(param.Beneficial),
+		PledgeAddress: toAddressValue(param.PledgeAddress),
+		Amount:        toBalanceValue(param.Amount),
+		PType:         param.PType,
+		Nep5TxId:      param.NEP5TxId,
+	}
+}
+
 func toOriginPledgeParam(param *pb.PledgeParam) (*api.PledgeParam, error) {
 	bene, err := toOriginAddressByValue(param.GetBeneficial())
 	if err != nil {
@@ -285,6 +295,15 @@ func toOriginPledgeParam(param *pb.PledgeParam) (*api.PledgeParam, error) {
 		PType:         param.GetPType(),
 		NEP5TxId:      param.GetNep5TxId(),
 	}, nil
+}
+
+func toWithdrawPledgeParam(param *api.WithdrawPledgeParam) *pb.WithdrawPledgeParam {
+	return &pb.WithdrawPledgeParam{
+		Beneficial: toAddressValue(param.Beneficial),
+		Amount:     toBalanceValue(param.Amount),
+		PType:      param.PType,
+		Nep5TxId:   param.NEP5TxId,
+	}
 }
 
 func toOriginWithdrawPledgeParam(param *pb.WithdrawPledgeParam) (*api.WithdrawPledgeParam, error) {

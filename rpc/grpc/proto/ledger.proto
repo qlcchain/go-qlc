@@ -350,13 +350,13 @@ message AccountHistoryTopnReq {
 }
 
 message AccountsPendingReq {
-    types.Addresses  addresses = 1;
+    repeated string  addresses = 1;
     int32      count     = 2;
 }
 
 message ChainReq {
-    types.Hash hash = 1;
-    int32      count     = 2;
+    string hash = 1;
+    int32  count     = 2;
 }
 
 message AccountsBalanceRsp{
@@ -402,7 +402,7 @@ message APISendBlockPara  {
 }
 
 message GenerateSendBlockReq {
-    APISendBlockPara para    = 1;
+    APISendBlockPara param    = 1;
     string           prkStr  = 2;
 }
 

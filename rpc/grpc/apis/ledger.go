@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
 
@@ -216,7 +215,7 @@ func (l *LedgerAPI) AccountsFrontiers(ctx context.Context, addresses *pbtypes.Ad
 }
 
 func (l *LedgerAPI) AccountsPending(ctx context.Context, ap *pb.AccountsPendingReq) (*pb.AccountsPendingRsp, error) {
-	addrs, err := toOriginAddresses(ap.GetAddresses())
+	addrs, err := toOriginAddressesByValues(ap.GetAddresses())
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +352,7 @@ func (l *LedgerAPI) BlocksCountByType(context.Context, *empty.Empty) (*pb.Blocks
 }
 
 func (l *LedgerAPI) Chain(ctx context.Context, para *pb.ChainReq) (*pbtypes.Hashes, error) {
-	hash, err := toOriginHash(para.GetHash())
+	hash, err := toOriginHashByValue(para.GetHash())
 	if err != nil {
 		return nil, err
 	}
@@ -555,28 +554,28 @@ func (l *LedgerAPI) AllGenesisBlocks(context.Context, *empty.Empty) (*pbtypes.St
 }
 
 func (l *LedgerAPI) GenerateSendBlock(ctx context.Context, para *pb.GenerateSendBlockReq) (*pbtypes.StateBlock, error) {
-	from, err := toOriginAddressByValue(para.GetPara().GetFrom())
+	from, err := toOriginAddressByValue(para.GetParam().GetFrom())
 	if err != nil {
 		return nil, err
 	}
-	to, err := toOriginAddressByValue(para.GetPara().GetTo())
+	to, err := toOriginAddressByValue(para.GetParam().GetTo())
 	if err != nil {
 		return nil, err
 	}
 	message := types.ZeroHash
-	if para.GetPara().GetMessage() != "" {
-		message, err = toOriginHashByValue(para.GetPara().GetMessage())
+	if para.GetParam().GetMessage() != "" {
+		message, err = toOriginHashByValue(para.GetParam().GetMessage())
 		if err != nil {
 			return nil, err
 		}
 	}
 	r, err := l.ledger.GenerateSendBlock(&api.APISendBlockPara{
 		From:      from,
-		TokenName: para.GetPara().GetTokenName(),
+		TokenName: para.GetParam().GetTokenName(),
 		To:        to,
-		Amount:    toOriginBalanceByValue(para.GetPara().GetAmount()),
-		Sender:    para.GetPara().GetSender(),
-		Receiver:  para.GetPara().GetReceiver(),
+		Amount:    toOriginBalanceByValue(para.GetParam().GetAmount()),
+		Sender:    para.GetParam().GetSender(),
+		Receiver:  para.GetParam().GetReceiver(),
 		Message:   message,
 	}, toStringPoint(para.GetPrkStr()))
 	if err != nil {

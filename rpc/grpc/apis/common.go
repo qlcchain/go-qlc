@@ -307,7 +307,7 @@ func toSignatureValue(b types.Signature) string {
 }
 
 func toOriginSignatureByValue(s string) (types.Signature, error) {
-	sign, err := toOriginSignatureByValue(s)
+	sign, err := types.NewSignature(s)
 	if err != nil {
 		return types.ZeroSignature, err
 	}

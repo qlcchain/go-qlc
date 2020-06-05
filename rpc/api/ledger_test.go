@@ -54,7 +54,9 @@ func setupDefaultLedgerAPI(t *testing.T) (func(t *testing.T), ledger.Store, *Led
 			t.Fatal(err)
 		}
 	}
-
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	return func(t *testing.T) {
 		err := l.Close()
 		if err != nil {
@@ -306,7 +308,6 @@ func TestLedgerAPI_AccountBlocksCount(t *testing.T) {
 func TestLedgerAPI_AccountHistoryTopn(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
-	time.Sleep(2 * time.Second)
 	r, err := ledgerApi.AccountHistoryTopn(account1.Address(), 100, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -460,7 +461,9 @@ func TestLedgerAPI_AccountsPending(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(3 * time.Second)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	r, err := ledgerApi.AccountsPending([]types.Address{sAdd}, 10)
 	if err != nil {
 		t.Fatal(err)
@@ -497,7 +500,6 @@ func TestLedgerAPI_AccountsCount(t *testing.T) {
 func TestLedgerAPI_Accounts(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
-	time.Sleep(3 * time.Second)
 	r, err := ledgerApi.Accounts(10, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -629,7 +631,6 @@ func TestLedgerAPI_ConfirmedBlocksInfo(t *testing.T) {
 func TestLedgerAPI_Blocks(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
-	time.Sleep(2 * time.Second)
 	r, err := ledgerApi.Blocks(100, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -658,7 +659,6 @@ func TestLedgerAPI_Chain(t *testing.T) {
 func TestLedgerAPI_Delegators(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
-	time.Sleep(2 * time.Second)
 	r, err := ledgerApi.Delegators(account1.Address())
 	if err != nil {
 		t.Fatal(err)
@@ -671,7 +671,6 @@ func TestLedgerAPI_Delegators(t *testing.T) {
 func TestLedgerAPI_DelegatorsCount(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
-	time.Sleep(2 * time.Second)
 	r, err := ledgerApi.DelegatorsCount(account1.Address())
 	if err != nil {
 		t.Fatal(err)
@@ -796,7 +795,6 @@ func TestLedgerAPI_Process(t *testing.T) {
 func TestLedgerAPI_Representatives(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
-	time.Sleep(2 * time.Second)
 	r, err := ledgerApi.Representatives(nil)
 	if err != nil {
 		t.Fatal(err)

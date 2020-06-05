@@ -107,6 +107,19 @@ func (m *MintageAPI) GetWithdrawRewardBlock(ctx context.Context, param *pbtypes.
 	return toStateBlock(r), nil
 }
 
+func toMintageParams(param *api.MintageParams) *pb.MintageParams {
+	return &pb.MintageParams{
+		SelfAddr:    toAddressValue(param.SelfAddr),
+		PrevHash:    toHashValue(param.PrevHash),
+		TokenName:   param.TokenName,
+		TokenSymbol: param.TokenSymbol,
+		TotalSupply: param.TotalSupply,
+		Decimals:    int32(param.Decimals),
+		Beneficial:  toAddressValue(param.Beneficial),
+		NEP5TxId:    param.NEP5TxId,
+	}
+}
+
 func toOriginMintageParams(param *pb.MintageParams) (*api.MintageParams, error) {
 	selfAddr, err := toOriginAddressByValue(param.GetSelfAddr())
 	if err != nil {

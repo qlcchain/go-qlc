@@ -17,7 +17,7 @@ import (
 	"testing"
 )
 
-func newTestUtilApi(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *UtilApi) {
+func setupDefaultUtilApi(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *UtilApi) {
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
@@ -57,7 +57,7 @@ func newTestUtilApi(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, 
 }
 
 func TestNewUtilApi(t *testing.T) {
-	testcase, _, api := newTestUtilApi(t)
+	testcase, _, api := setupDefaultUtilApi(t)
 	defer testcase(t)
 
 	raw := mock.Hash().String()
