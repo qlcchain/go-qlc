@@ -412,7 +412,12 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 					Products:   make([]*DoDSettleProductWithActiveInfo, 0),
 				}
 
-				for _, p := range param.ProductIds {
+				order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, param.InternalId)
+				if err != nil {
+					return nil
+				}
+
+				for _, p := range order.Connections {
 					pai := &DoDSettleProductWithActiveInfo{ProductId: p.ProductId, Active: false}
 
 					ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: p.ProductId}
