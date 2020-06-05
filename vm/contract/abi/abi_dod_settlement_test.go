@@ -785,6 +785,37 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 	addDoDSettleTestConnection(t, ctx, conn1, seller)
 	addDoDSettleTestConnection(t, ctx, conn2, seller)
 
+	orderKey := &DoDSettleOrder{Seller: order.Seller.Address, OrderId: "order002"}
+
+	var key []byte
+	key = append(key, DoDSettleDBTableOrderIdMap)
+	key = append(key, orderKey.Hash().Bytes()...)
+
+	err := ctx.SetStorage(nil, key, mock.Hash().Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orderKey.OrderId = "order003"
+	key = key[0:0]
+	key = append(key, DoDSettleDBTableOrderIdMap)
+	key = append(key, orderKey.Hash().Bytes()...)
+
+	err = ctx.SetStorage(nil, key, mock.Hash().Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orderKey.OrderId = "order004"
+	key = key[0:0]
+	key = append(key, DoDSettleDBTableOrderIdMap)
+	key = append(key, orderKey.Hash().Bytes()...)
+
+	err = ctx.SetStorage(nil, key, mock.Hash().Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	start := int64(3000)
 	end := int64(12000)
 	invoice, err := DoDSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
