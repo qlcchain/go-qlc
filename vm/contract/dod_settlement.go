@@ -1242,7 +1242,7 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 		return nil, nil, err
 	}
 
-	err = param.Verify()
+	err = param.Verify(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

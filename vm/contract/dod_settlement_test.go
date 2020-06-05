@@ -137,7 +137,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 
 	_, _, err = co.ProcessSend(ctx, block)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	var key []byte
@@ -902,6 +902,8 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 	}
 
 	param.Connections[0].ProductId = "p1"
+	param.Connections[0].QuoteId = "q1"
+	param.Connections[0].QuoteItemId = "qi1"
 	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)
@@ -936,7 +938,7 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 
 	_, _, err = to.ProcessSend(ctx, block)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	var key []byte

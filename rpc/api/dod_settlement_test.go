@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 	"testing"
@@ -76,7 +77,43 @@ func TestDoDSettlementAPI_GetUpdateOrderInfoRewardBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	_, _ = ds.GetUpdateOrderInfoRewardBlock(param)
+	block := mock.StateBlockWithoutWork()
+	err = ds.l.AddStateBlock(block)
+	if err != nil {
+		t.Fatal()
+	}
+
+	param.RequestHash = block.GetHash()
+	_, err = ds.GetUpdateOrderInfoRewardBlock(param)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pm := new(abi.DoDSettleUpdateOrderInfoParam)
+	pm.InternalId = mock.Hash()
+	pm.ProductIds = []*abi.DoDSettleProductItem{{ProductId: "p1"}}
+	block.Data, _ = pm.ToABI()
+	err = ds.l.AddStateBlock(block)
+	if err != nil {
+		t.Fatal()
+	}
+
+	param.RequestHash = block.GetHash()
+	_, err = ds.GetUpdateOrderInfoRewardBlock(param)
+	if err == nil {
+		t.Fatal()
+	}
+
+	ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: "p1"}
+	err = abi.DoDSettleSetSellerConnectionActive(ds.ctx, &abi.DoDSettleConnectionActive{ActiveAt: 111}, ak.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.GetUpdateOrderInfoRewardBlock(param)
+	if err != nil && err != chainctx.ErrPoVNotFinish {
+		t.Fatal(err)
+	}
 }
 
 func TestDoDSettlementAPI_GetChangeOrderBlock(t *testing.T) {

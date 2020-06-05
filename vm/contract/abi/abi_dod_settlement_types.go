@@ -170,11 +170,11 @@ func (z *DoDSettleCreateOrderParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleCreateOrderParam) Verify() error {
-	if z.Buyer == nil || z.Seller == nil || z.Connections == nil {
-		return fmt.Errorf("invalid param")
+	if z.Buyer == nil || z.Seller == nil {
+		return fmt.Errorf("invalid buyer or seller")
 	}
 
-	if len(z.Connections) == 0 {
+	if z.Connections == nil || len(z.Connections) == 0 {
 		return fmt.Errorf("no product")
 	}
 
@@ -183,6 +183,12 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 	productBuyerProductIdMap := make(map[string]struct{})
 
 	for _, c := range z.Connections {
+		if len(c.SrcCompanyName) == 0 || len(c.SrcRegion) == 0 || len(c.SrcDataCenter) == 0 || len(c.SrcCity) == 0 ||
+			len(c.SrcPort) == 0 || len(c.DstCompanyName) == 0 || len(c.DstRegion) == 0 || len(c.DstDataCenter) == 0 ||
+			len(c.DstCity) == 0 || len(c.DstPort) == 0 {
+			return fmt.Errorf("connection params err")
+		}
+
 		if len(c.ProductOfferingId) == 0 {
 			return fmt.Errorf("product offering id needed")
 		}
@@ -221,8 +227,32 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
 
+		if c.BillingType == DoDSettleBillingTypeNull {
+			return fmt.Errorf("billing type needed")
+		}
+
+		if c.PaymentType == DoDSettlePaymentTypeNull {
+			return fmt.Errorf("payment type needed")
+		}
+
+		if c.ServiceClass == DoDSettleServiceClassNull {
+			return fmt.Errorf("service class needed")
+		}
+
 		if c.BillingType == DoDSettleBillingTypeDOD && (c.StartTime == 0 || c.EndTime == 0 || c.StartTime == c.EndTime) {
 			return fmt.Errorf("invalid starttime endtime")
+		}
+
+		if c.BillingType == DoDSettleBillingTypePAYG && c.BillingUnit == DoDSettleBillingUnitNull {
+			return fmt.Errorf("billing unit needed")
+		}
+
+		if len(c.Currency) == 0 {
+			return fmt.Errorf("currency needed")
+		}
+
+		if len(c.Bandwidth) == 0 {
+			return fmt.Errorf("bandwidth needed")
 		}
 	}
 
@@ -391,6 +421,10 @@ func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
 		return err
 	}
 
+	if len(z.OrderId) == 0 {
+		return fmt.Errorf("null order id")
+	}
+
 	ord, _ := DoDSettleGetOrderInfoByOrderId(ctx, order.Seller.Address, z.OrderId)
 	if ord != nil {
 		return fmt.Errorf("order exist (%s)", z.OrderId)
@@ -404,6 +438,14 @@ func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
 		productIdMap := make(map[string]struct{})
 
 		for _, p := range z.ProductIds {
+			if len(p.ProductId) == 0 {
+				return fmt.Errorf("null product id")
+			}
+
+			if len(p.BuyerProductId) == 0 {
+				return fmt.Errorf("null buyerProduct id")
+			}
+
 			if _, ok := productIdMap[p.ProductId]; ok {
 				return fmt.Errorf("duplicate product id")
 			} else {
@@ -466,8 +508,12 @@ func (z *DoDSettleChangeOrderParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleChangeOrderParam) Verify() error {
-	if z.Buyer == nil || z.Seller == nil || z.Connections == nil || len(z.Connections) == 0 {
-		return fmt.Errorf("invalid param")
+	if z.Buyer == nil || z.Seller == nil {
+		return fmt.Errorf("invalid buyer or seller")
+	}
+
+	if z.Connections == nil || len(z.Connections) == 0 {
+		return fmt.Errorf("no product")
 	}
 
 	quoteItemIdMap := make(map[string]struct{})
@@ -529,8 +575,12 @@ func (z *DoDSettleTerminateOrderParam) FromABI(data []byte) error {
 }
 
 func (z *DoDSettleTerminateOrderParam) Verify(ctx *vmstore.VMContext) error {
-	if z.Buyer == nil || z.Seller == nil || z.Connections == nil || len(z.Connections) == 0 {
-		return fmt.Errorf("invalid param")
+	if z.Buyer == nil || z.Seller == nil {
+		return fmt.Errorf("invalid buyer or seller")
+	}
+
+	if z.Connections == nil || len(z.Connections) == 0 {
+		return fmt.Errorf("no product")
 	}
 
 	for _, p := range z.Connections {
@@ -540,19 +590,17 @@ func (z *DoDSettleTerminateOrderParam) Verify(ctx *vmstore.VMContext) error {
 		}
 		productHash := productKey.Hash()
 
-		conn, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
+		_, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
 		if err != nil {
 			return fmt.Errorf("product is not active")
 		}
 
-		if conn.Active != nil && conn.Active.BillingType == DoDSettleBillingTypeDOD {
-			if len(p.QuoteId) == 0 {
-				return fmt.Errorf("quote id needed")
-			}
+		if len(p.QuoteId) == 0 {
+			return fmt.Errorf("quote id needed")
+		}
 
-			if len(p.QuoteItemId) == 0 {
-				return fmt.Errorf("quote item id needed")
-			}
+		if len(p.QuoteItemId) == 0 {
+			return fmt.Errorf("quote item id needed")
 		}
 	}
 
@@ -584,13 +632,38 @@ func (z *DoDSettleResourceReadyParam) FromABI(data []byte) error {
 	return err
 }
 
-func (z *DoDSettleResourceReadyParam) Verify() error {
+func (z *DoDSettleResourceReadyParam) Verify(ctx *vmstore.VMContext) error {
 	if z.InternalId.IsZero() {
 		return fmt.Errorf("invalid internal id")
 	}
 
-	if len(z.ProductId) == 0 {
-		return fmt.Errorf("product id null")
+	if z.ProductId == nil || len(z.ProductId) == 0 {
+		return fmt.Errorf("no product")
+	}
+
+	order, err := DoDSettleGetOrderInfoByInternalId(ctx, z.InternalId)
+	if err != nil {
+		return fmt.Errorf("get order err %s", err)
+	}
+
+	for _, p := range z.ProductId {
+		found := false
+
+		for _, pr := range order.Connections {
+			if p == pr.ProductId {
+				found = true
+			}
+		}
+
+		if found {
+			ak := &DoDSettleConnectionActiveKey{InternalId: z.InternalId, ProductId: p}
+			_, err := DoDSettleGetSellerConnectionActive(ctx, ak.Hash())
+			if err == nil {
+				return fmt.Errorf("product %s already active", p)
+			}
+		} else {
+			return fmt.Errorf("product %s not exist in this order %s", p, order.OrderId)
+		}
 	}
 
 	return nil
