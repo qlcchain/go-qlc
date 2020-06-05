@@ -398,6 +398,7 @@ func TestDoDSettlementAPI_GetPendingResourceCheck(t *testing.T) {
 	}
 
 	param.Status = abi.DoDSettleOrderStateSuccess
+	param.InternalId = mock.Hash()
 	param.ProductIds = []*abi.DoDSettleProductItem{{ProductId: "product001", BuyerProductId: "bp1"}}
 	block.Data, _ = param.ToABI()
 	err = ds.l.AddStateBlock(block)
@@ -418,6 +419,14 @@ func TestDoDSettlementAPI_GetPendingResourceCheck(t *testing.T) {
 
 	if err := ds.l.Flush(); err != nil {
 		t.Fatal(err)
+	}
+
+	order := abi.NewOrderInfo()
+	order.Connections = []*abi.DoDSettleConnectionParam{{}}
+	order.Connections[0].ProductId = "product001"
+	err = abi.DoDSettleUpdateOrder(ds.ctx, order, param.InternalId)
+	if err != nil {
+		t.Fatal()
 	}
 
 	_, err = ds.GetPendingResourceCheck(seller)
