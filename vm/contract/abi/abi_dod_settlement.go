@@ -1,6 +1,7 @@
 package abi
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -567,6 +568,12 @@ func DoDSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, orde
 	invoiceOrder.OrderId = order.OrderId
 	invoiceOrder.Connections = make([]*DoDSettleInvoiceConnDetail, 0)
 
+	internalId, err := DoDSettleGetInternalIdByOrderId(ctx, seller, order.OrderId)
+	if err != nil {
+		return nil, fmt.Errorf("get internal id err %s", err)
+	}
+
+	invoiceOrder.InternalId = internalId
 	now := time.Now().Unix()
 
 	// no billing interval was specified
@@ -1034,6 +1041,9 @@ func DoDSettleGenerateInvoiceByOrder(ctx *vmstore.VMContext, seller types.Addres
 	invoice.TotalAmount = invoiceOrder.OrderAmount
 	invoice.Order = invoiceOrder
 
+	data, _ := json.Marshal(invoice)
+	invoice.InvoiceId = types.HashData(data)
+
 	return invoice, nil
 }
 
@@ -1072,6 +1082,9 @@ func DoDSettleGenerateInvoiceByProduct(ctx *vmstore.VMContext, seller types.Addr
 	invoice.Seller = order.Seller
 	invoice.TotalAmount = productOrder.ConnectionAmount
 	invoice.Connection = productOrder
+
+	data, _ := json.Marshal(invoice)
+	invoice.InvoiceId = types.HashData(data)
 
 	return invoice, nil
 }
@@ -1130,6 +1143,9 @@ func DoDSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types
 	}
 
 	invoice.TotalConnectionCount = len(productIdMap)
+
+	data, _ := json.Marshal(invoice)
+	invoice.InvoiceId = types.HashData(data)
 
 	return invoice, nil
 }

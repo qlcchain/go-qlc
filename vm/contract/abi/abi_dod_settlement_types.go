@@ -688,12 +688,14 @@ type DoDSettleInvoiceConnDetail struct {
 
 type DoDSettleInvoiceOrderDetail struct {
 	OrderId         string                        `json:"orderId"`
+	InternalId      types.Hash                    `json:"internalId"`
 	ConnectionCount int                           `json:"connectionCount"`
 	OrderAmount     float64                       `json:"orderAmount"`
 	Connections     []*DoDSettleInvoiceConnDetail `json:"connections"`
 }
 
 type DoDSettleOrderInvoice struct {
+	InvoiceId            types.Hash                   `json:"invoiceId"`
 	TotalConnectionCount int                          `json:"totalConnectionCount"`
 	TotalAmount          float64                      `json:"totalAmount"`
 	Currency             string                       `json:"currency"`
@@ -705,6 +707,7 @@ type DoDSettleOrderInvoice struct {
 }
 
 type DoDSettleBuyerInvoice struct {
+	InvoiceId            types.Hash                     `json:"invoiceId"`
 	OrderCount           int                            `json:"orderCount"`
 	TotalConnectionCount int                            `json:"totalConnectionCount"`
 	TotalAmount          float64                        `json:"totalAmount"`
@@ -717,6 +720,7 @@ type DoDSettleBuyerInvoice struct {
 }
 
 type DoDSettleProductInvoice struct {
+	InvoiceId   types.Hash                  `json:"invoiceId"`
 	TotalAmount float64                     `json:"totalAmount"`
 	Currency    string                      `json:"currency"`
 	StartTime   int64                       `json:"startTime"`
