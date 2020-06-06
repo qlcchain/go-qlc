@@ -2,9 +2,11 @@ package api
 
 import (
 	"fmt"
+	"testing"
+
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"testing"
 
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
@@ -76,7 +78,51 @@ func TestDoDSettlementAPI_GetUpdateOrderInfoRewardBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	_, _ = ds.GetUpdateOrderInfoRewardBlock(param)
+	block := mock.StateBlockWithoutWork()
+	err = ds.l.AddStateBlock(block)
+	if err != nil {
+		t.Fatal()
+	}
+
+	param.RequestHash = block.GetHash()
+	_, err = ds.GetUpdateOrderInfoRewardBlock(param)
+	if err == nil {
+		t.Fatal()
+	}
+
+	pm := new(abi.DoDSettleUpdateOrderInfoParam)
+	pm.InternalId = mock.Hash()
+	pm.ProductIds = []*abi.DoDSettleProductItem{{ProductId: "p1"}}
+	block.Data, _ = pm.ToABI()
+	err = ds.l.AddStateBlock(block)
+	if err != nil {
+		t.Fatal()
+	}
+
+	param.RequestHash = block.GetHash()
+	_, err = ds.GetUpdateOrderInfoRewardBlock(param)
+	if err == nil {
+		t.Fatal()
+	}
+
+	order := abi.NewOrderInfo()
+	order.Connections = []*abi.DoDSettleConnectionParam{{}}
+	order.Connections[0].ProductId = "p1"
+	err = abi.DoDSettleUpdateOrder(ds.ctx, order, pm.InternalId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: "p1"}
+	err = abi.DoDSettleSetSellerConnectionActive(ds.ctx, &abi.DoDSettleConnectionActive{ActiveAt: 111}, ak.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.GetUpdateOrderInfoRewardBlock(param)
+	if err != nil && err != chainctx.ErrPoVNotFinish {
+		t.Fatal(err)
+	}
 }
 
 func TestDoDSettlementAPI_GetChangeOrderBlock(t *testing.T) {
@@ -353,6 +399,7 @@ func TestDoDSettlementAPI_GetPendingResourceCheck(t *testing.T) {
 	}
 
 	param.Status = abi.DoDSettleOrderStateSuccess
+	param.InternalId = mock.Hash()
 	param.ProductIds = []*abi.DoDSettleProductItem{{ProductId: "product001", BuyerProductId: "bp1"}}
 	block.Data, _ = param.ToABI()
 	err = ds.l.AddStateBlock(block)
@@ -373,6 +420,14 @@ func TestDoDSettlementAPI_GetPendingResourceCheck(t *testing.T) {
 
 	if err := ds.l.Flush(); err != nil {
 		t.Fatal(err)
+	}
+
+	order := abi.NewOrderInfo()
+	order.Connections = []*abi.DoDSettleConnectionParam{{}}
+	order.Connections[0].ProductId = "product001"
+	err = abi.DoDSettleUpdateOrder(ds.ctx, order, param.InternalId)
+	if err != nil {
+		t.Fatal()
 	}
 
 	_, err = ds.GetPendingResourceCheck(seller)

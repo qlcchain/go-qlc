@@ -2,6 +2,7 @@ package contract
 
 import (
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
 	cfg "github.com/qlcchain/go-qlc/config"
@@ -1242,7 +1243,7 @@ func (rr *DoDSettleResourceReady) ProcessSend(ctx *vmstore.VMContext, block *typ
 		return nil, nil, err
 	}
 
-	err = param.Verify()
+	err = param.Verify(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

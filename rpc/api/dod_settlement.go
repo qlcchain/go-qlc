@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
@@ -145,6 +147,30 @@ func (d *DoDSettlementAPI) GetUpdateOrderInfoBlock(param *DoDSettleUpdateOrderIn
 func (d *DoDSettlementAPI) GetUpdateOrderInfoRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
+	}
+
+	sb, err := d.l.GetStateBlockConfirmed(param.RequestHash)
+	if err != nil {
+		return nil, fmt.Errorf("get request block err %s", err)
+	}
+
+	pm := new(abi.DoDSettleUpdateOrderInfoParam)
+	err = pm.FromABI(sb.GetPayload())
+	if err != nil {
+		return nil, fmt.Errorf("unpack data err %s", err)
+	}
+
+	order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, pm.InternalId)
+	if err != nil {
+		return nil, fmt.Errorf("get order by internalId err %s", pm.InternalId)
+	}
+
+	for _, p := range order.Connections {
+		ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: p.ProductId}
+		_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
+		if err != nil {
+			return nil, fmt.Errorf("product %s is not active, can't generate this reward", p.ProductId)
+		}
 	}
 
 	p := &ContractRewardBlockPara{
@@ -392,7 +418,12 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 					Products:   make([]*DoDSettleProductWithActiveInfo, 0),
 				}
 
-				for _, p := range param.ProductIds {
+				order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, param.InternalId)
+				if err != nil {
+					return nil
+				}
+
+				for _, p := range order.Connections {
 					pai := &DoDSettleProductWithActiveInfo{ProductId: p.ProductId, Active: false}
 
 					ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: p.ProductId}
