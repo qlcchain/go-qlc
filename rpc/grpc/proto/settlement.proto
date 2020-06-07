@@ -169,13 +169,96 @@ service SettlementAPI {
        };
     }
 
-    //    rpc GetSummaryReport (MultiPartyCDRStatusRequest) returns (SummaryResult) {
-    //        option (google.api.http) = {
-    //           get: "/settlement/getSummaryReport"
-    //       };
-    //    }
-    //
+    rpc GetSummaryReport (ReportRequest) returns (types.SummaryResult) {
+        option (google.api.http) = {
+           get: "/settlement/getSummaryReport"
+       };
+    }
 
+    rpc GetSummaryReportByAccount (ReportByAccountRequest) returns (types.SummaryResult) {
+        option (google.api.http) = {
+           get: "/settlement/getSummaryReportByAccount"
+       };
+    }
+
+    rpc GetSummaryReportByCustomer (ReportByCustomerRequest) returns (types.SummaryResult) {
+        option (google.api.http) = {
+           get: "/settlement/getSummaryReportByCustomer"
+       };
+    }
+
+    rpc GenerateInvoices (InvoicesRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateInvoices"
+       };
+    }
+
+    rpc GenerateInvoicesByAccount (InvoicesByAccountRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateInvoicesByAccount"
+       };
+    }
+
+    rpc GenerateInvoicesByCustomer (InvoicesByCustomerRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateInvoicesByCustomer"
+       };
+    }
+
+    rpc GenerateInvoicesByContract (InvoicesRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateInvoicesByContract"
+       };
+    }
+
+    rpc GenerateMultiPartyInvoice (MultiPartyInvoiceRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateMultiPartyInvoice"
+       };
+    }
+
+    rpc GenerateMultiPartySummaryReport (MultiPartyInvoiceRequest) returns (types.MultiPartySummaryResult) {
+        option (google.api.http) = {
+           get: "/settlement/generateMultiPartySummaryReport"
+       };
+    }
+
+    rpc GetPreStopNames (types.Address) returns (Strings) {
+        option (google.api.http) = {
+           get: "/settlement/getPreStopNames"
+       };
+    }
+
+    rpc GetNextStopNames (types.Address) returns (Strings) {
+        option (google.api.http) = {
+           get: "/settlement/getNextStopNames"
+       };
+    }
+
+    rpc GetRegisterAssetBlock (RegisterAssetParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/settlement/getRegisterAssetBlock"
+       };
+    }
+
+    rpc GetAllAssets (Offset) returns (AssetParams) {
+        option (google.api.http) = {
+           get: "/settlement/getAllAssets"
+       };
+    }
+
+
+    rpc GetAssetsByOwner (AssetsByOwnerRequest) returns (AssetParams) {
+        option (google.api.http) = {
+           get: "/settlement/getAssetsByOwner"
+       };
+    }
+
+    rpc GetAsset (types.Address) returns (AssetParam) {
+        option (google.api.http) = {
+           get: "/settlement/getAsset"
+       };
+    }
 
 }
 
@@ -302,4 +385,86 @@ message MultiPartyCDRStatusRequest{
     string secondAddr  = 2;
     int32  count       = 3;
     int32  offset      = 4;
+}
+
+message ReportRequest {
+    string addr   = 1;
+    int64 start   = 2;
+    int64 end     = 3;
+}
+
+
+message ReportByAccountRequest {
+    string addr    = 1;
+    string account = 2;
+    int64 start    = 3;
+    int64 end      = 4;
+}
+
+message ReportByCustomerRequest {
+    string addr     = 1;
+    string customer = 2;
+    int64 start     = 3;
+    int64 end       = 4;
+}
+
+message InvoicesRequest {
+    string addr   = 1;
+    int64 start   = 2;
+    int64 end     = 3;
+}
+
+
+message InvoicesByAccountRequest {
+    string addr    = 1;
+    string account = 2;
+    int64 start    = 3;
+    int64 end      = 4;
+}
+
+message InvoicesByCustomerRequest {
+    string addr     = 1;
+    string customer = 2;
+    int64  start     = 3;
+    int64  end       = 4;
+}
+
+message MultiPartyInvoiceRequest {
+    string firstAddr  = 1;
+    string secondAddr = 2;
+    int64 start     = 3;
+    int64 end       = 4;
+}
+
+message AssetsByOwnerRequest {
+    string owner    = 1;
+    int32 count     = 2;
+    int32 offset    = 3;
+}
+
+
+message InvoiceRecords  {
+   repeated types.InvoiceRecord records = 1;
+}
+
+message AssetParams  {
+    repeated AssetParam params = 1;
+}
+
+message AssetParam {
+    types.Contractor owner = 1;
+    repeated Asset assets = 2;
+    int64 signDate        = 3;
+    int64 startDate       = 4;
+    int64 endDate         = 5;
+    int32 status          = 6;
+    string address        = 7;
+}
+
+message Asset  {
+    uint64 mcc          = 1;
+    uint64 mnc          = 2 ;
+    uint64 totalAmount  = 3;
+    repeated types.SLA sla    = 4;
+    string assetID      = 5;
 }

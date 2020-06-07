@@ -38,7 +38,7 @@ func (l *LedgerAPI) AccountBlocksCount(ctx context.Context, addr *pbtypes.Addres
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Int64{Value: r}, nil
+	return toInt64(r), nil
 }
 
 func (l *LedgerAPI) AccountHistoryTopn(ctx context.Context, param *pb.AccountHistoryTopnReq) (*pb.APIBlocks, error) {
@@ -253,9 +253,7 @@ func (l *LedgerAPI) BlockConfirmedStatus(ctx context.Context, hash *pbtypes.Hash
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Boolean{
-		Value: r,
-	}, nil
+	return toBoolean(r), nil
 }
 
 func (l *LedgerAPI) BlockHash(ctx context.Context, block *pbtypes.StateBlock) (*pbtypes.Hash, error) {
@@ -393,9 +391,7 @@ func (l *LedgerAPI) DelegatorsCount(ctx context.Context, addr *pbtypes.Address) 
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Int64{
-		Value: r,
-	}, nil
+	return toInt64(r), nil
 
 }
 
@@ -447,7 +443,7 @@ func (l *LedgerAPI) TokenInfoById(ctx context.Context, id *pbtypes.Hash) (*pbtyp
 }
 
 func (l *LedgerAPI) TokenInfoByName(ctx context.Context, name *pb.String) (*pbtypes.TokenInfo, error) {
-	n := name.GetValue()
+	n := toOriginString(name)
 	r, err := l.ledger.TokenInfoByName(n)
 	if err != nil {
 		return nil, err
@@ -528,9 +524,7 @@ func (l *LedgerAPI) IsGenesisBlock(ctx context.Context, block *pbtypes.StateBloc
 		return nil, err
 	}
 	r := l.ledger.IsGenesisBlock(blk)
-	return &pb.Boolean{
-		Value: r,
-	}, nil
+	return toBoolean(r), nil
 }
 
 func (l *LedgerAPI) IsGenesisToken(ctx context.Context, hash *pbtypes.Hash) (*pb.Boolean, error) {
@@ -539,9 +533,7 @@ func (l *LedgerAPI) IsGenesisToken(ctx context.Context, hash *pbtypes.Hash) (*pb
 		return nil, err
 	}
 	r := l.ledger.IsGenesisToken(h)
-	return &pb.Boolean{
-		Value: r,
-	}, nil
+	return toBoolean(r), nil
 }
 
 func (l *LedgerAPI) AllGenesisBlocks(context.Context, *empty.Empty) (*pbtypes.StateBlocks, error) {

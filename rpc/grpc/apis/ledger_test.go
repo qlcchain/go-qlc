@@ -618,9 +618,7 @@ func TestLedgerAPI_TokenInfoByName(t *testing.T) {
 	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
 
-	ts, err := ledgerApi.TokenInfoByName(context.Background(), &pb.String{
-		Value: "QLC",
-	})
+	ts, err := ledgerApi.TokenInfoByName(context.Background(), toString("QLC"))
 	if err != nil {
 		t.Fatal(err)
 	}

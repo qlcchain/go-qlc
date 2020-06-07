@@ -45,7 +45,7 @@ func Start(cfgFile string, ctx context.Context) (*GRPCServer, error) {
 
 	lis, err := net.Listen(network, address)
 	if err != nil {
-		return nil, fmt.Errorf("failed to listen: %s", err)
+		return nil, fmt.Errorf("failed to listen: %s (%s,%s)", err, network, address)
 	}
 
 	grpcServer := grpc.NewServer()
@@ -82,11 +82,10 @@ func (r *GRPCServer) newGateway(grpcAddress string) error {
 
 	gwmux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithInsecure()}
-
 	if err := registerGWApi(ctx, gwmux, grpcAddress, opts); err != nil {
-		return fmt.Errorf("gateway register: %s", err)
+		r.logger.Errorf("gateway register: %s", err)
+		return err
 	}
-
 	_, address, err := scheme(r.cfg.RPC.GRPCConfig.ListenAddress)
 	if err != nil {
 		return err
@@ -126,7 +125,6 @@ func (r *GRPCServer) registerApi() {
 	pb.RegisterRewardsAPIServer(r.rpc, apis.NewRewardsAPI(r.ledger, r.cc))
 	pb.RegisterSettlementAPIServer(r.rpc, apis.NewSettlementAPI(r.ledger, r.cc))
 	pb.RegisterUtilAPIServer(r.rpc, apis.NewUtilApi(r.ledger))
-	pb.RegisterTestAPIServer(r.rpc, apis.TestApi{})
 }
 
 func registerGWApi(ctx context.Context, gwmux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error {
@@ -185,9 +183,6 @@ func registerGWApi(ctx context.Context, gwmux *runtime.ServeMux, endpoint string
 		return err
 	}
 	if err := pb.RegisterUtilAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
-		return err
-	}
-	if err := pb.RegisterTestAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
 		return err
 	}
 	return nil

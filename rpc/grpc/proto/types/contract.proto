@@ -83,8 +83,23 @@ message Terminator  {
 }
 
 message Asset  {
-    Asset asset     = 1;
-    string assetID  = 2;
+    uint64 mcc          = 1;
+    uint64 mnc          = 2 ;
+    uint64 totalAmount  = 3;
+    repeated SLA sla    = 4;
+}
+
+message SLA  {
+    int32 type        = 1;
+    int32 priority     = 2;
+    float value       = 3;
+    repeated Compensation compensations = 4;
+}
+
+message  Compensation  {
+    float low   = 1;
+    float high  = 2;
+    float rate  = 3;
 }
 
 message AssetParam  {
@@ -123,3 +138,51 @@ message CDRParam  {
 message CDRParams{
     repeated CDRParam cdrParams = 1;
 }
+
+message SummaryRecord  {
+    uint64 total    = 1;
+    uint64 success  = 2;
+    uint64 fail     = 3;
+    double result   = 4;
+}
+
+message  MatchingRecord  {
+   SummaryRecord orphan    = 1;
+   SummaryRecord matching  = 2;
+}
+
+message CompareRecord  {
+  map<string, MatchingRecord> records = 1;
+}
+
+message SummaryResult{
+    ContractParam contract = 1;
+    map<string,CompareRecord> records = 2;
+    CompareRecord total   = 3;
+}
+
+message MultiPartySummaryResult{
+    repeated ContractParam    contracts = 1;
+    map<string,CompareRecord> records   = 2;
+    CompareRecord total   = 3;
+}
+
+
+
+message InvoiceRecord  {
+  string Address            = 1;
+  int64 StartDate           = 2;
+  int64 EndDate             = 3;
+  string Customer           = 4;
+  string CustomerSr         = 5;
+  string Country            = 6;
+  string Operator           = 7;
+  string ServiceId          = 8;
+  uint64 MCC                = 9;
+  uint64 MNC                = 10;
+  string Currency           = 11;
+  double UnitPrice          = 12;
+  uint64 SumOfBillableSMSCustomer = 13;
+  double SumOfTOTPrice            = 14;
+}
+

@@ -34,7 +34,6 @@ func (m *MigrationV6ToV7) Migration(data []byte, version int) ([]byte, int, erro
 	cfg7.ConfigV6 = cfg6
 	cfg7.Version = configVersion
 	cfg7.P2P.ListeningIp = "127.0.0.1"
-	cfg7.RPC.GRPCConfig = defaultGRPCConfig()
 
 	cfg7.Privacy.Enable = false
 	cfg7.Privacy.PtmNode = ""

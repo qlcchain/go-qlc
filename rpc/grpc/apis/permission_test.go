@@ -234,18 +234,14 @@ func TestPermissionApi_GetNode(t *testing.T) {
 	p := NewPermissionAPI(cfgFile, l)
 	nodeId := "n1"
 
-	_, err := p.GetNode(context.Background(), &pb.String{
-		Value: nodeId,
-	})
+	_, err := p.GetNode(context.Background(), toString(nodeId))
 	if err == nil {
 		t.Fatal()
 	}
 
 	pn := &abi.PermNode{NodeId: nodeId, NodeUrl: "", Comment: "", Valid: true}
 	addTestNodes(t, l, []*abi.PermNode{pn}, 10)
-	_, err = p.GetNode(context.Background(), &pb.String{
-		Value: nodeId,
-	})
+	_, err = p.GetNode(context.Background(), toString(nodeId))
 	if err != nil {
 		t.Fatal()
 	}

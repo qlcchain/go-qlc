@@ -115,9 +115,7 @@ func TestNewMintageApi(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ti, err := mintageApi.ParseTokenInfo(context.Background(), &pb.Bytes{
-				Value: br.Data,
-			})
+			ti, err := mintageApi.ParseTokenInfo(context.Background(), toBytes(br.Data))
 			if err != nil {
 				t.Fatal(err)
 			}

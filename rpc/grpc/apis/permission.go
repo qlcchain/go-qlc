@@ -74,7 +74,7 @@ func (p *PermissionAPI) GetNodeUpdateBlock(ctx context.Context, params *pb.NodeP
 }
 
 func (p *PermissionAPI) GetNode(ctx context.Context, params *pb.String) (*pb.NodeInfo, error) {
-	r, err := p.permission.GetNode(params.GetValue())
+	r, err := p.permission.GetNode(toOriginString(params))
 	if err != nil {
 		return nil, err
 	}

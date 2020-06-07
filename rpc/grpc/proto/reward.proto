@@ -89,8 +89,8 @@ message RewardsParam  {
 }
 
 message RewardsParamWithSign  {
-    RewardsParam para   = 1;
-    string       sign   = 2;
+    RewardsParam param   = 1;
+    string       sign    = 2;
 }
 
 

@@ -87,16 +87,12 @@ func (n *NetAPI) GetBandwidthStats(context.Context, *empty.Empty) (*pb.EventBand
 
 func (n *NetAPI) Syncing(context.Context, *empty.Empty) (*pb.Boolean, error) {
 	r := n.net.Syncing()
-	return &pb.Boolean{
-		Value: r,
-	}, nil
+	return toBoolean(r), nil
 }
 
 func (n *NetAPI) GetPeerId(context.Context, *empty.Empty) (*pb.String, error) {
 	r := n.net.GetPeerId()
-	return &pb.String{
-		Value: r,
-	}, nil
+	return toString(r), nil
 }
 
 func toOnlineRepTotal(rep *api.OnlineRepTotal) *pb.OnlineRepTotal {

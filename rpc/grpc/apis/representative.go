@@ -34,13 +34,11 @@ func (p *RepAPI) GetRewardData(ctx context.Context, param *pb.RepRewardParam) (*
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (p *RepAPI) UnpackRewardData(ctx context.Context, param *pb.Bytes) (*pb.RepRewardParam, error) {
-	r, err := p.rep.UnpackRewardData(param.GetValue())
+	r, err := p.rep.UnpackRewardData(toOriginBytes(param))
 	if err != nil {
 		return nil, err
 	}

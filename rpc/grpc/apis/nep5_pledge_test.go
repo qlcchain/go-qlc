@@ -114,9 +114,7 @@ func TestNewNEP5PledgeAPI(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if r, err := pledgeApi.ParsePledgeInfo(context.Background(), &pb.Bytes{
-				Value: txBlk.Data,
-			}); err != nil {
+			if r, err := pledgeApi.ParsePledgeInfo(context.Background(), toBytes(txBlk.Data)); err != nil {
 				t.Fatal(err)
 			} else {
 				t.Log(r)

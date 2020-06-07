@@ -32,9 +32,7 @@ func (m *MintageAPI) GetMintageData(ctx context.Context, param *pb.MintageParams
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (m *MintageAPI) GetMintageBlock(ctx context.Context, param *pb.MintageParams) (*pbtypes.StateBlock, error) {
@@ -70,13 +68,11 @@ func (m *MintageAPI) GetWithdrawMintageData(ctx context.Context, param *pbtypes.
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (m *MintageAPI) ParseTokenInfo(ctx context.Context, param *pb.Bytes) (*pbtypes.TokenInfo, error) {
-	r, err := m.mintage.ParseTokenInfo(param.GetValue())
+	r, err := m.mintage.ParseTokenInfo(toOriginBytes(param))
 	if err != nil {
 		return nil, err
 	}

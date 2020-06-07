@@ -7,6 +7,7 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
 
+	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
@@ -15,15 +16,18 @@ import (
 	pbtypes "github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 )
 
+//PublicKeyDistributionAPI
 type PublicKeyDistributionAPI struct {
 	pkd    *api.PublicKeyDistributionApi
 	logger *zap.SugaredLogger
+	cc     *qlcchainctx.ChainContext
 }
 
 func NewPublicKeyDistributionAPI(cfgFile string, l ledger.Store) *PublicKeyDistributionAPI {
 	return &PublicKeyDistributionAPI{
 		pkd:    api.NewPublicKeyDistributionApi(cfgFile, l),
 		logger: log.NewLogger("grpc_pkd"),
+		cc:     qlcchainctx.NewChainContext(cfgFile),
 	}
 }
 
@@ -60,7 +64,7 @@ func (p *PublicKeyDistributionAPI) GetAllVerifiers(ctx context.Context, param *e
 }
 
 func (p *PublicKeyDistributionAPI) GetVerifiersByType(ctx context.Context, param *pb.String) (*pb.VerifierRegParams, error) {
-	r, err := p.pkd.GetVerifiersByType(param.GetValue())
+	r, err := p.pkd.GetVerifiersByType(toOriginString(param))
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +72,7 @@ func (p *PublicKeyDistributionAPI) GetVerifiersByType(ctx context.Context, param
 }
 
 func (p *PublicKeyDistributionAPI) GetActiveVerifiers(ctx context.Context, param *pb.String) (*pb.VerifierRegParams, error) {
-	r, err := p.pkd.GetActiveVerifiers(param.GetValue())
+	r, err := p.pkd.GetActiveVerifiers(toOriginString(param))
 	if err != nil {
 		return nil, err
 	}
@@ -144,11 +148,14 @@ func (p *PublicKeyDistributionAPI) GetRecommendPubKey(ctx context.Context, param
 	if err != nil {
 		return nil, err
 	}
+	if r == nil {
+		return nil, nil
+	}
 	return toPublishInfoState(r), nil
 }
 
 func (p *PublicKeyDistributionAPI) GetPublishInfosByType(ctx context.Context, param *pb.String) (*pb.PublishInfoStates, error) {
-	r, err := p.pkd.GetPublishInfosByType(param.GetValue())
+	r, err := p.pkd.GetPublishInfosByType(toOriginString(param))
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +195,7 @@ func (p *PublicKeyDistributionAPI) GetOracleBlock(ctx context.Context, param *pb
 }
 
 func (p *PublicKeyDistributionAPI) GetOracleInfosByType(ctx context.Context, param *pb.String) (*pb.OracleParams, error) {
-	r, err := p.pkd.GetOracleInfosByType(param.GetValue())
+	r, err := p.pkd.GetOracleInfosByType(toOriginString(param))
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +204,18 @@ func (p *PublicKeyDistributionAPI) GetOracleInfosByType(ctx context.Context, par
 
 func (p *PublicKeyDistributionAPI) GetOracleInfosByTypeAndID(ctx context.Context, param *pb.TypeAndIDParam) (*pb.OracleParams, error) {
 	r, err := p.pkd.GetOracleInfosByTypeAndID(param.GetPType(), param.GetPID())
+	if err != nil {
+		return nil, err
+	}
+	return toOracleParams(r), nil
+}
+
+func (p *PublicKeyDistributionAPI) GetOracleInfosByAccountAndType(ctx context.Context, param *pb.AccountAndTypeParam) (*pb.OracleParams, error) {
+	addr, err := toOriginAddressByValue(param.GetAccount())
+	if err != nil {
+		return nil, err
+	}
+	r, err := p.pkd.GetOracleInfosByAccountAndType(addr, param.GetPType())
 	if err != nil {
 		return nil, err
 	}
@@ -220,11 +239,11 @@ func (p *PublicKeyDistributionAPI) PackRewardData(ctx context.Context, param *pb
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{Value: r}, nil
+	return toBytes(r), nil
 }
 
 func (p *PublicKeyDistributionAPI) UnpackRewardData(ctx context.Context, param *pb.Bytes) (*pb.PKDRewardParam, error) {
-	r, err := p.pkd.UnpackRewardData(param.GetValue())
+	r, err := p.pkd.UnpackRewardData(toOriginBytes(param))
 	if err != nil {
 		return nil, err
 	}
@@ -428,19 +447,22 @@ func toPublishRet(ret *api.PublishRet) *pb.PublishRet {
 	return r
 }
 
+func toOracleParam(p *api.OracleParam) *pb.OracleParam {
+	return &pb.OracleParam{
+		Account: toAddressValue(p.Account),
+		Type:    p.OType,
+		Id:      p.OID,
+		KeyType: p.KeyType,
+		PubKey:  p.PubKey,
+		Code:    p.Code,
+		Hash:    p.Hash,
+	}
+}
+
 func toOracleParams(params []*api.OracleParam) *pb.OracleParams {
 	os := make([]*pb.OracleParam, 0)
 	for _, p := range params {
-		ot := &pb.OracleParam{
-			Account: toAddressValue(p.Account),
-			Type:    p.OType,
-			Id:      p.OID,
-			KeyType: p.KeyType,
-			PubKey:  p.PubKey,
-			Code:    p.Code,
-			Hash:    p.Hash,
-		}
-		os = append(os, ot)
+		os = append(os, toOracleParam(p))
 	}
 	return &pb.OracleParams{
 		Params: os,

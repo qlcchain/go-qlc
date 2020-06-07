@@ -31,9 +31,7 @@ func TestAccountApi_Create(t *testing.T) {
 func TestAccountApi_ForPublicKey(t *testing.T) {
 	publickKey := "1676b313888e55547583c01c6f500ad547edf4ef5d2c9bb06e663d5481d9aad6"
 	api := newTestAccountApi()
-	addr, err := api.ForPublicKey(context.Background(), &pb.String{
-		Value: publickKey,
-	})
+	addr, err := api.ForPublicKey(context.Background(), toString(publickKey))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,9 +73,7 @@ func TestAccountApi_NewAccounts(t *testing.T) {
 func TestAccountApi_Validate(t *testing.T) {
 	api := newTestAccountApi()
 	addr := "qlc_17mppebrj5kocjtr9i1wfxa1ooc9xqtgyqbemgr8wsjxck1xmcppp9abciaf"
-	b, err := api.Validate(context.Background(), &pb.String{
-		Value: addr,
-	})
+	b, err := api.Validate(context.Background(), toString(addr))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -130,6 +130,13 @@ service PublicKeyDistributionAPI {
        };
     }
 
+    rpc GetOracleInfosByAccountAndType(AccountAndTypeParam) returns (OracleParams) {
+        option (google.api.http) = {
+           post: "/pkdistribution/getOracleInfosByAccountAndType"
+           body: "*"
+       };
+    }
+
     rpc GetOracleInfosByHash(types.Hash) returns (OracleParams) {
         option (google.api.http) = {
            post: "/pkdistribution/getOracleInfosByHash"

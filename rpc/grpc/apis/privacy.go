@@ -37,19 +37,15 @@ func (p *PrivacyAPI) DistributeRawPayload(ctx context.Context, param *pb.Privacy
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (p *PrivacyAPI) GetRawPayload(ctx context.Context, param *pb.Bytes) (*pb.Bytes, error) {
-	r, err := p.privacy.GetRawPayload(param.GetValue())
+	r, err := p.privacy.GetRawPayload(toOriginBytes(param))
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (p *PrivacyAPI) GetBlockPrivatePayload(ctx context.Context, param *pbtypes.Hash) (*pb.Bytes, error) {
@@ -61,17 +57,13 @@ func (p *PrivacyAPI) GetBlockPrivatePayload(ctx context.Context, param *pbtypes.
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (p *PrivacyAPI) GetDemoKV(ctx context.Context, param *pb.Bytes) (*pb.Bytes, error) {
-	r, err := p.privacy.GetDemoKV(param.GetValue())
+	r, err := p.privacy.GetDemoKV(toOriginBytes(param))
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }

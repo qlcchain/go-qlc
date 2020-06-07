@@ -79,15 +79,18 @@ func (p *PtmKeyAPI) GetPtmKeyByAccountAndBtype(ctx context.Context, param *pb.Pt
 	return toPtmKeyUpdateParams(r), nil
 }
 
+func toPtmKeyUpdateParam(p *api.PtmKeyUpdateParam) *pb.PtmKeyUpdateParam {
+	return &pb.PtmKeyUpdateParam{
+		Account: toAddressValue(p.Account),
+		Btype:   p.Btype,
+		Pubkey:  p.Pubkey,
+	}
+}
+
 func toPtmKeyUpdateParams(params []*api.PtmKeyUpdateParam) *pb.PtmKeyUpdateParams {
 	ps := make([]*pb.PtmKeyUpdateParam, 0)
 	for _, p := range params {
-		pt := &pb.PtmKeyUpdateParam{
-			Account: toAddressValue(p.Account),
-			Btype:   p.Btype,
-			Pubkey:  p.Pubkey,
-		}
-		ps = append(ps, pt)
+		ps = append(ps, toPtmKeyUpdateParam(p))
 	}
 	return &pb.PtmKeyUpdateParams{Params: ps}
 }

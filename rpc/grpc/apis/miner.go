@@ -35,13 +35,11 @@ func (m *MinerAPI) GetRewardData(ctx context.Context, params *pb.RewardParam) (*
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (m *MinerAPI) UnpackRewardData(ctx context.Context, params *pb.Bytes) (*pb.RewardParam, error) {
-	r, err := m.miner.UnpackRewardData(params.GetValue())
+	r, err := m.miner.UnpackRewardData(toOriginBytes(params))
 	if err != nil {
 		return nil, err
 	}

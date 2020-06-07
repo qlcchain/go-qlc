@@ -323,3 +323,37 @@ func toWorkValue(b types.Work) uint64 {
 func toOriginWorkByValue(v uint64) types.Work {
 	return types.Work(v)
 }
+
+// bytes
+
+func toBytes(b []byte) *pb.Bytes {
+	return &pb.Bytes{Value: b}
+}
+
+func toOriginBytes(b *pb.Bytes) []byte {
+	return b.GetValue()
+}
+
+func toBoolean(b bool) *pb.Boolean {
+	return &pb.Boolean{Value: b}
+}
+
+func toString(b string) *pb.String {
+	return &pb.String{Value: b}
+}
+
+func toStrings(bs []string) *pb.Strings {
+	return &pb.Strings{Value: bs}
+}
+
+func toOriginString(b *pb.String) string {
+	return b.GetValue()
+}
+
+func toInt64(b int64) *pb.Int64 {
+	return &pb.Int64{Value: b}
+}
+
+func toUInt64(b uint64) *pb.UInt64 {
+	return &pb.UInt64{Value: b}
+}

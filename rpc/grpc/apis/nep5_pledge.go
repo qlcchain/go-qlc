@@ -34,9 +34,7 @@ func (n *NEP5PledgeAPI) GetPledgeData(ctx context.Context, param *pb.PledgeParam
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (n *NEP5PledgeAPI) GetPledgeBlock(ctx context.Context, param *pb.PledgeParam) (*pbtypes.StateBlock, error) {
@@ -84,9 +82,7 @@ func (n *NEP5PledgeAPI) GetWithdrawPledgeData(ctx context.Context, param *pb.Wit
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (n *NEP5PledgeAPI) GetWithdrawPledgeBlock(ctx context.Context, param *pb.WithdrawPledgeParam) (*pbtypes.StateBlock, error) {
@@ -126,7 +122,7 @@ func (n *NEP5PledgeAPI) GetWithdrawRewardBlockBySendHash(ctx context.Context, pa
 }
 
 func (n *NEP5PledgeAPI) ParsePledgeInfo(ctx context.Context, param *pb.Bytes) (*pbtypes.NEP5PledgeInfo, error) {
-	r, err := n.nep5.ParsePledgeInfo(param.GetValue())
+	r, err := n.nep5.ParsePledgeInfo(toOriginBytes(param))
 	if err != nil {
 		return nil, err
 	}
@@ -151,9 +147,7 @@ func (n *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(ctx context.Context, para
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Int64{
-		Value: r.Int64(),
-	}, nil
+	return toInt64(r.Int64()), nil
 }
 
 func (n *NEP5PledgeAPI) GetBeneficialPledgeInfosByAddress(ctx context.Context, param *pbtypes.Address) (*pb.PledgeInfos, error) {
@@ -186,9 +180,7 @@ func (n *NEP5PledgeAPI) GetPledgeBeneficialAmount(ctx context.Context, param *pb
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Int64{
-		Value: r.Int64(),
-	}, nil
+	return toInt64(r.Int64()), nil
 }
 
 func (n *NEP5PledgeAPI) GetPledgeInfo(ctx context.Context, param *pb.WithdrawPledgeParam) (*pb.NEP5PledgeInfos, error) {
@@ -240,9 +232,7 @@ func (n *NEP5PledgeAPI) GetTotalPledgeAmount(context.Context, *empty.Empty) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Int64{
-		Value: r.Int64(),
-	}, nil
+	return toInt64(r.Int64()), nil
 }
 
 func toPledgeInfos(info *api.PledgeInfos) *pb.PledgeInfos {

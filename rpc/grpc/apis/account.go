@@ -36,7 +36,7 @@ func (a *AccountApi) Create(ctx context.Context, para *pb.CreateRequest) (*pb.Cr
 }
 
 func (a *AccountApi) ForPublicKey(ctx context.Context, str *pb.String) (*pbtypes.Address, error) {
-	pubStr := str.GetValue()
+	pubStr := toOriginString(str)
 	r, err := a.account.ForPublicKey(pubStr)
 	if err != nil {
 		return nil, err
@@ -49,9 +49,7 @@ func (a *AccountApi) NewSeed(context.Context, *empty.Empty) (*pb.String, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &pb.String{
-		Value: r,
-	}, nil
+	return toString(r), nil
 }
 
 func (a *AccountApi) NewAccounts(ctx context.Context, count *pb.UInt32) (*pb.AccountsResponse, error) {
@@ -69,17 +67,13 @@ func (a *AccountApi) PublicKey(ctx context.Context, addr *pbtypes.Address) (*pb.
 		return nil, err
 	}
 	r := a.account.PublicKey(address)
-	return &pb.String{
-		Value: r,
-	}, nil
+	return toString(r), nil
 }
 
 func (a *AccountApi) Validate(ctx context.Context, str *pb.String) (*pb.Boolean, error) {
-	addStr := str.GetValue()
+	addStr := toOriginString(str)
 	r := a.account.Validate(addStr)
-	return &pb.Boolean{
-		Value: r,
-	}, nil
+	return toBoolean(r), nil
 }
 
 func toAccounts(accs []*api.Accounts) *pb.AccountsResponse {

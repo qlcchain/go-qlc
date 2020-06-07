@@ -38,9 +38,7 @@ func (c *ContractAPI) GetAbiByContractAddress(ctx context.Context, param *pbtype
 	if err != nil {
 		return nil, err
 	}
-	return &pb.String{
-		Value: r,
-	}, nil
+	return toString(r), nil
 }
 
 func (c *ContractAPI) PackContractData(ctx context.Context, param *pb.PackContractDataRequest) (*pb.Bytes, error) {
@@ -51,9 +49,7 @@ func (c *ContractAPI) PackContractData(ctx context.Context, param *pb.PackContra
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (c *ContractAPI) PackChainContractData(ctx context.Context, param *pb.PackChainContractDataRequest) (*pb.Bytes, error) {
@@ -68,9 +64,7 @@ func (c *ContractAPI) PackChainContractData(ctx context.Context, param *pb.PackC
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Bytes{
-		Value: r,
-	}, nil
+	return toBytes(r), nil
 }
 
 func (c *ContractAPI) ContractAddressList(ctx context.Context, param *empty.Empty) (*pbtypes.Addresses, error) {

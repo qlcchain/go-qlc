@@ -28,9 +28,7 @@ func (u *UtilApi) Decrypt(ctx context.Context, param *pb.DecryptRequest) (*pb.St
 	if err != nil {
 		return nil, err
 	}
-	return &pb.String{
-		Value: r,
-	}, nil
+	return toString(r), nil
 }
 
 func (u *UtilApi) Encrypt(ctx context.Context, param *pb.EncryptRequest) (*pb.String, error) {
@@ -38,9 +36,7 @@ func (u *UtilApi) Encrypt(ctx context.Context, param *pb.EncryptRequest) (*pb.St
 	if err != nil {
 		return nil, err
 	}
-	return &pb.String{
-		Value: r,
-	}, nil
+	return toString(r), nil
 }
 
 func (u *UtilApi) RawToBalance(ctx context.Context, param *pb.RawBalance) (*pb.Float, error) {
@@ -63,7 +59,5 @@ func (u *UtilApi) BalanceToRaw(ctx context.Context, param *pb.RawBalance) (*pb.I
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Int64{
-		Value: r.Int64(),
-	}, nil
+	return toInt64(r.Int64()), nil
 }

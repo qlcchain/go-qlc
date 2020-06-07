@@ -28,6 +28,12 @@ message String {
     string value = 1;
 }
 
+message Strings {
+    repeated string value = 1;
+}
+
+
+
 message Bytes {
     bytes value = 1;
 }

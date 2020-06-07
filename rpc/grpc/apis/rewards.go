@@ -88,24 +88,20 @@ func (r *RewardsAPI) GetReceiveRewardBlock(ctx context.Context, param *pbtypes.H
 }
 
 func (r *RewardsAPI) IsAirdropRewards(ctx context.Context, param *pb.Bytes) (*pb.Boolean, error) {
-	result := r.reward.IsAirdropRewards(param.GetValue())
-	return &pb.Boolean{
-		Value: result,
-	}, nil
+	result := r.reward.IsAirdropRewards(toOriginBytes(param))
+	return toBoolean(result), nil
 }
 
 func (r *RewardsAPI) GetTotalRewards(ctx context.Context, param *pb.String) (*pb.Int64, error) {
-	result, err := r.reward.GetTotalRewards(param.GetValue())
+	result, err := r.reward.GetTotalRewards(toOriginString(param))
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Int64{
-		Value: result.Int64(),
-	}, nil
+	return toInt64(result.Int64()), nil
 }
 
 func (r *RewardsAPI) GetRewardsDetail(ctx context.Context, param *pb.String) (*pb.RewardsInfos, error) {
-	result, err := r.reward.GetRewardsDetail(param.GetValue())
+	result, err := r.reward.GetRewardsDetail(toOriginString(param))
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +144,15 @@ func (r *RewardsAPI) GetConfidantRewordsDetail(ctx context.Context, param *pbtyp
 	return rep, nil
 }
 
+func toRewardsParam(param *api.RewardsParam) *pb.RewardsParam {
+	return &pb.RewardsParam{
+		Id:     param.Id,
+		Amount: toBalanceValue(param.Amount),
+		Self:   toAddressValue(param.Self),
+		To:     toAddressValue(param.To),
+	}
+}
+
 func toOriginRewardsParam(param *pb.RewardsParam) (*api.RewardsParam, error) {
 	amount := toOriginBalanceByValue(param.GetAmount())
 	self, err := toOriginAddressByValue(param.GetSelf())
@@ -167,7 +172,7 @@ func toOriginRewardsParam(param *pb.RewardsParam) (*api.RewardsParam, error) {
 }
 
 func toOriginRewardsParamWithSign(param *pb.RewardsParamWithSign) (*api.RewardsParam, *types.Signature, error) {
-	rewardPara, err := toOriginRewardsParam(param.GetPara())
+	rewardPara, err := toOriginRewardsParam(param.GetParam())
 	if err != nil {
 		return nil, nil, err
 	}
