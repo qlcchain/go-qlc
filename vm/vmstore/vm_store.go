@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"go.uber.org/zap"
+
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/storage"
@@ -19,7 +21,6 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
-	"go.uber.org/zap"
 )
 
 type ContractStore interface {
@@ -127,12 +128,14 @@ func (v *VMContext) WithCache(c storage.Cache) *VMContext {
 func NewVMContextWithBlock(l ledger.Store, block *types.StateBlock) *VMContext {
 	vmlog := log.NewLogger("vm_context")
 	latestPovHdr, err := l.GetLatestPovHeader()
-	if err == nil {
-		vmlog.Warnf("latest height %d, block height %d ", latestPovHdr.GetHeight(), block.PoVHeight)
+	if err != nil {
+		vmlog.Error(err)
+		return nil
 	}
 	povHeight := block.PoVHeight
 	if block.PoVHeight > latestPovHdr.GetHeight() {
 		povHeight = latestPovHdr.GetHeight()
+		vmlog.Warnf("latest height %d, block height %d ", latestPovHdr.GetHeight(), block.PoVHeight)
 	}
 
 	povHdr, err := l.GetPovHeaderByHeight(povHeight)
