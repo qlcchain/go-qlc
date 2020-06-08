@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"go.uber.org/zap"
-
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/storage"
@@ -21,6 +19,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/trie"
+	"go.uber.org/zap"
 )
 
 type ContractStore interface {
@@ -126,14 +125,25 @@ func (v *VMContext) WithCache(c storage.Cache) *VMContext {
 
 // WithBlock Load storage trie from the specified user address and block hash
 func NewVMContextWithBlock(l ledger.Store, block *types.StateBlock) *VMContext {
-	povHdr, err := l.GetPovHeaderByHeight(block.PoVHeight)
+	vmlog := log.NewLogger("vm_context")
+	latestPovHdr, err := l.GetLatestPovHeader()
+	if err == nil {
+		vmlog.Warnf("latest height %d, block height %d ", latestPovHdr.GetHeight(), block.PoVHeight)
+	}
+	povHeight := block.PoVHeight
+	if block.PoVHeight > latestPovHdr.GetHeight() {
+		povHeight = latestPovHdr.GetHeight()
+	}
+
+	povHdr, err := l.GetPovHeaderByHeight(povHeight)
 	if err != nil {
+		vmlog.Error(err)
 		return nil
 	}
 
 	vm := &VMContext{
 		l:         l,
-		logger:    log.NewLogger("vm_context"),
+		logger:    vmlog,
 		cache:     NewVMCache(),
 		trie:      trie.NewTrie(l.DBStore(), nil, trie.NewSimpleTrieNodePool()),
 		poVHeight: povHdr.GetHeight(),
