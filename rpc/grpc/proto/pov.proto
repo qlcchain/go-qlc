@@ -131,7 +131,7 @@ service PovAPI {
        };
     }
 
-    rpc GetAllRepStatesByBlockHeight (types.Hash) returns (PovApiRepState) {
+    rpc GetAllRepStatesByBlockHeight (UInt64) returns (PovApiRepState) {
         option (google.api.http) = {
            get: "/pov/getAllRepStatesByBlockHeight"
        };

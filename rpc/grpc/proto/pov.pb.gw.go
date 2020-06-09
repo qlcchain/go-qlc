@@ -325,7 +325,7 @@ var (
 )
 
 func request_PovAPI_GetAllRepStatesByBlockHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq types.Hash
+	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
 	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PovAPI_GetAllRepStatesByBlockHeight_0); err != nil {

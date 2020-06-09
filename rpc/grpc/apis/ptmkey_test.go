@@ -86,14 +86,14 @@ func TestPtmKeyApi_GetPtmKeyUpdateBlock(t *testing.T) {
 	btype := common.PtmKeyVBtypeStrDefault
 	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0M="
 	pk := &api.PtmKeyUpdateParam{
-		account,
-		btype,
-		key,
+		Account: account,
+		Btype:   btype,
+		Pubkey:  key,
 	}
 	pk2 := &api.PtmKeyUpdateParam{
-		account2,
-		btype,
-		key,
+		Account: account2,
+		Btype:   btype,
+		Pubkey:  key,
 	}
 
 	type args struct {
@@ -158,12 +158,12 @@ func TestPtmKeyApi_GetPtmKeyDeleteBlock(t *testing.T) {
 	addr2 := mock.Address()
 	btype := common.PtmKeyVBtypeStrDefault
 	pd1 := &api.PtmKeyDeleteParam{
-		addr1,
-		btype,
+		Account: addr1,
+		Btype:   btype,
 	}
 	pd2 := &api.PtmKeyDeleteParam{
-		addr2,
-		btype,
+		Account: addr2,
+		Btype:   btype,
 	}
 	type args struct {
 		param *api.PtmKeyDeleteParam
@@ -236,9 +236,9 @@ func TestPtmKeyApi_GetPtmKeyByAccount(t *testing.T) {
 	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0M="
 	pks := make([]*api.PtmKeyUpdateParam, 0)
 	pk := &api.PtmKeyUpdateParam{
-		account,
-		btype,
-		key,
+		Account: account,
+		Btype:   btype,
+		Pubkey:  key,
 	}
 	pks = append(pks, pk)
 
@@ -291,9 +291,9 @@ func TestPtmKeyApi_GetPtmKeyByAccountAndBtype(t *testing.T) {
 	key := "/vkgO5TfnsvKZGDc2KT1yxD5fxGNre65SPPuh3hyg0M="
 	pks := make([]*api.PtmKeyUpdateParam, 0)
 	pk := &api.PtmKeyUpdateParam{
-		account,
-		btype,
-		key,
+		Account: account,
+		Btype:   btype,
+		Pubkey:  key,
 	}
 	pks = append(pks, pk)
 

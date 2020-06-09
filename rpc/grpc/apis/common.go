@@ -357,3 +357,7 @@ func toInt64(b int64) *pb.Int64 {
 func toUInt64(b uint64) *pb.UInt64 {
 	return &pb.UInt64{Value: b}
 }
+
+func toOriginUInt64(v *pb.UInt64) uint64 {
+	return v.GetValue()
+}
