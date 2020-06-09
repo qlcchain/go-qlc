@@ -1081,7 +1081,7 @@ func DoDSettleGenerateInvoiceByProduct(ctx *vmstore.VMContext, seller types.Addr
 			return nil, err
 		}
 
-		u.InternalId = internalId
+		u.InternalId = internalId.String()
 	}
 
 	invoice.StartTime = start

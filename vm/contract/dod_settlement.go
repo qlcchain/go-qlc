@@ -346,14 +346,22 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 	order.OrderId = param.OrderId
 	order.OrderState = param.Status
 
-	if order.OrderType == abi.DoDSettleOrderTypeCreate {
-		for _, c := range order.Connections {
-			for _, p := range param.ProductIds {
-				if c.BuyerProductId == p.BuyerProductId {
-					c.ProductId = p.ProductId
-					break
-				}
-			}
+	// if order.OrderType == abi.DoDSettleOrderTypeCreate {
+	// 	for _, c := range order.Connections {
+	// 		for _, p := range param.ProductIds {
+	// 			if c.BuyerProductId == p.BuyerProductId {
+	// 				c.ProductId = p.ProductId
+	// 				break
+	// 			}
+	// 		}
+	// 	}
+	// }
+
+	for i, c := range order.Connections {
+		c.OrderItemId = param.ProductIds[i].OrderItemId
+
+		if order.OrderType == abi.DoDSettleOrderTypeCreate {
+			c.ProductId = param.ProductIds[i].ProductId
 		}
 	}
 
@@ -408,6 +416,7 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 					},
 					Active: &abi.DoDSettleConnectionDynamicParam{
 						OrderId:        order.OrderId,
+						OrderItemId:    cp.OrderItemId,
 						ConnectionName: cp.ConnectionName,
 						PaymentType:    cp.PaymentType,
 						BillingType:    cp.BillingType,
@@ -431,6 +440,7 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 
 				newActive := &abi.DoDSettleConnectionDynamicParam{
 					OrderId:        order.OrderId,
+					OrderItemId:    cp.OrderItemId,
 					ConnectionName: cp.ConnectionName,
 					PaymentType:    cp.PaymentType,
 					BillingType:    cp.BillingType,
@@ -481,6 +491,7 @@ func (uo *DoDSettleUpdateOrderInfo) ProcessSend(ctx *vmstore.VMContext, block *t
 
 				conn.Disconnect = &abi.DoDSettleDisconnectInfo{
 					OrderId:      order.OrderId,
+					OrderItemId:  cp.OrderItemId,
 					Price:        cp.Price,
 					Currency:     cp.Currency,
 					DisconnectAt: block.Timestamp,

@@ -309,7 +309,8 @@ type DoDSettleConnectionStaticParam struct {
 
 type DoDSettleConnectionDynamicParam struct {
 	OrderId        string                `json:"orderId,omitempty" msg:"oi"`
-	InternalId     types.Hash            `json:"internalId,omitempty" msg:"-"`
+	OrderItemId    string                `json:"orderItemId,omitempty" msg:"oii"`
+	InternalId     string                `json:"internalId,omitempty" msg:"-"`
 	QuoteId        string                `json:"quoteId,omitempty" msg:"q"`
 	QuoteItemId    string                `json:"quoteItemId,omitempty" msg:"qi"`
 	ConnectionName string                `json:"connectionName,omitempty" msg:"cn"`
@@ -336,6 +337,7 @@ type DoDSettleConnectionLifeTrack struct {
 
 type DoDSettleDisconnectInfo struct {
 	OrderId      string  `json:"orderId,omitempty" msg:"oi"`
+	OrderItemId  string  `json:"orderItemId,omitempty" msg:"oii"`
 	QuoteId      string  `json:"quoteId,omitempty" msg:"q"`
 	QuoteItemId  string  `json:"quoteItemId,omitempty" msg:"qi"`
 	Price        float64 `json:"price,omitempty" msg:"p"`
@@ -382,6 +384,7 @@ func NewOrderInfo() *DoDSettleOrderInfo {
 type DoDSettleProductItem struct {
 	ProductId      string `json:"productId" msg:"p"`
 	BuyerProductId string `json:"buyerProductId" msg:"b"`
+	OrderItemId    string `json:"orderItemId" msg:"o"`
 }
 
 type DoDSettleUpdateOrderInfoParam struct {
@@ -436,6 +439,10 @@ func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
 			return fmt.Errorf("no product")
 		}
 
+		if len(z.ProductIds) != len(order.Connections) {
+			return fmt.Errorf("not enough products")
+		}
+
 		productIdMap := make(map[string]struct{})
 
 		for _, p := range z.ProductIds {
@@ -459,20 +466,20 @@ func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
 			}
 		}
 
-		for _, c := range order.Connections {
-			found := false
-
-			for _, p := range z.ProductIds {
-				if c.BuyerProductId == p.BuyerProductId {
-					found = true
-					break
-				}
-			}
-
-			if found == false {
-				return fmt.Errorf("not enough products")
-			}
-		}
+		// for _, c := range order.Connections {
+		// 	found := false
+		//
+		// 	for _, p := range z.ProductIds {
+		// 		if c.BuyerProductId == p.BuyerProductId {
+		// 			found = true
+		// 			break
+		// 		}
+		// 	}
+		//
+		// 	if found == false {
+		// 		return fmt.Errorf("not enough products")
+		// 	}
+		// }
 	}
 
 	return nil

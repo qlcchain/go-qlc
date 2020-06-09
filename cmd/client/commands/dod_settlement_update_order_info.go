@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/abiosoft/ishell"
@@ -133,6 +134,7 @@ func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, pro
 		pi := &abi.DoDSettleProductItem{
 			ProductId:      productIds[i],
 			BuyerProductId: productBuyerIds[i],
+			OrderItemId:    fmt.Sprintf("orderItem%d", rand.Int31n(100)),
 		}
 		param.ProductIds = append(param.ProductIds, pi)
 	}
