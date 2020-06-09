@@ -195,7 +195,6 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 		return fmt.Errorf("no product")
 	}
 
-	quoteItemIdMap := make(map[string]struct{})
 	productItemIdMap := make(map[string]struct{})
 	productBuyerProductIdMap := make(map[string]struct{})
 
@@ -220,14 +219,12 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 			productItemIdMap[c.ItemId] = struct{}{}
 		}
 
-		if len(c.BuyerProductId) == 0 {
-			return fmt.Errorf("buyer item id needed")
-		}
-
-		if _, ok := productBuyerProductIdMap[c.BuyerProductId]; ok {
-			return fmt.Errorf("duplicate buyer product id")
-		} else {
-			productBuyerProductIdMap[c.BuyerProductId] = struct{}{}
+		if len(c.BuyerProductId) > 0 {
+			if _, ok := productBuyerProductIdMap[c.BuyerProductId]; ok {
+				return fmt.Errorf("duplicate buyer product id")
+			} else {
+				productBuyerProductIdMap[c.BuyerProductId] = struct{}{}
+			}
 		}
 
 		if len(c.QuoteId) == 0 {
@@ -236,12 +233,6 @@ func (z *DoDSettleCreateOrderParam) Verify() error {
 
 		if len(c.QuoteItemId) == 0 {
 			return fmt.Errorf("quote item id needed")
-		}
-
-		if _, ok := quoteItemIdMap[c.QuoteItemId]; ok {
-			return fmt.Errorf("duplicate quote item id")
-		} else {
-			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
 
 		if c.BillingType == DoDSettleBillingTypeNull {
@@ -527,8 +518,19 @@ func (z *DoDSettleChangeOrderParam) Verify() error {
 		return fmt.Errorf("no product")
 	}
 
-	quoteItemIdMap := make(map[string]struct{})
+	productItemIdMap := make(map[string]struct{})
+
 	for _, c := range z.Connections {
+		if len(c.ItemId) == 0 {
+			return fmt.Errorf("item id needed")
+		}
+
+		if _, ok := productItemIdMap[c.ItemId]; ok {
+			return fmt.Errorf("duplicate item id")
+		} else {
+			productItemIdMap[c.ItemId] = struct{}{}
+		}
+
 		if len(c.ProductId) == 0 {
 			return fmt.Errorf("product id needed")
 		}
@@ -539,12 +541,6 @@ func (z *DoDSettleChangeOrderParam) Verify() error {
 
 		if len(c.QuoteItemId) == 0 {
 			return fmt.Errorf("quote item id needed")
-		}
-
-		if _, ok := quoteItemIdMap[c.QuoteItemId]; ok {
-			return fmt.Errorf("duplicate quote item id")
-		} else {
-			quoteItemIdMap[c.QuoteItemId] = struct{}{}
 		}
 
 		if c.BillingType == DoDSettleBillingTypeDOD && (c.StartTime == 0 || c.EndTime == 0 || c.StartTime == c.EndTime) {
@@ -594,25 +590,30 @@ func (z *DoDSettleTerminateOrderParam) Verify(ctx *vmstore.VMContext) error {
 		return fmt.Errorf("no product")
 	}
 
-	for _, p := range z.Connections {
-		pid := &DoDSettleProduct{Seller: z.Seller.Address, ProductId: p.ProductId}
+	productItemIdMap := make(map[string]struct{})
 
-		psk, err := DoDSettleGetProductStorageKeyByProductId(ctx, pid.Hash())
-		if err != nil {
-			return err
-		}
-
-		_, err = DoDSettleGetConnectionInfoByProductStorageKey(ctx, psk)
+	for _, c := range z.Connections {
+		_, err := DoDSettleGetConnectionInfoByProductId(ctx, z.Seller.Address, c.ProductId)
 		if err != nil {
 			return fmt.Errorf("product is not active")
 		}
 
-		if len(p.QuoteId) == 0 {
+		if len(c.QuoteId) == 0 {
 			return fmt.Errorf("quote id needed")
 		}
 
-		if len(p.QuoteItemId) == 0 {
+		if len(c.QuoteItemId) == 0 {
 			return fmt.Errorf("quote item id needed")
+		}
+
+		if len(c.ItemId) == 0 {
+			return fmt.Errorf("item id needed")
+		}
+
+		if _, ok := productItemIdMap[c.ItemId]; ok {
+			return fmt.Errorf("duplicate item id")
+		} else {
+			productItemIdMap[c.ItemId] = struct{}{}
 		}
 	}
 
