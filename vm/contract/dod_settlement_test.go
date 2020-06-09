@@ -1075,7 +1075,7 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.DoDSettlementAddress)
 	block := mock.StateBlockWithoutWork()
-	rr := new(DoDSettleResourceReady)
+	rr := new(DoDSettleUpdateProductInfo)
 
 	_, _, err := rr.ProcessSend(ctx, block)
 	if err != ErrToken {
@@ -1100,7 +1100,7 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
-	param := &abi.DoDSettleResourceReadyParam{
+	param := &abi.DoDSettleUpdateProductInfoParam{
 		Address:    mock.Address(),
 		InternalId: mock.Hash(),
 		ProductId:  nil,
@@ -1321,14 +1321,14 @@ func TestDoDSettleResourceReady_DoGap(t *testing.T) {
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.DoDSettlementAddress)
 	block := mock.StateBlockWithoutWork()
-	rr := new(DoDSettleResourceReady)
+	rr := new(DoDSettleUpdateProductInfo)
 
 	_, _, err := rr.DoGap(ctx, block)
 	if err == nil {
 		t.Fatal()
 	}
 
-	param := &abi.DoDSettleResourceReadyParam{
+	param := &abi.DoDSettleUpdateProductInfoParam{
 		Address: mock.Address(),
 	}
 

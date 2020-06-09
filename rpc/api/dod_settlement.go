@@ -25,7 +25,7 @@ type DoDSettlementAPI struct {
 	uo     *contract.DoDSettleUpdateOrderInfo
 	cho    *contract.DoDSettleChangeOrder
 	to     *contract.DoDSettleTerminateOrder
-	rr     *contract.DoDSettleResourceReady
+	rr     *contract.DoDSettleUpdateProductInfo
 }
 
 func NewDoDSettlementAPI(cfgFile string, l ledger.Store) *DoDSettlementAPI {
@@ -38,7 +38,7 @@ func NewDoDSettlementAPI(cfgFile string, l ledger.Store) *DoDSettlementAPI {
 		uo:     &contract.DoDSettleUpdateOrderInfo{},
 		cho:    &contract.DoDSettleChangeOrder{},
 		to:     &contract.DoDSettleTerminateOrder{},
-		rr:     &contract.DoDSettleResourceReady{},
+		rr:     &contract.DoDSettleUpdateProductInfo{},
 	}
 
 	api.ca = NewContractApi(api.cc, api.l)
@@ -72,7 +72,7 @@ type DoDSettleTerminateOrderParam struct {
 
 type DoDSettleResourceReadyParam struct {
 	ContractPrivacyParam
-	abi.DoDSettleResourceReadyParam
+	abi.DoDSettleUpdateProductInfoParam
 }
 
 func (d *DoDSettlementAPI) GetCreateOrderBlock(param *DoDSettleCreateOrderParam) (*types.StateBlock, error) {
@@ -166,10 +166,25 @@ func (d *DoDSettlementAPI) GetUpdateOrderInfoRewardBlock(param *DoDSettleRespons
 	}
 
 	for _, p := range order.Connections {
-		ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: p.ProductId}
+		var productId string
+
+		if len(p.ProductId) > 0 {
+			productId = p.ProductId
+		} else {
+			otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: p.OrderItemId}
+
+			conn, err := abi.DoDSettleGetConnectionInfoByProductStorageKey(d.ctx, otp.Hash())
+			if err != nil {
+				return nil, fmt.Errorf("can't get product id")
+			}
+
+			productId = conn.ProductId
+		}
+
+		ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: productId}
 		_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
 		if err != nil {
-			return nil, fmt.Errorf("product %s is not active, can't generate this reward", p.ProductId)
+			return nil, fmt.Errorf("product %s is not active, can't generate this reward", productId)
 		}
 	}
 
@@ -270,7 +285,7 @@ func (d *DoDSettlementAPI) GetTerminateOrderRewardBlock(param *DoDSettleResponse
 	return d.ca.GenerateRewardBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetResourceReadyBlock(param *DoDSettleResourceReadyParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetUpdateProductInfoBlock(param *DoDSettleResourceReadyParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -294,7 +309,7 @@ func (d *DoDSettlementAPI) GetResourceReadyBlock(param *DoDSettleResourceReadyPa
 	return d.ca.GenerateSendBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetResourceReadyRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetUpdateProductInfoRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}

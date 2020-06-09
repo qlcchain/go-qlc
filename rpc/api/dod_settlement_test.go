@@ -189,12 +189,12 @@ func TestDoDSettlementAPI_GetResourceReadyBlock(t *testing.T) {
 
 	param := new(DoDSettleResourceReadyParam)
 
-	_, err := ds.GetResourceReadyBlock(nil)
+	_, err := ds.GetUpdateProductInfoBlock(nil)
 	if err == nil {
 		t.Fatal()
 	}
 
-	_, _ = ds.GetResourceReadyBlock(param)
+	_, _ = ds.GetUpdateProductInfoBlock(param)
 }
 
 func TestDoDSettlementAPI_GetResourceReadyRewardBlock(t *testing.T) {

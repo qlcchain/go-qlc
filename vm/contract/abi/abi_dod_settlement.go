@@ -3,6 +3,7 @@ package abi
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"math"
 	"strings"
 	"time"
@@ -71,18 +72,20 @@ const (
 			{"name":"buyer","type":"address"},
 			{"name":"orderId","type":"string"}
 		]},
-		{"type":"function","name":"DoDSettleResourceReady","inputs":[
+		{"type":"function","name":"DoDSettleUpdateProductInfo","inputs":[
 			{"name":"seller","type":"address"},
 			{"name":"orderId","type":"string"},
-			{"name":"productId","type":"string"}
+			{"name":"orderItemId","type":"string"},
+			{"name":"productId","type":"string"},
+			{"name":"productStatus","type":"string"}
 		]}
 	]`
 
-	MethodNameDoDSettleCreateOrder     = "DoDSettleCreateOrder"
-	MethodNameDoDSettleUpdateOrderInfo = "DoDSettleUpdateOrderInfo"
-	MethodNameDoDSettleChangeOrder     = "DoDSettleChangeOrder"
-	MethodNameDoDSettleTerminateOrder  = "DoDSettleTerminateOrder"
-	MethodNameDoDSettleResourceReady   = "DoDSettleResourceReady"
+	MethodNameDoDSettleCreateOrder       = "DoDSettleCreateOrder"
+	MethodNameDoDSettleUpdateOrderInfo   = "DoDSettleUpdateOrderInfo"
+	MethodNameDoDSettleChangeOrder       = "DoDSettleChangeOrder"
+	MethodNameDoDSettleTerminateOrder    = "DoDSettleTerminateOrder"
+	MethodNameDoDSettleUpdateProductInfo = "DoDSettleUpdateProductInfo"
 )
 
 var (
@@ -247,11 +250,17 @@ func DoDSettleGetOrderInfoByOrderId(ctx *vmstore.VMContext, seller types.Address
 }
 
 func DoDSettleGetConnectionInfoByProductId(ctx *vmstore.VMContext, seller types.Address, productId string) (*DoDSettleConnectionInfo, error) {
-	productKey := &DoDSettleProduct{Seller: seller, ProductId: productId}
-	return DoDSettleGetConnectionInfoByProductHash(ctx, productKey.Hash())
+	pid := &DoDSettleProduct{Seller: seller, ProductId: productId}
+
+	psk, err := DoDSettleGetProductStorageKeyByProductId(ctx, pid.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("get product storage key err")
+	}
+
+	return DoDSettleGetConnectionInfoByProductStorageKey(ctx, psk)
 }
 
-func DoDSettleGetConnectionInfoByProductHash(ctx *vmstore.VMContext, hash types.Hash) (*DoDSettleConnectionInfo, error) {
+func DoDSettleGetConnectionInfoByProductStorageKey(ctx *vmstore.VMContext, hash types.Hash) (*DoDSettleConnectionInfo, error) {
 	var key []byte
 	key = append(key, DoDSettleDBTableProduct)
 	key = append(key, hash.Bytes()...)
@@ -293,6 +302,36 @@ func DoDSettleGetConnectionInfoByProductHash(ctx *vmstore.VMContext, hash types.
 	}
 
 	return conn, nil
+}
+
+func DoDSettleSetProductStorageKeyByProductId(ctx *vmstore.VMContext, psk, pid types.Hash) error {
+	var key []byte
+	key = append(key, DoDSettleDBTableOrderToProduct)
+	key = append(key, pid.Bytes()...)
+	err := ctx.SetStorage(nil, key, psk.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DoDSettleGetProductStorageKeyByProductId(ctx *vmstore.VMContext, pid types.Hash) (types.Hash, error) {
+	var key []byte
+	key = append(key, DoDSettleDBTableOrderToProduct)
+	key = append(key, pid.Bytes()...)
+
+	data, err := ctx.GetStorage(nil, key)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+
+	hash, err := types.BytesToHash(data)
+	if err != nil {
+		return types.ZeroHash, err
+	}
+
+	return hash, nil
 }
 
 func DoDSettleUpdateOrder(ctx *vmstore.VMContext, order *DoDSettleOrderInfo, id types.Hash) error {
@@ -341,6 +380,10 @@ func DoDSettleUpdateConnectionRawParam(ctx *vmstore.VMContext, param *DoDSettleC
 		_, err := cp.UnmarshalMsg(data)
 		if err != nil {
 			return err
+		}
+
+		if len(param.ItemId) > 0 {
+			cp.ItemId = param.ItemId
 		}
 
 		if len(param.ConnectionName) > 0 {
@@ -527,7 +570,7 @@ func DoDSettleGetInternalIdListByAddress(ctx *vmstore.VMContext, address types.A
 
 func DoDSettleGetProductIdListByAddress(ctx *vmstore.VMContext, address types.Address) ([]*DoDSettleProduct, error) {
 	var key []byte
-	key = append(key, DoDSettleDBTableUser)
+	key = append(key, DoDSettleDBTableUserProduct)
 	key = append(key, address.Bytes()...)
 
 	data, err := ctx.GetStorage(nil, key)
@@ -535,13 +578,13 @@ func DoDSettleGetProductIdListByAddress(ctx *vmstore.VMContext, address types.Ad
 		return nil, err
 	}
 
-	userInfo := new(DoDSettleUserInfos)
-	_, err = userInfo.UnmarshalMsg(data)
+	up := new(DoDSettleUserProducts)
+	_, err = up.UnmarshalMsg(data)
 	if err != nil {
 		return nil, err
 	}
 
-	return userInfo.ProductIds, nil
+	return up.Products, nil
 }
 
 func DoDSettleGetOrderIdListByAddress(ctx *vmstore.VMContext, address types.Address) ([]*DoDSettleOrder, error) {
@@ -1251,4 +1294,48 @@ func DoDSettleGetPAYGTimeSpan(ctx *vmstore.VMContext, productId, orderId string)
 	}
 
 	return tk, nil
+}
+
+func DoDSettleUpdateUserProduct(ctx *vmstore.VMContext, buyer, seller types.Address, productId string) error {
+	var key []byte
+	key = append(key, DoDSettleDBTableUserProduct)
+	key = append(key, buyer.Bytes()...)
+
+	up := new(DoDSettleUserProducts)
+
+	data, err := ctx.GetStorage(nil, key)
+	if err != nil {
+		up.Products = make([]*DoDSettleProduct, 0)
+
+		product := &DoDSettleProduct{Seller: seller, ProductId: productId}
+		up.Products = append(up.Products, product)
+	} else {
+		_, err = up.UnmarshalMsg(data)
+		if err != nil {
+			return err
+		}
+
+		for _, p := range up.Products {
+			if p.ProductId == productId {
+				return nil
+			}
+		}
+
+		product := &DoDSettleProduct{Seller: seller, ProductId: productId}
+		up.Products = append(up.Products, product)
+	}
+
+	fmt.Println(buyer, util.ToIndentString(up))
+
+	data, err = up.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	err = ctx.SetStorage(nil, key, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -446,7 +446,7 @@ func TestDoDSettleResourceReadyParam(t *testing.T) {
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.DoDSettlementAddress)
-	rrp := new(DoDSettleResourceReadyParam)
+	rrp := new(DoDSettleUpdateProductInfoParam)
 
 	err := rrp.Verify(ctx)
 	if err == nil {

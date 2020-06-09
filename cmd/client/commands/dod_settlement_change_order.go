@@ -195,6 +195,7 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 		if billingType == abi.DoDSettleBillingTypePAYG {
 			conn = &abi.DoDSettleChangeConnectionParam{
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					ItemId:      fmt.Sprintf("itemid%d", rand.Int31n(100)),
 					Bandwidth:   bandwidthP,
 					BillingType: billingType,
 					BillingUnit: billingUnit,
@@ -205,6 +206,7 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 		} else {
 			conn = &abi.DoDSettleChangeConnectionParam{
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					ItemId:      fmt.Sprintf("itemid%d", rand.Int31n(100)),
 					Bandwidth:   bandwidthP,
 					BillingType: billingType,
 					StartTime:   startTime,

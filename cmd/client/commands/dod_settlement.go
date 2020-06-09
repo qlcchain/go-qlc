@@ -20,7 +20,7 @@ func addDoDSettlementCmd() {
 		addDSCreateResponseCmdByShell(cmd)
 		addDSUpdateOrderInfoCmdByShell(cmd)
 		addDSUpdateResponseCmdByShell(cmd)
-		addDSResourceReadyCmdByShell(cmd)
+		addDSUpdateProductInfoCmdByShell(cmd)
 		addDSChangeOrderCmdByShell(cmd)
 		addDSChangeResponseCmdByShell(cmd)
 		addDSTerminateOrderCmdByShell(cmd)

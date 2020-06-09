@@ -227,7 +227,7 @@ func TestDoDSettleGetConnectionInfoByProductHash(t *testing.T) {
 	productKey := &DoDSettleProduct{Seller: seller, ProductId: conn.ProductId}
 	productHash := productKey.Hash()
 
-	_, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
+	_, err := DoDSettleGetConnectionInfoByProductStorageKey(ctx, productHash)
 	if err == nil {
 		t.Fatal()
 	}
@@ -244,7 +244,7 @@ func TestDoDSettleGetConnectionInfoByProductHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ci, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
+	ci, err := DoDSettleGetConnectionInfoByProductStorageKey(ctx, productHash)
 	if err != nil || ci.ProductId != conn.ProductId {
 		t.Fatal()
 	}

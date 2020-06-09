@@ -208,7 +208,6 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 		if billingType == abi.DoDSettleBillingTypePAYG {
 			conn = &abi.DoDSettleConnectionParam{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-					ItemId:            fmt.Sprintf("item%d", rand.Int()),
 					BuyerProductId:    fmt.Sprintf("buyerProduct%d", rand.Int()),
 					ProductOfferingId: fmt.Sprintf("productOffering%d", rand.Int()),
 					SrcCompanyName:    "CBC",
@@ -223,6 +222,7 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 					DstPort:           dstPortP,
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					ItemId:         fmt.Sprintf("item%d", rand.Int()),
 					ConnectionName: fmt.Sprintf("connection%d", rand.Int()),
 					QuoteId:        fmt.Sprintf("quote%d", rand.Int()),
 					QuoteItemId:    fmt.Sprintf("quoteItem%d", rand.Int()),
@@ -248,7 +248,6 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 
 			conn = &abi.DoDSettleConnectionParam{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-					ItemId:            fmt.Sprintf("item%d", rand.Int()),
 					BuyerProductId:    fmt.Sprintf("buyerProduct%d", rand.Int()),
 					ProductOfferingId: fmt.Sprintf("productOffering%d", rand.Int()),
 					SrcCompanyName:    "CBC",
@@ -263,6 +262,7 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 					DstPort:           dstPortP,
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					ItemId:         fmt.Sprintf("item%d", rand.Int()),
 					ConnectionName: fmt.Sprintf("connection%d", rand.Int()),
 					QuoteId:        fmt.Sprintf("quote%d", rand.Int()),
 					QuoteItemId:    fmt.Sprintf("quoteItem%d", rand.Int()),
