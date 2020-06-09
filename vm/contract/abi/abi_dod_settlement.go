@@ -3,7 +3,6 @@ package abi
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 	"math"
 	"strings"
 	"time"
@@ -1332,8 +1331,6 @@ func DoDSettleUpdateUserProduct(ctx *vmstore.VMContext, buyer, seller types.Addr
 		product := &DoDSettleProduct{Seller: seller, ProductId: productId}
 		up.Products = append(up.Products, product)
 	}
-
-	fmt.Println(buyer, util.ToIndentString(up))
 
 	data, err = up.MarshalMsg(nil)
 	if err != nil {

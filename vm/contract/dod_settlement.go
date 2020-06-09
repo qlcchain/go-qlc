@@ -1406,11 +1406,11 @@ func (up *DoDSettleUpdateProductInfo) ProcessSend(ctx *vmstore.VMContext, block 
 					}
 				}
 			}
+		}
 
-			err = abi.DoDSettleUpdateConnection(ctx, conn, psk)
-			if err != nil {
-				return nil, nil, err
-			}
+		err = abi.DoDSettleUpdateConnection(ctx, conn, psk)
+		if err != nil {
+			return nil, nil, err
 		}
 	}
 
