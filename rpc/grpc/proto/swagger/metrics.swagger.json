@@ -1,0 +1,325 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "metrics.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/metrics/diskInfo": {
+      "get": {
+        "operationId": "DiskInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoUsageStat"
+            }
+          }
+        },
+        "tags": [
+          "MetricsAPI"
+        ]
+      }
+    },
+    "/metrics/getAllCPUTimeStats": {
+      "get": {
+        "operationId": "GetAllCPUTimeStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoTimesStats"
+            }
+          }
+        },
+        "tags": [
+          "MetricsAPI"
+        ]
+      }
+    },
+    "/metrics/getCPUInfo": {
+      "get": {
+        "operationId": "GetCPUInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInfoStats"
+            }
+          }
+        },
+        "tags": [
+          "MetricsAPI"
+        ]
+      }
+    },
+    "/metrics/getCPUTimeStats": {
+      "get": {
+        "operationId": "GetCPUTimeStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoTimesStats"
+            }
+          }
+        },
+        "tags": [
+          "MetricsAPI"
+        ]
+      }
+    },
+    "/metrics/getNetworkInterfaces": {
+      "get": {
+        "operationId": "GetNetworkInterfaces",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoIOCountersStats"
+            }
+          }
+        },
+        "tags": [
+          "MetricsAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoIOCountersStat": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "bytesSent": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "bytesRecv": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "packetsSent": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "packetsRecv": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "errin": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "errout": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "dropin": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "dropout": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "fifoin": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "fifoout": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "protoIOCountersStats": {
+      "type": "object",
+      "properties": {
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoIOCountersStat"
+          }
+        }
+      }
+    },
+    "protoInfoStat": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "VendorID": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "stepping": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "physicalId": {
+          "type": "string"
+        },
+        "coreId": {
+          "type": "string"
+        },
+        "cores": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "modelName": {
+          "type": "string"
+        },
+        "mhz": {
+          "type": "number",
+          "format": "double"
+        },
+        "cacheSize": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "microcode": {
+          "type": "string"
+        }
+      }
+    },
+    "protoInfoStats": {
+      "type": "object",
+      "properties": {
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoInfoStat"
+          }
+        }
+      }
+    },
+    "protoTimesStat": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "User": {
+          "type": "number",
+          "format": "double"
+        },
+        "System": {
+          "type": "number",
+          "format": "double"
+        },
+        "Idle": {
+          "type": "number",
+          "format": "double"
+        },
+        "Nice": {
+          "type": "number",
+          "format": "double"
+        },
+        "Iowait": {
+          "type": "number",
+          "format": "double"
+        },
+        "Irq": {
+          "type": "number",
+          "format": "double"
+        },
+        "Softirq": {
+          "type": "number",
+          "format": "double"
+        },
+        "Steal": {
+          "type": "number",
+          "format": "double"
+        },
+        "Guest": {
+          "type": "number",
+          "format": "double"
+        },
+        "GuestNice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protoTimesStats": {
+      "type": "object",
+      "properties": {
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoTimesStat"
+          }
+        }
+      }
+    },
+    "protoUsageStat": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "fstype": {
+          "type": "string"
+        },
+        "total": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "free": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "used": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "usedPercent": {
+          "type": "number",
+          "format": "double"
+        },
+        "inodesTotal": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "inodesUsed": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "inodesFree": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "inodesUsedPercent": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    }
+  }
+}

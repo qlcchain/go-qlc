@@ -1,0 +1,520 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "reward.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/rewards/getConfidantRewards": {
+      "post": {
+        "operationId": "GetConfidantRewards",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoConfidantRewardsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/getConfidantRewordsDetail": {
+      "post": {
+        "operationId": "GetConfidantRewordsDetail",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoRewardsInfosByAddress"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/getReceiveRewardBlock": {
+      "post": {
+        "operationId": "GetReceiveRewardBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/getRewardsDetail": {
+      "post": {
+        "operationId": "GetRewardsDetail",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoRewardsInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoString"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/getSendConfidantBlock": {
+      "post": {
+        "operationId": "GetSendConfidantBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoRewardsParamWithSign"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/getSendRewardBlock": {
+      "post": {
+        "operationId": "GetSendRewardBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoRewardsParamWithSign"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/getTotalRewards": {
+      "post": {
+        "operationId": "GetTotalRewards",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInt64"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoString"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/getUnsignedConfidantData": {
+      "post": {
+        "operationId": "GetUnsignedConfidantData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoRewardsParam"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/getUnsignedRewardData": {
+      "post": {
+        "operationId": "GetUnsignedRewardData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoRewardsParam"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    },
+    "/rewards/isAirdropRewards": {
+      "post": {
+        "operationId": "IsAirdropRewards",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBoolean"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        ],
+        "tags": [
+          "RewardsAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoBoolean": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoBytes": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protoConfidantRewardsResponse": {
+      "type": "object",
+      "properties": {
+        "rewards": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      }
+    },
+    "protoInt64": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoRewardsInfos": {
+      "type": "object",
+      "properties": {
+        "infos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesRewardsInfo"
+          }
+        }
+      }
+    },
+    "protoRewardsInfosByAddress": {
+      "type": "object",
+      "properties": {
+        "infos": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/protoRewardsInfos"
+          }
+        }
+      }
+    },
+    "protoRewardsParam": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "self": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "protoRewardsParamWithSign": {
+      "type": "object",
+      "properties": {
+        "param": {
+          "$ref": "#/definitions/protoRewardsParam"
+        },
+        "sign": {
+          "type": "string"
+        }
+      }
+    },
+    "protoString": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "typesAddress": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "typesHash": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesRewardsInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "txHeader": {
+          "type": "string"
+        },
+        "rxHeader": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "flag": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "privateRecvRsp": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "privatePayload": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    }
+  }
+}

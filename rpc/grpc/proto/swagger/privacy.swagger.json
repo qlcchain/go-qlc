@@ -1,0 +1,163 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "privacy.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/privacy/distributeRawPayload": {
+      "post": {
+        "operationId": "DistributeRawPayload",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoPrivacyDistributeParam"
+            }
+          }
+        ],
+        "tags": [
+          "PrivacyAPI"
+        ]
+      }
+    },
+    "/privacy/getBlockPrivatePayload": {
+      "post": {
+        "operationId": "GetBlockPrivatePayload",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        ],
+        "tags": [
+          "PrivacyAPI"
+        ]
+      }
+    },
+    "/privacy/getDemoKV": {
+      "post": {
+        "operationId": "GetDemoKV",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        ],
+        "tags": [
+          "PrivacyAPI"
+        ]
+      }
+    },
+    "/privacy/getRawPayload": {
+      "post": {
+        "operationId": "GetRawPayload",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        ],
+        "tags": [
+          "PrivacyAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoBytes": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protoPrivacyDistributeParam": {
+      "type": "object",
+      "properties": {
+        "rawPayload": {
+          "type": "string",
+          "format": "byte"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        }
+      }
+    },
+    "typesHash": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

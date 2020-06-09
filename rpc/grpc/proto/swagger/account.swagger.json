@@ -1,0 +1,229 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "account.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/account/create": {
+      "get": {
+        "operationId": "Create",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoCreateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "seedStr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "index",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AccountAPI"
+        ]
+      }
+    },
+    "/account/forPublicKey": {
+      "get": {
+        "operationId": "ForPublicKey",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AccountAPI"
+        ]
+      }
+    },
+    "/account/newAccounts": {
+      "get": {
+        "operationId": "NewAccounts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAccountsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "AccountAPI"
+        ]
+      }
+    },
+    "/account/newSeed": {
+      "get": {
+        "operationId": "NewSeed",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoString"
+            }
+          }
+        },
+        "tags": [
+          "AccountAPI"
+        ]
+      }
+    },
+    "/account/publicKey": {
+      "get": {
+        "operationId": "PublicKey",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoString"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AccountAPI"
+        ]
+      }
+    },
+    "/account/validate": {
+      "get": {
+        "operationId": "Validate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBoolean"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AccountAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoAccount": {
+      "type": "object",
+      "properties": {
+        "Seed": {
+          "type": "string"
+        },
+        "PrivateKey": {
+          "type": "string"
+        },
+        "PublicKey": {
+          "type": "string"
+        },
+        "Address": {
+          "type": "string"
+        }
+      }
+    },
+    "protoAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "Accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoAccount"
+          }
+        }
+      }
+    },
+    "protoBoolean": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoCreateResponse": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "protoString": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "typesAddress": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

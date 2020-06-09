@@ -1,0 +1,775 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "nep5_pledge.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/pledge/getAllPledgeInfo": {
+      "post": {
+        "operationId": "GetAllPledgeInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoNEP5PledgeInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "properties": {}
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getBeneficialPledgeInfos": {
+      "post": {
+        "operationId": "GetBeneficialPledgeInfos",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPledgeInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoBeneficialPledgeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getBeneficialPledgeInfosByAddress": {
+      "post": {
+        "operationId": "GetBeneficialPledgeInfosByAddress",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPledgeInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeBeneficialAmount": {
+      "post": {
+        "operationId": "GetPledgeBeneficialAmount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInt64"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoBeneficialPledgeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeBeneficialTotalAmount": {
+      "post": {
+        "operationId": "GetPledgeBeneficialTotalAmount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInt64"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeBlock": {
+      "post": {
+        "operationId": "GetPledgeBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoPledgeParam"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeData": {
+      "post": {
+        "operationId": "GetPledgeData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoPledgeParam"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeInfo": {
+      "post": {
+        "operationId": "GetPledgeInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoNEP5PledgeInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoWithdrawPledgeParam"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeInfoWithNEP5TxId": {
+      "post": {
+        "operationId": "GetPledgeInfoWithNEP5TxId",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoNEP5PledgeInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoWithdrawPledgeParam"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeInfoWithTimeExpired": {
+      "post": {
+        "operationId": "GetPledgeInfoWithTimeExpired",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoNEP5PledgeInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoWithdrawPledgeParam"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeInfosByPledgeAddress": {
+      "post": {
+        "operationId": "GetPledgeInfosByPledgeAddress",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPledgeInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeRewardBlock": {
+      "post": {
+        "operationId": "GetPledgeRewardBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getPledgeRewardBlockBySendHash": {
+      "post": {
+        "operationId": "GetPledgeRewardBlockBySendHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getTotalPledgeAmount": {
+      "post": {
+        "operationId": "GetTotalPledgeAmount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInt64"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "properties": {}
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getWithdrawPledgeBlock": {
+      "post": {
+        "operationId": "GetWithdrawPledgeBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoWithdrawPledgeParam"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getWithdrawPledgeData": {
+      "post": {
+        "operationId": "GetWithdrawPledgeData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoWithdrawPledgeParam"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getWithdrawRewardBlock": {
+      "post": {
+        "operationId": "GetWithdrawRewardBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/getWithdrawRewardBlockBySendHash": {
+      "post": {
+        "operationId": "GetWithdrawRewardBlockBySendHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    },
+    "/pledge/parsePledgeInfo": {
+      "post": {
+        "operationId": "ParsePledgeInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesNEP5PledgeInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        ],
+        "tags": [
+          "NEP5PledgeAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoBeneficialPledgeRequest": {
+      "type": "object",
+      "properties": {
+        "beneficial": {
+          "type": "string"
+        },
+        "pType": {
+          "type": "string"
+        }
+      }
+    },
+    "protoBytes": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protoInt64": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoNEP5PledgeInfo": {
+      "type": "object",
+      "properties": {
+        "pType": {
+          "type": "string"
+        },
+        "Amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "WithdrawTime": {
+          "type": "string"
+        },
+        "Beneficial": {
+          "type": "string"
+        },
+        "PledgeAddress": {
+          "type": "string"
+        },
+        "NEP5TxId": {
+          "type": "string"
+        }
+      }
+    },
+    "protoNEP5PledgeInfos": {
+      "type": "object",
+      "properties": {
+        "PledgeInfos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoNEP5PledgeInfo"
+          }
+        }
+      }
+    },
+    "protoPledgeInfos": {
+      "type": "object",
+      "properties": {
+        "PledgeInfos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoNEP5PledgeInfo"
+          }
+        },
+        "totalAmounts": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoPledgeParam": {
+      "type": "object",
+      "properties": {
+        "beneficial": {
+          "type": "string"
+        },
+        "pledgeAddress": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pType": {
+          "type": "string"
+        },
+        "nep5TxId": {
+          "type": "string"
+        }
+      }
+    },
+    "protoWithdrawPledgeParam": {
+      "type": "object",
+      "properties": {
+        "beneficial": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pType": {
+          "type": "string"
+        },
+        "nep5TxId": {
+          "type": "string"
+        }
+      }
+    },
+    "typesAddress": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "typesHash": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesNEP5PledgeInfo": {
+      "type": "object",
+      "properties": {
+        "pType": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "Amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "WithdrawTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Beneficial": {
+          "type": "string"
+        },
+        "PledgeAddress": {
+          "type": "string"
+        },
+        "NEP5TxId": {
+          "type": "string"
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "flag": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "privateRecvRsp": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "privatePayload": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    }
+  }
+}

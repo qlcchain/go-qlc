@@ -1,0 +1,269 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "ptmkey.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/ptmkey/getPtmKeyByAccount": {
+      "post": {
+        "operationId": "GetPtmKeyByAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPtmKeyUpdateParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        ],
+        "tags": [
+          "PtmKeyAPI"
+        ]
+      }
+    },
+    "/ptmkey/getPtmKeyByAccountAndBtype": {
+      "post": {
+        "operationId": "GetPtmKeyByAccountAndBtype",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPtmKeyUpdateParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoPtmKeyByAccountAndBtypeParam"
+            }
+          }
+        ],
+        "tags": [
+          "PtmKeyAPI"
+        ]
+      }
+    },
+    "/ptmkey/getPtmKeyDeleteBlock": {
+      "post": {
+        "operationId": "GetPtmKeyDeleteBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoPtmKeyByAccountAndBtypeParam"
+            }
+          }
+        ],
+        "tags": [
+          "PtmKeyAPI"
+        ]
+      }
+    },
+    "/ptmkey/getPtmKeyUpdateBlock": {
+      "post": {
+        "operationId": "GetPtmKeyUpdateBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoPtmKeyUpdateParam"
+            }
+          }
+        ],
+        "tags": [
+          "PtmKeyAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoPtmKeyByAccountAndBtypeParam": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "btype": {
+          "type": "string"
+        }
+      }
+    },
+    "protoPtmKeyUpdateParam": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "btype": {
+          "type": "string"
+        },
+        "pubkey": {
+          "type": "string"
+        }
+      }
+    },
+    "protoPtmKeyUpdateParams": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoPtmKeyUpdateParam"
+          }
+        }
+      }
+    },
+    "typesAddress": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "flag": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "privateRecvRsp": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "privatePayload": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,411 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "miner.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/miner/getAvailRewardInfo": {
+      "get": {
+        "operationId": "GetAvailRewardInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoMinerAvailRewardInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MinerAPI"
+        ]
+      }
+    },
+    "/miner/getRewardData": {
+      "post": {
+        "operationId": "GetRewardData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoRewardParam"
+            }
+          }
+        ],
+        "tags": [
+          "MinerAPI"
+        ]
+      }
+    },
+    "/miner/getRewardHistory": {
+      "post": {
+        "operationId": "GetRewardHistory",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoMinerHistoryRewardInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        ],
+        "tags": [
+          "MinerAPI"
+        ]
+      }
+    },
+    "/miner/getRewardRecvBlock": {
+      "post": {
+        "operationId": "GetRewardRecvBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "MinerAPI"
+        ]
+      }
+    },
+    "/miner/getRewardRecvBlockBySendHash": {
+      "post": {
+        "operationId": "GetRewardRecvBlockBySendHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        ],
+        "tags": [
+          "MinerAPI"
+        ]
+      }
+    },
+    "/miner/getRewardSendBlock": {
+      "post": {
+        "operationId": "GetRewardSendBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoRewardParam"
+            }
+          }
+        ],
+        "tags": [
+          "MinerAPI"
+        ]
+      }
+    },
+    "/miner/unpackRewardData": {
+      "post": {
+        "operationId": "UnpackRewardData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoRewardParam"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        ],
+        "tags": [
+          "MinerAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoBytes": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protoMinerAvailRewardInfo": {
+      "type": "object",
+      "properties": {
+        "lastEndHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "latestBlockHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "nodeRewardHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "availStartHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "availEndHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "availRewardBlocks": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "availRewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "needCallReward": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoMinerHistoryRewardInfo": {
+      "type": "object",
+      "properties": {
+        "lastEndHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "rewardBlocks": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "rewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastRewardTime": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoRewardParam": {
+      "type": "object",
+      "properties": {
+        "coinbase": {
+          "type": "string"
+        },
+        "beneficial": {
+          "type": "string"
+        },
+        "startHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "endHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "rewardBlocks": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "rewardAmount": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "typesAddress": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "typesHash": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "flag": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "privateRecvRsp": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "privatePayload": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    }
+  }
+}

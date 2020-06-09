@@ -1,0 +1,374 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "mintage.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/miner/getMintageBlock": {
+      "post": {
+        "operationId": "GetMintageBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoMintageParams"
+            }
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getMintageData": {
+      "post": {
+        "operationId": "GetMintageData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoMintageParams"
+            }
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getRewardBlock": {
+      "post": {
+        "operationId": "GetRewardBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getWithdrawMintageBlock": {
+      "post": {
+        "operationId": "GetWithdrawMintageBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoWithdrawParams"
+            }
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getWithdrawMintageData": {
+      "post": {
+        "operationId": "ParseTokenInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesTokenInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getWithdrawRewardBlock": {
+      "post": {
+        "operationId": "GetWithdrawRewardBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoBytes": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protoMintageParams": {
+      "type": "object",
+      "properties": {
+        "SelfAddr": {
+          "type": "string"
+        },
+        "PrevHash": {
+          "type": "string"
+        },
+        "TokenName": {
+          "type": "string"
+        },
+        "TokenSymbol": {
+          "type": "string"
+        },
+        "TotalSupply": {
+          "type": "string"
+        },
+        "Decimals": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "Beneficial": {
+          "type": "string"
+        },
+        "NEP5TxId": {
+          "type": "string"
+        }
+      }
+    },
+    "protoWithdrawParams": {
+      "type": "object",
+      "properties": {
+        "selfAddr": {
+          "type": "string"
+        },
+        "tokenId": {
+          "type": "string"
+        }
+      }
+    },
+    "typesHash": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "flag": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "privateRecvRsp": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "privatePayload": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "typesTokenInfo": {
+      "type": "object",
+      "properties": {
+        "tokenId": {
+          "type": "string"
+        },
+        "tokenName": {
+          "type": "string"
+        },
+        "tokenSymbol": {
+          "type": "string"
+        },
+        "totalSupply": {
+          "type": "string",
+          "format": "int64"
+        },
+        "decimals": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "pledgeAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "withdrawTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pledgeAddress": {
+          "type": "string"
+        },
+        "NEP5TxId": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

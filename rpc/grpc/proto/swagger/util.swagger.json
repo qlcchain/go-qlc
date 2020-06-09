@@ -1,0 +1,181 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "util.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/util/balanceToRaw": {
+      "get": {
+        "operationId": "BalanceToRaw",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInt64"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "balance",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "unit",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "tokenName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UtilAPI"
+        ]
+      }
+    },
+    "/util/decrypt": {
+      "get": {
+        "operationId": "Decrypt",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoString"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cryptograph",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "passphrase",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UtilAPI"
+        ]
+      }
+    },
+    "/util/encrypt": {
+      "get": {
+        "operationId": "Encrypt",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoString"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "raw",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "passphrase",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UtilAPI"
+        ]
+      }
+    },
+    "/util/rawToBalance": {
+      "get": {
+        "operationId": "RawToBalance",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoFloat"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "balance",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "unit",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "tokenName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UtilAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoFloat": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "format": "float"
+        }
+      }
+    },
+    "protoInt64": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoString": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
