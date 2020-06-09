@@ -382,6 +382,7 @@ type DoDSettleOrderInfo struct {
 	Buyer         *DoDSettleUser              `json:"buyer" msg:"b"`
 	Seller        *DoDSettleUser              `json:"seller" msg:"s"`
 	OrderId       string                      `json:"orderId,omitempty" msg:"oi"`
+	InternalId    string                      `json:"internalId,omitempty" msg:"i"`
 	OrderType     DoDSettleOrderType          `json:"orderType,omitempty" msg:"ot"`
 	OrderState    DoDSettleOrderState         `json:"orderState" msg:"os"`
 	ContractState DoDSettleContractState      `json:"contractState" msg:"cs"`

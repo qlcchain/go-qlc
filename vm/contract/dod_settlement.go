@@ -693,6 +693,8 @@ func (uo *DoDSettleUpdateOrderInfo) setStorage(ctx *vmstore.VMContext, order *ab
 			return err
 		}
 
+		userInfo.OrderIds = append(userInfo.OrderIds, orderKey)
+
 		data, err = userInfo.MarshalMsg(nil)
 		if err != nil {
 			return err

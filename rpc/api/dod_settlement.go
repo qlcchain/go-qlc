@@ -371,6 +371,8 @@ func (d *DoDSettlementAPI) GetPendingRequest(address types.Address) ([]*DoDPendi
 					return err
 				}
 
+				order.InternalId = sendBlock.Previous.String()
+
 				r := &DoDPendingRequestRsp{
 					Hash:  key.Hash,
 					Order: order,

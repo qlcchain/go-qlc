@@ -625,7 +625,15 @@ func DoDSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, orde
 	}
 
 	for _, c := range order.Connections {
-		conn, _ := DoDSettleGetConnectionInfoByProductId(ctx, seller, c.ProductId)
+		var conn *DoDSettleConnectionInfo
+
+		if len(c.ProductId) > 0 {
+			conn, _ = DoDSettleGetConnectionInfoByProductId(ctx, seller, c.ProductId)
+		} else {
+			top := &DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+			conn, _ = DoDSettleGetConnectionInfoByProductStorageKey(ctx, top.Hash())
+		}
+
 		if conn == nil {
 			continue
 		}
