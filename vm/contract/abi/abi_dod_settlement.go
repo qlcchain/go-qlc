@@ -305,7 +305,7 @@ func DoDSettleGetConnectionInfoByProductStorageKey(ctx *vmstore.VMContext, hash 
 
 func DoDSettleSetProductStorageKeyByProductId(ctx *vmstore.VMContext, psk, pid types.Hash) error {
 	var key []byte
-	key = append(key, DoDSettleDBTableOrderToProduct)
+	key = append(key, DoDSettleDBTableProductToOrder)
 	key = append(key, pid.Bytes()...)
 	err := ctx.SetStorage(nil, key, psk.Bytes())
 	if err != nil {
@@ -317,7 +317,7 @@ func DoDSettleSetProductStorageKeyByProductId(ctx *vmstore.VMContext, psk, pid t
 
 func DoDSettleGetProductStorageKeyByProductId(ctx *vmstore.VMContext, pid types.Hash) (types.Hash, error) {
 	var key []byte
-	key = append(key, DoDSettleDBTableOrderToProduct)
+	key = append(key, DoDSettleDBTableProductToOrder)
 	key = append(key, pid.Bytes()...)
 
 	data, err := ctx.GetStorage(nil, key)
@@ -331,6 +331,43 @@ func DoDSettleGetProductStorageKeyByProductId(ctx *vmstore.VMContext, pid types.
 	}
 
 	return hash, nil
+}
+
+func DoDSettleSetProductIdByStorageKey(ctx *vmstore.VMContext, psk types.Hash, productId string, seller types.Address) error {
+	pi := &DoDSettleProduct{Seller: seller, ProductId: productId}
+	data, err := pi.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+
+	var key []byte
+	key = append(key, DoDSettleDBTableOrderToProduct)
+	key = append(key, psk.Bytes()...)
+	err = ctx.SetStorage(nil, key, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DoDSettleGetProductIdByStorageKey(ctx *vmstore.VMContext, psk types.Hash) (*DoDSettleProduct, error) {
+	var key []byte
+	key = append(key, DoDSettleDBTableOrderToProduct)
+	key = append(key, psk.Bytes()...)
+
+	data, err := ctx.GetStorage(nil, key)
+	if err != nil {
+		return nil, err
+	}
+
+	pi := new(DoDSettleProduct)
+	_, err = pi.UnmarshalMsg(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return pi, nil
 }
 
 func DoDSettleUpdateOrder(ctx *vmstore.VMContext, order *DoDSettleOrderInfo, id types.Hash) error {
@@ -629,8 +666,13 @@ func DoDSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, orde
 		if len(c.ProductId) > 0 {
 			conn, _ = DoDSettleGetConnectionInfoByProductId(ctx, seller, c.ProductId)
 		} else {
-			top := &DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
-			conn, _ = DoDSettleGetConnectionInfoByProductStorageKey(ctx, top.Hash())
+			otp := &DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+			conn, _ = DoDSettleGetConnectionInfoByProductStorageKey(ctx, otp.Hash())
+
+			pi, _ := DoDSettleGetProductIdByStorageKey(ctx, otp.Hash())
+			if pi != nil {
+				conn.ProductId = pi.ProductId
+			}
 		}
 
 		if conn == nil {

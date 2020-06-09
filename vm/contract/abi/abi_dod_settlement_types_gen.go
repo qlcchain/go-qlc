@@ -6165,6 +6165,12 @@ func (z *DoDSettleOrderInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "OrderId")
 				return
 			}
+		case "i":
+			z.InternalId, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "InternalId")
+				return
+			}
 		case "ot":
 			{
 				var zb0004 int
@@ -6299,9 +6305,9 @@ func (z *DoDSettleOrderInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DoDSettleOrderInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 8
+	// map header, size 9
 	// write "b"
-	err = en.Append(0x88, 0xa1, 0x62)
+	err = en.Append(0x89, 0xa1, 0x62)
 	if err != nil {
 		return
 	}
@@ -6374,6 +6380,16 @@ func (z *DoDSettleOrderInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteString(z.OrderId)
 	if err != nil {
 		err = msgp.WrapError(err, "OrderId")
+		return
+	}
+	// write "i"
+	err = en.Append(0xa1, 0x69)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.InternalId)
+	if err != nil {
+		err = msgp.WrapError(err, "InternalId")
 		return
 	}
 	// write "ot"
@@ -6476,9 +6492,9 @@ func (z *DoDSettleOrderInfo) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DoDSettleOrderInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 8
+	// map header, size 9
 	// string "b"
-	o = append(o, 0x88, 0xa1, 0x62)
+	o = append(o, 0x89, 0xa1, 0x62)
 	if z.Buyer == nil {
 		o = msgp.AppendNil(o)
 	} else {
@@ -6514,6 +6530,9 @@ func (z *DoDSettleOrderInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "oi"
 	o = append(o, 0xa2, 0x6f, 0x69)
 	o = msgp.AppendString(o, z.OrderId)
+	// string "i"
+	o = append(o, 0xa1, 0x69)
+	o = msgp.AppendString(o, z.InternalId)
 	// string "ot"
 	o = append(o, 0xa2, 0x6f, 0x74)
 	o = msgp.AppendInt(o, int(z.OrderType))
@@ -6680,6 +6699,12 @@ func (z *DoDSettleOrderInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "OrderId")
 				return
 			}
+		case "i":
+			z.InternalId, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InternalId")
+				return
+			}
 		case "ot":
 			{
 				var zb0004 int
@@ -6825,7 +6850,7 @@ func (z *DoDSettleOrderInfo) Msgsize() (s int) {
 	} else {
 		s += 1 + 2 + msgp.ExtensionPrefixSize + z.Seller.Address.Len() + 2 + msgp.StringPrefixSize + len(z.Seller.Name)
 	}
-	s += 3 + msgp.StringPrefixSize + len(z.OrderId) + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
+	s += 3 + msgp.StringPrefixSize + len(z.OrderId) + 2 + msgp.StringPrefixSize + len(z.InternalId) + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
 	for za0001 := range z.Connections {
 		if z.Connections[za0001] == nil {
 			s += msgp.NilSize

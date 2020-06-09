@@ -1310,6 +1310,11 @@ func (up *DoDSettleUpdateProductInfo) ProcessSend(ctx *vmstore.VMContext, block 
 				return nil, nil, fmt.Errorf("set product storage key err %s", err)
 			}
 
+			err = abi.DoDSettleSetProductIdByStorageKey(ctx, psk, pi.ProductId, order.Seller.Address)
+			if err != nil {
+				return nil, nil, fmt.Errorf("set product id err %s", err)
+			}
+
 			err = abi.DoDSettleUpdateUserProduct(ctx, order.Buyer.Address, order.Seller.Address, pi.ProductId)
 			if err != nil {
 				return nil, nil, fmt.Errorf("update user product err %s", err)
@@ -1406,11 +1411,6 @@ func (up *DoDSettleUpdateProductInfo) ProcessSend(ctx *vmstore.VMContext, block 
 					}
 				}
 			}
-		}
-
-		err = abi.DoDSettleUpdateConnection(ctx, conn, psk)
-		if err != nil {
-			return nil, nil, err
 		}
 	}
 

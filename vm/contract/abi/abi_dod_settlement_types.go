@@ -106,8 +106,9 @@ const (
 	DoDSettleDBTableBuyerConnActive
 	DoDSettleDBTableConnRawParam
 	DoDSettleDBTablePAYGTimeSpan
-	DoDSettleDBTableOrderToProduct
+	DoDSettleDBTableProductToOrder
 	DoDSettleDBTableUserProduct
+	DoDSettleDBTableOrderToProduct
 )
 
 //go:generate msgp

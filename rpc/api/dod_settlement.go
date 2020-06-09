@@ -70,7 +70,7 @@ type DoDSettleTerminateOrderParam struct {
 	abi.DoDSettleTerminateOrderParam
 }
 
-type DoDSettleResourceReadyParam struct {
+type DoDSettleUpdateProductInfoParam struct {
 	ContractPrivacyParam
 	abi.DoDSettleUpdateProductInfoParam
 }
@@ -173,12 +173,12 @@ func (d *DoDSettlementAPI) GetUpdateOrderInfoRewardBlock(param *DoDSettleRespons
 		} else {
 			otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: p.OrderItemId}
 
-			conn, err := abi.DoDSettleGetConnectionInfoByProductStorageKey(d.ctx, otp.Hash())
+			pi, err := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
 			if err != nil {
-				return nil, fmt.Errorf("can't get product id")
+				return nil, fmt.Errorf("get product id %s", err)
 			}
 
-			productId = conn.ProductId
+			productId = pi.ProductId
 		}
 
 		ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: productId}
@@ -285,7 +285,7 @@ func (d *DoDSettlementAPI) GetTerminateOrderRewardBlock(param *DoDSettleResponse
 	return d.ca.GenerateRewardBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetUpdateProductInfoBlock(param *DoDSettleResourceReadyParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetUpdateProductInfoBlock(param *DoDSettleUpdateProductInfoParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -329,10 +329,10 @@ func (d *DoDSettlementAPI) GetOrderInfoBySellerAndOrderId(seller types.Address, 
 
 	for _, c := range order.Connections {
 		if len(c.ProductId) == 0 {
-			top := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
-			conn, _ := abi.DoDSettleGetConnectionInfoByProductStorageKey(d.ctx, top.Hash())
-			if conn != nil {
-				c.ProductId = conn.ProductId
+			otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+			pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+			if pi != nil {
+				c.ProductId = pi.ProductId
 			}
 		}
 	}
@@ -353,10 +353,10 @@ func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoD
 
 	for _, c := range order.Connections {
 		if len(c.ProductId) == 0 {
-			top := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
-			conn, _ := abi.DoDSettleGetConnectionInfoByProductStorageKey(d.ctx, top.Hash())
-			if conn != nil {
-				c.ProductId = conn.ProductId
+			otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+			pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+			if pi != nil {
+				c.ProductId = pi.ProductId
 			}
 		}
 	}
@@ -466,13 +466,12 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 					if len(p.ProductId) > 0 {
 						productId = p.ProductId
 					} else {
-						top := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: p.OrderItemId}
-						conn, err := abi.DoDSettleGetConnectionInfoByProductStorageKey(d.ctx, top.Hash())
+						otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: p.OrderItemId}
+						pi, err := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
 						if err != nil {
 							return err
 						}
-
-						productId = conn.ProductId
+						productId = pi.ProductId
 					}
 
 					pai := &abi.DoDSettleProductInfo{OrderItemId: p.OrderItemId, ProductId: productId, Active: false}
@@ -637,10 +636,10 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, o
 
 		for _, c := range order.Connections {
 			if len(c.ProductId) == 0 {
-				top := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
-				conn, _ := abi.DoDSettleGetConnectionInfoByProductStorageKey(d.ctx, top.Hash())
-				if conn != nil {
-					c.ProductId = conn.ProductId
+				otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+				pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+				if pi != nil {
+					c.ProductId = pi.ProductId
 				}
 			}
 		}
@@ -688,10 +687,10 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.
 
 		for _, c := range order.Connections {
 			if len(c.ProductId) == 0 {
-				top := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
-				conn, _ := abi.DoDSettleGetConnectionInfoByProductStorageKey(d.ctx, top.Hash())
-				if conn != nil {
-					c.ProductId = conn.ProductId
+				otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+				pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+				if pi != nil {
+					c.ProductId = pi.ProductId
 				}
 			}
 		}
