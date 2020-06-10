@@ -543,6 +543,33 @@ func TestDoDSettleUpdateProductInfoParam(t *testing.T) {
 		t.Fatal()
 	}
 
+	order.Connections = []*DoDSettleConnectionParam{{}}
+	order.Connections[0].OrderItemId = "oi1"
+	err = DoDSettleUpdateOrder(ctx, order, internalId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rrp.ProductInfo = []*DoDSettleProductInfo{{OrderItemId: "oi1", ProductId: "p1", Active: false}}
+	conn := new(DoDSettleConnectionInfo)
+	conn.Track = []*DoDSettleConnectionLifeTrack{{OrderId: "order1", OrderType: DoDSettleOrderTypeCreate}}
+	otp := DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: "order1", OrderItemId: "oi1"}
+	pid := DoDSettleProduct{Seller: order.Seller.Address, ProductId: "p1"}
+	err = DoDSettleSetProductStorageKeyByProductId(ctx, otp.Hash(), pid.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = DoDSettleUpdateConnection(ctx, conn, otp.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = rrp.Verify(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
 	data, err := rrp.ToABI()
 	if err != nil {
 		t.Fatal(err)
