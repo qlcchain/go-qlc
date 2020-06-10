@@ -594,9 +594,14 @@ func (z *DoDSettleTerminateOrderParam) Verify(ctx *vmstore.VMContext) error {
 	productItemIdMap := make(map[string]struct{})
 
 	for _, c := range z.Connections {
-		_, err := DoDSettleGetConnectionInfoByProductId(ctx, z.Seller.Address, c.ProductId)
-		if err != nil {
-			return fmt.Errorf("product is not active")
+		if len(c.ItemId) == 0 {
+			return fmt.Errorf("item id needed")
+		}
+
+		if _, ok := productItemIdMap[c.ItemId]; ok {
+			return fmt.Errorf("duplicate item id")
+		} else {
+			productItemIdMap[c.ItemId] = struct{}{}
 		}
 
 		if len(c.QuoteId) == 0 {
@@ -607,14 +612,9 @@ func (z *DoDSettleTerminateOrderParam) Verify(ctx *vmstore.VMContext) error {
 			return fmt.Errorf("quote item id needed")
 		}
 
-		if len(c.ItemId) == 0 {
-			return fmt.Errorf("item id needed")
-		}
-
-		if _, ok := productItemIdMap[c.ItemId]; ok {
-			return fmt.Errorf("duplicate item id")
-		} else {
-			productItemIdMap[c.ItemId] = struct{}{}
+		_, err := DoDSettleGetConnectionInfoByProductId(ctx, z.Seller.Address, c.ProductId)
+		if err != nil {
+			return fmt.Errorf("product is not active")
 		}
 	}
 

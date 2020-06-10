@@ -467,19 +467,20 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 						productId = p.ProductId
 					} else {
 						otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: p.OrderItemId}
-						pi, err := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
-						if err != nil {
-							return err
+						pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+						if pi != nil {
+							productId = pi.ProductId
 						}
-						productId = pi.ProductId
 					}
 
 					pai := &abi.DoDSettleProductInfo{OrderItemId: p.OrderItemId, ProductId: productId, Active: false}
 
-					ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: productId}
-					_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
-					if err == nil {
-						pai.Active = true
+					if len(productId) > 0 {
+						ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: productId}
+						_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
+						if err == nil {
+							pai.Active = true
+						}
 					}
 
 					info.Products = append(info.Products, pai)

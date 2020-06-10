@@ -83,12 +83,6 @@ func TestDoDSettleCreateOrderParam(t *testing.T) {
 		t.Fatal()
 	}
 
-	cop.Connections[1].ItemId = "item1"
-	err = cop.Verify()
-	if err == nil {
-		t.Fatal()
-	}
-
 	cop.Connections[0].BuyerProductId = "bp0"
 	cop.Connections[1].BuyerProductId = "bp0"
 	err = cop.Verify()
@@ -160,17 +154,23 @@ func TestDoDSettleCreateOrderParam(t *testing.T) {
 	}
 
 	cop.Connections[0].Currency = "CNY"
-	cop.Connections[0].Currency = "USD"
+	cop.Connections[1].Currency = "USD"
 	err = cop.Verify()
 	if err == nil {
 		t.Fatal()
 	}
 
 	cop.Connections[0].Bandwidth = "10 Mbps"
-	cop.Connections[0].Bandwidth = "10 Kbps"
+	cop.Connections[1].Bandwidth = "10 Kbps"
 	err = cop.Verify()
 	if err == nil {
 		t.Fatal()
+	}
+
+	cop.Connections[1].ItemId = "item1"
+	err = cop.Verify()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	data, err := cop.ToABI()
@@ -245,54 +245,42 @@ func TestDoDSettleUpdateOrderInfoParam(t *testing.T) {
 			Address: mock.Address(),
 			Name:    "S1",
 		},
-		OrderId:   "order002",
-		OrderType: DoDSettleOrderTypeCreate,
-		Connections: []*DoDSettleConnectionParam{
-			{
-				DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{BuyerProductId: "b3"},
-			},
-			{
-				DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{BuyerProductId: "b4"},
-			},
-		},
+		OrderId:     "order002",
+		OrderType:   DoDSettleOrderTypeCreate,
+		Connections: []*DoDSettleConnectionParam{{}},
 	}
+	order2.Connections[0].ItemId = "item0"
+	order2.Connections[0].OrderItemId = "orderItem0"
 	err = DoDSettleUpdateOrder(ctx, order2, uop.InternalId)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	conn := new(DoDSettleConnectionInfo)
-	conn.ProductId = "p1"
-	addDoDSettleTestConnection(t, ctx, conn, order2.Seller.Address)
-
-	uop.ProductIds = []*DoDSettleProductItem{{ProductId: "", BuyerProductId: "b3"}}
 	err = uop.Verify(ctx)
 	if err == nil {
 		t.Fatal()
 	}
 
-	uop.ProductIds = []*DoDSettleProductItem{{ProductId: "p2", BuyerProductId: ""}}
+	uop.OrderItemId = []*DoDSettleOrderItem{{}, {}}
 	err = uop.Verify(ctx)
 	if err == nil {
 		t.Fatal()
 	}
 
-	uop.ProductIds = []*DoDSettleProductItem{{ProductId: "p2", BuyerProductId: "b3"}, {ProductId: "p2", BuyerProductId: "b4"}}
+	uop.OrderItemId[0].ItemId = "item1"
+	uop.OrderItemId[0].OrderItemId = "orderItem1"
+	uop.OrderItemId[1].ItemId = "item2"
+	uop.OrderItemId[1].OrderItemId = "orderItem1"
 	err = uop.Verify(ctx)
 	if err == nil {
 		t.Fatal()
 	}
 
-	uop.ProductIds = []*DoDSettleProductItem{{ProductId: "p1", BuyerProductId: "b3"}, {ProductId: "p1", BuyerProductId: "b3"}}
-	err = uop.Verify(ctx)
-	if err == nil {
-		t.Fatal()
-	}
-
-	uop.ProductIds = []*DoDSettleProductItem{{ProductId: "p2", BuyerProductId: "b3"}, {ProductId: "p3", BuyerProductId: "b4"}}
+	uop.OrderItemId[0].ItemId = "item0"
+	uop.OrderItemId[0].OrderItemId = "orderItem0"
 	err = uop.Verify(ctx)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal()
 	}
 
 	data, err := uop.ToABI()
@@ -328,6 +316,19 @@ func TestDoDSettleChangeOrderParam(t *testing.T) {
 		t.Fatal()
 	}
 
+	cop.Connections[0].ItemId = "item0"
+	cop.Connections[1].ItemId = "item0"
+	err = cop.Verify()
+	if err == nil {
+		t.Fatal()
+	}
+
+	cop.Connections[1].ItemId = "item1"
+	err = cop.Verify()
+	if err == nil {
+		t.Fatal()
+	}
+
 	cop.Connections[0].ProductId = "product0"
 	cop.Connections[1].ProductId = "product1"
 	err = cop.Verify()
@@ -342,14 +343,13 @@ func TestDoDSettleChangeOrderParam(t *testing.T) {
 		t.Fatal()
 	}
 
-	cop.Connections[0].QuoteItemId = "quoteItem1"
+	cop.Connections[0].QuoteItemId = "quoteItem0"
 	cop.Connections[1].QuoteItemId = "quoteItem1"
 	err = cop.Verify()
-	if err == nil {
+	if err != nil {
 		t.Fatal()
 	}
 
-	cop.Connections[1].QuoteItemId = "quoteItem2"
 	cop.Connections[0].BillingType = DoDSettleBillingTypeDOD
 	cop.Connections[1].BillingType = DoDSettleBillingTypeDOD
 	err = cop.Verify()
@@ -396,13 +396,35 @@ func TestDoDSettleTerminateOrderParam(t *testing.T) {
 		t.Fatal()
 	}
 
-	top.Connections = []*DoDSettleChangeConnectionParam{{}}
+	top.Connections = []*DoDSettleChangeConnectionParam{{}, {}}
+	err = top.Verify(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
+	top.Connections[0].ItemId = "item0"
+	top.Connections[1].ItemId = "item0"
+	err = top.Verify(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
+	top.Connections[0].QuoteId = "quote0"
+	top.Connections[1].QuoteId = "quote1"
+	err = top.Verify(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
+	top.Connections[0].QuoteItemId = "quoteItem0"
+	top.Connections[1].QuoteItemId = "quoteItem1"
 	err = top.Verify(ctx)
 	if err == nil {
 		t.Fatal()
 	}
 
 	top.Connections[0].ProductId = "p1"
+	top.Connections[1].ProductId = "p2"
 	err = top.Verify(ctx)
 	if err == nil {
 		t.Fatal()
@@ -410,7 +432,12 @@ func TestDoDSettleTerminateOrderParam(t *testing.T) {
 
 	conn := new(DoDSettleConnectionInfo)
 	conn.ProductId = "p1"
-	conn.Active = &DoDSettleConnectionDynamicParam{BillingType: DoDSettleBillingTypeDOD}
+	conn.Active = &DoDSettleConnectionDynamicParam{OrderId: "o1", OrderItemId: "oi1"}
+	addDoDSettleTestConnection(t, ctx, conn, top.Seller.Address)
+
+	conn = new(DoDSettleConnectionInfo)
+	conn.ProductId = "p2"
+	conn.Active = &DoDSettleConnectionDynamicParam{OrderId: "o1", OrderItemId: "oi2"}
 	addDoDSettleTestConnection(t, ctx, conn, top.Seller.Address)
 
 	err = top.Verify(ctx)
@@ -418,13 +445,7 @@ func TestDoDSettleTerminateOrderParam(t *testing.T) {
 		t.Fatal()
 	}
 
-	top.Connections[0].QuoteId = "quote0"
-	err = top.Verify(ctx)
-	if err == nil {
-		t.Fatal()
-	}
-
-	top.Connections[0].QuoteItemId = "quoteItem0"
+	top.Connections[1].ItemId = "item1"
 	err = top.Verify(ctx)
 	if err != nil {
 		t.Fatal()
@@ -441,7 +462,7 @@ func TestDoDSettleTerminateOrderParam(t *testing.T) {
 	}
 }
 
-func TestDoDSettleResourceReadyParam(t *testing.T) {
+func TestDoDSettleUpdateProductInfoParam(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
@@ -453,23 +474,43 @@ func TestDoDSettleResourceReadyParam(t *testing.T) {
 		t.Fatal()
 	}
 
+	rrp.ProductInfo = []*DoDSettleProductInfo{{}, {}}
+	err = rrp.Verify(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
 	rrp.Address = mock.Address()
-	rrp.InternalId = mock.Hash()
+	rrp.OrderId = "order1"
 	err = rrp.Verify(ctx)
 	if err == nil {
 		t.Fatal()
 	}
 
-	rrp.ProductId = []string{"p1"}
-	err = rrp.Verify(ctx)
-	if err == nil {
-		t.Fatal()
-	}
-
+	internalId := mock.Hash()
 	order := NewOrderInfo()
+	order.OrderId = "order1"
+	order.Seller = &DoDSettleUser{Address: rrp.Address}
+	addDoDSettleTestOrder(t, ctx, order, internalId)
+
+	err = rrp.Verify(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
+	rrp.ProductInfo[0].ProductId = "p1"
+	rrp.ProductInfo[0].OrderItemId = "oi1"
+	rrp.ProductInfo[1].ProductId = "p1"
+	rrp.ProductInfo[1].OrderItemId = "oi2"
+	err = rrp.Verify(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
+	rrp.ProductInfo[1].ProductId = "p2"
 	order.Connections = []*DoDSettleConnectionParam{{}}
-	order.Connections[0].ProductId = "p2"
-	err = DoDSettleUpdateOrder(ctx, order, rrp.InternalId)
+	order.Connections[0].OrderItemId = "oi3"
+	err = DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,16 +520,22 @@ func TestDoDSettleResourceReadyParam(t *testing.T) {
 		t.Fatal()
 	}
 
-	rrp.ProductId = []string{"p2"}
-	err = rrp.Verify(ctx)
+	order.Connections = []*DoDSettleConnectionParam{{}}
+	order.Connections[0].OrderItemId = "oi1"
+	err = DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = rrp.Verify(ctx)
+	if err == nil {
 		t.Fatal()
 	}
 
-	ak := &DoDSettleConnectionActiveKey{InternalId: rrp.InternalId, ProductId: "p2"}
-	err = DoDSettleSetSellerConnectionActive(ctx, &DoDSettleConnectionActive{ActiveAt: 1111}, ak.Hash())
+	order.OrderType = DoDSettleOrderTypeCreate
+	err = DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	err = rrp.Verify(ctx)

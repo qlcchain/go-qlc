@@ -788,12 +788,12 @@ func (co *DoDSettleChangeOrder) setStorage(ctx *vmstore.VMContext, param *abi.Do
 
 		psk, err := abi.DoDSettleGetProductStorageKeyByProductId(ctx, pid.Hash())
 		if err != nil {
-			return err
+			return fmt.Errorf("get product storage key err %s", err)
 		}
 
 		rp, err := abi.DoDSettleGetConnectionRawParam(ctx, psk)
 		if err != nil {
-			return err
+			return fmt.Errorf("get product raw param err %s", err)
 		}
 
 		conn := &abi.DoDSettleConnectionParam{
@@ -1271,12 +1271,12 @@ func (up *DoDSettleUpdateProductInfo) ProcessSend(ctx *vmstore.VMContext, block 
 
 		internalId, err := abi.DoDSettleGetInternalIdByOrderId(ctx, block.Address, param.OrderId)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("get internal id err %s", param.OrderId)
 		}
 
 		order, err := abi.DoDSettleGetOrderInfoByInternalId(ctx, internalId)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("get order info err %s", internalId)
 		}
 
 		if block.Address != order.Seller.Address {
@@ -1328,10 +1328,8 @@ func (up *DoDSettleUpdateProductInfo) ProcessSend(ctx *vmstore.VMContext, block 
 
 		conn, err = abi.DoDSettleGetConnectionInfoByProductStorageKey(ctx, psk)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("get connection info err")
 		}
-
-		conn.ProductId = pi.ProductId
 
 		if pi.Active {
 			ak := &abi.DoDSettleConnectionActiveKey{InternalId: internalId, ProductId: pi.ProductId}
