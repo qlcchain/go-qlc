@@ -595,8 +595,38 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 			},
 		},
 	}
+	conn5 := &DoDSettleConnectionParam{
+		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product005"},
+		DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
+			OrderId:     "order001",
+			BillingType: DoDSettleBillingTypeDOD,
+			Currency:    "USD",
+			Price:       4.000,
+			Addition:    0,
+			StartTime:   3600,
+			EndTime:     7200,
+		},
+	}
+	connInfo5 := &DoDSettleConnectionInfo{
+		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product005"},
+		Active: &DoDSettleConnectionDynamicParam{
+			OrderId:     "order001",
+			OrderItemId: "oi5",
+		},
+		Done: []*DoDSettleConnectionDynamicParam{
+			{
+				OrderId:     "order001",
+				BillingType: DoDSettleBillingTypeDOD,
+				Currency:    "USD",
+				Price:       4.000,
+				Addition:    0,
+				StartTime:   3600,
+				EndTime:     7200,
+			},
+		},
+	}
 
-	order.Connections = append(order.Connections, conn1, conn2, conn3, conn4)
+	order.Connections = append(order.Connections, conn1, conn2, conn3, conn4, conn5)
 	internalId := mock.Hash()
 	addDoDSettleTestOrder(t, ctx, order, internalId)
 
@@ -604,6 +634,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	addDoDSettleTestConnection(t, ctx, connInfo2, seller)
 	addDoDSettleTestConnection(t, ctx, connInfo3, seller)
 	addDoDSettleTestConnection(t, ctx, connInfo4, seller)
+	addDoDSettleTestConnection(t, ctx, connInfo5, seller)
 
 	start := int64(500)
 	end := int64(8000)
@@ -649,6 +680,30 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	end = int64(1000)
 	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, false, true)
 	if err == nil {
+		t.Fatal(err)
+	}
+
+	order = &DoDSettleOrderInfo{
+		Buyer: &DoDSettleUser{
+			Address: buyer,
+			Name:    "B1",
+		},
+		Seller: &DoDSettleUser{
+			Address: seller,
+			Name:    "S1",
+		},
+		OrderId:       "order001",
+		OrderType:     DoDSettleOrderTypeCreate,
+		OrderState:    DoDSettleOrderStateSuccess,
+		ContractState: DoDSettleContractStateConfirmed,
+		Connections:   []*DoDSettleConnectionParam{{}},
+	}
+
+	internalId = mock.Hash()
+	addDoDSettleTestOrder(t, ctx, order, internalId)
+
+	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, 1000, 2000, true, true)
+	if err != nil {
 		t.Fatal(err)
 	}
 }

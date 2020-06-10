@@ -472,7 +472,7 @@ func (z *DoDSettleUpdateOrderInfoParam) Verify(ctx *vmstore.VMContext) error {
 			}
 		}
 
-		if found == false {
+		if !found {
 			return fmt.Errorf("item %s not found", c.ItemId)
 		}
 	}
@@ -689,12 +689,25 @@ func (z *DoDSettleUpdateProductInfoParam) Verify(ctx *vmstore.VMContext) error {
 		}
 
 		if found {
-			_, err := DoDSettleGetConnectionInfoByProductId(ctx, z.Address, p.ProductId)
+			conn, err := DoDSettleGetConnectionInfoByProductId(ctx, z.Address, p.ProductId)
 			if err != nil {
 				if order.OrderType != DoDSettleOrderTypeCreate {
 					return fmt.Errorf("product %s not exsit for seller %s", p.ProductId, z.Address)
 				}
 			} else {
+				if order.OrderType == DoDSettleOrderTypeCreate {
+					valid := false
+					for _, t := range conn.Track {
+						if t.OrderType == DoDSettleOrderTypeCreate && t.OrderId == z.OrderId {
+							valid = true
+							break
+						}
+					}
+					if !valid {
+						return fmt.Errorf("product %s exsit for seller %s", p.ProductId, z.Address)
+					}
+				}
+
 				if !p.Active {
 					return fmt.Errorf("product id %s already updated", p.ProductId)
 				}

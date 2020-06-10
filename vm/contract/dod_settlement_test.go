@@ -1159,7 +1159,7 @@ func TestDoDSettleUpdateProductInfo_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
-	param.ProductInfo = []*abi.DoDSettleProductInfo{{OrderItemId: "oi1", ProductId: "p1", Active: true}}
+	param.ProductInfo = []*abi.DoDSettleProductInfo{{OrderItemId: "oi1", ProductId: "p0", Active: true}}
 	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)
@@ -1222,17 +1222,13 @@ func TestDoDSettleUpdateProductInfo_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
-	pid := &abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: "p1"}
-	otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: "oi1"}
-	err = abi.DoDSettleSetProductStorageKeyByProductId(ctx, otp.Hash(), pid.Hash())
+	param.ProductInfo = []*abi.DoDSettleProductInfo{{OrderItemId: "oi1", ProductId: "p1", Active: true}}
+	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = abi.DoDSettleSetProductIdByStorageKey(ctx, otp.Hash(), "p1", order.Seller.Address)
-	if err != nil {
-		t.Fatal(err)
-	}
+	otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: "oi1"}
 
 	ci := &abi.DoDSettleConnectionInfo{
 		Active: &abi.DoDSettleConnectionDynamicParam{

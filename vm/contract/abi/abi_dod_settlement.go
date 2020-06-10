@@ -256,7 +256,13 @@ func DoDSettleGetConnectionInfoByProductId(ctx *vmstore.VMContext, seller types.
 		return nil, fmt.Errorf("get product storage key err")
 	}
 
-	return DoDSettleGetConnectionInfoByProductStorageKey(ctx, psk)
+	conn, err := DoDSettleGetConnectionInfoByProductStorageKey(ctx, psk)
+	if err != nil {
+		return nil, err
+	}
+
+	conn.ProductId = productId
+	return conn, nil
 }
 
 func DoDSettleGetConnectionInfoByProductStorageKey(ctx *vmstore.VMContext, hash types.Hash) (*DoDSettleConnectionInfo, error) {
@@ -274,28 +280,35 @@ func DoDSettleGetConnectionInfoByProductStorageKey(ctx *vmstore.VMContext, hash 
 		return nil, err
 	}
 
-	if conn.Active != nil {
-		ts, _ := DoDSettleGetPAYGTimeSpan(ctx, conn.ProductId, conn.Active.OrderId)
-		if ts != nil {
-			if conn.Active.StartTime == 0 {
-				conn.Active.StartTime = ts.StartTime
-			}
-
-			if conn.Active.EndTime == 0 {
-				conn.Active.EndTime = ts.EndTime
-			}
-		}
+	pd, _ := DoDSettleGetProductIdByStorageKey(ctx, hash)
+	if pd != nil {
+		conn.ProductId = pd.ProductId
 	}
 
-	for _, d := range conn.Done {
-		ts, _ := DoDSettleGetPAYGTimeSpan(ctx, conn.ProductId, d.OrderId)
-		if ts != nil {
-			if d.StartTime == 0 {
-				d.StartTime = ts.StartTime
-			}
+	if len(conn.ProductId) > 0 {
+		if conn.Active != nil {
+			ts, _ := DoDSettleGetPAYGTimeSpan(ctx, conn.ProductId, conn.Active.OrderId)
+			if ts != nil {
+				if conn.Active.StartTime == 0 {
+					conn.Active.StartTime = ts.StartTime
+				}
 
-			if d.EndTime == 0 {
-				d.EndTime = ts.EndTime
+				if conn.Active.EndTime == 0 {
+					conn.Active.EndTime = ts.EndTime
+				}
+			}
+		}
+
+		for _, d := range conn.Done {
+			ts, _ := DoDSettleGetPAYGTimeSpan(ctx, conn.ProductId, d.OrderId)
+			if ts != nil {
+				if d.StartTime == 0 {
+					d.StartTime = ts.StartTime
+				}
+
+				if d.EndTime == 0 {
+					d.EndTime = ts.EndTime
+				}
 			}
 		}
 	}
