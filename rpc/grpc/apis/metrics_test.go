@@ -2,8 +2,9 @@ package apis
 
 import (
 	"context"
-	"github.com/qlcchain/go-qlc/common/util"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/util"
 )
 
 var (

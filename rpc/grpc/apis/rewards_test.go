@@ -3,7 +3,13 @@ package apis
 import (
 	"context"
 	"encoding/json"
+	"math/big"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -12,10 +18,6 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
-	"math/big"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func setupRewardsTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *RewardsAPI) {

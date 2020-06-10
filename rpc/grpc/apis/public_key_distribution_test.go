@@ -2,6 +2,10 @@ package apis
 
 import (
 	"context"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -16,9 +20,6 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/contract/dpki"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"math/big"
-	"testing"
-	"time"
 )
 
 func addTestVerifierInfo(t *testing.T, ctx *vmstore.VMContext, l *ledger.Ledger, account types.Address, vType uint32, vInfo string, vKey []byte) {

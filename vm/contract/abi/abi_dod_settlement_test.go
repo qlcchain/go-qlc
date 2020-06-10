@@ -8,9 +8,8 @@ import (
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/mock"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/vm/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func addDoDSettleTestOrder(t *testing.T, ctx *vmstore.VMContext, order *DoDSettleOrderInfo, id types.Hash) {

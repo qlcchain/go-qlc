@@ -3,8 +3,14 @@ package apis
 import (
 	"context"
 	"encoding/hex"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	qctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -18,10 +24,6 @@ import (
 	"github.com/qlcchain/go-qlc/rpc/api"
 	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
 	pbtypes "github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
-	"go.uber.org/zap"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 type mockDataContractApi struct {

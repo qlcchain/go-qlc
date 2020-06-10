@@ -2,13 +2,14 @@ package dpos
 
 import (
 	"context"
-	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/bluele/gcache"
-	"go.uber.org/zap"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/bluele/gcache"
+	"go.uber.org/zap"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"

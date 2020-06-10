@@ -6,7 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/uuid"
+
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -17,10 +23,6 @@ import (
 	"github.com/qlcchain/go-qlc/mock/mocks"
 	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
 	pbtypes "github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
-	"math/big"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func setupDefaultLedgerAPI(t *testing.T) (func(t *testing.T), ledger.Store, *LedgerAPI) {

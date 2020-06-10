@@ -3,8 +3,6 @@ package chain
 import (
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
-
 	"github.com/AsynkronIT/protoactor-go/actor"
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"

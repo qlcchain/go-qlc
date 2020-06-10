@@ -2,6 +2,9 @@ package apis
 
 import (
 	"context"
+	"math/big"
+	"testing"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -11,8 +14,6 @@ import (
 	"github.com/qlcchain/go-qlc/rpc/api"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"math/big"
-	"testing"
 )
 
 func TestRepApi_GetAvailRewardInfo(t *testing.T) {

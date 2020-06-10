@@ -5,14 +5,13 @@ import (
 	"testing"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/common/util"
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/util"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 func DoDSettleAPITestInit(t *testing.T) (*DoDSettlementAPI, func()) {

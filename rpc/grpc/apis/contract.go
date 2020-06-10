@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-
 	"math/big"
 
 	"github.com/golang/protobuf/ptypes/empty"

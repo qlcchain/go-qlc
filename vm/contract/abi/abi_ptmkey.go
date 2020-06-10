@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	_ "github.com/qlcchain/go-qlc/common/statedb"
-
 	"github.com/qlcchain/go-qlc/common"
 	_ "github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"

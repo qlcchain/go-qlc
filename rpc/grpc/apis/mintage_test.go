@@ -3,7 +3,13 @@ package apis
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
+
 	qlcchainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
@@ -14,10 +20,6 @@ import (
 	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
 	pbtypes "github.com/qlcchain/go-qlc/rpc/grpc/proto/types"
 	"github.com/qlcchain/go-qlc/vm/contract"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 func setupMintageAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, ledger.Store, *MintageAPI) {

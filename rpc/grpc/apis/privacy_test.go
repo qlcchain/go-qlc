@@ -2,8 +2,13 @@ package apis
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/google/uuid"
+
 	qctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
@@ -13,9 +18,6 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/rpc/api"
 	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 type mockDataTestPrivacyApi struct {

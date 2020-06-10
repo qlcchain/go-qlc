@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	chainctx "github.com/qlcchain/go-qlc/chain/context"
-	"github.com/qlcchain/go-qlc/config"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+
+	chainctx "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/config"
 )
 
 func TestGRPCServer(t *testing.T) {

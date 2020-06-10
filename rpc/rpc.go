@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	grpcServer "github.com/qlcchain/go-qlc/rpc/grpc/server"
 	"net"
 	"net/http"
 	"net/url"
@@ -19,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	grpcServer "github.com/qlcchain/go-qlc/rpc/grpc/server"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
