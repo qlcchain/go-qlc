@@ -48,8 +48,6 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 		Connections: []*abi.DoDSettleConnectionParam{
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-					ItemId:            "item1",
-					BuyerProductId:    "bp1",
 					ProductOfferingId: "po1",
 					SrcCompanyName:    "CBC",
 					SrcRegion:         "CHN",
@@ -63,6 +61,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 					DstPort:           "dp001",
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					ItemId:         "item1",
 					ConnectionName: "conn1",
 					QuoteId:        "quote1",
 					QuoteItemId:    "quoteItem1",
@@ -77,8 +76,6 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 			},
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-					ItemId:            "item2",
-					BuyerProductId:    "bp2",
 					ProductOfferingId: "po2",
 					SrcCompanyName:    "CBC",
 					SrcRegion:         "CHN",
@@ -92,6 +89,7 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 					DstPort:           "dp001",
 				},
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
+					ItemId:         "item2",
 					ConnectionName: "conn2",
 					QuoteId:        "quote1",
 					QuoteItemId:    "quoteItem2",
@@ -146,7 +144,6 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 
 	userInfo := new(abi.DoDSettleUserInfos)
 	userInfo.InternalIds = make([]*abi.DoDSettleInternalIdWrap, 0)
-	userInfo.ProductIds = make([]*abi.DoDSettleProduct, 0)
 	userInfo.OrderIds = make([]*abi.DoDSettleOrder, 0)
 
 	internalId := &abi.DoDSettleInternalIdWrap{InternalId: mock.Hash()}
@@ -299,10 +296,9 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 	}
 
 	up := &abi.DoDSettleUpdateOrderInfoParam{
-		Buyer:      mock.Address(),
-		OrderId:    "order1",
-		ProductIds: []*abi.DoDSettleProductItem{{ProductId: "p1", BuyerProductId: "bp1"}},
-		Status:     abi.DoDSettleOrderStateSuccess,
+		Buyer:   mock.Address(),
+		OrderId: "order1",
+		Status:  abi.DoDSettleOrderStateSuccess,
 	}
 
 	block.Data, err = up.ToABI()
@@ -316,14 +312,10 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 	}
 
 	up.InternalId = mock.Hash()
+	up.OrderItemId = []*abi.DoDSettleOrderItem{{ItemId: "i1", OrderItemId: "oi1"}}
 	block.Data, err = up.ToABI()
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	_, _, err = uo.ProcessSend(ctx, block)
-	if err == nil {
-		t.Fatal()
 	}
 
 	order := abi.NewOrderInfo()
@@ -331,8 +323,7 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 	order.OrderId = "order1"
 	order.OrderType = abi.DoDSettleOrderTypeCreate
 	conn := new(abi.DoDSettleConnectionParam)
-	conn.BuyerProductId = "bp1"
-	conn.ProductId = "p1"
+	conn.ItemId = "i1"
 	conn.BillingType = abi.DoDSettleBillingTypeDOD
 	order.Connections = append(order.Connections, conn)
 	err = abi.DoDSettleUpdateOrder(ctx, order, up.InternalId)
@@ -362,7 +353,6 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 
 	userInfo := new(abi.DoDSettleUserInfos)
 	userInfo.InternalIds = make([]*abi.DoDSettleInternalIdWrap, 0)
-	userInfo.ProductIds = make([]*abi.DoDSettleProduct, 0)
 	userInfo.OrderIds = make([]*abi.DoDSettleOrder, 0)
 
 	data, err := userInfo.MarshalMsg(nil)
@@ -381,8 +371,8 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 	order.OrderId = "order2"
 	order.OrderType = abi.DoDSettleOrderTypeCreate
 	conn = new(abi.DoDSettleConnectionParam)
-	conn.BuyerProductId = "bp1"
-	conn.ProductId = "p1"
+	conn.ItemId = "i1"
+	conn.ProductId = "p2"
 	conn.BillingType = abi.DoDSettleBillingTypeDOD
 	order.Connections = append(order.Connections, conn)
 	err = abi.DoDSettleUpdateOrder(ctx, order, up.InternalId)
@@ -397,6 +387,33 @@ func TestDoDSettleUpdateOrderInfo_ProcessSend(t *testing.T) {
 	}
 
 	_, _, err = uo.ProcessSend(ctx, block)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pid := &abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: "p2"}
+	otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: "oi1"}
+	err = abi.DoDSettleSetProductStorageKeyByProductId(ctx, otp.Hash(), pid.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = abi.DoDSettleSetProductIdByStorageKey(ctx, otp.Hash(), "p2", order.Seller.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ci := &abi.DoDSettleConnectionInfo{
+		Active: &abi.DoDSettleConnectionDynamicParam{
+			BillingType: abi.DoDSettleBillingTypePAYG,
+			BillingUnit: abi.DoDSettleBillingUnitSecond,
+			StartTime:   1000,
+		},
+		Done:       make([]*abi.DoDSettleConnectionDynamicParam, 0),
+		Disconnect: nil,
+		Track:      make([]*abi.DoDSettleConnectionLifeTrack, 0),
+	}
+	err = abi.DoDSettleUpdateConnection(ctx, ci, otp.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -675,6 +692,7 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 				ProductId: "p1",
 				DoDSettleConnectionDynamicParam: abi.DoDSettleConnectionDynamicParam{
 					QuoteId:     "",
+					ItemId:      "i1",
 					QuoteItemId: "qi1",
 					Bandwidth:   "100 Mbps",
 					Price:       10,
@@ -711,17 +729,33 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	pid := &abi.DoDSettleProduct{Seller: cp.Seller.Address, ProductId: "p1"}
+	otp := &abi.DoDSettleOrderToProduct{Seller: cp.Seller.Address, OrderId: "o1", OrderItemId: "oi1"}
+	err = abi.DoDSettleSetProductStorageKeyByProductId(ctx, otp.Hash(), pid.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = abi.DoDSettleSetProductIdByStorageKey(ctx, otp.Hash(), "p1", cp.Seller.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = co.ProcessSend(ctx, block)
+	if err == nil {
+		t.Fatal(err)
+	}
+
 	conn := new(abi.DoDSettleConnectionParam)
 	conn.BillingType = abi.DoDSettleBillingTypeDOD
-	pk := abi.DoDSettleProduct{Seller: cp.Seller.Address, ProductId: "p1"}
-	err = abi.DoDSettleUpdateConnectionRawParam(ctx, conn, pk.Hash())
+	err = abi.DoDSettleUpdateConnectionRawParam(ctx, conn, otp.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	_, _, err = co.ProcessSend(ctx, block)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	var key []byte
@@ -730,7 +764,6 @@ func TestDoDSettleChangeOrder_ProcessSend(t *testing.T) {
 
 	userInfo := new(abi.DoDSettleUserInfos)
 	userInfo.InternalIds = make([]*abi.DoDSettleInternalIdWrap, 0)
-	userInfo.ProductIds = make([]*abi.DoDSettleProduct, 0)
 	userInfo.OrderIds = make([]*abi.DoDSettleOrder, 0)
 
 	internalId := &abi.DoDSettleInternalIdWrap{InternalId: mock.Hash()}
@@ -901,6 +934,7 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
+	param.Connections[0].ItemId = "i1"
 	param.Connections[0].ProductId = "p1"
 	param.Connections[0].QuoteId = "q1"
 	param.Connections[0].QuoteItemId = "qi1"
@@ -909,10 +943,21 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	pid := &abi.DoDSettleProduct{Seller: param.Seller.Address, ProductId: "p1"}
+	otp := &abi.DoDSettleOrderToProduct{Seller: param.Seller.Address, OrderId: "o1", OrderItemId: "oi1"}
+	err = abi.DoDSettleSetProductStorageKeyByProductId(ctx, otp.Hash(), pid.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = abi.DoDSettleSetProductIdByStorageKey(ctx, otp.Hash(), "p1", param.Seller.Address)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	conn := new(abi.DoDSettleConnectionInfo)
 	conn.ProductId = "p1"
-	ph := abi.DoDSettleProduct{Seller: param.Seller.Address, ProductId: conn.ProductId}
-	err = abi.DoDSettleUpdateConnection(ctx, conn, ph.Hash())
+	err = abi.DoDSettleUpdateConnection(ctx, conn, otp.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -930,8 +975,7 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 
 	cp := new(abi.DoDSettleConnectionParam)
 	cp.BillingType = abi.DoDSettleBillingTypeDOD
-	pk := abi.DoDSettleProduct{Seller: param.Seller.Address, ProductId: "p1"}
-	err = abi.DoDSettleUpdateConnectionRawParam(ctx, cp, pk.Hash())
+	err = abi.DoDSettleUpdateConnectionRawParam(ctx, cp, otp.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -947,7 +991,6 @@ func TestDoDSettleTerminateOrder_ProcessSend(t *testing.T) {
 
 	userInfo := new(abi.DoDSettleUserInfos)
 	userInfo.InternalIds = make([]*abi.DoDSettleInternalIdWrap, 0)
-	userInfo.ProductIds = make([]*abi.DoDSettleProduct, 0)
 	userInfo.OrderIds = make([]*abi.DoDSettleOrder, 0)
 
 	internalId := &abi.DoDSettleInternalIdWrap{InternalId: mock.Hash()}
@@ -1069,13 +1112,13 @@ func TestDoDSettleTerminateOrder_GetTargetReceiver(t *testing.T) {
 	}
 }
 
-func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
+func TestDoDSettleUpdateProductInfo_ProcessSend(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.DoDSettlementAddress)
 	block := mock.StateBlockWithoutWork()
-	rr := new(DoDSettleResourceReady)
+	rr := new(DoDSettleUpdateProductInfo)
 
 	_, _, err := rr.ProcessSend(ctx, block)
 	if err != ErrToken {
@@ -1100,10 +1143,10 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
-	param := &abi.DoDSettleResourceReadyParam{
-		Address:    mock.Address(),
-		InternalId: mock.Hash(),
-		ProductId:  nil,
+	param := &abi.DoDSettleUpdateProductInfoParam{
+		Address:     block.Address,
+		OrderId:     "order1",
+		ProductInfo: nil,
 	}
 
 	block.Data, err = param.ToABI()
@@ -1116,17 +1159,37 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
-	param.ProductId = []string{"p1"}
+	param.ProductInfo = []*abi.DoDSettleProductInfo{{OrderItemId: "oi1", ProductId: "p0", Active: true}}
 	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	internalId := mock.Hash()
 	order := abi.NewOrderInfo()
+	order.OrderId = "order1"
+	order.Seller = &abi.DoDSettleUser{Address: mock.Address()}
+	order.OrderState = abi.DoDSettleOrderStateFail
+	order.OrderType = abi.DoDSettleOrderTypeCreate
 	order.Connections = []*abi.DoDSettleConnectionParam{{}}
+	order.Connections[0].OrderItemId = "oi1"
 	order.Connections[0].ProductId = "p1"
-	order.Connections[0].BillingType = abi.DoDSettleBillingTypeDOD
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
+	order.Connections[0].BillingType = abi.DoDSettleBillingTypePAYG
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orderKey := &abi.DoDSettleOrder{
+		Seller:  param.Address,
+		OrderId: order.OrderId,
+	}
+
+	var key []byte
+	key = append(key, abi.DoDSettleDBTableOrderIdMap)
+	key = append(key, orderKey.Hash().Bytes()...)
+
+	err = ctx.SetStorage(nil, key, internalId.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1137,8 +1200,7 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 	}
 
 	order.Seller = &abi.DoDSettleUser{Address: block.Address}
-	order.OrderState = abi.DoDSettleOrderStateFail
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1150,54 +1212,7 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 
 	order.OrderState = abi.DoDSettleOrderStateSuccess
 	order.OrderType = abi.DoDSettleOrderTypeCreate
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, _, err = rr.ProcessSend(ctx, block)
-	if err != nil {
-		t.Fatal()
-	}
-
-	param.InternalId = mock.Hash()
-	param.ProductId = []string{"p2"}
-	block.Data, err = param.ToABI()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	order.OrderState = abi.DoDSettleOrderStateSuccess
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	order.Connections[0].ProductId = "p2"
-	order.Connections[0].BillingType = abi.DoDSettleBillingTypePAYG
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, _, err = rr.ProcessSend(ctx, block)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	order.OrderType = abi.DoDSettleOrderTypeChange
-	order.OrderId = "o3"
-	order.Connections[0].ProductId = "p3"
-
-	param.InternalId = mock.Hash()
-	param.ProductId = []string{"p3"}
-	block.Data, err = param.ToABI()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	order.OrderState = abi.DoDSettleOrderStateSuccess
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1207,50 +1222,33 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
-	ph := abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: "p4"}
-
-	ci := &abi.DoDSettleConnectionInfo{
-		DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{},
-		Active: &abi.DoDSettleConnectionDynamicParam{
-			OrderId:     "o3",
-			BillingType: abi.DoDSettleBillingTypePAYG,
-			BillingUnit: abi.DoDSettleBillingUnitSecond,
-			Price:       2,
-			StartTime:   0,
-			EndTime:     0,
-		},
-		Done: []*abi.DoDSettleConnectionDynamicParam{
-			{
-				OrderId:     "o1",
-				BillingType: abi.DoDSettleBillingTypeDOD,
-				Price:       2,
-				StartTime:   40,
-				EndTime:     50,
-			},
-			{
-				OrderId:     "o2",
-				BillingType: abi.DoDSettleBillingTypePAYG,
-				BillingUnit: abi.DoDSettleBillingUnitSecond,
-				Price:       2,
-				StartTime:   10,
-				EndTime:     0,
-			},
-		},
-	}
-	err = abi.DoDSettleUpdateConnection(ctx, ci, ph.Hash())
-	if err != nil {
-		t.Fatal()
-	}
-
-	param.InternalId = mock.Hash()
-	param.ProductId = []string{"p4"}
+	param.ProductInfo = []*abi.DoDSettleProductInfo{{OrderItemId: "oi1", ProductId: "p1", Active: true}}
 	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	order.Connections[0].ProductId = "p4"
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
+	otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: "oi1"}
+
+	ci := &abi.DoDSettleConnectionInfo{
+		Active: &abi.DoDSettleConnectionDynamicParam{
+			OrderId:     "order2",
+			BillingType: abi.DoDSettleBillingTypePAYG,
+			BillingUnit: abi.DoDSettleBillingUnitSecond,
+			StartTime:   1000,
+		},
+		Done: []*abi.DoDSettleConnectionDynamicParam{
+			{
+				OrderId:     "order1",
+				BillingType: abi.DoDSettleBillingTypePAYG,
+				BillingUnit: abi.DoDSettleBillingUnitSecond,
+				StartTime:   1000,
+			},
+		},
+		Disconnect: nil,
+		Track:      make([]*abi.DoDSettleConnectionLifeTrack, 0),
+	}
+	err = abi.DoDSettleUpdateConnection(ctx, ci, otp.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1260,51 +1258,73 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ph = abi.DoDSettleProduct{Seller: order.Seller.Address, ProductId: "p5"}
-
-	ci = &abi.DoDSettleConnectionInfo{
-		DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{},
-		Active: &abi.DoDSettleConnectionDynamicParam{
-			OrderId:     "o3",
-			BillingType: abi.DoDSettleBillingTypePAYG,
-			BillingUnit: abi.DoDSettleBillingUnitSecond,
-			Price:       2,
-			StartTime:   0,
-			EndTime:     0,
-		},
-		Done: []*abi.DoDSettleConnectionDynamicParam{
-			{
-				OrderId:     "o1",
-				BillingType: abi.DoDSettleBillingTypeDOD,
-				Price:       2,
-				StartTime:   40,
-				EndTime:     50,
-			},
-			{
-				OrderId:     "o2",
-				BillingType: abi.DoDSettleBillingTypePAYG,
-				BillingUnit: abi.DoDSettleBillingUnitSecond,
-				Price:       2,
-				StartTime:   10,
-				EndTime:     0,
-			},
-		},
-	}
-	err = abi.DoDSettleUpdateConnection(ctx, ci, ph.Hash())
+	internalId = mock.Hash()
+	order.OrderId = "order2"
+	order.OrderType = abi.DoDSettleOrderTypeChange
+	order.Connections = []*abi.DoDSettleConnectionParam{{}}
+	order.Connections[0].OrderItemId = "oi1"
+	order.Connections[0].ProductId = "p1"
+	order.Connections[0].BillingType = abi.DoDSettleBillingTypePAYG
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
-	param.InternalId = mock.Hash()
-	param.ProductId = []string{"p5"}
+	orderKey = &abi.DoDSettleOrder{
+		Seller:  param.Address,
+		OrderId: order.OrderId,
+	}
+
+	key = key[0:0]
+	key = append(key, abi.DoDSettleDBTableOrderIdMap)
+	key = append(key, orderKey.Hash().Bytes()...)
+
+	err = ctx.SetStorage(nil, key, internalId.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	param.OrderId = "order2"
+	param.ProductInfo = []*abi.DoDSettleProductInfo{{OrderItemId: "oi1", ProductId: "p1", Active: true}}
 	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	order.Connections[0].ProductId = "p5"
+	_, _, err = rr.ProcessSend(ctx, block)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	internalId = mock.Hash()
+	order.OrderId = "order3"
 	order.OrderType = abi.DoDSettleOrderTypeTerminate
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
+	order.Connections = []*abi.DoDSettleConnectionParam{{}}
+	order.Connections[0].OrderItemId = "oi1"
+	order.Connections[0].ProductId = "p1"
+	order.Connections[0].BillingType = abi.DoDSettleBillingTypePAYG
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orderKey = &abi.DoDSettleOrder{
+		Seller:  param.Address,
+		OrderId: order.OrderId,
+	}
+
+	key = key[0:0]
+	key = append(key, abi.DoDSettleDBTableOrderIdMap)
+	key = append(key, orderKey.Hash().Bytes()...)
+
+	err = ctx.SetStorage(nil, key, internalId.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	param.OrderId = "order3"
+	param.ProductInfo = []*abi.DoDSettleProductInfo{{OrderItemId: "oi1", ProductId: "p1", Active: true}}
+	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1315,20 +1335,20 @@ func TestDoDSettleResourceReady_ProcessSend(t *testing.T) {
 	}
 }
 
-func TestDoDSettleResourceReady_DoGap(t *testing.T) {
+func TestDoDSettleUpdateProductInfo_DoGap(t *testing.T) {
 	teardownTestCase, l := setupLedgerForTestCase(t)
 	defer teardownTestCase(t)
 
 	ctx := vmstore.NewVMContext(l, &contractaddress.DoDSettlementAddress)
 	block := mock.StateBlockWithoutWork()
-	rr := new(DoDSettleResourceReady)
+	rr := new(DoDSettleUpdateProductInfo)
 
 	_, _, err := rr.DoGap(ctx, block)
 	if err == nil {
 		t.Fatal()
 	}
 
-	param := &abi.DoDSettleResourceReadyParam{
+	param := &abi.DoDSettleUpdateProductInfoParam{
 		Address: mock.Address(),
 	}
 
@@ -1342,7 +1362,8 @@ func TestDoDSettleResourceReady_DoGap(t *testing.T) {
 		t.Fatal()
 	}
 
-	param.InternalId = mock.Hash()
+	internalId := mock.Hash()
+	param.OrderId = "order1"
 	block.Data, err = param.ToABI()
 	if err != nil {
 		t.Fatal(err)
@@ -1353,9 +1374,23 @@ func TestDoDSettleResourceReady_DoGap(t *testing.T) {
 		t.Fatal()
 	}
 
+	orderKey := &abi.DoDSettleOrder{
+		Seller:  block.Address,
+		OrderId: param.OrderId,
+	}
+
+	var key []byte
+	key = append(key, abi.DoDSettleDBTableOrderIdMap)
+	key = append(key, orderKey.Hash().Bytes()...)
+
+	err = ctx.SetStorage(nil, key, internalId.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	order := abi.NewOrderInfo()
 	order.OrderState = abi.DoDSettleOrderStateFail
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1366,18 +1401,18 @@ func TestDoDSettleResourceReady_DoGap(t *testing.T) {
 	}
 
 	order.OrderState = abi.DoDSettleOrderStateNull
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	s, _, err := rr.DoGap(ctx, block)
 	if err != nil || s != common.ContractDoDOrderState {
-		t.Fatal()
+		t.Fatal(err)
 	}
 
 	order.OrderState = abi.DoDSettleOrderStateSuccess
-	err = abi.DoDSettleUpdateOrder(ctx, order, param.InternalId)
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -133,6 +133,7 @@ func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, pr
 		conn.ProductId = productId
 		conn.QuoteId = fmt.Sprintf("quote%d", rand.Int())
 		conn.QuoteItemId = fmt.Sprintf("quoteItem%d", rand.Int())
+		conn.ItemId = fmt.Sprintf("itemid%d", rand.Int31n(100))
 		param.Connections = append(param.Connections, conn)
 	}
 

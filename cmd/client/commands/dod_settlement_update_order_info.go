@@ -45,20 +45,20 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "reason of fail",
 		Value: "",
 	}
-	productBuyerIds := util.Flag{
-		Name:  "productBuyerIds",
-		Must:  false,
-		Usage: "buyer product ids (separate by comma)",
+	orderItemIds := util.Flag{
+		Name:  "orderItemIds",
+		Must:  true,
+		Usage: "order item id (separate by comma)",
 		Value: "",
 	}
-	productIds := util.Flag{
-		Name:  "productIds",
-		Must:  false,
-		Usage: "product ids (separate by comma)",
+	itemIds := util.Flag{
+		Name:  "itemIds",
+		Must:  true,
+		Usage: "item ids (separate by comma)",
 		Value: "",
 	}
 
-	args := []util.Flag{buyer, internalId, orderId, orderStatus, reason, productBuyerIds, productIds}
+	args := []util.Flag{buyer, internalId, orderId, orderStatus, reason, orderItemIds, itemIds}
 	cmd := &ishell.Cmd{
 		Name:                "updateOrderInfo",
 		Help:                "update order info",
@@ -78,10 +78,10 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 			orderIdP := util.StringVar(c.Args, orderId)
 			orderStatusP := util.StringVar(c.Args, orderStatus)
 			reasonP := util.StringVar(c.Args, reason)
-			productBuyerIdsP := util.StringVar(c.Args, productBuyerIds)
-			productIdsP := util.StringVar(c.Args, productIds)
+			orderItemIdsP := util.StringVar(c.Args, orderItemIds)
+			itemIdsP := util.StringVar(c.Args, itemIds)
 
-			if err := DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, productBuyerIdsP, productIdsP); err != nil {
+			if err := DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, orderItemIdsP, itemIdsP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -90,7 +90,7 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, productBuyerIdsP, productIdsP string) error {
+func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, orderItemIdsP, itemIdsP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -117,24 +117,24 @@ func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, pro
 		return err
 	}
 
-	productBuyerIds := strings.Split(productBuyerIdsP, ",")
-	productIds := strings.Split(productIdsP, ",")
+	orderItemIds := strings.Split(orderItemIdsP, ",")
+	itemIds := strings.Split(itemIdsP, ",")
 
 	param := &abi.DoDSettleUpdateOrderInfoParam{
-		Buyer:      acc.Address(),
-		InternalId: internalId,
-		OrderId:    orderIdP,
-		ProductIds: make([]*abi.DoDSettleProductItem, 0),
-		Status:     orderStatus,
-		FailReason: reasonP,
+		Buyer:       acc.Address(),
+		InternalId:  internalId,
+		OrderId:     orderIdP,
+		OrderItemId: make([]*abi.DoDSettleOrderItem, 0),
+		Status:      orderStatus,
+		FailReason:  reasonP,
 	}
 
-	for i := 0; i < len(productBuyerIds); i++ {
-		pi := &abi.DoDSettleProductItem{
-			ProductId:      productIds[i],
-			BuyerProductId: productBuyerIds[i],
+	for i := 0; i < len(itemIds); i++ {
+		pi := &abi.DoDSettleOrderItem{
+			ItemId:      itemIds[i],
+			OrderItemId: orderItemIds[i],
 		}
-		param.ProductIds = append(param.ProductIds, pi)
+		param.OrderItemId = append(param.OrderItemId, pi)
 	}
 
 	block := new(types.StateBlock)

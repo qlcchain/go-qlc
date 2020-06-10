@@ -25,7 +25,7 @@ type DoDSettlementAPI struct {
 	uo     *contract.DoDSettleUpdateOrderInfo
 	cho    *contract.DoDSettleChangeOrder
 	to     *contract.DoDSettleTerminateOrder
-	rr     *contract.DoDSettleResourceReady
+	rr     *contract.DoDSettleUpdateProductInfo
 }
 
 func NewDoDSettlementAPI(cfgFile string, l ledger.Store) *DoDSettlementAPI {
@@ -38,7 +38,7 @@ func NewDoDSettlementAPI(cfgFile string, l ledger.Store) *DoDSettlementAPI {
 		uo:     &contract.DoDSettleUpdateOrderInfo{},
 		cho:    &contract.DoDSettleChangeOrder{},
 		to:     &contract.DoDSettleTerminateOrder{},
-		rr:     &contract.DoDSettleResourceReady{},
+		rr:     &contract.DoDSettleUpdateProductInfo{},
 	}
 
 	api.ca = NewContractApi(api.cc, api.l)
@@ -70,9 +70,9 @@ type DoDSettleTerminateOrderParam struct {
 	abi.DoDSettleTerminateOrderParam
 }
 
-type DoDSettleResourceReadyParam struct {
+type DoDSettleUpdateProductInfoParam struct {
 	ContractPrivacyParam
-	abi.DoDSettleResourceReadyParam
+	abi.DoDSettleUpdateProductInfoParam
 }
 
 func (d *DoDSettlementAPI) GetCreateOrderBlock(param *DoDSettleCreateOrderParam) (*types.StateBlock, error) {
@@ -166,10 +166,25 @@ func (d *DoDSettlementAPI) GetUpdateOrderInfoRewardBlock(param *DoDSettleRespons
 	}
 
 	for _, p := range order.Connections {
-		ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: p.ProductId}
+		var productId string
+
+		if len(p.ProductId) > 0 {
+			productId = p.ProductId
+		} else {
+			otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: p.OrderItemId}
+
+			pi, err := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+			if err != nil {
+				return nil, fmt.Errorf("get product id %s", err)
+			}
+
+			productId = pi.ProductId
+		}
+
+		ak := &abi.DoDSettleConnectionActiveKey{InternalId: pm.InternalId, ProductId: productId}
 		_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
 		if err != nil {
-			return nil, fmt.Errorf("product %s is not active, can't generate this reward", p.ProductId)
+			return nil, fmt.Errorf("product %s is not active, can't generate this reward", productId)
 		}
 	}
 
@@ -270,7 +285,7 @@ func (d *DoDSettlementAPI) GetTerminateOrderRewardBlock(param *DoDSettleResponse
 	return d.ca.GenerateRewardBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetResourceReadyBlock(param *DoDSettleResourceReadyParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetUpdateProductInfoBlock(param *DoDSettleUpdateProductInfoParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -294,7 +309,7 @@ func (d *DoDSettlementAPI) GetResourceReadyBlock(param *DoDSettleResourceReadyPa
 	return d.ca.GenerateSendBlock(p)
 }
 
-func (d *DoDSettlementAPI) GetResourceReadyRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
+func (d *DoDSettlementAPI) GetUpdateProductInfoRewardBlock(param *DoDSettleResponseParam) (*types.StateBlock, error) {
 	if param == nil {
 		return nil, ErrParameterNil
 	}
@@ -307,7 +322,22 @@ func (d *DoDSettlementAPI) GetResourceReadyRewardBlock(param *DoDSettleResponseP
 }
 
 func (d *DoDSettlementAPI) GetOrderInfoBySellerAndOrderId(seller types.Address, orderId string) (*abi.DoDSettleOrderInfo, error) {
-	return abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, orderId)
+	order, err := abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, orderId)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, c := range order.Connections {
+		if len(c.ProductId) == 0 {
+			otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+			pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+			if pi != nil {
+				c.ProductId = pi.ProductId
+			}
+		}
+	}
+
+	return order, nil
 }
 
 func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoDSettleOrderInfo, error) {
@@ -319,6 +349,16 @@ func (d *DoDSettlementAPI) GetOrderInfoByInternalId(internalId string) (*abi.DoD
 	order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, id)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, c := range order.Connections {
+		if len(c.ProductId) == 0 {
+			otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+			pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+			if pi != nil {
+				c.ProductId = pi.ProductId
+			}
+		}
 	}
 
 	return order, nil
@@ -356,6 +396,8 @@ func (d *DoDSettlementAPI) GetPendingRequest(address types.Address) ([]*DoDPendi
 					return err
 				}
 
+				order.InternalId = sendBlock.Previous.String()
+
 				r := &DoDPendingRequestRsp{
 					Hash:  key.Hash,
 					Order: order,
@@ -372,16 +414,11 @@ func (d *DoDSettlementAPI) GetPendingRequest(address types.Address) ([]*DoDPendi
 	return rsp, nil
 }
 
-type DoDSettleProductWithActiveInfo struct {
-	ProductId string `json:"productId"`
-	Active    bool   `json:"active"`
-}
-
 type DoDPendingResourceCheckInfo struct {
-	SendHash   types.Hash                        `json:"sendHash"`
-	OrderId    string                            `json:"orderId"`
-	InternalId types.Hash                        `json:"internalId"`
-	Products   []*DoDSettleProductWithActiveInfo `json:"products"`
+	SendHash   types.Hash                  `json:"sendHash"`
+	OrderId    string                      `json:"orderId"`
+	InternalId types.Hash                  `json:"internalId"`
+	Products   []*abi.DoDSettleProductInfo `json:"products"`
 }
 
 // query all pending resource check requests
@@ -415,7 +452,7 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 					SendHash:   key.Hash,
 					OrderId:    param.OrderId,
 					InternalId: param.InternalId,
-					Products:   make([]*DoDSettleProductWithActiveInfo, 0),
+					Products:   make([]*abi.DoDSettleProductInfo, 0),
 				}
 
 				order, err := abi.DoDSettleGetOrderInfoByInternalId(d.ctx, param.InternalId)
@@ -424,15 +461,29 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 				}
 
 				for _, p := range order.Connections {
-					pai := &DoDSettleProductWithActiveInfo{ProductId: p.ProductId, Active: false}
+					var productId string
 
-					ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: p.ProductId}
-					_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
-					if err == nil {
-						pai.Active = true
+					if len(p.ProductId) > 0 {
+						productId = p.ProductId
+					} else {
+						otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: p.OrderItemId}
+						pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+						if pi != nil {
+							productId = pi.ProductId
+						}
 					}
 
-					info.Products = append(info.Products, pai)
+					if len(productId) > 0 {
+						pai := &abi.DoDSettleProductInfo{OrderItemId: p.OrderItemId, ProductId: productId, Active: false}
+
+						ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: productId}
+						_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
+						if err == nil {
+							pai.Active = true
+						}
+
+						info.Products = append(info.Products, pai)
+					}
 				}
 
 				infos = append(infos, info)
@@ -584,6 +635,16 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddress(address types.Address, count, o
 			return nil, err
 		}
 
+		for _, c := range order.Connections {
+			if len(c.ProductId) == 0 {
+				otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+				pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+				if pi != nil {
+					c.ProductId = pi.ProductId
+				}
+			}
+		}
+
 		orders = append(orders, order)
 	}
 
@@ -623,6 +684,16 @@ func (d *DoDSettlementAPI) GetOrderInfoByAddressAndSeller(address, seller types.
 		order, err := abi.DoDSettleGetOrderInfoByOrderId(d.ctx, seller, orderIds[i].OrderId)
 		if err != nil {
 			return nil, err
+		}
+
+		for _, c := range order.Connections {
+			if len(c.ProductId) == 0 {
+				otp := &abi.DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+				pi, _ := abi.DoDSettleGetProductIdByStorageKey(d.ctx, otp.Hash())
+				if pi != nil {
+					c.ProductId = pi.ProductId
+				}
+			}
 		}
 
 		orders = append(orders, order)

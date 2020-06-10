@@ -43,11 +43,7 @@ func addDoDSettleTestOrder(t *testing.T, ctx *vmstore.VMContext, order *DoDSettl
 }
 
 func addDoDSettleTestConnection(t *testing.T, ctx *vmstore.VMContext, conn *DoDSettleConnectionInfo, seller types.Address) {
-	productKey := &DoDSettleProduct{
-		Seller:    seller,
-		ProductId: conn.ProductId,
-	}
-	productHash := productKey.Hash()
+	otp := DoDSettleOrderToProduct{Seller: seller, OrderId: conn.Active.OrderId, OrderItemId: conn.Active.OrderItemId}
 
 	data, err := conn.MarshalMsg(nil)
 	if err != nil {
@@ -56,8 +52,20 @@ func addDoDSettleTestConnection(t *testing.T, ctx *vmstore.VMContext, conn *DoDS
 
 	var key []byte
 	key = append(key, DoDSettleDBTableProduct)
-	key = append(key, productHash.Bytes()...)
+	key = append(key, otp.Hash().Bytes()...)
 	err = ctx.SetStorage(nil, key, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pid := &DoDSettleProduct{Seller: seller, ProductId: conn.ProductId}
+
+	err = DoDSettleSetProductStorageKeyByProductId(ctx, otp.Hash(), pid.Hash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = DoDSettleSetProductIdByStorageKey(ctx, otp.Hash(), conn.ProductId, seller)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,13 +229,13 @@ func TestDoDSettleGetConnectionInfoByProductHash(t *testing.T) {
 	seller := mock.Address()
 	conn := new(DoDSettleConnectionInfo)
 	conn.ProductId = "product001"
-	conn.Active = &DoDSettleConnectionDynamicParam{OrderId: "o1"}
+	conn.Active = &DoDSettleConnectionDynamicParam{OrderId: "o1", OrderItemId: "oi1"}
 	conn.Done = []*DoDSettleConnectionDynamicParam{{OrderId: "o1"}}
 
 	productKey := &DoDSettleProduct{Seller: seller, ProductId: conn.ProductId}
 	productHash := productKey.Hash()
 
-	_, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
+	_, err := DoDSettleGetConnectionInfoByProductStorageKey(ctx, productHash)
 	if err == nil {
 		t.Fatal()
 	}
@@ -242,11 +250,6 @@ func TestDoDSettleGetConnectionInfoByProductHash(t *testing.T) {
 	err = DoDSettleUpdatePAYGTimeSpan(ctx, conn.ProductId, "o1", 10, 20)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	ci, err := DoDSettleGetConnectionInfoByProductHash(ctx, productHash)
-	if err != nil || ci.ProductId != conn.ProductId {
-		t.Fatal()
 	}
 
 	cii, err := DoDSettleGetConnectionInfoByProductId(ctx, seller, conn.ProductId)
@@ -317,6 +320,7 @@ func TestDoDSettleUpdateConnectionRawParam(t *testing.T) {
 
 	cp2 := new(DoDSettleConnectionParam)
 	cp2.ConnectionName = "conn2"
+	cp2.ItemId = "item1"
 	cp2.PaymentType = DoDSettlePaymentTypeStableCoin
 	cp2.BillingType = DoDSettleBillingTypeDOD
 	cp2.Currency = "CNY"
@@ -400,8 +404,6 @@ func TestDoDSettleGetInternalIdListByAddress(t *testing.T) {
 
 	internalId1 := mock.Hash()
 	internalId2 := mock.Hash()
-	product1 := "product1"
-	product2 := "product2"
 	order1 := "order1"
 	order2 := "order2"
 
@@ -415,14 +417,8 @@ func TestDoDSettleGetInternalIdListByAddress(t *testing.T) {
 		t.Fatal()
 	}
 
-	_, err = DoDSettleGetProductIdListByAddress(ctx, buyer)
-	if err == nil {
-		t.Fatal()
-	}
-
 	userInfo := new(DoDSettleUserInfos)
 	userInfo.InternalIds = []*DoDSettleInternalIdWrap{{InternalId: internalId1}, {InternalId: internalId2}}
-	userInfo.ProductIds = []*DoDSettleProduct{{Seller: seller, ProductId: product1}, {Seller: seller, ProductId: product2}}
 	userInfo.OrderIds = []*DoDSettleOrder{{Seller: seller, OrderId: order1}, {Seller: seller, OrderId: order2}}
 
 	data, err := userInfo.MarshalMsg(nil)
@@ -472,25 +468,6 @@ func TestDoDSettleGetInternalIdListByAddress(t *testing.T) {
 	if !orderId1Get || !orderId2Get {
 		t.Fatal()
 	}
-
-	pl, err := DoDSettleGetProductIdListByAddress(ctx, buyer)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var productId1Get, productId2Get bool
-	for _, id := range pl {
-		if id.ProductId == product1 {
-			productId1Get = true
-		}
-
-		if id.ProductId == product2 {
-			productId2Get = true
-		}
-	}
-	if !productId1Get || !productId2Get {
-		t.Fatal()
-	}
 }
 
 func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
@@ -532,6 +509,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product001"},
 		Active: &DoDSettleConnectionDynamicParam{
 			OrderId:     "order001",
+			OrderItemId: "oi1",
 			BillingType: DoDSettleBillingTypeDOD,
 			Currency:    "USD",
 			Price:       8.000,
@@ -553,6 +531,10 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	}
 	connInfo2 := &DoDSettleConnectionInfo{
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product002"},
+		Active: &DoDSettleConnectionDynamicParam{
+			OrderId:     "order001",
+			OrderItemId: "oi2",
+		},
 		Disconnect: &DoDSettleDisconnectInfo{
 			OrderId:      "order001",
 			Price:        0,
@@ -575,6 +557,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product003"},
 		Active: &DoDSettleConnectionDynamicParam{
 			OrderId:     "order001",
+			OrderItemId: "oi3",
 			BillingType: DoDSettleBillingTypePAYG,
 			BillingUnit: DoDSettleBillingUnitHour,
 			Currency:    "USD",
@@ -596,6 +579,10 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	}
 	connInfo4 := &DoDSettleConnectionInfo{
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product004"},
+		Active: &DoDSettleConnectionDynamicParam{
+			OrderId:     "order001",
+			OrderItemId: "oi4",
+		},
 		Done: []*DoDSettleConnectionDynamicParam{
 			{
 				OrderId:     "order001",
@@ -608,8 +595,38 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 			},
 		},
 	}
+	conn5 := &DoDSettleConnectionParam{
+		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product005"},
+		DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
+			OrderId:     "order001",
+			BillingType: DoDSettleBillingTypeDOD,
+			Currency:    "USD",
+			Price:       4.000,
+			Addition:    0,
+			StartTime:   3600,
+			EndTime:     7200,
+		},
+	}
+	connInfo5 := &DoDSettleConnectionInfo{
+		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product005"},
+		Active: &DoDSettleConnectionDynamicParam{
+			OrderId:     "order001",
+			OrderItemId: "oi5",
+		},
+		Done: []*DoDSettleConnectionDynamicParam{
+			{
+				OrderId:     "order001",
+				BillingType: DoDSettleBillingTypeDOD,
+				Currency:    "USD",
+				Price:       4.000,
+				Addition:    0,
+				StartTime:   3600,
+				EndTime:     7200,
+			},
+		},
+	}
 
-	order.Connections = append(order.Connections, conn1, conn2, conn3, conn4)
+	order.Connections = append(order.Connections, conn1, conn2, conn3, conn4, conn5)
 	internalId := mock.Hash()
 	addDoDSettleTestOrder(t, ctx, order, internalId)
 
@@ -617,6 +634,7 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	addDoDSettleTestConnection(t, ctx, connInfo2, seller)
 	addDoDSettleTestConnection(t, ctx, connInfo3, seller)
 	addDoDSettleTestConnection(t, ctx, connInfo4, seller)
+	addDoDSettleTestConnection(t, ctx, connInfo5, seller)
 
 	start := int64(500)
 	end := int64(8000)
@@ -664,6 +682,30 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	if err == nil {
 		t.Fatal(err)
 	}
+
+	order = &DoDSettleOrderInfo{
+		Buyer: &DoDSettleUser{
+			Address: buyer,
+			Name:    "B1",
+		},
+		Seller: &DoDSettleUser{
+			Address: seller,
+			Name:    "S1",
+		},
+		OrderId:       "order001",
+		OrderType:     DoDSettleOrderTypeCreate,
+		OrderState:    DoDSettleOrderStateSuccess,
+		ContractState: DoDSettleContractStateConfirmed,
+		Connections:   []*DoDSettleConnectionParam{{}},
+	}
+
+	internalId = mock.Hash()
+	addDoDSettleTestOrder(t, ctx, order, internalId)
+
+	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, 1000, 2000, true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
@@ -701,6 +743,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product001"},
 		Active: &DoDSettleConnectionDynamicParam{
 			OrderId:     "order003",
+			OrderItemId: "oi1",
 			BillingType: DoDSettleBillingTypeDOD,
 			Currency:    "USD",
 			Price:       5.000,
@@ -747,6 +790,7 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{ProductId: "product002"},
 		Active: &DoDSettleConnectionDynamicParam{
 			OrderId:     "order003",
+			OrderItemId: "oi2",
 			BillingType: DoDSettleBillingTypePAYG,
 			BillingUnit: DoDSettleBillingUnitSecond,
 			Currency:    "USD",
@@ -980,6 +1024,53 @@ func TestDoDSettleUpdatePAYGTimeSpan(t *testing.T) {
 
 	ts, err := DoDSettleGetPAYGTimeSpan(ctx, "p1", "o1")
 	if err != nil || ts.StartTime != 20 || ts.EndTime != 30 {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettleGetConnectionInfoByProductStorageKey(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.DoDSettlementAddress)
+
+	otp := DoDSettleOrderToProduct{Seller: mock.Address(), OrderId: "o1", OrderItemId: "io1"}
+	err := DoDSettleSetProductIdByStorageKey(ctx, otp.Hash(), "p1", otp.Seller)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pd, err := DoDSettleGetProductIdByStorageKey(ctx, otp.Hash())
+	if err != nil || pd.ProductId != "p1" || pd.Seller != otp.Seller {
+		t.Fatal(err)
+	}
+}
+
+func TestDoDSettleGetProductIdListByAddress(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.DoDSettlementAddress)
+
+	buyer := mock.Address()
+	seller := mock.Address()
+	err := DoDSettleUpdateUserProduct(ctx, buyer, seller, "p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = DoDSettleUpdateUserProduct(ctx, buyer, seller, "p2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = DoDSettleUpdateUserProduct(ctx, buyer, seller, "p2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ps, err := DoDSettleGetProductIdListByAddress(ctx, buyer)
+	if err != nil || len(ps) != 2 {
 		t.Fatal()
 	}
 }

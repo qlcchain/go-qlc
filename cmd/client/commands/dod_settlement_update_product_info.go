@@ -3,10 +3,9 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"strings"
-
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
+	"strconv"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -14,17 +13,17 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
-func addDSResourceReadyCmdByShell(parentCmd *ishell.Cmd) {
+func addDSUpdateProductInfoCmdByShell(parentCmd *ishell.Cmd) {
 	address := util.Flag{
 		Name:  "address",
 		Must:  true,
 		Usage: "address hex string",
 		Value: "",
 	}
-	internalId := util.Flag{
-		Name:  "internalId",
+	orderId := util.Flag{
+		Name:  "orderId",
 		Must:  true,
-		Usage: "internalId",
+		Usage: "orderId",
 		Value: "",
 	}
 	productId := util.Flag{
@@ -33,11 +32,23 @@ func addDSResourceReadyCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "productId (separate by comma)",
 		Value: "",
 	}
+	orderItemId := util.Flag{
+		Name:  "orderItemId",
+		Must:  true,
+		Usage: "orderItemId",
+		Value: "",
+	}
+	active := util.Flag{
+		Name:  "active",
+		Must:  true,
+		Usage: "active",
+		Value: "",
+	}
 
-	args := []util.Flag{address, internalId, productId}
+	args := []util.Flag{address, orderId, productId, orderItemId, active}
 	cmd := &ishell.Cmd{
-		Name:                "resourceReady",
-		Help:                "notify resource is ready",
+		Name:                "updateProductInfo",
+		Help:                "update product info",
 		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
 			if util.HelpText(c, args) {
@@ -50,10 +61,12 @@ func addDSResourceReadyCmdByShell(parentCmd *ishell.Cmd) {
 			}
 
 			addressP := util.StringVar(c.Args, address)
-			internalIdP := util.StringVar(c.Args, internalId)
+			orderIdP := util.StringVar(c.Args, orderId)
 			productIdP := util.StringVar(c.Args, productId)
+			orderItemIdP := util.StringVar(c.Args, orderItemId)
+			activeP := util.StringVar(c.Args, active)
 
-			if err := DSResourceReady(addressP, internalIdP, productIdP); err != nil {
+			if err := DSUpdateProductInfo(addressP, orderIdP, productIdP, orderItemIdP, activeP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -62,7 +75,7 @@ func addDSResourceReadyCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSResourceReady(addressP, internalIdP, productIdP string) error {
+func DSUpdateProductInfo(addressP, orderIdP, productIdP, orderItemIdP, activeP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -79,19 +92,23 @@ func DSResourceReady(addressP, internalIdP, productIdP string) error {
 		return fmt.Errorf("account format err")
 	}
 
-	internalId, err := types.NewHash(internalIdP)
+	active, err := strconv.ParseBool(activeP)
 	if err != nil {
 		return err
 	}
 
-	param := &abi.DoDSettleResourceReadyParam{
-		Address:    acc.Address(),
-		InternalId: internalId,
-		ProductId:  strings.Split(productIdP, ","),
+	param := &abi.DoDSettleUpdateProductInfoParam{
+		Address: acc.Address(),
+		OrderId: orderIdP,
+		ProductInfo: []*abi.DoDSettleProductInfo{{
+			OrderItemId: orderItemIdP,
+			ProductId:   productIdP,
+			Active:      active,
+		}},
 	}
 
 	block := new(types.StateBlock)
-	err = client.Call(&block, "DoDSettlement_getResourceReadyBlock", param)
+	err = client.Call(&block, "DoDSettlement_getUpdateProductInfoBlock", param)
 	if err != nil {
 		return err
 	}
