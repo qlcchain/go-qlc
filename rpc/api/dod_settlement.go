@@ -473,17 +473,17 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 						}
 					}
 
-					pai := &abi.DoDSettleProductInfo{OrderItemId: p.OrderItemId, ProductId: productId, Active: false}
-
 					if len(productId) > 0 {
+						pai := &abi.DoDSettleProductInfo{OrderItemId: p.OrderItemId, ProductId: productId, Active: false}
+
 						ak := &abi.DoDSettleConnectionActiveKey{InternalId: param.InternalId, ProductId: productId}
 						_, err := abi.DoDSettleGetSellerConnectionActive(d.ctx, ak.Hash())
 						if err == nil {
 							pai.Active = true
 						}
-					}
 
-					info.Products = append(info.Products, pai)
+						info.Products = append(info.Products, pai)
+					}
 				}
 
 				infos = append(infos, info)

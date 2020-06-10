@@ -48,7 +48,6 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 		Connections: []*abi.DoDSettleConnectionParam{
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-					BuyerProductId:    "bp1",
 					ProductOfferingId: "po1",
 					SrcCompanyName:    "CBC",
 					SrcRegion:         "CHN",
@@ -77,7 +76,6 @@ func TestDoDSettleCreateOrder_ProcessSend(t *testing.T) {
 			},
 			{
 				DoDSettleConnectionStaticParam: abi.DoDSettleConnectionStaticParam{
-					BuyerProductId:    "bp2",
 					ProductOfferingId: "po2",
 					SrcCompanyName:    "CBC",
 					SrcRegion:         "CHN",
@@ -1171,10 +1169,11 @@ func TestDoDSettleUpdateProductInfo_ProcessSend(t *testing.T) {
 	order := abi.NewOrderInfo()
 	order.OrderId = "order1"
 	order.Seller = &abi.DoDSettleUser{Address: block.Address}
+	order.OrderState = abi.DoDSettleOrderStateFail
 	order.Connections = []*abi.DoDSettleConnectionParam{{}}
 	order.Connections[0].OrderItemId = "oi1"
 	order.Connections[0].ProductId = "p1"
-	order.Connections[0].BillingType = abi.DoDSettleBillingTypeDOD
+	order.Connections[0].BillingType = abi.DoDSettleBillingTypePAYG
 	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
 		t.Fatal(err)
@@ -1199,8 +1198,18 @@ func TestDoDSettleUpdateProductInfo_ProcessSend(t *testing.T) {
 		t.Fatal()
 	}
 
+	order.Seller = &abi.DoDSettleUser{Address: mock.Address()}
+	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = rr.ProcessSend(ctx, block)
+	if err == nil {
+		t.Fatal()
+	}
+
 	order.Seller = &abi.DoDSettleUser{Address: block.Address}
-	order.OrderState = abi.DoDSettleOrderStateFail
 	err = abi.DoDSettleUpdateOrder(ctx, order, internalId)
 	if err != nil {
 		t.Fatal(err)
