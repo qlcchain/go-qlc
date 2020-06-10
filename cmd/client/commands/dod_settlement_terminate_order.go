@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/rpc/api"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -53,8 +54,20 @@ func addDSTerminateOrderCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "price",
 		Value: "",
 	}
+	privateFrom := util.Flag{
+		Name:  "privateFrom",
+		Must:  false,
+		Usage: "privateFrom",
+		Value: "",
+	}
+	privateFor := util.Flag{
+		Name:  "privateFor",
+		Must:  false,
+		Usage: "privateFor",
+		Value: "",
+	}
 
-	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, productId, price}
+	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, productId, price, privateFrom, privateFor}
 	cmd := &ishell.Cmd{
 		Name:                "terminateOrder",
 		Help:                "create a terminate order request",
@@ -75,8 +88,11 @@ func addDSTerminateOrderCmdByShell(parentCmd *ishell.Cmd) {
 			sellerNameP := util.StringVar(c.Args, sellerName)
 			productIdP := util.StringVar(c.Args, productId)
 			priceP := util.StringVar(c.Args, price)
+			privateFromP := util.StringVar(c.Args, privateFrom)
+			privateForP := util.StringVar(c.Args, privateFor)
 
-			if err := DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, productIdP, priceP); err != nil {
+			if err := DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, productIdP,
+				priceP, privateFromP, privateForP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -85,7 +101,7 @@ func addDSTerminateOrderCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, productIdP, priceP string) error {
+func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, productIdP, priceP, privateFromP, privateForP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -112,16 +128,22 @@ func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, pr
 		return err
 	}
 
-	param := &abi.DoDSettleTerminateOrderParam{
-		Buyer: &abi.DoDSettleUser{
-			Address: acc.Address(),
-			Name:    buyerNameP,
+	param := &api.DoDSettleTerminateOrderParam{
+		ContractPrivacyParam: api.ContractPrivacyParam{
+			PrivateFrom: privateFromP,
+			PrivateFor:  strings.Split(privateForP, ","),
 		},
-		Seller: &abi.DoDSettleUser{
-			Address: sellerAddress,
-			Name:    sellerNameP,
+		DoDSettleTerminateOrderParam: abi.DoDSettleTerminateOrderParam{
+			Buyer: &abi.DoDSettleUser{
+				Address: acc.Address(),
+				Name:    buyerNameP,
+			},
+			Seller: &abi.DoDSettleUser{
+				Address: sellerAddress,
+				Name:    sellerNameP,
+			},
+			Connections: make([]*abi.DoDSettleChangeConnectionParam, 0),
 		},
-		Connections: make([]*abi.DoDSettleChangeConnectionParam, 0),
 	}
 
 	pids := strings.Split(productIdP, ",")

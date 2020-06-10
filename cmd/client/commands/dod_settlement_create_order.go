@@ -3,8 +3,10 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/rpc/api"
 	"math/rand"
 	"strconv"
+	"strings"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -94,9 +96,21 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "num",
 		Value: "",
 	}
+	privateFrom := util.Flag{
+		Name:  "privateFrom",
+		Must:  false,
+		Usage: "privateFrom",
+		Value: "",
+	}
+	privateFor := util.Flag{
+		Name:  "privateFor",
+		Must:  false,
+		Usage: "privateFor",
+		Value: "",
+	}
 
 	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, srcPort, dstPort, billingType, bandwidth,
-		billingUnit, price, startTime, endTime, num}
+		billingUnit, price, startTime, endTime, num, privateFrom, privateFor}
 	cmd := &ishell.Cmd{
 		Name:                "createOrder",
 		Help:                "create a order request",
@@ -124,9 +138,11 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 			startTimeP := util.StringVar(c.Args, startTime)
 			endTimeP := util.StringVar(c.Args, endTime)
 			numP := util.StringVar(c.Args, num)
+			privateFromP := util.StringVar(c.Args, privateFrom)
+			privateForP := util.StringVar(c.Args, privateFor)
 
 			if err := DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPortP, dstPortP,
-				billingTypeP, bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP); err != nil {
+				billingTypeP, bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP, privateFromP, privateForP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -136,7 +152,7 @@ func addDSCreateOrderCmdByShell(parentCmd *ishell.Cmd) {
 }
 
 func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPortP, dstPortP, billingTypeP,
-	bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP string) error {
+	bandwidthP, billingUnitP, priceP, startTimeP, endTimeP, numP, privateFromP, privateForP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -191,16 +207,22 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 		return err
 	}
 
-	param := &abi.DoDSettleCreateOrderParam{
-		Buyer: &abi.DoDSettleUser{
-			Address: acc.Address(),
-			Name:    buyerNameP,
+	param := &api.DoDSettleCreateOrderParam{
+		ContractPrivacyParam: api.ContractPrivacyParam{
+			PrivateFrom: privateFromP,
+			PrivateFor:  strings.Split(privateForP, ","),
 		},
-		Seller: &abi.DoDSettleUser{
-			Address: sellerAddress,
-			Name:    sellerNameP,
+		DoDSettleCreateOrderParam: abi.DoDSettleCreateOrderParam{
+			Buyer: &abi.DoDSettleUser{
+				Address: acc.Address(),
+				Name:    buyerNameP,
+			},
+			Seller: &abi.DoDSettleUser{
+				Address: sellerAddress,
+				Name:    sellerNameP,
+			},
+			Connections: make([]*abi.DoDSettleConnectionParam, 0),
 		},
-		Connections: make([]*abi.DoDSettleConnectionParam, 0),
 	}
 
 	var conn *abi.DoDSettleConnectionParam

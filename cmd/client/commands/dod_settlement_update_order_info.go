@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/qlcchain/go-qlc/rpc/api"
 	"strings"
 
 	"github.com/abiosoft/ishell"
@@ -57,8 +58,20 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "item ids (separate by comma)",
 		Value: "",
 	}
+	privateFrom := util.Flag{
+		Name:  "privateFrom",
+		Must:  false,
+		Usage: "privateFrom",
+		Value: "",
+	}
+	privateFor := util.Flag{
+		Name:  "privateFor",
+		Must:  false,
+		Usage: "privateFor",
+		Value: "",
+	}
 
-	args := []util.Flag{buyer, internalId, orderId, orderStatus, reason, orderItemIds, itemIds}
+	args := []util.Flag{buyer, internalId, orderId, orderStatus, reason, orderItemIds, itemIds, privateFrom, privateFor}
 	cmd := &ishell.Cmd{
 		Name:                "updateOrderInfo",
 		Help:                "update order info",
@@ -80,8 +93,10 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 			reasonP := util.StringVar(c.Args, reason)
 			orderItemIdsP := util.StringVar(c.Args, orderItemIds)
 			itemIdsP := util.StringVar(c.Args, itemIds)
+			privateFromP := util.StringVar(c.Args, privateFrom)
+			privateForP := util.StringVar(c.Args, privateFor)
 
-			if err := DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, orderItemIdsP, itemIdsP); err != nil {
+			if err := DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, orderItemIdsP, itemIdsP, privateFromP, privateForP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -90,7 +105,7 @@ func addDSUpdateOrderInfoCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, orderItemIdsP, itemIdsP string) error {
+func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, orderItemIdsP, itemIdsP, privateFromP, privateForP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -120,13 +135,19 @@ func DSUpdateOrderInfo(buyerP, internalIdP, orderIdP, orderStatusP, reasonP, ord
 	orderItemIds := strings.Split(orderItemIdsP, ",")
 	itemIds := strings.Split(itemIdsP, ",")
 
-	param := &abi.DoDSettleUpdateOrderInfoParam{
-		Buyer:       acc.Address(),
-		InternalId:  internalId,
-		OrderId:     orderIdP,
-		OrderItemId: make([]*abi.DoDSettleOrderItem, 0),
-		Status:      orderStatus,
-		FailReason:  reasonP,
+	param := &api.DoDSettleUpdateOrderInfoParam{
+		ContractPrivacyParam: api.ContractPrivacyParam{
+			PrivateFrom: privateFromP,
+			PrivateFor:  strings.Split(privateForP, ","),
+		},
+		DoDSettleUpdateOrderInfoParam: abi.DoDSettleUpdateOrderInfoParam{
+			Buyer:       acc.Address(),
+			InternalId:  internalId,
+			OrderId:     orderIdP,
+			OrderItemId: make([]*abi.DoDSettleOrderItem, 0),
+			Status:      orderStatus,
+			FailReason:  reasonP,
+		},
 	}
 
 	for i := 0; i < len(itemIds); i++ {
