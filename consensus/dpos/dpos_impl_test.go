@@ -10,9 +10,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
-
 	"github.com/qlcchain/go-qlc/common"
 
 	"github.com/qlcchain/go-qlc/common/types"
