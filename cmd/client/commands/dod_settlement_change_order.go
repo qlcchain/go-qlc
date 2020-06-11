@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/qlcchain/go-qlc/rpc/api"
+
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 
@@ -83,9 +85,21 @@ func addDSChangeOrderCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "productId (separate by comma)",
 		Value: "",
 	}
+	privateFrom := util.Flag{
+		Name:  "privateFrom",
+		Must:  false,
+		Usage: "privateFrom",
+		Value: "",
+	}
+	privateFor := util.Flag{
+		Name:  "privateFor",
+		Must:  false,
+		Usage: "privateFor",
+		Value: "",
+	}
 
 	args := []util.Flag{buyerAddress, buyerName, sellerAddress, sellerName, billingType, bandwidth, billingUnit, price,
-		startTime, endTime, productId}
+		startTime, endTime, productId, privateFrom, privateFor}
 	cmd := &ishell.Cmd{
 		Name:                "changeOrder",
 		Help:                "create a change order request",
@@ -111,9 +125,11 @@ func addDSChangeOrderCmdByShell(parentCmd *ishell.Cmd) {
 			startTimeP := util.StringVar(c.Args, startTime)
 			endTimeP := util.StringVar(c.Args, endTime)
 			productIdP := util.StringVar(c.Args, productId)
+			privateFromP := util.StringVar(c.Args, privateFrom)
+			privateForP := util.StringVar(c.Args, privateFor)
 
 			if err := DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, startTimeP, endTimeP,
-				billingTypeP, bandwidthP, billingUnitP, priceP, productIdP); err != nil {
+				billingTypeP, bandwidthP, billingUnitP, priceP, productIdP, privateFromP, privateForP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -123,7 +139,7 @@ func addDSChangeOrderCmdByShell(parentCmd *ishell.Cmd) {
 }
 
 func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, startTimeP, endTimeP, billingTypeP,
-	bandwidthP, billingUnitP, priceP, productIdP string) error {
+	bandwidthP, billingUnitP, priceP, productIdP, privateFromP, privateForP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -175,16 +191,22 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 		}
 	}
 
-	param := &abi.DoDSettleChangeOrderParam{
-		Buyer: &abi.DoDSettleUser{
-			Address: acc.Address(),
-			Name:    buyerNameP,
+	param := &api.DoDSettleChangeOrderParam{
+		ContractPrivacyParam: api.ContractPrivacyParam{
+			PrivateFrom: privateFromP,
+			PrivateFor:  strings.Split(privateForP, ","),
 		},
-		Seller: &abi.DoDSettleUser{
-			Address: sellerAddress,
-			Name:    sellerNameP,
+		DoDSettleChangeOrderParam: abi.DoDSettleChangeOrderParam{
+			Buyer: &abi.DoDSettleUser{
+				Address: acc.Address(),
+				Name:    buyerNameP,
+			},
+			Seller: &abi.DoDSettleUser{
+				Address: sellerAddress,
+				Name:    sellerNameP,
+			},
+			Connections: make([]*abi.DoDSettleChangeConnectionParam, 0),
 		},
-		Connections: make([]*abi.DoDSettleChangeConnectionParam, 0),
 	}
 
 	pids := strings.Split(productIdP, ",")
@@ -216,6 +238,8 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 				},
 			}
 		}
+
+		fmt.Println(conn.ItemId)
 
 		conn.ProductId = productId
 		conn.QuoteId = fmt.Sprintf("quote%d", rand.Int())

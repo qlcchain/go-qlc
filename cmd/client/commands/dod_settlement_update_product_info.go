@@ -3,9 +3,13 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
-	"strconv"
+
+	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
@@ -44,8 +48,20 @@ func addDSUpdateProductInfoCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "active",
 		Value: "",
 	}
+	privateFrom := util.Flag{
+		Name:  "privateFrom",
+		Must:  false,
+		Usage: "privateFrom",
+		Value: "",
+	}
+	privateFor := util.Flag{
+		Name:  "privateFor",
+		Must:  false,
+		Usage: "privateFor",
+		Value: "",
+	}
 
-	args := []util.Flag{address, orderId, productId, orderItemId, active}
+	args := []util.Flag{address, orderId, productId, orderItemId, active, privateFrom, privateFor}
 	cmd := &ishell.Cmd{
 		Name:                "updateProductInfo",
 		Help:                "update product info",
@@ -65,8 +81,10 @@ func addDSUpdateProductInfoCmdByShell(parentCmd *ishell.Cmd) {
 			productIdP := util.StringVar(c.Args, productId)
 			orderItemIdP := util.StringVar(c.Args, orderItemId)
 			activeP := util.StringVar(c.Args, active)
+			privateFromP := util.StringVar(c.Args, privateFrom)
+			privateForP := util.StringVar(c.Args, privateFor)
 
-			if err := DSUpdateProductInfo(addressP, orderIdP, productIdP, orderItemIdP, activeP); err != nil {
+			if err := DSUpdateProductInfo(addressP, orderIdP, productIdP, orderItemIdP, activeP, privateFromP, privateForP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -75,7 +93,7 @@ func addDSUpdateProductInfoCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSUpdateProductInfo(addressP, orderIdP, productIdP, orderItemIdP, activeP string) error {
+func DSUpdateProductInfo(addressP, orderIdP, productIdP, orderItemIdP, activeP, privateFromP, privateForP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -97,14 +115,20 @@ func DSUpdateProductInfo(addressP, orderIdP, productIdP, orderItemIdP, activeP s
 		return err
 	}
 
-	param := &abi.DoDSettleUpdateProductInfoParam{
-		Address: acc.Address(),
-		OrderId: orderIdP,
-		ProductInfo: []*abi.DoDSettleProductInfo{{
-			OrderItemId: orderItemIdP,
-			ProductId:   productIdP,
-			Active:      active,
-		}},
+	param := &api.DoDSettleUpdateProductInfoParam{
+		ContractPrivacyParam: api.ContractPrivacyParam{
+			PrivateFrom: privateFromP,
+			PrivateFor:  strings.Split(privateForP, ","),
+		},
+		DoDSettleUpdateProductInfoParam: abi.DoDSettleUpdateProductInfoParam{
+			Address: acc.Address(),
+			OrderId: orderIdP,
+			ProductInfo: []*abi.DoDSettleProductInfo{{
+				OrderItemId: orderItemIdP,
+				ProductId:   productIdP,
+				Active:      active,
+			}},
+		},
 	}
 
 	block := new(types.StateBlock)

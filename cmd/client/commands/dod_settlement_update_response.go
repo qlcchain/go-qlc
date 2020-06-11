@@ -3,6 +3,9 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
+	"strings"
+
+	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -32,8 +35,20 @@ func addDSUpdateResponseCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "response action (confirm/reject)",
 		Value: "",
 	}
+	privateFrom := util.Flag{
+		Name:  "privateFrom",
+		Must:  false,
+		Usage: "privateFrom",
+		Value: "",
+	}
+	privateFor := util.Flag{
+		Name:  "privateFor",
+		Must:  false,
+		Usage: "privateFor",
+		Value: "",
+	}
 
-	args := []util.Flag{address, hash, action}
+	args := []util.Flag{address, hash, action, privateFrom, privateFor}
 	cmd := &ishell.Cmd{
 		Name:                "updateResponse",
 		Help:                "response to update request",
@@ -51,8 +66,10 @@ func addDSUpdateResponseCmdByShell(parentCmd *ishell.Cmd) {
 			addressP := util.StringVar(c.Args, address)
 			hashP := util.StringVar(c.Args, hash)
 			actionP := util.StringVar(c.Args, action)
+			privateFromP := util.StringVar(c.Args, privateFrom)
+			privateForP := util.StringVar(c.Args, privateFor)
 
-			if err := DSUpdateResponse(addressP, hashP, actionP); err != nil {
+			if err := DSUpdateResponse(addressP, hashP, actionP, privateFromP, privateForP); err != nil {
 				util.Warn(err)
 				return
 			}
@@ -61,7 +78,7 @@ func addDSUpdateResponseCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(cmd)
 }
 
-func DSUpdateResponse(addressP, hashP, actionP string) error {
+func DSUpdateResponse(addressP, hashP, actionP, privateFromP, privateForP string) error {
 	client, err := rpc.Dial(endpointP)
 	if err != nil {
 		return err
@@ -88,9 +105,15 @@ func DSUpdateResponse(addressP, hashP, actionP string) error {
 		return err
 	}
 
-	param := &abi.DoDSettleResponseParam{
-		RequestHash: requestHash,
-		Action:      action,
+	param := &api.DoDSettleResponseParam{
+		ContractPrivacyParam: api.ContractPrivacyParam{
+			PrivateFrom: privateFromP,
+			PrivateFor:  strings.Split(privateForP, ","),
+		},
+		DoDSettleResponseParam: abi.DoDSettleResponseParam{
+			RequestHash: requestHash,
+			Action:      action,
+		},
 	}
 
 	block := new(types.StateBlock)

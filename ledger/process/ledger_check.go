@@ -523,7 +523,7 @@ func (cacheBlockPendingCheck) pending(lv *LedgerVerifier, block *types.StateBloc
 func checkContractPending(lv *LedgerVerifier, block *types.StateBlock) (ProcessResult, error) {
 	input, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 	if err != nil {
-		lv.logger.Errorf("send block must be confirmed: %s", err)
+		lv.logger.Debug("send block must be confirmed: %s", err)
 		return errorP(block, GapSource, nil)
 	}
 
