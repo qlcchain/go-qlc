@@ -133,7 +133,7 @@
         "Token": {
           "type": "string"
         },
-        "Amoun": {
+        "Amount": {
           "type": "string",
           "format": "int64"
         },

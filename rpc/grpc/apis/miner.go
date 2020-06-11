@@ -148,6 +148,6 @@ func toRewardParam(param *api.RewardParam) *pb.RewardParam {
 		StartHeight:  param.StartHeight,
 		EndHeight:    param.EndHeight,
 		RewardBlocks: param.RewardBlocks,
-		RewardAmount: param.RewardAmount.Int64(),
+		RewardAmount: toBalanceValueByBigInt(param.RewardAmount),
 	}
 }

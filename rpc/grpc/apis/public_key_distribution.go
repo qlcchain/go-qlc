@@ -378,7 +378,7 @@ func toVerifierRegParams(para []*api.VerifierRegParam) *pb.VerifierRegParams {
 func toPovVerifierState(state *types.PovVerifierState) *pbtypes.PovVerifierState {
 	r := &pbtypes.PovVerifierState{
 		TotalVerify:  state.TotalVerify,
-		TotalReward:  state.TotalReward.Int64(),
+		TotalReward:  toBalanceValueByBigNum(state.TotalReward),
 		ActiveHeight: state.ActiveHeight,
 	}
 	return r
@@ -512,7 +512,7 @@ func toPublishInfoState(state *api.PublishInfoState) *pb.PublishInfoState {
 			PublishHeight:  state.State.PublishHeight,
 			VerifiedHeight: state.State.VerifiedHeight,
 			VerifiedStatus: int32(state.State.VerifiedStatus),
-			BonusFee:       state.State.BonusFee.Int64(),
+			BonusFee:       toBalanceValueByBigNum(state.State.BonusFee),
 		}
 		r.State = p
 	}
@@ -542,6 +542,6 @@ func toPackRewardData(param *api.PKDRewardParam) *pb.PKDRewardParam {
 		Account:      toAddressValue(param.Account),
 		Beneficial:   toAddressValue(param.Beneficial),
 		EndHeight:    param.EndHeight,
-		RewardAmount: param.RewardAmount.Int64(),
+		RewardAmount: toBalanceValueByBigInt(param.RewardAmount),
 	}
 }

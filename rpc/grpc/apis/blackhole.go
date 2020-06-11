@@ -40,7 +40,7 @@ func (b *BlackHoleAPI) GetSendBlock(ctx context.Context, param *pb.DestroyParam)
 	if err != nil {
 		return nil, err
 	}
-	amount := big.NewInt(param.GetAmoun())
+	amount := big.NewInt(param.GetAmount())
 	sign, err := toOriginSignatureByValue(param.GetSign())
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (b *BlackHoleAPI) GetDestroyInfoDetail(ctx context.Context, param *pbtypes.
 		t.Owner = toAddressValue(info.Owner)
 		t.Token = toHashValue(info.Token)
 		t.Previous = toHashValue(info.Previous)
-		t.Amount = info.Amount.Int64()
+		t.Amount = toBalanceValueByBigInt(info.Amount)
 		t.TimeStamp = info.TimeStamp
 		infos = append(infos, t)
 	}

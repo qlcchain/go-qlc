@@ -148,7 +148,7 @@ func (n *NEP5PledgeAPI) GetPledgeBeneficialTotalAmount(ctx context.Context, para
 	if err != nil {
 		return nil, err
 	}
-	return toInt64(r.Int64()), nil
+	return toInt64(toBalanceValueByBigInt(r)), nil
 }
 
 func (n *NEP5PledgeAPI) GetBeneficialPledgeInfosByAddress(ctx context.Context, param *pbtypes.Address) (*pb.PledgeInfos, error) {
@@ -181,7 +181,7 @@ func (n *NEP5PledgeAPI) GetPledgeBeneficialAmount(ctx context.Context, param *pb
 	if err != nil {
 		return nil, err
 	}
-	return toInt64(r.Int64()), nil
+	return toInt64(toBalanceValueByBigInt(r)), nil
 }
 
 func (n *NEP5PledgeAPI) GetPledgeInfo(ctx context.Context, param *pb.WithdrawPledgeParam) (*pb.NEP5PledgeInfos, error) {
@@ -233,20 +233,20 @@ func (n *NEP5PledgeAPI) GetTotalPledgeAmount(context.Context, *empty.Empty) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return toInt64(r.Int64()), nil
+	return toInt64(toBalanceValueByBigInt(r)), nil
 }
 
 func toPledgeInfos(info *api.PledgeInfos) *pb.PledgeInfos {
 	r := &pb.PledgeInfos{
 		PledgeInfos:  nil,
-		TotalAmounts: info.TotalAmounts.Int64(),
+		TotalAmounts: toBalanceValueByBigInt(info.TotalAmounts),
 	}
 	if info.PledgeInfo != nil {
 		infos := make([]*pb.NEP5PledgeInfo, 0)
 		for _, i := range info.PledgeInfo {
 			it := &pb.NEP5PledgeInfo{
 				PType:         i.PType,
-				Amount:        i.Amount.Int64(),
+				Amount:        toBalanceValueByBigInt(i.Amount),
 				WithdrawTime:  i.WithdrawTime,
 				Beneficial:    toAddressValue(i.Beneficial),
 				PledgeAddress: toAddressValue(i.PledgeAddress),
@@ -314,7 +314,7 @@ func toOriginWithdrawPledgeParam(param *pb.WithdrawPledgeParam) (*api.WithdrawPl
 func toNEP5PledgeInfo(info *api.NEP5PledgeInfo) *pb.NEP5PledgeInfo {
 	return &pb.NEP5PledgeInfo{
 		PType:         info.PType,
-		Amount:        info.Amount.Int64(),
+		Amount:        toBalanceValueByBigInt(info.Amount),
 		WithdrawTime:  info.WithdrawTime,
 		Beneficial:    toAddressValue(info.Beneficial),
 		PledgeAddress: toAddressValue(info.PledgeAddress),
@@ -325,7 +325,7 @@ func toNEP5PledgeInfo(info *api.NEP5PledgeInfo) *pb.NEP5PledgeInfo {
 func toNEP5PledgeInfo2(info *abi.NEP5PledgeInfo) *pbtypes.NEP5PledgeInfo {
 	return &pbtypes.NEP5PledgeInfo{
 		PType:         int32(info.PType),
-		Amount:        info.Amount.Int64(),
+		Amount:        toBalanceValueByBigInt(info.Amount),
 		WithdrawTime:  info.WithdrawTime,
 		Beneficial:    toAddressValue(info.Beneficial),
 		PledgeAddress: toAddressValue(info.PledgeAddress),

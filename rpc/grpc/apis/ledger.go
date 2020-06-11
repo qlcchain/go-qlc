@@ -740,7 +740,7 @@ func toAPIPendings(pendings []*api.APIPending) *pb.APIPendings {
 			Address:   toAddressValue(pending.Address),
 			Hash:      toHashValue(pending.Hash),
 			Source:    toAddressValue(pending.Source),
-			Amount:    pending.Amount.Int64(),
+			Amount:    toBalanceValue(pending.Amount),
 			Type:      toHashValue(pending.Type),
 			TokenName: pending.TokenName,
 			Timestamp: pending.Timestamp,
@@ -758,12 +758,12 @@ func toAPIRepresentatives(reps []*api.APIRepresentative) *pb.APIRepresentatives 
 	for _, r := range reps {
 		rt := &pb.APIRepresentative{
 			Address: toAddressValue(r.Address),
-			Balance: r.Balance.Int64(),
-			Vote:    r.Vote.Int64(),
-			Network: r.Network.Int64(),
-			Storage: r.Storage.Int64(),
-			Oracle:  r.Oracle.Int64(),
-			Total:   r.Total.Int64(),
+			Balance: toBalanceValue(r.Balance),
+			Vote:    toBalanceValue(r.Vote),
+			Network: toBalanceValue(r.Network),
+			Storage: toBalanceValue(r.Storage),
+			Oracle:  toBalanceValue(r.Oracle),
+			Total:   toBalanceValue(r.Total),
 		}
 		rs = append(rs, rt)
 	}
@@ -777,10 +777,10 @@ func toTokenInfo(token types.TokenInfo) *pbtypes.TokenInfo {
 		TokenId:       toHashValue(token.TokenId),
 		TokenName:     token.TokenName,
 		TokenSymbol:   token.TokenSymbol,
-		TotalSupply:   token.TotalSupply.Int64(),
+		TotalSupply:   toBalanceValueByBigInt(token.TotalSupply),
 		Decimals:      int32(token.Decimals),
 		Owner:         toAddressValue(token.Owner),
-		PledgeAmount:  token.PledgeAmount.Int64(),
+		PledgeAmount:  toBalanceValueByBigInt(token.PledgeAmount),
 		WithdrawTime:  token.WithdrawTime,
 		PledgeAddress: toAddressValue(token.PledgeAddress),
 		NEP5TxId:      token.NEP5TxId,

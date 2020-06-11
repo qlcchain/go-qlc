@@ -43,10 +43,10 @@ type RPCConfigV2 struct {
 	WSEnabled  bool   `json:"webSocketEnabled" mapstructure:"webSocketEnabled"`
 	WSEndpoint string `json:"webSocketEndpoint" mapstructure:"webSocketEndpoint"`
 
-	IPCEndpoint   string     `json:"ipcEndpoint"`
-	IPCEnabled    bool       `json:"ipcEnabled"`
-	PublicModules []string   `json:"publicModules"`
-	GRPCConfig    GRPCConfig `json:"gRPCConfig"`
+	IPCEndpoint   string      `json:"ipcEndpoint"`
+	IPCEnabled    bool        `json:"ipcEnabled"`
+	PublicModules []string    `json:"publicModules"`
+	GRPCConfig    *GRPCConfig `json:"gRPCConfig"`
 }
 
 type GRPCConfig struct {

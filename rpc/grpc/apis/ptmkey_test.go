@@ -2,7 +2,6 @@ package apis
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -213,7 +212,6 @@ func TestPtmKeyApi_GetPtmKeyDeleteBlock(t *testing.T) {
 				Account: toAddressValue(tt.args.param.Account),
 				Btype:   tt.args.param.Btype,
 			})
-			fmt.Println("===", err, err != nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PtmKeyApi.GetPtmKeyDeleteBlock() error = %v, wantErr %v", err, tt.wantErr)
 				return

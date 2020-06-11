@@ -42,6 +42,6 @@ message DestroyParam {
     string Owner     = 1;
     string Previous  = 2;
     string Token     = 3;
-    int64  Amoun     = 4;
+    int64  Amount    = 4;
     string Sign      = 5;
 }

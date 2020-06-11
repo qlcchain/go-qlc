@@ -59,5 +59,5 @@ func (u *UtilApi) BalanceToRaw(ctx context.Context, param *pb.RawBalance) (*pb.I
 	if err != nil {
 		return nil, err
 	}
-	return toInt64(r.Int64()), nil
+	return toInt64(toBalanceValue(r)), nil
 }

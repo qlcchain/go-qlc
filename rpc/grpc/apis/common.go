@@ -290,10 +290,30 @@ func toOriginHashesByValues(hs []string) ([]types.Hash, error) {
 // balance
 
 func toBalance(b types.Balance) *pbtypes.Balance {
+	if b.Int == nil {
+		return &pbtypes.Balance{Balance: types.ZeroBalance.Int64()}
+	}
 	return &pbtypes.Balance{Balance: b.Int64()}
 }
 
 func toBalanceValue(b types.Balance) int64 {
+	if b.Int == nil {
+		return types.ZeroBalance.Int64()
+	}
+	return b.Int64()
+}
+
+func toBalanceValueByBigInt(b *big.Int) int64 {
+	if b == nil {
+		return 0
+	}
+	return b.Int64()
+}
+
+func toBalanceValueByBigNum(b *types.BigNum) int64 {
+	if b == nil {
+		return 0
+	}
 	return b.Int64()
 }
 

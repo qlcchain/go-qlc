@@ -85,7 +85,7 @@ func TestBlackHoleAPI_GetSendBlock(t *testing.T) {
 		Owner:    toAddressValue(param.Owner),
 		Previous: toHashValue(param.Previous),
 		Token:    toHashValue(param.Token),
-		Amoun:    param.Amount.Int64(),
+		Amount:   param.Amount.Int64(),
 		Sign:     toSignatureValue(param.Sign),
 	}); err != nil {
 		t.Fatal(err)

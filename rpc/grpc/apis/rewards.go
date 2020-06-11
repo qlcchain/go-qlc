@@ -97,7 +97,7 @@ func (r *RewardsAPI) GetTotalRewards(ctx context.Context, param *pb.String) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return toInt64(result.Int64()), nil
+	return toInt64(toBalanceValueByBigInt(result)), nil
 }
 
 func (r *RewardsAPI) GetRewardsDetail(ctx context.Context, param *pb.String) (*pb.RewardsInfos, error) {
@@ -121,7 +121,7 @@ func (r *RewardsAPI) GetConfidantRewards(ctx context.Context, param *pbtypes.Add
 	rep := &pb.ConfidantRewardsResponse{}
 	rep.Rewards = make(map[string]int64)
 	for k, v := range result {
-		rep.Rewards[k] = v.Int64()
+		rep.Rewards[k] = toBalanceValueByBigInt(v)
 	}
 	return rep, nil
 }
@@ -193,7 +193,7 @@ func toRewardsInfos(infos []*abi.RewardsInfo) *pb.RewardsInfos {
 			To:       toAddressValue(r.To),
 			TxHeader: toHashValue(r.TxHeader),
 			RxHeader: toHashValue(r.RxHeader),
-			Amount:   r.Amount.Int64(),
+			Amount:   toBalanceValueByBigInt(r.Amount),
 		}
 		rs = append(rs, rt)
 	}
