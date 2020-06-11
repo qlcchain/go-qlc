@@ -2,7 +2,6 @@ package contract
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/util"
 
 	"github.com/qlcchain/go-qlc/common/util"
 
