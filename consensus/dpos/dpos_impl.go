@@ -767,6 +767,11 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 	case types.ContractSend: // beneficial maybe another account
 		// check private tx
 		if blk.IsPrivate() && !blk.IsRecipient() {
+			// need to clean the gap source
+			err := dps.ledger.DeleteUncheckedBlock(hash, types.UncheckedKindLink)
+			if err != nil {
+				dps.logger.Errorf("Get err [%s] for hash: [%s] when delete UncheckedKindLink", err, hash)
+			}
 			break
 		}
 
@@ -846,7 +851,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		if types.Address(input.GetLink()) == contractaddress.MintageAddress {
 			method, err := mintage.MintageABI.MethodById(input.GetPayload())
 			if err != nil {
-				dps.logger.Errorf("get contract method err %s", err)
+				dps.logger.Debug("get contract method err %s", err)
 			} else {
 				if method.Name == mintage.MethodNameMintage {
 					index := dps.getProcessorIndex(input.Address)
@@ -858,7 +863,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		} else if types.Address(input.GetLink()) == contractaddress.DoDSettlementAddress {
 			method, err := cabi.DoDSettlementABI.MethodById(input.GetPayload())
 			if err != nil {
-				dps.logger.Errorf("get contract method err %s", err)
+				dps.logger.Debug("get contract method err %s", err)
 			} else {
 				if method.Name == cabi.MethodNameDoDSettleCreateOrder || method.Name == cabi.MethodNameDoDSettleChangeOrder ||
 					method.Name == cabi.MethodNameDoDSettleTerminateOrder {

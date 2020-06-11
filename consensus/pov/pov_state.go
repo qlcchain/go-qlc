@@ -260,6 +260,11 @@ func (bc *PovBlockChain) updateContractState(height uint64, gsdb *statedb.PovGlo
 			return err
 		}
 
+		// check private tx
+		if sendBlk.IsPrivate() && !sendBlk.IsRecipient() {
+			return nil
+		}
+
 		ca = types.Address(sendBlk.GetLink())
 		methodSig = sendBlk.GetPayload()
 	} else {

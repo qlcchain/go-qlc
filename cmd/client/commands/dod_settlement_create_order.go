@@ -3,10 +3,11 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/rpc/api"
 	"math/rand"
 	"strconv"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -299,6 +300,8 @@ func DSCreateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, srcPo
 				},
 			}
 		}
+
+		fmt.Println(conn.ItemId)
 
 		param.Connections = append(param.Connections, conn)
 	}

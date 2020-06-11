@@ -38,9 +38,9 @@ type ContractApi struct {
 }
 
 type ContractPrivacyParam struct {
-	PrivateFrom    string   `json:"privateFrom,omitempty"`
-	PrivateFor     []string `json:"privateFor,omitempty"`
-	PrivateGroupID string   `json:"privateGroupID,omitempty"`
+	PrivateFrom    string   `json:"privateFrom"`
+	PrivateFor     []string `json:"privateFor"`
+	PrivateGroupID string   `json:"privateGroupID"`
 }
 
 func NewContractApi(cc *chainctx.ChainContext, l ledger.Store) *ContractApi {
@@ -335,11 +335,14 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 
 	// fill default fields in reward block, but all fields can be set by DoReceive action
 	recvBlk := &types.StateBlock{
-		Type:      types.ContractReward,
-		Link:      para.SendHash,
-		Data:      blkFillData,
-		Timestamp: common.TimeNow().Unix(),
-		PoVHeight: povHeader.GetHeight(),
+		Type:           types.ContractReward,
+		Link:           para.SendHash,
+		Data:           blkFillData,
+		PrivateFrom:    para.PrivateFrom,
+		PrivateFor:     para.PrivateFor,
+		PrivateGroupID: para.PrivateGroupID,
+		Timestamp:      common.TimeNow().Unix(),
+		PoVHeight:      povHeader.GetHeight(),
 	}
 
 	if len(para.Data) > 0 && len(para.PrivateFrom) > 0 {

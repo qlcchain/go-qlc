@@ -514,7 +514,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 				return nil
 			}
 
-			input, err := lv.l.GetStateBlock(block.GetLink())
+			input, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 			if err != nil {
 				return fmt.Errorf("get contract reward block: %s", err)
 			}

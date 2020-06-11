@@ -3,10 +3,11 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/rpc/api"
 	"math/rand"
 	"strconv"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -237,6 +238,8 @@ func DSChangeOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, start
 				},
 			}
 		}
+
+		fmt.Println(conn.ItemId)
 
 		conn.ProductId = productId
 		conn.QuoteId = fmt.Sprintf("quote%d", rand.Int())

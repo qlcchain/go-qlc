@@ -2,12 +2,13 @@ package dpos
 
 import (
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
-	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
+	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
 
 	"github.com/qlcchain/go-qlc/common"
 

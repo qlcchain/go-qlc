@@ -3,8 +3,9 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/rpc/api"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"

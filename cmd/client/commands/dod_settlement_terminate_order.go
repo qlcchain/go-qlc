@@ -3,10 +3,11 @@ package commands
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/qlcchain/go-qlc/rpc/api"
 	"math/rand"
 	"strconv"
 	"strings"
+
+	"github.com/qlcchain/go-qlc/rpc/api"
 
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -157,6 +158,8 @@ func DSTerminateOrder(buyerAddressP, buyerNameP, sellerAddressP, sellerNameP, pr
 		conn.QuoteItemId = fmt.Sprintf("quoteItem%d", rand.Int())
 		conn.ItemId = fmt.Sprintf("itemid%d", rand.Int31n(100))
 		param.Connections = append(param.Connections, conn)
+
+		fmt.Println(conn.ItemId)
 	}
 
 	block := new(types.StateBlock)
