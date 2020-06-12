@@ -616,6 +616,8 @@ func (z *DoDSettleTerminateOrderParam) Verify(ctx *vmstore.VMContext) error {
 		if err != nil {
 			return fmt.Errorf("product is not active")
 		}
+
+		// if not active, can't terminate
 	}
 
 	return nil

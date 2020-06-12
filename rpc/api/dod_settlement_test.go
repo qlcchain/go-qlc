@@ -946,3 +946,16 @@ func TestDoDSettlementAPI_GetProductInfoByAddressAndSeller(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestDoDSettlementAPI_GetInternalIdByOrderId(t *testing.T) {
+	ds, clear := DoDSettleAPITestInit(t)
+	defer clear()
+
+	seller := mock.Address()
+	addDoDSettleTestOrder(t, ds.ctx, mock.Address(), seller, 1)
+
+	internalId, err := ds.GetInternalIdByOrderId(seller, "order0")
+	if err != nil || internalId.IsZero() {
+		t.Fatal()
+	}
+}
