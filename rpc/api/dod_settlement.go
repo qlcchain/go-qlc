@@ -800,3 +800,7 @@ func (d *DoDSettlementAPI) GenerateInvoiceByBuyer(seller, buyer types.Address, s
 func (d *DoDSettlementAPI) GenerateInvoiceByProductId(seller types.Address, productId string, start, end int64, flight, split bool) (*abi.DoDSettleProductInvoice, error) {
 	return abi.DoDSettleGenerateInvoiceByProduct(d.ctx, seller, productId, start, end, flight, split)
 }
+
+func (d *DoDSettlementAPI) GetInternalIdByOrderId(seller types.Address, orderId string) (types.Hash, error) {
+	return abi.DoDSettleGetInternalIdByOrderId(d.ctx, seller, orderId)
+}
