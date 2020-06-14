@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 
 	"go.uber.org/zap"
 
@@ -79,6 +80,8 @@ func (d *DoDSettlementAPI) GetCreateOrderBlock(param *DoDSettleCreateOrderParam)
 	if param == nil {
 		return nil, ErrParameterNil
 	}
+
+	fmt.Println(util.ToIndentString(param))
 
 	data, err := param.ToABI()
 	if err != nil {
