@@ -127,7 +127,6 @@ func (l *Ledger) UpdateStateBlock(block *types.StateBlock, c storage.Cache) erro
 	if err := l.setStateBlock(block, c); err != nil {
 		return err
 	}
-	l.blockConfirmed <- block
 	return nil
 }
 

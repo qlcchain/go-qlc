@@ -46,6 +46,7 @@ type LedgerStore interface {
 	GetRelation(dest interface{}, query string) error
 	SelectRelation(dest interface{}, query string) error
 	Flush() error
+	BlockConfirmed(blk *types.StateBlock)
 }
 
 type Ledger struct {
@@ -761,6 +762,10 @@ func (l *Ledger) Flush() error {
 	lock.Lock()
 	defer lock.Unlock()
 	return l.cache.rebuild()
+}
+
+func (l *Ledger) BlockConfirmed(blk *types.StateBlock) {
+	l.blockConfirmed <- blk
 }
 
 func (l *Ledger) RegisterRelation(objs []types.Schema) error {
