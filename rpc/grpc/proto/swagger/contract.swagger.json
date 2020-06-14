@@ -32,7 +32,7 @@
       }
     },
     "/contract/generateRewardBlock": {
-      "post": {
+      "get": {
         "operationId": "GenerateRewardBlock",
         "responses": {
           "200": {
@@ -44,12 +44,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoContractRewardBlockPara"
-            }
+            "name": "sendHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -167,14 +165,6 @@
         "value": {
           "type": "string",
           "format": "byte"
-        }
-      }
-    },
-    "protoContractRewardBlockPara": {
-      "type": "object",
-      "properties": {
-        "sendHash": {
-          "type": "string"
         }
       }
     },
@@ -354,18 +344,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

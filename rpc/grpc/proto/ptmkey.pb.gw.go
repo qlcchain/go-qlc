@@ -29,15 +29,15 @@ var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
+var (
+	filter_PtmKeyAPI_GetPtmKeyUpdateBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PtmKeyAPI_GetPtmKeyUpdateBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PtmKeyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq PtmKeyUpdateParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PtmKeyAPI_GetPtmKeyUpdateBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -46,15 +46,15 @@ func request_PtmKeyAPI_GetPtmKeyUpdateBlock_0(ctx context.Context, marshaler run
 
 }
 
+var (
+	filter_PtmKeyAPI_GetPtmKeyDeleteBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PtmKeyAPI_GetPtmKeyDeleteBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PtmKeyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq PtmKeyByAccountAndBtypeParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PtmKeyAPI_GetPtmKeyDeleteBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -63,15 +63,15 @@ func request_PtmKeyAPI_GetPtmKeyDeleteBlock_0(ctx context.Context, marshaler run
 
 }
 
+var (
+	filter_PtmKeyAPI_GetPtmKeyByAccount_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PtmKeyAPI_GetPtmKeyByAccount_0(ctx context.Context, marshaler runtime.Marshaler, client PtmKeyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PtmKeyAPI_GetPtmKeyByAccount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -80,15 +80,15 @@ func request_PtmKeyAPI_GetPtmKeyByAccount_0(ctx context.Context, marshaler runti
 
 }
 
+var (
+	filter_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0(ctx context.Context, marshaler runtime.Marshaler, client PtmKeyAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq PtmKeyByAccountAndBtypeParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -135,7 +135,7 @@ func RegisterPtmKeyAPIHandler(ctx context.Context, mux *runtime.ServeMux, conn *
 // "PtmKeyAPIClient" to call the correct interceptors.
 func RegisterPtmKeyAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, client PtmKeyAPIClient) error {
 
-	mux.Handle("POST", pattern_PtmKeyAPI_GetPtmKeyUpdateBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PtmKeyAPI_GetPtmKeyUpdateBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -155,7 +155,7 @@ func RegisterPtmKeyAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, 
 
 	})
 
-	mux.Handle("POST", pattern_PtmKeyAPI_GetPtmKeyDeleteBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PtmKeyAPI_GetPtmKeyDeleteBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -175,7 +175,7 @@ func RegisterPtmKeyAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, 
 
 	})
 
-	mux.Handle("POST", pattern_PtmKeyAPI_GetPtmKeyByAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PtmKeyAPI_GetPtmKeyByAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -195,7 +195,7 @@ func RegisterPtmKeyAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, 
 
 	})
 
-	mux.Handle("POST", pattern_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)

@@ -54,22 +54,6 @@
         ]
       }
     },
-    "/pov/checkAllAccountStates": {
-      "get": {
-        "operationId": "CheckAllAccountStates",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/protoPovApiCheckStateRsp"
-            }
-          }
-        },
-        "tags": [
-          "PovAPI"
-        ]
-      }
-    },
     "/pov/getAccountState": {
       "get": {
         "operationId": "GetAccountState",
@@ -154,197 +138,6 @@
             "required": false,
             "type": "string",
             "format": "uint64"
-          }
-        ],
-        "tags": [
-          "PovAPI"
-        ]
-      }
-    },
-    "/pov/getAllOnlineRepStates": {
-      "get": {
-        "operationId": "GetAllOnlineRepStates",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/typesPovRepStates"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "basHdr.version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "basHdr.previous",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "basHdr.merkleRoot",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "basHdr.timestamp",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "basHdr.bits",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "basHdr.nonce",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "basHdr.hash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "basHdr.height",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "uint64"
-          },
-          {
-            "name": "auxHdr.auxMerkleBranch",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          },
-          {
-            "name": "auxHdr.auxMerkleIndex",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "auxHdr.parCoinBaseTx.version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "auxHdr.parCoinBaseTx.lockTime",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxHdr.parCoinBaseMerkle",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          },
-          {
-            "name": "auxHdr.parMerkleIndex",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "auxHdr.parBlockHeader.version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxHdr.parBlockHeader.previous",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "auxHdr.parBlockHeader.merkleRoot",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "auxHdr.parBlockHeader.timestamp",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxHdr.parBlockHeader.bits",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxHdr.parBlockHeader.nonce",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxHdr.parentHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "cbTx.version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "cbTx.stateHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "cbTx.txNum",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "cbTx.Hash",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -495,55 +288,6 @@
             "required": false,
             "type": "integer",
             "format": "int64"
-          }
-        ],
-        "tags": [
-          "PovAPI"
-        ]
-      }
-    },
-    "/pov/getBlockTDByHash": {
-      "get": {
-        "operationId": "GetBlockTDByHash",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/protoPovApiTD"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "hash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "PovAPI"
-        ]
-      }
-    },
-    "/pov/getBlockTDByHeight": {
-      "get": {
-        "operationId": "GetBlockTDByHeight",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/protoPovApiTD"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "value",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "uint64"
           }
         ],
         "tags": [
@@ -873,6 +617,8 @@
     },
     "/pov/getMinerStats": {
       "get": {
+        "summary": "rpc GetBlockTDByHash (types.Hash) returns (PovApiTD) {\n       option (google.api.http) = {\n          get: \"/pov/getBlockTDByHash\"\n      };\n   }",
+        "description": "rpc GetBlockTDByHeight (UInt64) returns (PovApiTD) {\n       option (google.api.http) = {\n          get: \"/pov/getBlockTDByHeight\"\n      };\n   }",
         "operationId": "GetMinerStats",
         "responses": {
           "200": {
@@ -926,32 +672,6 @@
             }
           }
         },
-        "tags": [
-          "PovAPI"
-        ]
-      }
-    },
-    "/pov/getRepStatesByHeightAndAccount": {
-      "post": {
-        "operationId": "GetRepStatesByHeightAndAccount",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/typesPovRepState"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoRepStatesByHeightRequset"
-            }
-          }
-        ],
         "tags": [
           "PovAPI"
         ]
@@ -1147,162 +867,6 @@
           "PovAPI"
         ]
       }
-    },
-    "/pov/submitWork": {
-      "get": {
-        "operationId": "SubmitWork",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "properties": {}
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "workHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "blockHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "merkleRoot",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "timestamp",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "nonce",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "coinbaseExtra",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "coinbaseHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "auxPow.auxMerkleBranch",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          },
-          {
-            "name": "auxPow.auxMerkleIndex",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "auxPow.parCoinBaseTx.version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "auxPow.parCoinBaseTx.lockTime",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxPow.parCoinBaseMerkle",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          },
-          {
-            "name": "auxPow.parMerkleIndex",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "auxPow.parBlockHeader.version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxPow.parBlockHeader.previous",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "auxPow.parBlockHeader.merkleRoot",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "auxPow.parBlockHeader.timestamp",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxPow.parBlockHeader.bits",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxPow.parBlockHeader.nonce",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int64"
-          },
-          {
-            "name": "auxPow.parentHash",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "PovAPI"
-        ]
-      }
     }
   },
   "definitions": {
@@ -1337,8 +901,11 @@
     "protoPovApiBlock": {
       "type": "object",
       "properties": {
-        "povBlock": {
-          "$ref": "#/definitions/typesPovBlock"
+        "Header": {
+          "$ref": "#/definitions/typesPovHeader"
+        },
+        "Body": {
+          "$ref": "#/definitions/typesPovBody"
         },
         "algoName": {
           "type": "string"
@@ -1358,35 +925,6 @@
         "AlgoDifficulty": {
           "type": "number",
           "format": "double"
-        }
-      }
-    },
-    "protoPovApiCheckStateRsp": {
-      "type": "object",
-      "properties": {
-        "accountStates": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/typesPovAccountState"
-          }
-        },
-        "accountMetas": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/typesAccountMeta"
-          }
-        },
-        "repStates": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/typesPovRepState"
-          }
-        },
-        "repMetas": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/typesBenefit"
-          }
         }
       }
     },
@@ -1540,8 +1078,7 @@
           "format": "int64"
         },
         "currentBlockAlgo": {
-          "type": "integer",
-          "format": "int64"
+          "type": "string"
         },
         "pooledTx": {
           "type": "integer",
@@ -1633,8 +1170,15 @@
     "protoPovApiHeader": {
       "type": "object",
       "properties": {
-        "povHeader": {
-          "$ref": "#/definitions/typesPovHeader"
+        "basHdr": {
+          "$ref": "#/definitions/typesPovBaseHeader",
+          "title": "types.PovHeader povHeader      = 1;"
+        },
+        "auxHdr": {
+          "$ref": "#/definitions/typesPovAuxHeader"
+        },
+        "cbTx": {
+          "$ref": "#/definitions/typesPovCoinBaseTx"
         },
         "algoName": {
           "type": "string"
@@ -1682,17 +1226,6 @@
         },
         "contractState": {
           "$ref": "#/definitions/typesPovContractState"
-        }
-      }
-    },
-    "protoPovApiTD": {
-      "type": "object",
-      "properties": {
-        "header": {
-          "$ref": "#/definitions/typesPovHeader"
-        },
-        "td": {
-          "$ref": "#/definitions/typesPovTD"
         }
       }
     },
@@ -1753,14 +1286,16 @@
           "format": "int64"
         },
         "mainRewardAmount": {
-          "type": "string"
+          "type": "string",
+          "format": "int64"
         },
         "stableBlockNum": {
           "type": "integer",
           "format": "int64"
         },
         "stableRewardAmount": {
-          "type": "string"
+          "type": "string",
+          "format": "int64"
         },
         "firstBlockTime": {
           "type": "string",
@@ -1814,13 +1349,16 @@
           "format": "int64"
         },
         "totalRewardAmount": {
-          "type": "string"
+          "type": "string",
+          "format": "int64"
         },
         "totalMinerReward": {
-          "type": "string"
+          "type": "string",
+          "format": "int64"
         },
         "totalRepReward": {
-          "type": "string"
+          "type": "string",
+          "format": "int64"
         },
         "latestBlockHeight": {
           "type": "string",
@@ -1889,11 +1427,12 @@
           "format": "int64"
         },
         "totalRewardAmount": {
-          "type": "string"
+          "type": "string",
+          "format": "int64"
         },
         "latestBlockHeight": {
-          "type": "integer",
-          "format": "int64"
+          "type": "string",
+          "format": "uint64"
         }
       }
     },
@@ -1910,80 +1449,6 @@
         },
         "syncStateStr": {
           "type": "string"
-        }
-      }
-    },
-    "protoRepStatesByHeightRequset": {
-      "type": "object",
-      "properties": {
-        "header": {
-          "$ref": "#/definitions/typesPovHeader"
-        },
-        "acc": {
-          "type": "string"
-        }
-      }
-    },
-    "typesAccountMeta": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string"
-        },
-        "coinBalance": {
-          "type": "string",
-          "format": "int64"
-        },
-        "coinVote": {
-          "type": "string",
-          "format": "int64"
-        },
-        "coinNetwork": {
-          "type": "string",
-          "format": "int64"
-        },
-        "coinStorage": {
-          "type": "string",
-          "format": "int64"
-        },
-        "coinOracle": {
-          "type": "string",
-          "format": "int64"
-        },
-        "tokens": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/typesTokenMeta"
-          }
-        }
-      }
-    },
-    "typesBenefit": {
-      "type": "object",
-      "properties": {
-        "balance": {
-          "type": "string",
-          "format": "int64"
-        },
-        "vote": {
-          "type": "string",
-          "format": "int64"
-        },
-        "network": {
-          "type": "string",
-          "format": "int64"
-        },
-        "storage": {
-          "type": "string",
-          "format": "int64"
-        },
-        "oracle": {
-          "type": "string",
-          "format": "int64"
-        },
-        "total": {
-          "type": "string",
-          "format": "int64"
         }
       }
     },
@@ -2086,17 +1551,6 @@
         "height": {
           "type": "string",
           "format": "uint64"
-        }
-      }
-    },
-    "typesPovBlock": {
-      "type": "object",
-      "properties": {
-        "Header": {
-          "$ref": "#/definitions/typesPovHeader"
-        },
-        "Body": {
-          "$ref": "#/definitions/typesPovBody"
         }
       }
     },
@@ -2340,46 +1794,31 @@
     "typesPovMinerStatItem": {
       "type": "object",
       "properties": {
-        "account": {
-          "type": "string"
-        },
-        "mainBlockNum": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "mainRewardAmount": {
-          "type": "string",
-          "format": "int64"
-        },
-        "stableBlockNum": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "stableRewardAmount": {
-          "type": "string",
-          "format": "int64"
-        },
-        "firstBlockTime": {
-          "type": "string",
-          "format": "int64"
-        },
-        "lastBlockTime": {
-          "type": "string",
-          "format": "int64"
-        },
-        "firstBlockHeight": {
+        "firstHeight": {
           "type": "string",
           "format": "uint64"
         },
-        "lastBlockHeight": {
+        "lastHeight": {
           "type": "string",
           "format": "uint64"
         },
-        "isHourOnline": {
-          "type": "boolean",
-          "format": "boolean"
+        "blockNum": {
+          "type": "integer",
+          "format": "int64"
         },
-        "isDayOnline": {
+        "rewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "repBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "repReward": {
+          "type": "string",
+          "format": "int64"
+        },
+        "isMiner": {
           "type": "boolean",
           "format": "boolean"
         }
@@ -2422,42 +1861,6 @@
         "height": {
           "type": "string",
           "format": "uint64"
-        }
-      }
-    },
-    "typesPovRepStates": {
-      "type": "object",
-      "properties": {
-        "states": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/typesPovRepState"
-          }
-        }
-      }
-    },
-    "typesPovTD": {
-      "type": "object",
-      "properties": {
-        "chain": {
-          "type": "string",
-          "format": "int64"
-        },
-        "sha256d": {
-          "type": "string",
-          "format": "int64"
-        },
-        "scrypt": {
-          "type": "string",
-          "format": "int64"
-        },
-        "x11": {
-          "type": "string",
-          "format": "int64"
-        },
-        "hybrid": {
-          "type": "string",
-          "format": "int64"
         }
       }
     },
@@ -2588,50 +1991,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
-        }
-      }
-    },
-    "typesTokenMeta": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string"
-        },
-        "header": {
-          "type": "string"
-        },
-        "representative": {
-          "type": "string"
-        },
-        "openBlock": {
-          "type": "string"
-        },
-        "balance": {
-          "type": "string",
-          "format": "int64"
-        },
-        "belongTo": {
-          "type": "string"
-        },
-        "modified": {
-          "type": "string",
-          "format": "int64"
-        },
-        "blockCount": {
-          "type": "string",
-          "format": "int64"
         }
       }
     }

@@ -42,7 +42,7 @@
       }
     },
     "/privacy/getBlockPrivatePayload": {
-      "post": {
+      "get": {
         "operationId": "GetBlockPrivatePayload",
         "responses": {
           "200": {
@@ -54,12 +54,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -68,7 +66,7 @@
       }
     },
     "/privacy/getDemoKV": {
-      "post": {
+      "get": {
         "operationId": "GetDemoKV",
         "responses": {
           "200": {
@@ -80,12 +78,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBytes"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
           }
         ],
         "tags": [
@@ -94,7 +91,7 @@
       }
     },
     "/privacy/getRawPayload": {
-      "post": {
+      "get": {
         "operationId": "GetRawPayload",
         "responses": {
           "200": {
@@ -106,12 +103,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBytes"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
           }
         ],
         "tags": [
@@ -147,14 +143,6 @@
           }
         },
         "privateGroupID": {
-          "type": "string"
-        }
-      }
-    },
-    "typesHash": {
-      "type": "object",
-      "properties": {
-        "hash": {
           "type": "string"
         }
       }

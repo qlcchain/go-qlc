@@ -143,18 +143,18 @@ service PovAPI {
        };
     }
 
-    rpc GetBlockTDByHash (types.Hash) returns (PovApiTD) {
-        option (google.api.http) = {
-           get: "/pov/getBlockTDByHash"
-       };
-    }
-
-    rpc GetBlockTDByHeight (UInt64) returns (PovApiTD) {
-        option (google.api.http) = {
-           get: "/pov/getBlockTDByHeight"
-       };
-    }
-
+//    rpc GetBlockTDByHash (types.Hash) returns (PovApiTD) {
+//        option (google.api.http) = {
+//           get: "/pov/getBlockTDByHash"
+//       };
+//    }
+//
+//    rpc GetBlockTDByHeight (UInt64) returns (PovApiTD) {
+//        option (google.api.http) = {
+//           get: "/pov/getBlockTDByHeight"
+//       };
+//    }
+//
     rpc GetMinerStats (types.Addresses) returns (PovMinerStats) {
         option (google.api.http) = {
            get: "/pov/getMinerStats"
@@ -221,11 +221,11 @@ service PovAPI {
        };
     }
 
-    rpc SubmitWork (PovApiSubmitWork) returns (google.protobuf.Empty) {
-        option (google.api.http) = {
-           get: "/pov/submitWork"
-       };
-    }
+//    rpc SubmitWork (PovApiSubmitWork) returns (google.protobuf.Empty) {
+//        option (google.api.http) = {
+//           get: "/pov/submitWork"
+//       };
+//    }
 
     rpc GetLastNHourInfo (LastNHourInfoRequest) returns (PovApiGetLastNHourInfo) {
         option (google.api.http) = {
@@ -234,24 +234,24 @@ service PovAPI {
        };
     }
 
-    rpc GetAllOnlineRepStates (types.PovHeader) returns (types.PovRepStates) {
-        option (google.api.http) = {
-           get: "/pov/getAllOnlineRepStates"
-       };
-    }
+//    rpc GetAllOnlineRepStates (types.PovHeader) returns (types.PovRepStates) {
+//        option (google.api.http) = {
+//           get: "/pov/getAllOnlineRepStates"
+//       };
+//    }
+//
+//    rpc GetRepStatesByHeightAndAccount (RepStatesByHeightRequset) returns (types.PovRepState) {
+//        option (google.api.http) = {
+//           post: "/pov/getRepStatesByHeightAndAccount"
+//           body: "*"
+//       };
+//    }
 
-    rpc GetRepStatesByHeightAndAccount (RepStatesByHeightRequset) returns (types.PovRepState) {
-        option (google.api.http) = {
-           post: "/pov/getRepStatesByHeightAndAccount"
-           body: "*"
-       };
-    }
-
-    rpc CheckAllAccountStates (google.protobuf.Empty) returns (PovApiCheckStateRsp) {
-        option (google.api.http) = {
-           get: "/pov/checkAllAccountStates"
-       };
-    }
+//    rpc CheckAllAccountStates (google.protobuf.Empty) returns (PovApiCheckStateRsp) {
+//        option (google.api.http) = {
+//           get: "/pov/checkAllAccountStates"
+//       };
+//    }
 }
 
 message PovStatus  {
@@ -260,13 +260,16 @@ message PovStatus  {
     string syncStateStr  = 3;
 }
 
-message  PovApiHeader  {
-    types.PovHeader povHeader      = 1;
-    string    algoName       = 2;
-    uint32    algoEfficiency = 3;
-    uint32    normBits       = 4;
-    double    normDifficulty = 5;
-    double    algoDifficulty = 6;
+message  PovApiHeader  {   //merge
+//    types.PovHeader povHeader      = 1;
+    types.PovBaseHeader basHdr   = 1;
+    types.PovAuxHeader  auxHdr   = 2;
+    types.PovCoinBaseTx cbTx     = 3;
+    string    algoName       = 4;
+    uint32    algoEfficiency = 5;
+    uint32    normBits       = 6;
+    double    normDifficulty = 7;
+    double    algoDifficulty = 8;
 }
 
 message  PovApiBatchHeader  {
@@ -274,13 +277,14 @@ message  PovApiBatchHeader  {
     repeated PovApiHeader headers = 2;
 }
 
-message PovApiBlock  {
-    types.PovBlock povBlock       = 1;
-    string algoName         = 2;
-    uint32 AlgoEfficiency   = 3;
-    uint32 NormBits         = 4;
-    double NormDifficulty   = 5;
-    double AlgoDifficulty   = 6;
+message PovApiBlock  {  //merged
+    types.PovHeader Header  = 1;
+    types.PovBody   Body    = 2;
+    string algoName         = 3;
+    uint32 AlgoEfficiency   = 4;
+    uint32 NormBits         = 5;
+    double NormDifficulty   = 6;
+    double AlgoDifficulty   = 7;
 }
 
 message PovApiState  {
@@ -337,9 +341,9 @@ message PovApiTD  {
 message PovMinerStatItem {
     string account             = 1;
     uint32 mainBlockNum        = 2;
-    string mainRewardAmount    = 3;
+    int64  mainRewardAmount    = 3;
     uint32 stableBlockNum      = 4;
-    string stableRewardAmount  = 5;
+    int64  stableRewardAmount  = 5;
     int64  firstBlockTime      = 6;
     int64  lastBlockTime       = 7;
     uint64 firstBlockHeight    = 8;
@@ -354,9 +358,9 @@ message PovMinerStats  {
     int32  dayOnlineCount     = 3;
     map<string, PovMinerStatItem> minerStats = 4;
     uint32 totalBlockNum      = 5;
-    string totalRewardAmount  = 6;
-    string totalMinerReward   = 7;
-    string totalRepReward     = 8;
+    int64  totalRewardAmount  = 6;
+    int64  totalMinerReward   = 7;
+    int64  totalRepReward     = 8;
     uint64 latestBlockHeight  = 9;
 }
 
@@ -377,8 +381,8 @@ message PovRepStats  {
     map<string, PovRepStatItem> repStats      = 2;
     uint32 totalBlockNum     = 3;
     uint32 totalPeriod       = 4;
-    string totalRewardAmount = 5;
-    uint32 latestBlockHeight = 6;
+    int64  totalRewardAmount = 5;
+    uint64 latestBlockHeight = 6;
 }
 
 message  PovApiSubmitWork  {
@@ -520,7 +524,7 @@ message PovApiGetMiningInfo  {
     string currentBlockHash    = 4;
     uint32 currentBlockSize    = 5;
     uint32 currentBlockTx      = 6;
-    uint32 currentBlockAlgo    = 7;
+    string currentBlockAlgo    = 7;
     uint32 pooledTx                = 8;
     double difficulty              = 9;
     PovApiHashInfo hashInfo           = 10;

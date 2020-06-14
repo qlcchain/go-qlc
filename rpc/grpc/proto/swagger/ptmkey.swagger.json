@@ -16,7 +16,7 @@
   ],
   "paths": {
     "/ptmkey/getPtmKeyByAccount": {
-      "post": {
+      "get": {
         "operationId": "GetPtmKeyByAccount",
         "responses": {
           "200": {
@@ -28,12 +28,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -42,7 +40,7 @@
       }
     },
     "/ptmkey/getPtmKeyByAccountAndBtype": {
-      "post": {
+      "get": {
         "operationId": "GetPtmKeyByAccountAndBtype",
         "responses": {
           "200": {
@@ -54,12 +52,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoPtmKeyByAccountAndBtypeParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "btype",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -68,7 +70,7 @@
       }
     },
     "/ptmkey/getPtmKeyDeleteBlock": {
-      "post": {
+      "get": {
         "operationId": "GetPtmKeyDeleteBlock",
         "responses": {
           "200": {
@@ -80,12 +82,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoPtmKeyByAccountAndBtypeParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "btype",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -94,7 +100,7 @@
       }
     },
     "/ptmkey/getPtmKeyUpdateBlock": {
-      "post": {
+      "get": {
         "operationId": "GetPtmKeyUpdateBlock",
         "responses": {
           "200": {
@@ -106,12 +112,22 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoPtmKeyUpdateParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "btype",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pubkey",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -121,17 +137,6 @@
     }
   },
   "definitions": {
-    "protoPtmKeyByAccountAndBtypeParam": {
-      "type": "object",
-      "properties": {
-        "account": {
-          "type": "string"
-        },
-        "btype": {
-          "type": "string"
-        }
-      }
-    },
     "protoPtmKeyUpdateParam": {
       "type": "object",
       "properties": {
@@ -154,14 +159,6 @@
           "items": {
             "$ref": "#/definitions/protoPtmKeyUpdateParam"
           }
-        }
-      }
-    },
-    "typesAddress": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string"
         }
       }
     },
@@ -250,18 +247,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

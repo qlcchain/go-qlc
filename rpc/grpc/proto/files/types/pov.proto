@@ -172,19 +172,17 @@ message PovTD {
     int64 hybrid   = 5;
 }
 
+
 message PovMinerStatItem  {
-    string account            = 1;
-    uint32 mainBlockNum       = 2;
-    int64  mainRewardAmount   = 3;
-    uint32 stableBlockNum     = 4;
-    int64  stableRewardAmount = 5;
-    int64  firstBlockTime     = 6;
-    int64  lastBlockTime      = 7;
-    uint64 firstBlockHeight   = 8;
-    uint64 lastBlockHeight    = 9;
-    bool   isHourOnline       = 10;
-    bool   isDayOnline        = 11;
+    uint64 firstHeight  = 1;
+    uint64 lastHeight   = 2;
+    uint32 blockNum     = 3;
+    int64  rewardAmount = 4;
+    uint32 repBlockNum  = 5;
+    int64  repReward    = 6;
+    bool   isMiner      = 7;
 }
+
 
 message PovMinerDayStat  {
     uint32 dayIndex       = 1;

@@ -11,43 +11,37 @@ option go_package = ".;proto";
 service PermissionAPI {
     rpc GetAdminHandoverBlock(AdminUpdateParam) returns (types.StateBlock){
         option (google.api.http) = {
-           post: "/permission/getAdminHandoverBlock"
-           body: "*"
+           get: "/permission/getAdminHandoverBlock"
        };
     }
 
     rpc GetAdmin(google.protobuf.Empty) returns (AdminUser){
         option (google.api.http) = {
-           post: "/permission/getAdmin"
-           body: "*"
+           get: "/permission/getAdmin"
        };
     }
 
     rpc GetNodeUpdateBlock(NodeParam) returns (types.StateBlock){
         option (google.api.http) = {
-           post: "/permission/getNodeUpdateBlock"
-           body: "*"
+           get: "/permission/getNodeUpdateBlock"
        };
     }
 
     rpc GetNode(String) returns (NodeInfo){
         option (google.api.http) = {
-           post: "/permission/getNode"
-           body: "*"
+           get: "/permission/getNode"
        };
     }
 
     rpc GetNodesCount(google.protobuf.Empty) returns (Int32){
         option (google.api.http) = {
-           post: "/permission/getNodesCount"
-           body: "*"
+           get: "/permission/getNodesCount"
        };
     }
 
     rpc GetNodes(Offset) returns (NodeInfos){
         option (google.api.http) = {
-           post: "/permission/getNodes"
-           body: "*"
+           get: "/permission/getNodes"
        };
     }
 

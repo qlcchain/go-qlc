@@ -9,29 +9,25 @@ option go_package = ".;proto";
 service PtmKeyAPI {
     rpc GetPtmKeyUpdateBlock (PtmKeyUpdateParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/ptmkey/getPtmKeyUpdateBlock"
-           body: "*"
+           get: "/ptmkey/getPtmKeyUpdateBlock"
        };
     }
 
     rpc GetPtmKeyDeleteBlock (PtmKeyByAccountAndBtypeParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/ptmkey/getPtmKeyDeleteBlock"
-           body: "*"
+           get: "/ptmkey/getPtmKeyDeleteBlock"
        };
     }
 
     rpc GetPtmKeyByAccount (types.Address) returns (PtmKeyUpdateParams) {
         option (google.api.http) = {
-           post: "/ptmkey/getPtmKeyByAccount"
-           body: "*"
+           get: "/ptmkey/getPtmKeyByAccount"
        };
     }
 
     rpc GetPtmKeyByAccountAndBtype (PtmKeyByAccountAndBtypeParam) returns (PtmKeyUpdateParams) {
         option (google.api.http) = {
-           post: "/ptmkey/getPtmKeyByAccountAndBtype"
-           body: "*"
+           get: "/ptmkey/getPtmKeyByAccountAndBtype"
        };
     }
 }

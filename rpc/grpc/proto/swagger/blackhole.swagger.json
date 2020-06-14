@@ -16,7 +16,7 @@
   ],
   "paths": {
     "/blockhole/getdestroyinfodetail": {
-      "post": {
+      "get": {
         "operationId": "GetDestroyInfoDetail",
         "responses": {
           "200": {
@@ -28,12 +28,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -42,7 +40,7 @@
       }
     },
     "/blockhole/getrewardsblock": {
-      "post": {
+      "get": {
         "operationId": "GetRewardsBlock",
         "responses": {
           "200": {
@@ -54,12 +52,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -68,7 +64,7 @@
       }
     },
     "/blockhole/getsendblock": {
-      "post": {
+      "get": {
         "operationId": "GetSendBlock",
         "responses": {
           "200": {
@@ -80,12 +76,35 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoDestroyParam"
-            }
+            "name": "Owner",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Previous",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Token",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "Sign",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -94,7 +113,7 @@
       }
     },
     "/blockhole/gettotaldestroyinfo": {
-      "post": {
+      "get": {
         "operationId": "GetTotalDestroyInfo",
         "responses": {
           "200": {
@@ -106,12 +125,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -121,35 +138,6 @@
     }
   },
   "definitions": {
-    "protoDestroyParam": {
-      "type": "object",
-      "properties": {
-        "Owner": {
-          "type": "string"
-        },
-        "Previous": {
-          "type": "string"
-        },
-        "Token": {
-          "type": "string"
-        },
-        "Amount": {
-          "type": "string",
-          "format": "int64"
-        },
-        "Sign": {
-          "type": "string"
-        }
-      }
-    },
-    "typesAddress": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string"
-        }
-      }
-    },
     "typesBalance": {
       "type": "object",
       "properties": {
@@ -189,14 +177,6 @@
           "items": {
             "$ref": "#/definitions/typesDestroyInfo"
           }
-        }
-      }
-    },
-    "typesHash": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string"
         }
       }
     },
@@ -285,18 +265,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

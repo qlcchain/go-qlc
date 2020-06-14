@@ -30,15 +30,15 @@ var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
+var (
+	filter_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq VerifierRegParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -47,15 +47,15 @@ func request_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0(ctx context.Con
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq VerifierUnRegParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -68,28 +68,20 @@ func request_PublicKeyDistributionAPI_GetAllVerifiers_0(ctx context.Context, mar
 	var protoReq empty.Empty
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	msg, err := client.GetAllVerifiers(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetVerifiersByType_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetVerifiersByType_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq String
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifiersByType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -98,15 +90,15 @@ func request_PublicKeyDistributionAPI_GetVerifiersByType_0(ctx context.Context, 
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetActiveVerifiers_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetActiveVerifiers_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq String
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetActiveVerifiers_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -115,15 +107,15 @@ func request_PublicKeyDistributionAPI_GetActiveVerifiers_0(ctx context.Context, 
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetVerifiersByAccount_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetVerifiersByAccount_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifiersByAccount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -132,15 +124,15 @@ func request_PublicKeyDistributionAPI_GetVerifiersByAccount_0(ctx context.Contex
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq VerifierStateByBlockHeightRequest
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -149,15 +141,15 @@ func request_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0(ctx contex
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -200,15 +192,15 @@ func request_PublicKeyDistributionAPI_GetUnPublishBlock_0(ctx context.Context, m
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq TypeAndIDParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -217,15 +209,15 @@ func request_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0(ctx context.Context
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetRecommendPubKey_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetRecommendPubKey_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq TypeAndIDParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetRecommendPubKey_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -234,15 +226,15 @@ func request_PublicKeyDistributionAPI_GetRecommendPubKey_0(ctx context.Context, 
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetPublishInfosByType_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetPublishInfosByType_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq String
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetPublishInfosByType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -251,15 +243,15 @@ func request_PublicKeyDistributionAPI_GetPublishInfosByType_0(ctx context.Contex
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq AccountAndTypeParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -268,15 +260,15 @@ func request_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0(ctx cont
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetOracleBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetOracleBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq OracleParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetOracleBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -285,15 +277,15 @@ func request_PublicKeyDistributionAPI_GetOracleBlock_0(ctx context.Context, mars
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetOracleInfosByType_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetOracleInfosByType_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq String
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetOracleInfosByType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -319,15 +311,15 @@ func request_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0(ctx context.Co
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq AccountAndTypeParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -336,15 +328,15 @@ func request_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0(ctx conte
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetOracleInfosByHash_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetOracleInfosByHash_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetOracleInfosByHash_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -353,15 +345,15 @@ func request_PublicKeyDistributionAPI_GetOracleInfosByHash_0(ctx context.Context
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_PackRewardData_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_PackRewardData_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq PKDRewardParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_PackRewardData_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -370,15 +362,15 @@ func request_PublicKeyDistributionAPI_PackRewardData_0(ctx context.Context, mars
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_UnpackRewardData_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_UnpackRewardData_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq Bytes
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_UnpackRewardData_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -387,15 +379,15 @@ func request_PublicKeyDistributionAPI_UnpackRewardData_0(ctx context.Context, ma
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetRewardSendBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetRewardSendBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq PKDRewardParam
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetRewardSendBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -421,15 +413,15 @@ func request_PublicKeyDistributionAPI_GetRewardRecvBlock_0(ctx context.Context, 
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -438,15 +430,15 @@ func request_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0(ctx context
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetRewardHistory_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetRewardHistory_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetRewardHistory_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -455,15 +447,15 @@ func request_PublicKeyDistributionAPI_GetRewardHistory_0(ctx context.Context, ma
 
 }
 
+var (
+	filter_PublicKeyDistributionAPI_GetAvailRewardInfo_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_PublicKeyDistributionAPI_GetAvailRewardInfo_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetAvailRewardInfo_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -527,7 +519,7 @@ func RegisterPublicKeyDistributionAPIHandler(ctx context.Context, mux *runtime.S
 // "PublicKeyDistributionAPIClient" to call the correct interceptors.
 func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, client PublicKeyDistributionAPIClient) error {
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -547,7 +539,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -567,7 +559,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetAllVerifiers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetAllVerifiers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -587,7 +579,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetVerifiersByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifiersByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -607,7 +599,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetActiveVerifiers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetActiveVerifiers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -627,7 +619,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetVerifiersByAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifiersByAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -647,7 +639,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -667,7 +659,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -727,7 +719,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -747,7 +739,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetRecommendPubKey_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetRecommendPubKey_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -767,7 +759,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetPublishInfosByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetPublishInfosByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -787,7 +779,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -807,7 +799,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetOracleBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetOracleBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -827,7 +819,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetOracleInfosByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetOracleInfosByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -867,7 +859,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -887,7 +879,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetOracleInfosByHash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetOracleInfosByHash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -907,7 +899,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_PackRewardData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_PackRewardData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -927,7 +919,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_UnpackRewardData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_UnpackRewardData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -947,7 +939,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetRewardSendBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetRewardSendBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -987,7 +979,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -1007,7 +999,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetRewardHistory_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetRewardHistory_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -1027,7 +1019,7 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 
 	})
 
-	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetAvailRewardInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetAvailRewardInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)

@@ -16,7 +16,7 @@
   ],
   "paths": {
     "/pkdistribution/getActiveVerifiers": {
-      "post": {
+      "get": {
         "operationId": "GetActiveVerifiers",
         "responses": {
           "200": {
@@ -28,12 +28,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoString"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -42,7 +40,7 @@
       }
     },
     "/pkdistribution/getAllVerifierStatesByBlockHeight": {
-      "post": {
+      "get": {
         "operationId": "GetAllVerifierStatesByBlockHeight",
         "responses": {
           "200": {
@@ -54,12 +52,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoUInt64"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
           }
         ],
         "tags": [
@@ -68,7 +65,7 @@
       }
     },
     "/pkdistribution/getAllVerifiers": {
-      "post": {
+      "get": {
         "operationId": "GetAllVerifiers",
         "responses": {
           "200": {
@@ -78,23 +75,13 @@
             }
           }
         },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "properties": {}
-            }
-          }
-        ],
         "tags": [
           "PublicKeyDistributionAPI"
         ]
       }
     },
     "/pkdistribution/getAvailRewardInfo": {
-      "post": {
+      "get": {
         "operationId": "GetAvailRewardInfo",
         "responses": {
           "200": {
@@ -106,12 +93,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -120,7 +105,7 @@
       }
     },
     "/pkdistribution/getOracleBlock": {
-      "post": {
+      "get": {
         "operationId": "GetOracleBlock",
         "responses": {
           "200": {
@@ -132,12 +117,46 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoOracleParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "keyType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pubKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -146,7 +165,7 @@
       }
     },
     "/pkdistribution/getOracleInfosByAccountAndType": {
-      "post": {
+      "get": {
         "operationId": "GetOracleInfosByAccountAndType",
         "responses": {
           "200": {
@@ -158,12 +177,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoAccountAndTypeParam"
-            }
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -172,7 +195,7 @@
       }
     },
     "/pkdistribution/getOracleInfosByHash": {
-      "post": {
+      "get": {
         "operationId": "GetOracleInfosByHash",
         "responses": {
           "200": {
@@ -184,12 +207,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -198,6 +219,28 @@
       }
     },
     "/pkdistribution/getOracleInfosByType": {
+      "get": {
+        "operationId": "GetOracleInfosByType",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoOracleParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      },
       "post": {
         "operationId": "GetOracleInfosByTypeAndID",
         "responses": {
@@ -224,7 +267,7 @@
       }
     },
     "/pkdistribution/getPubKeyByTypeAndID": {
-      "post": {
+      "get": {
         "operationId": "GetPubKeyByTypeAndID",
         "responses": {
           "200": {
@@ -236,12 +279,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoTypeAndIDParam"
-            }
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pID",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -276,7 +323,7 @@
       }
     },
     "/pkdistribution/getPublishInfosByAccountAndType": {
-      "post": {
+      "get": {
         "operationId": "GetPublishInfosByAccountAndType",
         "responses": {
           "200": {
@@ -288,12 +335,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoAccountAndTypeParam"
-            }
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -302,7 +353,7 @@
       }
     },
     "/pkdistribution/getPublishInfosByType": {
-      "post": {
+      "get": {
         "operationId": "GetPublishInfosByType",
         "responses": {
           "200": {
@@ -314,12 +365,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoString"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -328,7 +377,7 @@
       }
     },
     "/pkdistribution/getRecommendPubKey": {
-      "post": {
+      "get": {
         "operationId": "GetRecommendPubKey",
         "responses": {
           "200": {
@@ -340,12 +389,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoTypeAndIDParam"
-            }
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pID",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -354,7 +407,7 @@
       }
     },
     "/pkdistribution/getRewardHistory": {
-      "post": {
+      "get": {
         "operationId": "GetRewardHistory",
         "responses": {
           "200": {
@@ -366,12 +419,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -406,7 +457,7 @@
       }
     },
     "/pkdistribution/getRewardRecvBlockBySendHash": {
-      "post": {
+      "get": {
         "operationId": "GetRewardRecvBlockBySendHash",
         "responses": {
           "200": {
@@ -418,12 +469,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -432,7 +481,7 @@
       }
     },
     "/pkdistribution/getRewardSendBlock": {
-      "post": {
+      "get": {
         "operationId": "GetRewardSendBlock",
         "responses": {
           "200": {
@@ -444,12 +493,30 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoPKDRewardParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "endHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardAmount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -510,7 +577,7 @@
       }
     },
     "/pkdistribution/getVerifierRegisterBlock": {
-      "post": {
+      "get": {
         "operationId": "GetVerifierRegisterBlock",
         "responses": {
           "200": {
@@ -522,12 +589,28 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoVerifierRegParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -536,7 +619,7 @@
       }
     },
     "/pkdistribution/getVerifierStateByBlockHeight": {
-      "post": {
+      "get": {
         "operationId": "GetVerifierStateByBlockHeight",
         "responses": {
           "200": {
@@ -548,12 +631,17 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoVerifierStateByBlockHeightRequest"
-            }
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -562,7 +650,7 @@
       }
     },
     "/pkdistribution/getVerifierUnregisterBlock": {
-      "post": {
+      "get": {
         "operationId": "GetVerifierUnregisterBlock",
         "responses": {
           "200": {
@@ -574,12 +662,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoVerifierUnRegParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -588,7 +680,7 @@
       }
     },
     "/pkdistribution/getVerifiersByAccount": {
-      "post": {
+      "get": {
         "operationId": "GetVerifiersByAccount",
         "responses": {
           "200": {
@@ -600,12 +692,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -614,7 +704,7 @@
       }
     },
     "/pkdistribution/getVerifiersByType": {
-      "post": {
+      "get": {
         "operationId": "GetVerifiersByType",
         "responses": {
           "200": {
@@ -626,12 +716,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoString"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -640,7 +728,7 @@
       }
     },
     "/pkdistribution/packRewardData": {
-      "post": {
+      "get": {
         "operationId": "PackRewardData",
         "responses": {
           "200": {
@@ -652,12 +740,30 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoPKDRewardParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "endHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardAmount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -666,7 +772,7 @@
       }
     },
     "/pkdistribution/unpackRewardData": {
-      "post": {
+      "get": {
         "operationId": "UnpackRewardData",
         "responses": {
           "200": {
@@ -678,12 +784,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBytes"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
           }
         ],
         "tags": [
@@ -693,17 +798,6 @@
     }
   },
   "definitions": {
-    "protoAccountAndTypeParam": {
-      "type": "object",
-      "properties": {
-        "pType": {
-          "type": "string"
-        },
-        "account": {
-          "type": "string"
-        }
-      }
-    },
     "protoBytes": {
       "type": "object",
       "properties": {
@@ -940,14 +1034,6 @@
         }
       }
     },
-    "protoString": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "string"
-        }
-      }
-    },
     "protoTypeAndIDParam": {
       "type": "object",
       "properties": {
@@ -956,15 +1042,6 @@
         },
         "pID": {
           "type": "string"
-        }
-      }
-    },
-    "protoUInt64": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "string",
-          "format": "uint64"
         }
       }
     },
@@ -1047,45 +1124,6 @@
           "items": {
             "$ref": "#/definitions/protoVerifierRegParam"
           }
-        }
-      }
-    },
-    "protoVerifierStateByBlockHeightRequest": {
-      "type": "object",
-      "properties": {
-        "height": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "address": {
-          "type": "string"
-        }
-      }
-    },
-    "protoVerifierUnRegParam": {
-      "type": "object",
-      "properties": {
-        "account": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        }
-      }
-    },
-    "typesAddress": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string"
-        }
-      }
-    },
-    "typesHash": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string"
         }
       }
     },
@@ -1221,18 +1259,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

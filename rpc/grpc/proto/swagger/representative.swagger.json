@@ -16,7 +16,7 @@
   ],
   "paths": {
     "/rep/getAvailRewardInfo": {
-      "post": {
+      "get": {
         "operationId": "GetAvailRewardInfo",
         "responses": {
           "200": {
@@ -28,12 +28,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -42,7 +40,7 @@
       }
     },
     "/rep/getRepStateWithHeight": {
-      "post": {
+      "get": {
         "operationId": "GetRepStateWithHeight",
         "responses": {
           "200": {
@@ -54,12 +52,17 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoRepStateParams"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
           }
         ],
         "tags": [
@@ -68,7 +71,7 @@
       }
     },
     "/rep/getRewardData": {
-      "post": {
+      "get": {
         "operationId": "GetRewardData",
         "responses": {
           "200": {
@@ -80,12 +83,44 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoRepRewardParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "startHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "endHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardBlocks",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardAmount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -94,7 +129,7 @@
       }
     },
     "/rep/getRewardHistory": {
-      "post": {
+      "get": {
         "operationId": "GetRewardHistory",
         "responses": {
           "200": {
@@ -106,12 +141,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -146,7 +179,7 @@
       }
     },
     "/rep/getRewardRecvBlockBySendHash": {
-      "post": {
+      "get": {
         "operationId": "GetRewardRecvBlockBySendHash",
         "responses": {
           "200": {
@@ -158,12 +191,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -172,7 +203,7 @@
       }
     },
     "/rep/getRewardSendBlock": {
-      "post": {
+      "get": {
         "operationId": "GetRewardSendBlock",
         "responses": {
           "200": {
@@ -184,12 +215,44 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoRepRewardParam"
-            }
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "startHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "endHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardBlocks",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardAmount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -198,7 +261,7 @@
       }
     },
     "/rep/unpackRewardData": {
-      "post": {
+      "get": {
         "operationId": "UnpackRewardData",
         "responses": {
           "200": {
@@ -210,12 +273,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBytes"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
           }
         ],
         "tags": [
@@ -316,34 +378,6 @@
         "rewardAmount": {
           "type": "string",
           "format": "int64"
-        }
-      }
-    },
-    "protoRepStateParams": {
-      "type": "object",
-      "properties": {
-        "account": {
-          "type": "string"
-        },
-        "height": {
-          "type": "string",
-          "format": "uint64"
-        }
-      }
-    },
-    "typesAddress": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string"
-        }
-      }
-    },
-    "typesHash": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string"
         }
       }
     },
@@ -472,18 +506,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

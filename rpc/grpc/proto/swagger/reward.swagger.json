@@ -16,7 +16,7 @@
   ],
   "paths": {
     "/rewards/getConfidantRewards": {
-      "post": {
+      "get": {
         "operationId": "GetConfidantRewards",
         "responses": {
           "200": {
@@ -28,12 +28,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -42,7 +40,7 @@
       }
     },
     "/rewards/getConfidantRewordsDetail": {
-      "post": {
+      "get": {
         "operationId": "GetConfidantRewordsDetail",
         "responses": {
           "200": {
@@ -54,12 +52,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -68,7 +64,7 @@
       }
     },
     "/rewards/getReceiveRewardBlock": {
-      "post": {
+      "get": {
         "operationId": "GetReceiveRewardBlock",
         "responses": {
           "200": {
@@ -80,12 +76,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -94,7 +88,7 @@
       }
     },
     "/rewards/getRewardsDetail": {
-      "post": {
+      "get": {
         "operationId": "GetRewardsDetail",
         "responses": {
           "200": {
@@ -106,12 +100,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoString"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -172,7 +164,7 @@
       }
     },
     "/rewards/getTotalRewards": {
-      "post": {
+      "get": {
         "operationId": "GetTotalRewards",
         "responses": {
           "200": {
@@ -184,12 +176,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoString"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -198,7 +188,7 @@
       }
     },
     "/rewards/getUnsignedConfidantData": {
-      "post": {
+      "get": {
         "operationId": "GetUnsignedConfidantData",
         "responses": {
           "200": {
@@ -210,12 +200,29 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoRewardsParam"
-            }
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "self",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -224,7 +231,7 @@
       }
     },
     "/rewards/getUnsignedRewardData": {
-      "post": {
+      "get": {
         "operationId": "GetUnsignedRewardData",
         "responses": {
           "200": {
@@ -236,12 +243,29 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoRewardsParam"
-            }
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "self",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -250,7 +274,7 @@
       }
     },
     "/rewards/isAirdropRewards": {
-      "post": {
+      "get": {
         "operationId": "IsAirdropRewards",
         "responses": {
           "200": {
@@ -262,12 +286,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBytes"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
           }
         ],
         "tags": [
@@ -283,15 +306,6 @@
         "value": {
           "type": "boolean",
           "format": "boolean"
-        }
-      }
-    },
-    "protoBytes": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "string",
-          "format": "byte"
         }
       }
     },
@@ -363,22 +377,6 @@
           "$ref": "#/definitions/protoRewardsParam"
         },
         "sign": {
-          "type": "string"
-        }
-      }
-    },
-    "protoString": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "typesAddress": {
-      "type": "object",
-      "properties": {
-        "address": {
           "type": "string"
         }
       }
@@ -501,18 +499,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

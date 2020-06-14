@@ -311,29 +311,25 @@ service LedgerAPI{
 
     rpc NewBlock(google.protobuf.Empty) returns (stream APIBlock){
         option (google.api.http) = {
-           post: "/ledger/newBlock"
-           body: "*"
+           get: "/ledger/newBlock"
        };
     }
 
     rpc NewAccountBlock(types.Address) returns (stream APIBlock){
         option (google.api.http) = {
-           post: "/ledger/newAccountBlock"
-           body: "*"
+           get: "/ledger/newAccountBlock"
        };
     }
 
     rpc BalanceChange(types.Address) returns (stream APIAccount){
         option (google.api.http) = {
-           post: "/ledger/balanceChange"
-           body: "*"
+           get: "/ledger/balanceChange"
        };
     }
 
     rpc NewPending(types.Address) returns (stream APIPending){
         option (google.api.http) = {
-           post: "/ledger/newPending"
-           body: "*"
+           get: "/ledger/newPending"
        };
     }
 
@@ -451,9 +447,9 @@ message APIBlock {
     uint64    work           = 22;
     string    signature      = 23;
 
-    uint64    flag           = 24;
-    bool      privateRecvRsp = 25;
-    bytes     privatePayload = 26;
+//    uint64    flag           = 24;
+//    bool      privateRecvRsp = 25;
+//    bytes     privatePayload = 26;
 
     string tokenName  = 27;
     int64  amount     = 28;

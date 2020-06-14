@@ -16,7 +16,7 @@
   ],
   "paths": {
     "/permission/getAdmin": {
-      "post": {
+      "get": {
         "operationId": "GetAdmin",
         "responses": {
           "200": {
@@ -26,23 +26,13 @@
             }
           }
         },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "properties": {}
-            }
-          }
-        ],
         "tags": [
           "PermissionAPI"
         ]
       }
     },
     "/permission/getAdminHandoverBlock": {
-      "post": {
+      "get": {
         "operationId": "GetAdminHandoverBlock",
         "responses": {
           "200": {
@@ -54,12 +44,22 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoAdminUpdateParam"
-            }
+            "name": "admin",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "successor",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "comment",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -68,7 +68,7 @@
       }
     },
     "/permission/getNode": {
-      "post": {
+      "get": {
         "operationId": "GetNode",
         "responses": {
           "200": {
@@ -80,12 +80,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoString"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -94,7 +92,7 @@
       }
     },
     "/permission/getNodeUpdateBlock": {
-      "post": {
+      "get": {
         "operationId": "GetNodeUpdateBlock",
         "responses": {
           "200": {
@@ -106,12 +104,28 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoNodeParam"
-            }
+            "name": "admin",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nodeUrl",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "comment",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -120,7 +134,7 @@
       }
     },
     "/permission/getNodes": {
-      "post": {
+      "get": {
         "operationId": "GetNodes",
         "responses": {
           "200": {
@@ -132,12 +146,18 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoOffset"
-            }
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [
@@ -146,7 +166,7 @@
       }
     },
     "/permission/getNodesCount": {
-      "post": {
+      "get": {
         "operationId": "GetNodesCount",
         "responses": {
           "200": {
@@ -156,16 +176,6 @@
             }
           }
         },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "properties": {}
-            }
-          }
-        ],
         "tags": [
           "PermissionAPI"
         ]
@@ -173,20 +183,6 @@
     }
   },
   "definitions": {
-    "protoAdminUpdateParam": {
-      "type": "object",
-      "properties": {
-        "admin": {
-          "type": "string"
-        },
-        "successor": {
-          "type": "string"
-        },
-        "comment": {
-          "type": "string"
-        }
-      }
-    },
     "protoAdminUser": {
       "type": "object",
       "properties": {
@@ -229,44 +225,6 @@
           "items": {
             "$ref": "#/definitions/protoNodeInfo"
           }
-        }
-      }
-    },
-    "protoNodeParam": {
-      "type": "object",
-      "properties": {
-        "admin": {
-          "type": "string"
-        },
-        "nodeId": {
-          "type": "string"
-        },
-        "nodeUrl": {
-          "type": "string"
-        },
-        "comment": {
-          "type": "string"
-        }
-      }
-    },
-    "protoOffset": {
-      "type": "object",
-      "properties": {
-        "count": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "offset": {
-          "type": "integer",
-          "format": "int32"
-        }
-      }
-    },
-    "protoString": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "string"
         }
       }
     },
@@ -355,18 +313,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

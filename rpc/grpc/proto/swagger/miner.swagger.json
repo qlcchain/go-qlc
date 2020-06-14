@@ -40,7 +40,7 @@
       }
     },
     "/miner/getRewardData": {
-      "post": {
+      "get": {
         "operationId": "GetRewardData",
         "responses": {
           "200": {
@@ -52,12 +52,44 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoRewardParam"
-            }
+            "name": "coinbase",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "startHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "endHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardBlocks",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardAmount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -66,7 +98,7 @@
       }
     },
     "/miner/getRewardHistory": {
-      "post": {
+      "get": {
         "operationId": "GetRewardHistory",
         "responses": {
           "200": {
@@ -78,12 +110,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -118,7 +148,7 @@
       }
     },
     "/miner/getRewardRecvBlockBySendHash": {
-      "post": {
+      "get": {
         "operationId": "GetRewardRecvBlockBySendHash",
         "responses": {
           "200": {
@@ -130,12 +160,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -144,7 +172,7 @@
       }
     },
     "/miner/getRewardSendBlock": {
-      "post": {
+      "get": {
         "operationId": "GetRewardSendBlock",
         "responses": {
           "200": {
@@ -156,12 +184,44 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoRewardParam"
-            }
+            "name": "coinbase",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "startHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "endHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardBlocks",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardAmount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -170,7 +230,7 @@
       }
     },
     "/miner/unpackRewardData": {
-      "post": {
+      "get": {
         "operationId": "UnpackRewardData",
         "responses": {
           "200": {
@@ -182,12 +242,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBytes"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
           }
         ],
         "tags": [
@@ -291,22 +350,6 @@
         }
       }
     },
-    "typesAddress": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string"
-        }
-      }
-    },
-    "typesHash": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string"
-        }
-      }
-    },
     "typesStateBlock": {
       "type": "object",
       "properties": {
@@ -392,18 +435,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

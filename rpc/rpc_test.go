@@ -15,19 +15,27 @@ import (
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
-	rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc", uuid.New().String())
-	var rpc *RPC
+	//rpcDir := filepath.Join(config.QlcTestDataDir(), "rpc", uuid.New().String())
+	//
+	//cfg, _ := config.DefaultConfig(rpcDir)
+	//cfg.RPC = &config.RPCConfigV2{
+	//	Enable:       true,
+	//	HTTPEndpoint: "tcp4://0.0.0.0:9735",
+	//	WSEndpoint:   "tcp4://0.0.0.0:9736",
+	//	//IPCEndpoint:  defaultIPCEndpoint(filepath.Join(rpcDir, "qlc_test.ipc")),
+	//	WSEnabled:   true,
+	//	IPCEnabled:  true,
+	//	HTTPEnabled: true,
+	//	GRPCConfig: &config.GRPCConfig{
+	//		Enable:             false,
+	//		ListenAddress:      "",
+	//		HTTPEnable:         false,
+	//		HTTPListenAddress:  "",
+	//		CORSAllowedOrigins: nil,
+	//	},
+	//}
 
-	cfg, _ := config.DefaultConfig(rpcDir)
-	cfg.RPC = &config.RPCConfigV2{
-		Enable:       true,
-		HTTPEndpoint: "tcp4://0.0.0.0:9735",
-		WSEndpoint:   "tcp4://0.0.0.0:9736",
-		//IPCEndpoint:  defaultIPCEndpoint(filepath.Join(rpcDir, "qlc_test.ipc")),
-		WSEnabled:   true,
-		IPCEnabled:  true,
-		HTTPEnabled: true,
-	}
+	var rpc *RPC
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
@@ -37,12 +45,19 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 	rpc, err = NewRPC(cm.ConfigFile)
 	rpc.config.RPC = &config.RPCConfigV2{
 		Enable:       true,
-		HTTPEndpoint: "tcp4://0.0.0.0:19735",
-		WSEndpoint:   "tcp4://0.0.0.0:19736",
+		HTTPEndpoint: "tcp4://0.0.0.0:19705",
+		WSEndpoint:   "tcp4://0.0.0.0:19706",
 		//IPCEndpoint:  defaultIPCEndpoint(filepath.Join(rpcDir, "qlc_test.ipc")),
 		WSEnabled:   true,
 		IPCEnabled:  true,
 		HTTPEnabled: true,
+		GRPCConfig: &config.GRPCConfig{
+			Enable:             false,
+			ListenAddress:      "",
+			HTTPEnable:         false,
+			HTTPListenAddress:  "",
+			CORSAllowedOrigins: nil,
+		},
 	}
 	if err != nil {
 		t.Fatal(err)
@@ -56,7 +71,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 		rpc.StopRPC()
 		rpc.ledger.Close()
 		_ = rpc.wallet.Close()
-		err := os.RemoveAll(rpcDir)
+		err := os.RemoveAll(dir)
 		if err != nil {
 			t.Fatal(err)
 		}

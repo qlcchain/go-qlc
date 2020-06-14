@@ -715,14 +715,6 @@ func request_LedgerAPI_NewBlock_0(ctx context.Context, marshaler runtime.Marshal
 	var protoReq empty.Empty
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	stream, err := client.NewBlock(ctx, &protoReq)
 	if err != nil {
 		return nil, metadata, err
@@ -736,15 +728,15 @@ func request_LedgerAPI_NewBlock_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
+var (
+	filter_LedgerAPI_NewAccountBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_LedgerAPI_NewAccountBlock_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (LedgerAPI_NewAccountBlockClient, runtime.ServerMetadata, error) {
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_NewAccountBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -761,15 +753,15 @@ func request_LedgerAPI_NewAccountBlock_0(ctx context.Context, marshaler runtime.
 
 }
 
+var (
+	filter_LedgerAPI_BalanceChange_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_LedgerAPI_BalanceChange_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (LedgerAPI_BalanceChangeClient, runtime.ServerMetadata, error) {
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_BalanceChange_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -786,15 +778,15 @@ func request_LedgerAPI_BalanceChange_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
+var (
+	filter_LedgerAPI_NewPending_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_LedgerAPI_NewPending_0(ctx context.Context, marshaler runtime.Marshaler, client LedgerAPIClient, req *http.Request, pathParams map[string]string) (LedgerAPI_NewPendingClient, runtime.ServerMetadata, error) {
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_LedgerAPI_NewPending_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -1829,7 +1821,7 @@ func RegisterLedgerAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, 
 
 	})
 
-	mux.Handle("POST", pattern_LedgerAPI_NewBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_LedgerAPI_NewBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -1849,7 +1841,7 @@ func RegisterLedgerAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, 
 
 	})
 
-	mux.Handle("POST", pattern_LedgerAPI_NewAccountBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_LedgerAPI_NewAccountBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -1869,7 +1861,7 @@ func RegisterLedgerAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, 
 
 	})
 
-	mux.Handle("POST", pattern_LedgerAPI_BalanceChange_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_LedgerAPI_BalanceChange_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -1889,7 +1881,7 @@ func RegisterLedgerAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, 
 
 	})
 
-	mux.Handle("POST", pattern_LedgerAPI_NewPending_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_LedgerAPI_NewPending_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)

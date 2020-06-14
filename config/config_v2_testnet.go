@@ -57,8 +57,9 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 func defaultGRPCConfig() *GRPCConfig {
 	return &GRPCConfig{
 		Enable:             true,
-		ListenAddress:      "tcp://0.0.0.0:19745",
-		GRPCListenAddress:  "tcp://0.0.0.0:19746",
+		ListenAddress:      "tcp://0.0.0.0:19746",
+		HTTPEnable:         true,
+		HTTPListenAddress:  "tcp://0.0.0.0:19745",
 		CORSAllowedOrigins: []string{"*"},
 	}
 }

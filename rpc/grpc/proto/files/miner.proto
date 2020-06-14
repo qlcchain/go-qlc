@@ -11,15 +11,13 @@ option go_package = ".;proto";
 service MinerAPI{
     rpc GetRewardData(RewardParam) returns (Bytes){
         option (google.api.http) = {
-           post: "/miner/getRewardData"
-           body: "*"
+           get: "/miner/getRewardData"
        };
     }
 
     rpc UnpackRewardData(Bytes) returns (RewardParam) {
         option (google.api.http) = {
-           post: "/miner/unpackRewardData"
-           body: "*"
+           get: "/miner/unpackRewardData"
        };
     }
 
@@ -31,8 +29,7 @@ service MinerAPI{
 
     rpc GetRewardSendBlock(RewardParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/miner/getRewardSendBlock"
-           body: "*"
+           get: "/miner/getRewardSendBlock"
        };
     }
 
@@ -45,15 +42,13 @@ service MinerAPI{
 
     rpc GetRewardRecvBlockBySendHash(types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/miner/getRewardRecvBlockBySendHash"
-           body: "*"
+           get: "/miner/getRewardRecvBlockBySendHash"
        };
     }
 
     rpc GetRewardHistory(types.Address) returns (MinerHistoryRewardInfo) {
         option (google.api.http) = {
-           post: "/miner/getRewardHistory"
-           body: "*"
+           get: "/miner/getRewardHistory"
        };
     }
 }

@@ -305,7 +305,7 @@
       }
     },
     "/ledger/balanceChange": {
-      "post": {
+      "get": {
         "operationId": "BalanceChange",
         "responses": {
           "200": {
@@ -317,12 +317,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -542,27 +540,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "flag",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "uint64"
-          },
-          {
-            "name": "privateRecvRsp",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
-          },
-          {
-            "name": "privatePayload",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "byte"
           }
         ],
         "tags": [
@@ -1277,27 +1254,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "flag",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "uint64"
-          },
-          {
-            "name": "privateRecvRsp",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
-          },
-          {
-            "name": "privatePayload",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "byte"
           }
         ],
         "tags": [
@@ -1330,7 +1286,7 @@
       }
     },
     "/ledger/newAccountBlock": {
-      "post": {
+      "get": {
         "operationId": "NewAccountBlock",
         "responses": {
           "200": {
@@ -1342,12 +1298,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -1356,7 +1310,7 @@
       }
     },
     "/ledger/newBlock": {
-      "post": {
+      "get": {
         "operationId": "NewBlock",
         "responses": {
           "200": {
@@ -1366,23 +1320,13 @@
             }
           }
         },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "properties": {}
-            }
-          }
-        ],
         "tags": [
           "LedgerAPI"
         ]
       }
     },
     "/ledger/newPending": {
-      "post": {
+      "get": {
         "operationId": "NewPending",
         "responses": {
           "200": {
@@ -1394,12 +1338,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -1752,18 +1694,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         },
         "tokenName": {
           "type": "string"
@@ -2235,18 +2165,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     },

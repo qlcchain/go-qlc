@@ -390,7 +390,7 @@ func toPublishParam(param *api.PublishParam) *pb.PublishParam {
 		KeyType:   param.KeyType,
 		Fee:       toBalanceValue(param.Fee),
 		Verifiers: toAddressValues(param.Verifiers),
-		Codes:     toHashValues(param.Codes),
+		Codes:     toHashesValues(param.Codes),
 		Hash:      param.Hash,
 	}
 }

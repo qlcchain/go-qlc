@@ -16,7 +16,7 @@
   ],
   "paths": {
     "/miner/getMintageBlock": {
-      "post": {
+      "get": {
         "operationId": "GetMintageBlock",
         "responses": {
           "200": {
@@ -28,12 +28,53 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoMintageParams"
-            }
+            "name": "SelfAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PrevHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TokenName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TokenSymbol",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TotalSupply",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Decimals",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "Beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "NEP5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -42,7 +83,7 @@
       }
     },
     "/miner/getMintageData": {
-      "post": {
+      "get": {
         "operationId": "GetMintageData",
         "responses": {
           "200": {
@@ -54,12 +95,53 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoMintageParams"
-            }
+            "name": "SelfAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PrevHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TokenName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TokenSymbol",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TotalSupply",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Decimals",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "Beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "NEP5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -94,7 +176,7 @@
       }
     },
     "/miner/getWithdrawMintageBlock": {
-      "post": {
+      "get": {
         "operationId": "GetWithdrawMintageBlock",
         "responses": {
           "200": {
@@ -106,12 +188,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoWithdrawParams"
-            }
+            "name": "selfAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "tokenId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -120,7 +206,7 @@
       }
     },
     "/miner/getWithdrawMintageData": {
-      "post": {
+      "get": {
         "operationId": "ParseTokenInfo",
         "responses": {
           "200": {
@@ -132,12 +218,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBytes"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
           }
         ],
         "tags": [
@@ -179,55 +264,6 @@
         "value": {
           "type": "string",
           "format": "byte"
-        }
-      }
-    },
-    "protoMintageParams": {
-      "type": "object",
-      "properties": {
-        "SelfAddr": {
-          "type": "string"
-        },
-        "PrevHash": {
-          "type": "string"
-        },
-        "TokenName": {
-          "type": "string"
-        },
-        "TokenSymbol": {
-          "type": "string"
-        },
-        "TotalSupply": {
-          "type": "string"
-        },
-        "Decimals": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "Beneficial": {
-          "type": "string"
-        },
-        "NEP5TxId": {
-          "type": "string"
-        }
-      }
-    },
-    "protoWithdrawParams": {
-      "type": "object",
-      "properties": {
-        "selfAddr": {
-          "type": "string"
-        },
-        "tokenId": {
-          "type": "string"
-        }
-      }
-    },
-    "typesHash": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string"
         }
       }
     },
@@ -316,18 +352,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     },

@@ -45,9 +45,9 @@ message StateBlock  {
     uint64    work           = 22;
     string    signature      = 23;
 
-    uint64    flag           = 24;
-    bool      privateRecvRsp = 25;
-    bytes     privatePayload = 26;
+//    uint64    flag           = 24;
+//    bool      privateRecvRsp = 25;
+//    bytes     privatePayload = 26;
 }
 
 message TokenMeta {

@@ -45,8 +45,7 @@ service ContractAPI{
 
     rpc GenerateRewardBlock (ContractRewardBlockPara) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/contract/generateRewardBlock"
-           body: "*"
+           get: "/contract/generateRewardBlock"
         };
     }
 

@@ -13,57 +13,49 @@ option go_package = ".;proto";
 service PublicKeyDistributionAPI {
     rpc GetVerifierRegisterBlock (VerifierRegParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/pkdistribution/getVerifierRegisterBlock"
-           body: "*"
+           get: "/pkdistribution/getVerifierRegisterBlock"
        };
     }
 
     rpc GetVerifierUnregisterBlock (VerifierUnRegParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/pkdistribution/getVerifierUnregisterBlock"
-           body: "*"
+           get: "/pkdistribution/getVerifierUnregisterBlock"
        };
     }
 
     rpc GetAllVerifiers (google.protobuf.Empty) returns (VerifierRegParams) {
         option (google.api.http) = {
-           post: "/pkdistribution/getAllVerifiers"
-           body: "*"
+           get: "/pkdistribution/getAllVerifiers"
        };
     }
 
     rpc GetVerifiersByType (String) returns (VerifierRegParams) {
         option (google.api.http) = {
-           post: "/pkdistribution/getVerifiersByType"
-           body: "*"
+           get: "/pkdistribution/getVerifiersByType"
        };
     }
 
     rpc GetActiveVerifiers (String) returns (VerifierRegParams) {
         option (google.api.http) = {
-           post: "/pkdistribution/getActiveVerifiers"
-           body: "*"
+           get: "/pkdistribution/getActiveVerifiers"
        };
     }
 
     rpc GetVerifiersByAccount (types.Address) returns (VerifierRegParams) {
         option (google.api.http) = {
-           post: "/pkdistribution/getVerifiersByAccount"
-           body: "*"
+           get: "/pkdistribution/getVerifiersByAccount"
        };
     }
 
     rpc GetVerifierStateByBlockHeight (VerifierStateByBlockHeightRequest) returns (types.PovVerifierState) {
         option (google.api.http) = {
-           post: "/pkdistribution/getVerifierStateByBlockHeight"
-           body: "*"
+           get: "/pkdistribution/getVerifierStateByBlockHeight"
        };
     }
 
     rpc GetAllVerifierStatesByBlockHeight (UInt64) returns (PKDVerifierStateList) {
         option (google.api.http) = {
-           post: "/pkdistribution/getAllVerifierStatesByBlockHeight"
-           body: "*"
+           get: "/pkdistribution/getAllVerifierStatesByBlockHeight"
        };
     }
 
@@ -83,43 +75,37 @@ service PublicKeyDistributionAPI {
 
     rpc GetPubKeyByTypeAndID(TypeAndIDParam) returns (PublishInfoStates) {
         option (google.api.http) = {
-           post: "/pkdistribution/getPubKeyByTypeAndID"
-           body: "*"
+           get: "/pkdistribution/getPubKeyByTypeAndID"
        };
     }
 
     rpc GetRecommendPubKey(TypeAndIDParam) returns (PublishInfoState) {
         option (google.api.http) = {
-           post: "/pkdistribution/getRecommendPubKey"
-           body: "*"
+           get: "/pkdistribution/getRecommendPubKey"
        };
     }
 
     rpc GetPublishInfosByType(String) returns (PublishInfoStates) {
         option (google.api.http) = {
-           post: "/pkdistribution/getPublishInfosByType"
-           body: "*"
+           get: "/pkdistribution/getPublishInfosByType"
        };
     }
 
     rpc GetPublishInfosByAccountAndType(AccountAndTypeParam) returns (PublishInfoStates) {
         option (google.api.http) = {
-           post: "/pkdistribution/getPublishInfosByAccountAndType"
-           body: "*"
+           get: "/pkdistribution/getPublishInfosByAccountAndType"
        };
     }
 
     rpc GetOracleBlock(OracleParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/pkdistribution/getOracleBlock"
-           body: "*"
+           get: "/pkdistribution/getOracleBlock"
        };
     }
 
     rpc GetOracleInfosByType(String) returns (OracleParams) {
         option (google.api.http) = {
-           post: "/pkdistribution/getOracleInfosByType"
-           body: "*"
+           get: "/pkdistribution/getOracleInfosByType"
        };
     }
 
@@ -132,36 +118,31 @@ service PublicKeyDistributionAPI {
 
     rpc GetOracleInfosByAccountAndType(AccountAndTypeParam) returns (OracleParams) {
         option (google.api.http) = {
-           post: "/pkdistribution/getOracleInfosByAccountAndType"
-           body: "*"
+           get: "/pkdistribution/getOracleInfosByAccountAndType"
        };
     }
 
     rpc GetOracleInfosByHash(types.Hash) returns (OracleParams) {
         option (google.api.http) = {
-           post: "/pkdistribution/getOracleInfosByHash"
-           body: "*"
+           get: "/pkdistribution/getOracleInfosByHash"
        };
     }
 
     rpc PackRewardData(PKDRewardParam) returns (Bytes) {
         option (google.api.http) = {
-           post: "/pkdistribution/packRewardData"
-           body: "*"
+           get: "/pkdistribution/packRewardData"
        };
     }
 
     rpc UnpackRewardData(Bytes) returns (PKDRewardParam) {
         option (google.api.http) = {
-           post: "/pkdistribution/unpackRewardData"
-           body: "*"
+           get: "/pkdistribution/unpackRewardData"
        };
     }
 
     rpc GetRewardSendBlock(PKDRewardParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/pkdistribution/getRewardSendBlock"
-           body: "*"
+           get: "/pkdistribution/getRewardSendBlock"
        };
     }
 
@@ -174,22 +155,19 @@ service PublicKeyDistributionAPI {
 
     rpc GetRewardRecvBlockBySendHash(types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/pkdistribution/getRewardRecvBlockBySendHash"
-           body: "*"
+           get: "/pkdistribution/getRewardRecvBlockBySendHash"
        };
     }
 
     rpc GetRewardHistory(types.Address) returns (PKDHistoryRewardInfo) {
         option (google.api.http) = {
-           post: "/pkdistribution/getRewardHistory"
-           body: "*"
+           get: "/pkdistribution/getRewardHistory"
        };
     }
 
     rpc GetAvailRewardInfo(types.Address) returns (PKDAvailRewardInfo) {
         option (google.api.http) = {
-           post: "/pkdistribution/getAvailRewardInfo"
-           body: "*"
+           get: "/pkdistribution/getAvailRewardInfo"
        };
     }
 
@@ -199,7 +177,6 @@ service PublicKeyDistributionAPI {
            body: "*"
        };
     }
-
 }
 
 message VerifierRegParam  {

@@ -18,22 +18,19 @@ service PrivacyAPI {
 
     rpc GetRawPayload(Bytes) returns (Bytes){
         option (google.api.http) = {
-           post: "/privacy/getRawPayload"
-           body: "*"
+           get: "/privacy/getRawPayload"
        };
     }
 
     rpc GetBlockPrivatePayload(types.Hash) returns (Bytes){
         option (google.api.http) = {
-           post: "/privacy/getBlockPrivatePayload"
-           body: "*"
+           get: "/privacy/getBlockPrivatePayload"
        };
     }
 
     rpc GetDemoKV(Bytes) returns (Bytes){
         option (google.api.http) = {
-           post: "/privacy/getDemoKV"
-           body: "*"
+           get: "/privacy/getDemoKV"
        };
     }
 }

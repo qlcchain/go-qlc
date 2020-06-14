@@ -62,9 +62,9 @@ func toStateBlock(blk *types.StateBlock) *pbtypes.StateBlock {
 		PrivateGroupID: blk.PrivateGroupID,
 		Work:           toWorkValue(blk.GetWork()),
 		Signature:      toSignatureValue(blk.GetSignature()),
-		Flag:           blk.Flag,
-		PrivateRecvRsp: blk.PrivateRecvRsp,
-		PrivatePayload: blk.PrivatePayload,
+		//Flag:           blk.Flag,
+		//PrivateRecvRsp: blk.PrivateRecvRsp,
+		//PrivatePayload: blk.PrivatePayload,
 	}
 }
 
@@ -133,9 +133,9 @@ func toOriginStateBlock(blk *pbtypes.StateBlock) (*types.StateBlock, error) {
 		PrivateGroupID: blk.GetPrivateGroupID(),
 		Work:           toOriginWorkByValue(blk.GetWork()),
 		Signature:      sign,
-		Flag:           blk.GetFlag(),
-		PrivateRecvRsp: blk.GetPrivateRecvRsp(),
-		PrivatePayload: blk.GetPrivatePayload(),
+		//Flag:           blk.GetFlag(),
+		//PrivateRecvRsp: blk.GetPrivateRecvRsp(),
+		//PrivatePayload: blk.GetPrivatePayload(),
 	}, nil
 }
 
@@ -243,10 +243,18 @@ func toHashValue(hash types.Hash) string {
 	return hash.String()
 }
 
-func toHashValues(addrs []types.Hash) []string {
+func toHashesValues(hashes []types.Hash) []string {
 	r := make([]string, 0)
-	for _, h := range addrs {
+	for _, h := range hashes {
 		r = append(r, toHashValue(h))
+	}
+	return r
+}
+
+func toHashesValuesByPoint(hashes []*types.Hash) []string {
+	r := make([]string, 0)
+	for _, h := range hashes {
+		r = append(r, toHashValue(*h))
 	}
 	return r
 }
@@ -380,5 +388,9 @@ func toUInt64(b uint64) *pb.UInt64 {
 }
 
 func toOriginUInt64(v *pb.UInt64) uint64 {
+	return v.GetValue()
+}
+
+func toOriginUInt32(v *pb.UInt32) uint32 {
 	return v.GetValue()
 }

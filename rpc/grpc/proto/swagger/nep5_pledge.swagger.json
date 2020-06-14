@@ -16,7 +16,7 @@
   ],
   "paths": {
     "/pledge/getAllPledgeInfo": {
-      "post": {
+      "get": {
         "operationId": "GetAllPledgeInfo",
         "responses": {
           "200": {
@@ -26,23 +26,13 @@
             }
           }
         },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "properties": {}
-            }
-          }
-        ],
         "tags": [
           "NEP5PledgeAPI"
         ]
       }
     },
     "/pledge/getBeneficialPledgeInfos": {
-      "post": {
+      "get": {
         "operationId": "GetBeneficialPledgeInfos",
         "responses": {
           "200": {
@@ -54,12 +44,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBeneficialPledgeRequest"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -68,7 +62,7 @@
       }
     },
     "/pledge/getBeneficialPledgeInfosByAddress": {
-      "post": {
+      "get": {
         "operationId": "GetBeneficialPledgeInfosByAddress",
         "responses": {
           "200": {
@@ -80,12 +74,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -94,7 +86,7 @@
       }
     },
     "/pledge/getPledgeBeneficialAmount": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeBeneficialAmount",
         "responses": {
           "200": {
@@ -106,12 +98,16 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBeneficialPledgeRequest"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -120,7 +116,7 @@
       }
     },
     "/pledge/getPledgeBeneficialTotalAmount": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeBeneficialTotalAmount",
         "responses": {
           "200": {
@@ -132,12 +128,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -146,7 +140,7 @@
       }
     },
     "/pledge/getPledgeBlock": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeBlock",
         "responses": {
           "200": {
@@ -158,12 +152,35 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoPledgeParam"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pledgeAddress",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nep5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -172,7 +189,7 @@
       }
     },
     "/pledge/getPledgeData": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeData",
         "responses": {
           "200": {
@@ -184,12 +201,35 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoPledgeParam"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pledgeAddress",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nep5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -198,7 +238,7 @@
       }
     },
     "/pledge/getPledgeInfo": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeInfo",
         "responses": {
           "200": {
@@ -210,12 +250,29 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoWithdrawPledgeParam"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nep5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -224,7 +281,7 @@
       }
     },
     "/pledge/getPledgeInfoWithNEP5TxId": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeInfoWithNEP5TxId",
         "responses": {
           "200": {
@@ -236,12 +293,29 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoWithdrawPledgeParam"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nep5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -250,7 +324,7 @@
       }
     },
     "/pledge/getPledgeInfoWithTimeExpired": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeInfoWithTimeExpired",
         "responses": {
           "200": {
@@ -262,12 +336,29 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoWithdrawPledgeParam"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nep5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -276,7 +367,7 @@
       }
     },
     "/pledge/getPledgeInfosByPledgeAddress": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeInfosByPledgeAddress",
         "responses": {
           "200": {
@@ -288,12 +379,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesAddress"
-            }
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -328,7 +417,7 @@
       }
     },
     "/pledge/getPledgeRewardBlockBySendHash": {
-      "post": {
+      "get": {
         "operationId": "GetPledgeRewardBlockBySendHash",
         "responses": {
           "200": {
@@ -340,12 +429,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -354,7 +441,7 @@
       }
     },
     "/pledge/getTotalPledgeAmount": {
-      "post": {
+      "get": {
         "operationId": "GetTotalPledgeAmount",
         "responses": {
           "200": {
@@ -364,23 +451,13 @@
             }
           }
         },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "properties": {}
-            }
-          }
-        ],
         "tags": [
           "NEP5PledgeAPI"
         ]
       }
     },
     "/pledge/getWithdrawPledgeBlock": {
-      "post": {
+      "get": {
         "operationId": "GetWithdrawPledgeBlock",
         "responses": {
           "200": {
@@ -392,12 +469,29 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoWithdrawPledgeParam"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nep5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -406,7 +500,7 @@
       }
     },
     "/pledge/getWithdrawPledgeData": {
-      "post": {
+      "get": {
         "operationId": "GetWithdrawPledgeData",
         "responses": {
           "200": {
@@ -418,12 +512,29 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoWithdrawPledgeParam"
-            }
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "nep5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -458,7 +569,7 @@
       }
     },
     "/pledge/getWithdrawRewardBlockBySendHash": {
-      "post": {
+      "get": {
         "operationId": "GetWithdrawRewardBlockBySendHash",
         "responses": {
           "200": {
@@ -470,12 +581,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/typesHash"
-            }
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -484,7 +593,7 @@
       }
     },
     "/pledge/parsePledgeInfo": {
-      "post": {
+      "get": {
         "operationId": "ParsePledgeInfo",
         "responses": {
           "200": {
@@ -496,12 +605,11 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/protoBytes"
-            }
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
           }
         ],
         "tags": [
@@ -511,17 +619,6 @@
     }
   },
   "definitions": {
-    "protoBeneficialPledgeRequest": {
-      "type": "object",
-      "properties": {
-        "beneficial": {
-          "type": "string"
-        },
-        "pType": {
-          "type": "string"
-        }
-      }
-    },
     "protoBytes": {
       "type": "object",
       "properties": {
@@ -587,61 +684,6 @@
         "totalAmounts": {
           "type": "string",
           "format": "int64"
-        }
-      }
-    },
-    "protoPledgeParam": {
-      "type": "object",
-      "properties": {
-        "beneficial": {
-          "type": "string"
-        },
-        "pledgeAddress": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "string",
-          "format": "int64"
-        },
-        "pType": {
-          "type": "string"
-        },
-        "nep5TxId": {
-          "type": "string"
-        }
-      }
-    },
-    "protoWithdrawPledgeParam": {
-      "type": "object",
-      "properties": {
-        "beneficial": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "string",
-          "format": "int64"
-        },
-        "pType": {
-          "type": "string"
-        },
-        "nep5TxId": {
-          "type": "string"
-        }
-      }
-    },
-    "typesAddress": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string"
-        }
-      }
-    },
-    "typesHash": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string"
         }
       }
     },
@@ -756,18 +798,6 @@
         },
         "signature": {
           "type": "string"
-        },
-        "flag": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "privateRecvRsp": {
-          "type": "boolean",
-          "format": "boolean"
-        },
-        "privatePayload": {
-          "type": "string",
-          "format": "byte"
         }
       }
     }

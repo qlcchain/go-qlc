@@ -51,12 +51,13 @@ type RPCConfigV2 struct {
 
 type GRPCConfig struct {
 	Enable bool `json:"enabled"`
-
-	// TCP or UNIX socket address for the RPC server to listen on
+	// TCP or UNIX socket address for the gRPC server to listen on
 	ListenAddress string `json:"listenAddress"`
 
-	// TCP or UNIX socket address for the gRPC server to listen on
-	GRPCListenAddress  string   `json:"gRPCListenAddress"`
+	HTTPEnable bool `json:"httpEnabled"`
+	// TCP or UNIX socket address for the Restful server to listen on
+	HTTPListenAddress string `json:"httpListenAddress"`
+
 	CORSAllowedOrigins []string `json:"httpCors"`
 }
 

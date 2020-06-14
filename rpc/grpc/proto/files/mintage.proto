@@ -11,15 +11,13 @@ option go_package = ".;proto";
 service MintageAPI {
     rpc GetMintageData (MintageParams) returns (Bytes) {
         option (google.api.http) = {
-           post: "/miner/getMintageData"
-           body: "*"
+           get: "/miner/getMintageData"
        };
     }
 
     rpc GetMintageBlock (MintageParams) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/miner/getMintageBlock"
-           body: "*"
+           get: "/miner/getMintageBlock"
        };
     }
 
@@ -32,22 +30,19 @@ service MintageAPI {
 
     rpc GetWithdrawMintageData (types.Hash) returns (Bytes) {
         option (google.api.http) = {
-           post: "/miner/getWithdrawMintageData"
-           body: "*"
+           get: "/miner/getWithdrawMintageData"
        };
     }
 
     rpc ParseTokenInfo (Bytes) returns (types.TokenInfo) {
         option (google.api.http) = {
-           post: "/miner/getWithdrawMintageData"
-           body: "*"
+           get: "/miner/getWithdrawMintageData"
        };
     }
 
     rpc GetWithdrawMintageBlock (WithdrawParams) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/miner/getWithdrawMintageBlock"
-           body: "*"
+           get: "/miner/getWithdrawMintageBlock"
        };
     }
 

@@ -12,29 +12,25 @@ option go_package = ".;proto";
 service RepAPI {
     rpc GetRewardData (RepRewardParam) returns (Bytes) {
         option (google.api.http) = {
-           post: "/rep/getRewardData"
-           body: "*"
+           get: "/rep/getRewardData"
        };
     }
 
     rpc UnpackRewardData (Bytes) returns (RepRewardParam) {
         option (google.api.http) = {
-           post: "/rep/unpackRewardData"
-           body: "*"
+           get: "/rep/unpackRewardData"
        };
     }
 
     rpc GetAvailRewardInfo (types.Address) returns (RepAvailRewardInfo) {
         option (google.api.http) = {
-           post: "/rep/getAvailRewardInfo"
-           body: "*"
+           get: "/rep/getAvailRewardInfo"
        };
     }
 
     rpc GetRewardSendBlock (RepRewardParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/rep/getRewardSendBlock"
-           body: "*"
+           get: "/rep/getRewardSendBlock"
        };
     }
 
@@ -47,22 +43,19 @@ service RepAPI {
 
     rpc GetRewardRecvBlockBySendHash (types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/rep/getRewardRecvBlockBySendHash"
-           body: "*"
+           get: "/rep/getRewardRecvBlockBySendHash"
        };
     }
 
     rpc GetRepStateWithHeight (RepStateParams) returns (types.PovRepState) {
         option (google.api.http) = {
-           post: "/rep/getRepStateWithHeight"
-           body: "*"
+           get: "/rep/getRepStateWithHeight"
        };
     }
 
     rpc GetRewardHistory (types.Address) returns (RepHistoryRewardInfo) {
         option (google.api.http) = {
-           post: "/rep/getRewardHistory"
-           body: "*"
+           get: "/rep/getRewardHistory"
        };
     }
 }

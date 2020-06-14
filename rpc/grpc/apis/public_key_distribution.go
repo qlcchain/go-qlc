@@ -502,7 +502,7 @@ func toPublishInfoState(state *api.PublishInfoState) *pb.PublishInfoState {
 		KeyType:   state.KeyType,
 		Fee:       toBalanceValue(state.Fee),
 		Verifiers: toAddressValues(state.Verifiers),
-		Codes:     toHashValues(state.Codes),
+		Codes:     toHashesValues(state.Codes),
 		Hash:      state.Hash,
 		State:     nil,
 	}

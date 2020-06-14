@@ -11,29 +11,25 @@ option go_package = ".;proto";
 service BlackHoleAPI {
     rpc GetSendBlock (DestroyParam) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/blockhole/getsendblock"
-           body: "*"
+           get: "/blockhole/getsendblock"
        };
     }
 
     rpc GetRewardsBlock (types.Hash) returns (types.StateBlock) {
         option (google.api.http) = {
-           post: "/blockhole/getrewardsblock"
-           body: "*"
+           get: "/blockhole/getrewardsblock"
        };
     }
 
     rpc GetTotalDestroyInfo (types.Address) returns (types.Balance) {
         option (google.api.http) = {
-           post: "/blockhole/gettotaldestroyinfo"
-           body: "*"
+           get: "/blockhole/gettotaldestroyinfo"
        };
     }
 
     rpc GetDestroyInfoDetail (types.Address) returns (types.DestroyInfos) {
         option (google.api.http) = {
-           post: "/blockhole/getdestroyinfodetail"
-           body: "*"
+           get: "/blockhole/getdestroyinfodetail"
        };
     }
 }

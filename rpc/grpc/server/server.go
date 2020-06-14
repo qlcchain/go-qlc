@@ -38,7 +38,7 @@ func Start(cfgFile string, ctx context.Context) (*GRPCServer, error) {
 	l := ledger.NewLedger(cfgFile)
 	eb := cc.EventBus()
 
-	network, address, err := scheme(cfg.RPC.GRPCConfig.GRPCListenAddress)
+	network, address, err := scheme(cfg.RPC.GRPCConfig.ListenAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -66,11 +66,13 @@ func Start(cfgFile string, ctx context.Context) (*GRPCServer, error) {
 			qrpc.logger.Errorf("grpc start error: %s", err)
 		}
 	}()
-	go func() {
-		if err := qrpc.newGateway(address); err != nil {
-			qrpc.logger.Errorf("grpc start error: %s", err)
-		}
-	}()
+	if cfg.RPC.GRPCConfig.HTTPEnable {
+		go func() {
+			if err := qrpc.newGateway(address); err != nil {
+				qrpc.logger.Errorf("grpc start error: %s", err)
+			}
+		}()
+	}
 	qrpc.logger.Info("grpc serve successfully")
 	return qrpc, nil
 }
@@ -86,7 +88,7 @@ func (r *GRPCServer) newGateway(grpcAddress string) error {
 		r.logger.Errorf("gateway register: %s", err)
 		return err
 	}
-	_, address, err := scheme(r.cfg.RPC.GRPCConfig.ListenAddress)
+	_, address, err := scheme(r.cfg.RPC.GRPCConfig.HTTPListenAddress)
 	if err != nil {
 		return err
 	}
