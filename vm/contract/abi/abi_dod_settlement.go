@@ -3,7 +3,6 @@ package abi
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -200,6 +199,25 @@ func DoDSettleCalcAdditionPrice(ns, ne int64, np float64, conn *DoDSettleConnect
 	}
 
 	return np - invoice.ConnectionAmount, nil
+}
+
+func DoDSettleNeedInvoice(bs, be, s, e int64) bool {
+	var cs, ce int64
+
+	if s > bs {
+		cs = s
+	} else {
+		cs = bs
+	}
+
+	if e < be {
+		ce = e
+	} else {
+		ce = be
+	}
+
+	// this is overlapped zone or usage start in billing timespan
+	return ce-cs > 0 || bs == e
 }
 
 func DoDSettleGetOrderInfoByInternalId(ctx *vmstore.VMContext, id types.Hash) (*DoDSettleOrderInfo, error) {
@@ -655,252 +673,10 @@ func DoDSettleGetOrderIdListByAddress(ctx *vmstore.VMContext, address types.Addr
 	return userInfo.OrderIds, nil
 }
 
-func DoDSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, order *DoDSettleOrderInfo, start, end int64, flight, split bool) (*DoDSettleInvoiceOrderDetail, error) {
-	invoiceOrder := new(DoDSettleInvoiceOrderDetail)
-	invoiceOrder.OrderId = order.OrderId
-	invoiceOrder.Connections = make([]*DoDSettleInvoiceConnDetail, 0)
+func DoDSettleCalcConnInvoice(conn *DoDSettleConnectionInfo, order *DoDSettleOrderInfo, start, end, now int64, flight,
+	split bool) *DoDSettleInvoiceConnDetail {
 
-	internalId, err := DoDSettleGetInternalIdByOrderId(ctx, seller, order.OrderId)
-	if err != nil {
-		return nil, fmt.Errorf("get internal id err %s", err)
-	}
-
-	invoiceOrder.InternalId = internalId
-	now := time.Now().Unix()
-
-	// no billing interval was specified
-	if end == 0 {
-		end = math.MaxInt64
-	}
-
-	for _, c := range order.Connections {
-		var conn *DoDSettleConnectionInfo
-
-		if len(c.ProductId) > 0 {
-			conn, _ = DoDSettleGetConnectionInfoByProductId(ctx, seller, c.ProductId)
-		} else {
-			otp := &DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
-			conn, _ = DoDSettleGetConnectionInfoByProductStorageKey(ctx, otp.Hash())
-
-			pi, _ := DoDSettleGetProductIdByStorageKey(ctx, otp.Hash())
-			if pi != nil {
-				conn.ProductId = pi.ProductId
-			}
-		}
-
-		if conn == nil {
-			continue
-		}
-
-		ic := &DoDSettleInvoiceConnDetail{
-			DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{
-				ProductId:      conn.ProductId,
-				SrcCompanyName: conn.SrcCompanyName,
-				SrcRegion:      conn.SrcRegion,
-				SrcCity:        conn.SrcCity,
-				SrcDataCenter:  conn.SrcDataCenter,
-				SrcPort:        conn.SrcPort,
-				DstCompanyName: conn.DstCompanyName,
-				DstRegion:      conn.DstRegion,
-				DstCity:        conn.DstCity,
-				DstDataCenter:  conn.DstDataCenter,
-				DstPort:        conn.DstPort,
-			},
-			Usage: make([]*DoDSettleInvoiceConnDynamic, 0),
-		}
-
-		if conn.Active != nil && conn.Active.OrderId == order.OrderId && end >= conn.Active.StartTime {
-			dc := &DoDSettleInvoiceConnDynamic{
-				DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
-					ConnectionName: conn.Active.ConnectionName,
-					PaymentType:    conn.Active.PaymentType,
-					BillingType:    conn.Active.BillingType,
-					Currency:       conn.Active.Currency,
-					ServiceClass:   conn.Active.ServiceClass,
-					Bandwidth:      conn.Active.Bandwidth,
-					BillingUnit:    conn.Active.BillingUnit,
-					Price:          conn.Active.Price,
-					Addition:       conn.Active.Addition,
-					StartTime:      conn.Active.StartTime,
-					EndTime:        conn.Active.EndTime,
-				},
-				OrderType: order.OrderType,
-			}
-
-			if conn.Active.BillingType == DoDSettleBillingTypeDOD {
-				if start < conn.Active.EndTime {
-					if flight {
-						if split {
-							dc.Amount = DoDSettleCalcAmount(conn.Active.StartTime, conn.Active.EndTime, start, end, conn.Active.Addition, dc)
-						} else {
-							if conn.Active.StartTime >= start {
-								dc.Amount = conn.Active.Addition
-								dc.InvoiceStartTime = conn.Active.StartTime
-								dc.InvoiceEndTime = conn.Active.EndTime
-							}
-						}
-					} else {
-						if now >= conn.Active.EndTime {
-							dc.Amount = DoDSettleCalcAmount(conn.Active.StartTime, conn.Active.EndTime, start, end, conn.Active.Addition, dc)
-						}
-					}
-				}
-			} else {
-				if conn.Active.StartTime != 0 && flight && split {
-					if end > now {
-						end = now
-					}
-
-					if start > conn.Active.StartTime {
-						dc.InvoiceStartTime = DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, start)
-					} else {
-						dc.InvoiceStartTime = conn.Active.StartTime
-					}
-
-					dc.InvoiceEndTime = DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, end)
-					dc.InvoiceUnitCount = DoDSettleCalcBillingUnit(conn.Active.BillingUnit, dc.InvoiceStartTime, dc.InvoiceEndTime)
-					dc.Amount = conn.Active.Price * float64(dc.InvoiceUnitCount)
-				}
-			}
-
-			if dc.Amount > 0 {
-				dc.StartTimeStr = time.Unix(dc.StartTime, 0).String()
-				dc.EndTimeStr = time.Unix(dc.EndTime, 0).String()
-				dc.InvoiceStartTimeStr = time.Unix(dc.InvoiceStartTime, 0).String()
-				dc.InvoiceEndTimeStr = time.Unix(dc.InvoiceEndTime, 0).String()
-
-				ic.ConnectionAmount += dc.Amount
-				ic.Usage = append(ic.Usage, dc)
-			}
-		}
-
-		for _, done := range conn.Done {
-			if done.OrderId == order.OrderId && ((start >= done.StartTime && start <= done.EndTime) ||
-				(end >= done.StartTime && end <= done.EndTime) ||
-				(start <= done.StartTime && end >= done.EndTime)) {
-				dc := &DoDSettleInvoiceConnDynamic{
-					DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
-						ConnectionName: done.ConnectionName,
-						PaymentType:    done.PaymentType,
-						BillingType:    done.BillingType,
-						Currency:       done.Currency,
-						ServiceClass:   done.ServiceClass,
-						Bandwidth:      done.Bandwidth,
-						BillingUnit:    done.BillingUnit,
-						Price:          done.Price,
-						Addition:       done.Addition,
-						StartTime:      done.StartTime,
-						EndTime:        done.EndTime,
-					},
-					OrderType: order.OrderType,
-				}
-
-				if done.BillingType == DoDSettleBillingTypeDOD {
-					if start < done.EndTime {
-						if flight {
-							if split {
-								dc.Amount = DoDSettleCalcAmount(done.StartTime, done.EndTime, start, end, done.Addition, dc)
-							} else {
-								if done.StartTime >= start {
-									dc.Amount = done.Addition
-									dc.InvoiceStartTime = done.StartTime
-									dc.InvoiceEndTime = done.EndTime
-								}
-							}
-						} else {
-							if now >= done.EndTime {
-								dc.Amount = DoDSettleCalcAmount(done.StartTime, done.EndTime, start, end, done.Addition, dc)
-							}
-						}
-					}
-				} else {
-					if done.StartTime == 0 {
-						continue
-					}
-
-					if end > now {
-						end = now
-					}
-
-					if split {
-						if start >= done.StartTime {
-							dc.InvoiceStartTime = DoDSettleBillingUnitRound(done.BillingUnit, done.StartTime, start)
-						} else {
-							dc.InvoiceStartTime = done.StartTime
-						}
-
-						if end < done.EndTime {
-							dc.InvoiceEndTime = DoDSettleBillingUnitRound(done.BillingUnit, done.StartTime, end)
-						} else {
-							dc.InvoiceEndTime = done.EndTime
-						}
-
-						dc.InvoiceUnitCount = DoDSettleCalcBillingUnit(done.BillingUnit, dc.InvoiceStartTime, dc.InvoiceEndTime)
-						dc.Amount = done.Price * float64(dc.InvoiceUnitCount)
-					} else {
-						if done.StartTime >= start && done.StartTime < end {
-							dc.InvoiceStartTime = done.StartTime
-							dc.InvoiceEndTime = done.EndTime
-
-							dc.InvoiceUnitCount = DoDSettleCalcBillingUnit(done.BillingUnit, dc.InvoiceStartTime, dc.InvoiceEndTime)
-							dc.Amount = done.Price * float64(dc.InvoiceUnitCount)
-						}
-					}
-				}
-
-				if dc.Amount > 0 {
-					dc.StartTimeStr = time.Unix(dc.StartTime, 0).String()
-					dc.EndTimeStr = time.Unix(dc.EndTime, 0).String()
-					dc.InvoiceStartTimeStr = time.Unix(dc.InvoiceStartTime, 0).String()
-					dc.InvoiceEndTimeStr = time.Unix(dc.InvoiceEndTime, 0).String()
-
-					ic.ConnectionAmount += dc.Amount
-					ic.Usage = append(ic.Usage, dc)
-				}
-			}
-		}
-
-		if conn.Disconnect != nil && conn.Disconnect.OrderId == order.OrderId &&
-			conn.Disconnect.DisconnectAt >= start && conn.Disconnect.DisconnectAt < end {
-			dc := &DoDSettleInvoiceConnDynamic{
-				DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
-					Currency:  conn.Disconnect.Currency,
-					Price:     conn.Disconnect.Price,
-					StartTime: conn.Disconnect.DisconnectAt,
-					EndTime:   conn.Disconnect.DisconnectAt,
-				},
-				InvoiceStartTime: conn.Disconnect.DisconnectAt,
-				InvoiceEndTime:   conn.Disconnect.DisconnectAt,
-				OrderType:        order.OrderType,
-				Amount:           conn.Disconnect.Price,
-			}
-
-			dc.StartTimeStr = time.Unix(dc.StartTime, 0).String()
-			dc.EndTimeStr = time.Unix(dc.EndTime, 0).String()
-			dc.InvoiceStartTimeStr = time.Unix(dc.InvoiceStartTime, 0).String()
-			dc.InvoiceEndTimeStr = time.Unix(dc.InvoiceEndTime, 0).String()
-
-			ic.ConnectionAmount += dc.Amount
-			ic.Usage = append(ic.Usage, dc)
-		}
-
-		invoiceOrder.OrderAmount += ic.ConnectionAmount
-		invoiceOrder.ConnectionCount++
-		invoiceOrder.Connections = append(invoiceOrder.Connections, ic)
-	}
-
-	return invoiceOrder, nil
-}
-
-func DoDSettleGetProductInvoice(conn *DoDSettleConnectionInfo, start, end int64, flight, split bool) (*DoDSettleInvoiceConnDetail, error) {
-	now := time.Now().Unix()
-
-	// no billing interval was specified
-	if end == 0 {
-		end = math.MaxInt64
-	}
-
-	invoiceProduct := &DoDSettleInvoiceConnDetail{
+	ic := &DoDSettleInvoiceConnDetail{
 		DoDSettleConnectionStaticParam: DoDSettleConnectionStaticParam{
 			ProductId:      conn.ProductId,
 			SrcCompanyName: conn.SrcCompanyName,
@@ -917,82 +693,21 @@ func DoDSettleGetProductInvoice(conn *DoDSettleConnectionInfo, start, end int64,
 		Usage: make([]*DoDSettleInvoiceConnDynamic, 0),
 	}
 
-	if conn.Active != nil && end >= conn.Active.StartTime {
-		dc := &DoDSettleInvoiceConnDynamic{
-			DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
-				OrderId:        conn.Active.OrderId,
-				ConnectionName: conn.Active.ConnectionName,
-				PaymentType:    conn.Active.PaymentType,
-				BillingType:    conn.Active.BillingType,
-				Currency:       conn.Active.Currency,
-				ServiceClass:   conn.Active.ServiceClass,
-				Bandwidth:      conn.Active.Bandwidth,
-				BillingUnit:    conn.Active.BillingUnit,
-				Price:          conn.Active.Price,
-				Addition:       conn.Active.Addition,
-				StartTime:      conn.Active.StartTime,
-				EndTime:        conn.Active.EndTime,
-			},
-		}
-
-		for _, t := range conn.Track {
-			if dc.OrderId == t.OrderId {
-				dc.OrderType = t.OrderType
-				break
-			}
-		}
-
-		if conn.Active.BillingType == DoDSettleBillingTypeDOD {
-			if start < conn.Active.EndTime {
-				if flight {
-					if split {
-						dc.Amount = DoDSettleCalcAmount(conn.Active.StartTime, conn.Active.EndTime, start, end, conn.Active.Addition, dc)
-					} else {
-						if conn.Active.StartTime >= start {
-							dc.Amount = conn.Active.Addition
-							dc.InvoiceStartTime = conn.Active.StartTime
-							dc.InvoiceEndTime = conn.Active.EndTime
-						}
-					}
-				} else {
-					if now >= conn.Active.EndTime {
-						dc.Amount = DoDSettleCalcAmount(conn.Active.StartTime, conn.Active.EndTime, start, end, conn.Active.Addition, dc)
-					}
-				}
-			}
-		} else {
-			if conn.Active.StartTime != 0 && flight && split {
-				if end > now {
-					end = now
-				}
-
-				if start > conn.Active.StartTime {
-					dc.InvoiceStartTime = DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, start)
-				} else {
-					dc.InvoiceStartTime = conn.Active.StartTime
-				}
-
-				dc.InvoiceEndTime = DoDSettleBillingUnitRound(conn.Active.BillingUnit, conn.Active.StartTime, end)
-				dc.InvoiceUnitCount = DoDSettleCalcBillingUnit(conn.Active.BillingUnit, dc.InvoiceStartTime, dc.InvoiceEndTime)
-				dc.Amount = conn.Active.Price * float64(dc.InvoiceUnitCount)
-			}
-		}
-
-		if dc.Amount > 0 {
-			dc.StartTimeStr = time.Unix(dc.StartTime, 0).String()
-			dc.EndTimeStr = time.Unix(dc.EndTime, 0).String()
-			dc.InvoiceStartTimeStr = time.Unix(dc.InvoiceStartTime, 0).String()
-			dc.InvoiceEndTimeStr = time.Unix(dc.InvoiceEndTime, 0).String()
-
-			invoiceProduct.ConnectionAmount += dc.Amount
-			invoiceProduct.Usage = append(invoiceProduct.Usage, dc)
-		}
+	if conn.Active != nil {
+		conn.Done = append(conn.Done, conn.Active)
 	}
 
 	for _, done := range conn.Done {
-		if (start >= done.StartTime && start <= done.EndTime) ||
-			(end >= done.StartTime && end <= done.EndTime) ||
-			(start <= done.StartTime && end >= done.EndTime) {
+		if order != nil && done.OrderId != order.OrderId {
+			continue
+		}
+
+		de := done.EndTime
+		if de == 0 {
+			de = end
+		}
+
+		if DoDSettleNeedInvoice(done.StartTime, de, start, end) {
 			dc := &DoDSettleInvoiceConnDynamic{
 				DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
 					OrderId:        done.OrderId,
@@ -1018,21 +733,19 @@ func DoDSettleGetProductInvoice(conn *DoDSettleConnectionInfo, start, end int64,
 			}
 
 			if done.BillingType == DoDSettleBillingTypeDOD {
-				if start < done.EndTime {
-					if flight {
-						if split {
-							dc.Amount = DoDSettleCalcAmount(done.StartTime, done.EndTime, start, end, done.Addition, dc)
-						} else {
-							if done.StartTime >= start {
-								dc.Amount = done.Addition
-								dc.InvoiceStartTime = done.StartTime
-								dc.InvoiceEndTime = done.EndTime
-							}
-						}
+				if flight {
+					if split {
+						dc.Amount = DoDSettleCalcAmount(done.StartTime, done.EndTime, start, end, done.Addition, dc)
 					} else {
-						if now >= done.EndTime {
-							dc.Amount = DoDSettleCalcAmount(done.StartTime, done.EndTime, start, end, done.Addition, dc)
+						if done.StartTime >= start {
+							dc.Amount = done.Addition
+							dc.InvoiceStartTime = done.StartTime
+							dc.InvoiceEndTime = done.EndTime
 						}
+					}
+				} else {
+					if now >= done.EndTime {
+						dc.Amount = DoDSettleCalcAmount(done.StartTime, done.EndTime, start, end, done.Addition, dc)
 					}
 				}
 			} else {
@@ -1040,8 +753,11 @@ func DoDSettleGetProductInvoice(conn *DoDSettleConnectionInfo, start, end int64,
 					continue
 				}
 
-				if end > now {
-					end = now
+				if done.EndTime == 0 {
+					if !flight || !split {
+						continue
+					}
+					done.EndTime = end
 				}
 
 				if split {
@@ -1051,7 +767,7 @@ func DoDSettleGetProductInvoice(conn *DoDSettleConnectionInfo, start, end int64,
 						dc.InvoiceStartTime = done.StartTime
 					}
 
-					if end < done.EndTime {
+					if end <= done.EndTime {
 						dc.InvoiceEndTime = DoDSettleBillingUnitRound(done.BillingUnit, done.StartTime, end)
 					} else {
 						dc.InvoiceEndTime = done.EndTime
@@ -1070,60 +786,107 @@ func DoDSettleGetProductInvoice(conn *DoDSettleConnectionInfo, start, end int64,
 				}
 			}
 
-			if dc.Amount > 0 {
-				dc.StartTimeStr = time.Unix(dc.StartTime, 0).String()
-				dc.EndTimeStr = time.Unix(dc.EndTime, 0).String()
-				dc.InvoiceStartTimeStr = time.Unix(dc.InvoiceStartTime, 0).String()
-				dc.InvoiceEndTimeStr = time.Unix(dc.InvoiceEndTime, 0).String()
+			dc.StartTimeStr = time.Unix(dc.StartTime, 0).String()
+			dc.EndTimeStr = time.Unix(dc.EndTime, 0).String()
+			dc.InvoiceStartTimeStr = time.Unix(dc.InvoiceStartTime, 0).String()
+			dc.InvoiceEndTimeStr = time.Unix(dc.InvoiceEndTime, 0).String()
 
-				invoiceProduct.ConnectionAmount += dc.Amount
-				invoiceProduct.Usage = append(invoiceProduct.Usage, dc)
-			}
+			ic.ConnectionAmount += dc.Amount
+			ic.Usage = append(ic.Usage, dc)
 		}
 	}
 
-	if conn.Disconnect != nil && conn.Disconnect.DisconnectAt >= start && conn.Disconnect.DisconnectAt < end {
-		dc := &DoDSettleInvoiceConnDynamic{
-			DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
-				OrderId:   conn.Disconnect.OrderId,
-				Currency:  conn.Disconnect.Currency,
-				Price:     conn.Disconnect.Price,
-				StartTime: conn.Disconnect.DisconnectAt,
-				EndTime:   conn.Disconnect.DisconnectAt,
-			},
-			InvoiceStartTime: conn.Disconnect.DisconnectAt,
-			InvoiceEndTime:   conn.Disconnect.DisconnectAt,
-			Amount:           conn.Disconnect.Price,
-		}
-
-		for _, t := range conn.Track {
-			if dc.OrderId == t.OrderId {
-				dc.OrderType = t.OrderType
-				break
+	if conn.Disconnect != nil && ((conn.Disconnect.DisconnectAt == start) ||
+		(conn.Disconnect.DisconnectAt > start && conn.Disconnect.DisconnectAt < end)) {
+		if (order != nil && conn.Disconnect.OrderId == order.OrderId) || order == nil {
+			dc := &DoDSettleInvoiceConnDynamic{
+				DoDSettleConnectionDynamicParam: DoDSettleConnectionDynamicParam{
+					OrderId:   conn.Disconnect.OrderId,
+					Currency:  conn.Disconnect.Currency,
+					Price:     conn.Disconnect.Price,
+					StartTime: conn.Disconnect.DisconnectAt,
+					EndTime:   conn.Disconnect.DisconnectAt,
+				},
+				InvoiceStartTime: conn.Disconnect.DisconnectAt,
+				InvoiceEndTime:   conn.Disconnect.DisconnectAt,
+				Amount:           conn.Disconnect.Price,
 			}
+
+			for _, t := range conn.Track {
+				if dc.OrderId == t.OrderId {
+					dc.OrderType = t.OrderType
+					break
+				}
+			}
+
+			dc.StartTimeStr = time.Unix(dc.StartTime, 0).String()
+			dc.EndTimeStr = time.Unix(dc.EndTime, 0).String()
+			dc.InvoiceStartTimeStr = time.Unix(dc.InvoiceStartTime, 0).String()
+			dc.InvoiceEndTimeStr = time.Unix(dc.InvoiceEndTime, 0).String()
+
+			ic.ConnectionAmount += dc.Amount
+			ic.Usage = append(ic.Usage, dc)
 		}
-
-		dc.StartTimeStr = time.Unix(dc.StartTime, 0).String()
-		dc.EndTimeStr = time.Unix(dc.EndTime, 0).String()
-		dc.InvoiceStartTimeStr = time.Unix(dc.InvoiceStartTime, 0).String()
-		dc.InvoiceEndTimeStr = time.Unix(dc.InvoiceEndTime, 0).String()
-
-		invoiceProduct.ConnectionAmount += dc.Amount
-		invoiceProduct.Usage = append(invoiceProduct.Usage, dc)
 	}
 
-	return invoiceProduct, nil
+	return ic
 }
 
-func DoDSettleGenerateInvoiceByOrder(ctx *vmstore.VMContext, seller types.Address, orderId string, start, end int64, flight, split bool) (*DoDSettleOrderInvoice, error) {
-	invoice := new(DoDSettleOrderInvoice)
-
-	if start < 0 || end < 0 {
-		return nil, fmt.Errorf("invalid start or end time")
-	}
+func DoDSettleGetOrderInvoice(ctx *vmstore.VMContext, seller types.Address, order *DoDSettleOrderInfo, start, end int64,
+	flight, split bool) (*DoDSettleInvoiceOrderDetail, error) {
 
 	now := time.Now().Unix()
-	if (start == 0 && end != 0) || (start > 0 && end > 0 && (start > end || start > now)) {
+	invoiceOrder := new(DoDSettleInvoiceOrderDetail)
+	invoiceOrder.OrderId = order.OrderId
+	invoiceOrder.Connections = make([]*DoDSettleInvoiceConnDetail, 0)
+
+	internalId, err := DoDSettleGetInternalIdByOrderId(ctx, seller, order.OrderId)
+	if err != nil {
+		return nil, fmt.Errorf("get internal id err %s", err)
+	}
+
+	invoiceOrder.InternalId = internalId
+
+	for _, c := range order.Connections {
+		var conn *DoDSettleConnectionInfo
+
+		if len(c.ProductId) > 0 {
+			conn, _ = DoDSettleGetConnectionInfoByProductId(ctx, seller, c.ProductId)
+		} else {
+			otp := &DoDSettleOrderToProduct{Seller: order.Seller.Address, OrderId: order.OrderId, OrderItemId: c.OrderItemId}
+			conn, _ = DoDSettleGetConnectionInfoByProductStorageKey(ctx, otp.Hash())
+
+			pi, _ := DoDSettleGetProductIdByStorageKey(ctx, otp.Hash())
+			if pi != nil {
+				conn.ProductId = pi.ProductId
+			}
+		}
+
+		if conn == nil {
+			continue
+		}
+
+		ic := DoDSettleCalcConnInvoice(conn, order, start, end, now, flight, split)
+
+		invoiceOrder.OrderAmount += ic.ConnectionAmount
+		invoiceOrder.ConnectionCount++
+		invoiceOrder.Connections = append(invoiceOrder.Connections, ic)
+	}
+
+	return invoiceOrder, nil
+}
+
+func DoDSettleGetProductInvoice(conn *DoDSettleConnectionInfo, start, end int64, flight, split bool) (*DoDSettleInvoiceConnDetail, error) {
+	now := time.Now().Unix()
+	return DoDSettleCalcConnInvoice(conn, nil, start, end, now, flight, split), nil
+}
+
+func DoDSettleGenerateInvoiceByOrder(ctx *vmstore.VMContext, seller types.Address, orderId string, start, end int64,
+	flight, split bool) (*DoDSettleOrderInvoice, error) {
+
+	invoice := new(DoDSettleOrderInvoice)
+
+	if start < 0 || end < 0 || start > end {
 		return nil, fmt.Errorf("invalid start or end time")
 	}
 
@@ -1137,6 +900,8 @@ func DoDSettleGenerateInvoiceByOrder(ctx *vmstore.VMContext, seller types.Addres
 		return nil, err
 	}
 
+	invoice.Flight = flight
+	invoice.Split = split
 	invoice.StartTime = start
 	invoice.EndTime = end
 	invoice.Currency = order.Connections[0].Currency
@@ -1156,23 +921,18 @@ func DoDSettleGenerateInvoiceByProduct(ctx *vmstore.VMContext, seller types.Addr
 	flight, split bool) (*DoDSettleProductInvoice, error) {
 	invoice := new(DoDSettleProductInvoice)
 
-	if start < 0 || end < 0 {
-		return nil, fmt.Errorf("invalid start or end time")
-	}
-
-	now := time.Now().Unix()
-	if (start == 0 && end != 0) || (start > 0 && end > 0 && (start > end || start > now)) {
+	if start < 0 || end < 0 || start > end {
 		return nil, fmt.Errorf("invalid start or end time")
 	}
 
 	conn, err := DoDSettleGetConnectionInfoByProductId(ctx, seller, productId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get product info err")
 	}
 
 	order, err := DoDSettleGetOrderInfoByOrderId(ctx, seller, conn.Track[0].OrderId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get order info err %s", conn.Track[0].OrderId)
 	}
 
 	productOrder, err := DoDSettleGetProductInvoice(conn, start, end, flight, split)
@@ -1189,6 +949,8 @@ func DoDSettleGenerateInvoiceByProduct(ctx *vmstore.VMContext, seller types.Addr
 		u.InternalId = internalId.String()
 	}
 
+	invoice.Flight = flight
+	invoice.Split = split
 	invoice.StartTime = start
 	invoice.EndTime = end
 	invoice.Currency = order.Connections[0].Currency
@@ -1203,18 +965,17 @@ func DoDSettleGenerateInvoiceByProduct(ctx *vmstore.VMContext, seller types.Addr
 	return invoice, nil
 }
 
-func DoDSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types.Address, start, end int64, flight, split bool) (*DoDSettleBuyerInvoice, error) {
+func DoDSettleGenerateInvoiceByBuyer(ctx *vmstore.VMContext, seller, buyer types.Address, start, end int64, flight,
+	split bool) (*DoDSettleBuyerInvoice, error) {
+
 	invoice := new(DoDSettleBuyerInvoice)
 
-	if start < 0 || end < 0 {
+	if start < 0 || end < 0 || start > end {
 		return nil, fmt.Errorf("invalid start or end time")
 	}
 
-	now := time.Now().Unix()
-	if (start == 0 && end != 0) || (start > 0 && end > 0 && (start > end || start > now)) {
-		return nil, fmt.Errorf("invalid start or end time")
-	}
-
+	invoice.Flight = flight
+	invoice.Split = split
 	invoice.StartTime = start
 	invoice.EndTime = end
 	invoice.Orders = make([]*DoDSettleInvoiceOrderDetail, 0)
