@@ -760,6 +760,8 @@ type DoDSettleOrderInvoice struct {
 	Currency             string                       `json:"currency"`
 	StartTime            int64                        `json:"startTime"`
 	EndTime              int64                        `json:"endTime"`
+	Flight               bool                         `json:"flight"`
+	Split                bool                         `json:"split"`
 	Buyer                *DoDSettleUser               `json:"buyer"`
 	Seller               *DoDSettleUser               `json:"seller"`
 	Order                *DoDSettleInvoiceOrderDetail `json:"order"`
@@ -773,6 +775,8 @@ type DoDSettleBuyerInvoice struct {
 	Currency             string                         `json:"currency"`
 	StartTime            int64                          `json:"startTime"`
 	EndTime              int64                          `json:"endTime"`
+	Flight               bool                           `json:"flight"`
+	Split                bool                           `json:"split"`
 	Buyer                *DoDSettleUser                 `json:"buyer"`
 	Seller               *DoDSettleUser                 `json:"seller"`
 	Orders               []*DoDSettleInvoiceOrderDetail `json:"orders"`
@@ -784,6 +788,8 @@ type DoDSettleProductInvoice struct {
 	Currency    string                      `json:"currency"`
 	StartTime   int64                       `json:"startTime"`
 	EndTime     int64                       `json:"endTime"`
+	Flight      bool                        `json:"flight"`
+	Split       bool                        `json:"split"`
 	Buyer       *DoDSettleUser              `json:"buyer"`
 	Seller      *DoDSettleUser              `json:"seller"`
 	Connection  *DoDSettleInvoiceConnDetail `json:"connection"`

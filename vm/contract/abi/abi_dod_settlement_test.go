@@ -672,14 +672,14 @@ func TestDodSettleGenerateInvoiceByOrder(t *testing.T) {
 	start = int64(4000)
 	end = int64(0)
 	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, true, false)
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal()
 	}
 
 	start = int64(0)
 	end = int64(1000)
 	invoice, err = DoDSettleGenerateInvoiceByOrder(ctx, seller, order.OrderId, start, end, false, true)
-	if err == nil {
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -874,14 +874,14 @@ func TestDodSettleGenerateInvoiceByProduct(t *testing.T) {
 	start = int64(0)
 	end = int64(12000)
 	_, err = DoDSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
-	if err == nil {
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	start = int64(3000)
 	end = int64(0)
 	_, err = DoDSettleGenerateInvoiceByProduct(ctx, seller, conn1.ProductId, start, end, true, true)
-	if err != nil {
+	if err == nil {
 		t.Fatal(err)
 	}
 
@@ -974,7 +974,7 @@ func TestDodSettleGenerateInvoiceByBuyer(t *testing.T) {
 	start := int64(0)
 	end := int64(8000)
 	_, err = DoDSettleGenerateInvoiceByBuyer(ctx, seller, buyer, start, end, true, true)
-	if err == nil {
+	if err != nil {
 		t.Fatal()
 	}
 
@@ -1071,6 +1071,54 @@ func TestDoDSettleGetProductIdListByAddress(t *testing.T) {
 
 	ps, err := DoDSettleGetProductIdListByAddress(ctx, buyer)
 	if err != nil || len(ps) != 2 {
+		t.Fatal()
+	}
+}
+
+func TestDoDSettleNeedInvoice(t *testing.T) {
+	var bs, be, s, e int64
+
+	bs = 100
+	be = 200
+	s = 50
+	e = 100
+	if !DoDSettleNeedInvoice(bs, be, s, e) {
+		t.Fatal()
+	}
+
+	s = 50
+	e = 120
+	if !DoDSettleNeedInvoice(bs, be, s, e) {
+		t.Fatal()
+	}
+
+	s = 50
+	e = 220
+	if !DoDSettleNeedInvoice(bs, be, s, e) {
+		t.Fatal()
+	}
+
+	s = 100
+	e = 100
+	if !DoDSettleNeedInvoice(bs, be, s, e) {
+		t.Fatal()
+	}
+
+	s = 120
+	e = 150
+	if !DoDSettleNeedInvoice(bs, be, s, e) {
+		t.Fatal()
+	}
+
+	s = 120
+	e = 220
+	if !DoDSettleNeedInvoice(bs, be, s, e) {
+		t.Fatal()
+	}
+
+	s = 200
+	e = 220
+	if DoDSettleNeedInvoice(bs, be, s, e) {
 		t.Fatal()
 	}
 }
