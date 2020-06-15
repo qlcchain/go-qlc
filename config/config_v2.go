@@ -53,12 +53,10 @@ type GRPCConfig struct {
 	Enable bool `json:"enabled"`
 	// TCP or UNIX socket address for the gRPC server to listen on
 	ListenAddress string `json:"listenAddress"`
-
-	HTTPEnable bool `json:"httpEnabled"`
+	HTTPEnable    bool   `json:"httpEnabled"`
 	// TCP or UNIX socket address for the Restful server to listen on
-	HTTPListenAddress string `json:"httpListenAddress"`
-
-	CORSAllowedOrigins []string `json:"httpCors"`
+	HTTPListenAddress      string `json:"httpListenAddress"`
+	MaxSubscriptionClients int    `json:"maxSubClients"`
 }
 
 type DiscoveryConfigV2 struct {

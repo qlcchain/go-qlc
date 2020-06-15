@@ -29,6 +29,7 @@ type GRPCServer struct {
 	cfgFile string
 	cc      *chainctx.ChainContext
 	ctx     context.Context
+	hServer *http.Server
 	logger  *zap.SugaredLogger
 }
 
@@ -92,11 +93,18 @@ func (r *GRPCServer) newGateway(grpcAddress string) error {
 	if err != nil {
 		return err
 	}
-	return http.ListenAndServe(address, gwmux)
+	srv := &http.Server{Addr: address, Handler: gwmux}
+	//return http.ListenAndServe(address, gwmux)
+	r.hServer = srv
+	return srv.ListenAndServe()
 }
 
 func (r *GRPCServer) Stop() {
+	if err := r.hServer.Shutdown(context.Background()); err != nil {
+		r.logger.Error(err)
+	}
 	r.rpc.Stop()
+	r.logger.Info("grpc stopped")
 }
 
 func scheme(endpoint string) (string, string, error) {
