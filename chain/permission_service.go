@@ -171,19 +171,22 @@ func (ps *PermissionService) addPermissionNode() {
 				continue
 			}
 
-			ps.checkTime++
+			if len(ps.blkHash) > 0 {
+				ps.checkTime++
 
-			nodes := make([]*api.NodeParam, 0)
-			for i, h := range ps.blkHash {
-				if has, _ := ps.vmCtx.HasStateBlockConfirmed(h); !has {
-					nodes = append(nodes, ps.nodes[i])
+				nodes := make([]*api.NodeParam, 0)
+				for i, h := range ps.blkHash {
+					if has, _ := ps.vmCtx.HasStateBlockConfirmed(h); !has {
+						nodes = append(nodes, ps.nodes[i])
+					}
 				}
 
 				if len(nodes) > 0 {
-					if ps.checkTime >= 120 {
+					if ps.checkTime >= 10 {
 						ps.nodes = nodes
 						ps.work <- struct{}{}
 						ps.checkTime = 0
+						ps.blkHash = make([]types.Hash, 0)
 					}
 				} else {
 					ps.logger.Info("added all nodes, permission service exit")
