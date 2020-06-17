@@ -482,7 +482,7 @@ func (node *QlcNode) findPeers() error {
 				PeerID: p.ID.Pretty(),
 			}
 			if p.ID == node.ID {
-				pi.Address = node.cfg.P2P.Listen
+				pi.Address = strings.ReplaceAll(node.cfg.P2P.Listen, "0.0.0.0", node.cfg.P2P.ListeningIp)
 			} else if len(p.Addrs) != 0 {
 				pi.Address = findPublicIP(p.Addrs)
 			}
