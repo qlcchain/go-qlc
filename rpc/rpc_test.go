@@ -52,11 +52,10 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 		IPCEnabled:  true,
 		HTTPEnabled: true,
 		GRPCConfig: &config.GRPCConfig{
-			Enable:             false,
-			ListenAddress:      "",
-			HTTPEnable:         false,
-			HTTPListenAddress:  "",
-			CORSAllowedOrigins: nil,
+			Enable:            false,
+			ListenAddress:     "",
+			HTTPEnable:        false,
+			HTTPListenAddress: "",
 		},
 	}
 	if err != nil {

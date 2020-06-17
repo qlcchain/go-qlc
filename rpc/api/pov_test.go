@@ -495,7 +495,7 @@ func TestPovAPI_PubSub_NewBlock(t *testing.T) {
 	blk1 := allBlks[0]
 	md.api.pubsub.setBlocks(blk1)
 	time.Sleep(10 * time.Millisecond)
-	md.api.pubsub.FetchBlocks(subBlk.ID)
+	md.api.pubsub.FetchBlocks(string(subBlk.ID))
 
-	md.api.pubsub.RemoveChan(subBlk.ID)
+	md.api.pubsub.RemoveChan(string(subBlk.ID))
 }
