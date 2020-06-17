@@ -822,6 +822,22 @@
         ]
       }
     },
+    "/pov/newBlock": {
+      "get": {
+        "operationId": "NewBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "$ref": "#/x-stream-definitions/protoPovApiHeader"
+            }
+          }
+        },
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
     "/pov/startMining": {
       "get": {
         "operationId": "StartMining",
@@ -1452,6 +1468,43 @@
         }
       }
     },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
     "typesPovAccountState": {
       "type": "object",
       "properties": {
@@ -1993,6 +2046,20 @@
           "type": "string"
         }
       }
+    }
+  },
+  "x-stream-definitions": {
+    "protoPovApiHeader": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/protoPovApiHeader"
+        },
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        }
+      },
+      "title": "Stream result of protoPovApiHeader"
     }
   }
 }

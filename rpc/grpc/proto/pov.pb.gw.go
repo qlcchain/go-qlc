@@ -534,6 +534,23 @@ func request_PovAPI_GetLastNHourInfo_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
+func request_PovAPI_NewBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PovAPIClient, req *http.Request, pathParams map[string]string) (PovAPI_NewBlockClient, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	stream, err := client.NewBlock(ctx, &protoReq)
+	if err != nil {
+		return nil, metadata, err
+	}
+	header, err := stream.Header()
+	if err != nil {
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+	return stream, metadata, nil
+
+}
+
 // RegisterPovAPIHandlerFromEndpoint is same as RegisterPovAPIHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterPovAPIHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
@@ -1212,6 +1229,26 @@ func RegisterPovAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, cli
 
 	})
 
+	mux.Handle("GET", pattern_PovAPI_NewBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_PovAPI_NewBlock_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PovAPI_NewBlock_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+
+	})
+
 	return nil
 }
 
@@ -1279,6 +1316,8 @@ var (
 	pattern_PovAPI_GetWork_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pov", "getWork"}, ""))
 
 	pattern_PovAPI_GetLastNHourInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pov", "getLastNHourInfo"}, ""))
+
+	pattern_PovAPI_NewBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pov", "newBlock"}, ""))
 )
 
 var (
@@ -1345,4 +1384,6 @@ var (
 	forward_PovAPI_GetWork_0 = runtime.ForwardResponseMessage
 
 	forward_PovAPI_GetLastNHourInfo_0 = runtime.ForwardResponseMessage
+
+	forward_PovAPI_NewBlock_0 = runtime.ForwardResponseStream
 )

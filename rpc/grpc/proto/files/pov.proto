@@ -252,6 +252,12 @@ service PovAPI {
 //           get: "/pov/checkAllAccountStates"
 //       };
 //    }
+
+    rpc NewBlock(google.protobuf.Empty) returns (stream PovApiHeader){
+        option (google.api.http) = {
+           get: "/pov/newBlock"
+       };
+    }
 }
 
 message PovStatus  {

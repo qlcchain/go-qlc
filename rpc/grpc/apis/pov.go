@@ -18,12 +18,14 @@ import (
 
 type PovAPI struct {
 	pov    *api.PovApi
+	pubsub *api.PovSubscription
 	logger *zap.SugaredLogger
 }
 
 func NewPovAPI(ctx context.Context, cfg *config.Config, l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *PovAPI {
 	return &PovAPI{
 		pov:    api.NewPovApi(ctx, cfg, l, eb, cc),
+		pubsub: api.NewPovSubscription(ctx, eb),
 		logger: log.NewLogger("grpc_pov"),
 	}
 }
@@ -420,6 +422,39 @@ func (p *PovAPI) GetLastNHourInfo(ctx context.Context, param *pb.LastNHourInfoRe
 //func (p *PovAPI) CheckAllAccountStates(ctx context.Context, param *empty.Empty) (*pb.PovApiCheckStateRsp, error) {
 //	panic("implement me")
 //}
+
+func (p *PovAPI) NewBlock(em *empty.Empty, srv pb.PovAPI_NewBlockServer) error {
+	t := randomIDGenerator()
+	id := t()
+	ch := make(chan struct{})
+	p.logger.Infof("subscription pov block done, %s", id)
+	p.pubsub.AddChan(id, ch)
+	defer p.pubsub.RemoveChan(id)
+
+	for {
+		select {
+		case <-ch:
+			blocks := p.pubsub.FetchBlocks(id)
+
+			for _, block := range blocks {
+				header := block.GetHeader()
+				apiHdr := &api.PovApiHeader{PovHeader: header}
+				api.FillHeader(apiHdr)
+
+				if err := srv.Send(toPovApiHeader(apiHdr)); err != nil {
+					p.logger.Errorf("notify pov header %d/%s error: %s",
+						err, header.GetHeight(), header.GetHash())
+					return err
+				}
+
+			}
+		case <-srv.Context().Done():
+			p.logger.Infof("subscription  pov block finished, %s ", id)
+			return nil
+		}
+	}
+
+}
 
 func toPovStatus(s *api.PovStatus) *pb.PovStatus {
 	return &pb.PovStatus{

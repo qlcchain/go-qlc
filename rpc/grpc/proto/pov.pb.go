@@ -3365,7 +3365,7 @@ var file_pov_proto_rawDesc = []byte{
 	0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12,
 	0x24, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e,
 	0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x42, 0x65, 0x6e, 0x65, 0x66, 0x69, 0x74, 0x52, 0x05,
-	0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x32, 0x86, 0x19, 0x0a, 0x06, 0x50, 0x6f,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x32, 0xd8, 0x19, 0x0a, 0x06, 0x50, 0x6f,
 	0x76, 0x41, 0x50, 0x49, 0x12, 0x53, 0x0a, 0x0c, 0x47, 0x65, 0x74, 0x50, 0x6f, 0x76, 0x53, 0x74,
 	0x61, 0x74, 0x75, 0x73, 0x12, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72,
 	0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x10, 0x2e, 0x70,
@@ -3566,8 +3566,13 @@ var file_pov_proto_rawDesc = []byte{
 	0x47, 0x65, 0x74, 0x4c, 0x61, 0x73, 0x74, 0x4e, 0x48, 0x6f, 0x75, 0x72, 0x49, 0x6e, 0x66, 0x6f,
 	0x22, 0x20, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x1a, 0x22, 0x15, 0x2f, 0x70, 0x6f, 0x76, 0x2f, 0x67,
 	0x65, 0x74, 0x4c, 0x61, 0x73, 0x74, 0x4e, 0x48, 0x6f, 0x75, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x3a,
-	0x01, 0x2a, 0x42, 0x09, 0x5a, 0x07, 0x2e, 0x3b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x01, 0x2a, 0x12, 0x50, 0x0a, 0x08, 0x4e, 0x65, 0x77, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x12, 0x16,
+	0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66,
+	0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x50,
+	0x6f, 0x76, 0x41, 0x70, 0x69, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x22, 0x15, 0x82, 0xd3, 0xe4,
+	0x93, 0x02, 0x0f, 0x12, 0x0d, 0x2f, 0x70, 0x6f, 0x76, 0x2f, 0x6e, 0x65, 0x77, 0x42, 0x6c, 0x6f,
+	0x63, 0x6b, 0x30, 0x01, 0x42, 0x09, 0x5a, 0x07, 0x2e, 0x3b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -3723,40 +3728,42 @@ var file_pov_proto_depIdxs = []int32{
 	59, // 67: proto.PovAPI.GetMiningInfo:input_type -> google.protobuf.Empty
 	29, // 68: proto.PovAPI.GetWork:input_type -> proto.WorkRequest
 	30, // 69: proto.PovAPI.GetLastNHourInfo:input_type -> proto.LastNHourInfoRequest
-	0,  // 70: proto.PovAPI.GetPovStatus:output_type -> proto.PovStatus
-	1,  // 71: proto.PovAPI.GetHeaderByHeight:output_type -> proto.PovApiHeader
-	1,  // 72: proto.PovAPI.GetHeaderByHash:output_type -> proto.PovApiHeader
-	1,  // 73: proto.PovAPI.GetLatestHeader:output_type -> proto.PovApiHeader
-	1,  // 74: proto.PovAPI.GetFittestHeader:output_type -> proto.PovApiHeader
-	2,  // 75: proto.PovAPI.BatchGetHeadersByHeight:output_type -> proto.PovApiBatchHeader
-	3,  // 76: proto.PovAPI.GetBlockByHeight:output_type -> proto.PovApiBlock
-	3,  // 77: proto.PovAPI.GetBlockByHash:output_type -> proto.PovApiBlock
-	3,  // 78: proto.PovAPI.GetLatestBlock:output_type -> proto.PovApiBlock
-	8,  // 79: proto.PovAPI.GetTransaction:output_type -> proto.PovApiTxLookup
-	8,  // 80: proto.PovAPI.GetTransactionByBlockHashAndIndex:output_type -> proto.PovApiTxLookup
-	8,  // 81: proto.PovAPI.GetTransactionByBlockHeightAndIndex:output_type -> proto.PovApiTxLookup
-	4,  // 82: proto.PovAPI.GetAccountState:output_type -> proto.PovApiState
-	4,  // 83: proto.PovAPI.GetLatestAccountState:output_type -> proto.PovApiState
-	4,  // 84: proto.PovAPI.GetAccountStateByBlockHash:output_type -> proto.PovApiState
-	4,  // 85: proto.PovAPI.GetAccountStateByBlockHeight:output_type -> proto.PovApiState
-	6,  // 86: proto.PovAPI.GetAllRepStatesByStateHash:output_type -> proto.PovApiRepState
-	6,  // 87: proto.PovAPI.GetAllRepStatesByBlockHash:output_type -> proto.PovApiRepState
-	6,  // 88: proto.PovAPI.GetAllRepStatesByBlockHeight:output_type -> proto.PovApiRepState
-	9,  // 89: proto.PovAPI.GetLedgerStats:output_type -> proto.PovLedgerStats
-	12, // 90: proto.PovAPI.GetMinerStats:output_type -> proto.PovMinerStats
-	14, // 91: proto.PovAPI.GetRepStats:output_type -> proto.PovRepStats
-	65, // 92: proto.PovAPI.GetMinerDayStat:output_type -> types.PovMinerDayStat
-	65, // 93: proto.PovAPI.GetMinerDayStatByHeight:output_type -> types.PovMinerDayStat
-	66, // 94: proto.PovAPI.GetDiffDayStat:output_type -> types.PovDiffDayStat
-	66, // 95: proto.PovAPI.GetDiffDayStatByHeight:output_type -> types.PovDiffDayStat
-	34, // 96: proto.PovAPI.GetHashInfo:output_type -> proto.PovApiHashInfo
-	59, // 97: proto.PovAPI.StartMining:output_type -> google.protobuf.Empty
-	59, // 98: proto.PovAPI.StopMining:output_type -> google.protobuf.Empty
-	33, // 99: proto.PovAPI.GetMiningInfo:output_type -> proto.PovApiGetMiningInfo
-	32, // 100: proto.PovAPI.GetWork:output_type -> proto.PovApiGetWork
-	17, // 101: proto.PovAPI.GetLastNHourInfo:output_type -> proto.PovApiGetLastNHourInfo
-	70, // [70:102] is the sub-list for method output_type
-	38, // [38:70] is the sub-list for method input_type
+	59, // 70: proto.PovAPI.NewBlock:input_type -> google.protobuf.Empty
+	0,  // 71: proto.PovAPI.GetPovStatus:output_type -> proto.PovStatus
+	1,  // 72: proto.PovAPI.GetHeaderByHeight:output_type -> proto.PovApiHeader
+	1,  // 73: proto.PovAPI.GetHeaderByHash:output_type -> proto.PovApiHeader
+	1,  // 74: proto.PovAPI.GetLatestHeader:output_type -> proto.PovApiHeader
+	1,  // 75: proto.PovAPI.GetFittestHeader:output_type -> proto.PovApiHeader
+	2,  // 76: proto.PovAPI.BatchGetHeadersByHeight:output_type -> proto.PovApiBatchHeader
+	3,  // 77: proto.PovAPI.GetBlockByHeight:output_type -> proto.PovApiBlock
+	3,  // 78: proto.PovAPI.GetBlockByHash:output_type -> proto.PovApiBlock
+	3,  // 79: proto.PovAPI.GetLatestBlock:output_type -> proto.PovApiBlock
+	8,  // 80: proto.PovAPI.GetTransaction:output_type -> proto.PovApiTxLookup
+	8,  // 81: proto.PovAPI.GetTransactionByBlockHashAndIndex:output_type -> proto.PovApiTxLookup
+	8,  // 82: proto.PovAPI.GetTransactionByBlockHeightAndIndex:output_type -> proto.PovApiTxLookup
+	4,  // 83: proto.PovAPI.GetAccountState:output_type -> proto.PovApiState
+	4,  // 84: proto.PovAPI.GetLatestAccountState:output_type -> proto.PovApiState
+	4,  // 85: proto.PovAPI.GetAccountStateByBlockHash:output_type -> proto.PovApiState
+	4,  // 86: proto.PovAPI.GetAccountStateByBlockHeight:output_type -> proto.PovApiState
+	6,  // 87: proto.PovAPI.GetAllRepStatesByStateHash:output_type -> proto.PovApiRepState
+	6,  // 88: proto.PovAPI.GetAllRepStatesByBlockHash:output_type -> proto.PovApiRepState
+	6,  // 89: proto.PovAPI.GetAllRepStatesByBlockHeight:output_type -> proto.PovApiRepState
+	9,  // 90: proto.PovAPI.GetLedgerStats:output_type -> proto.PovLedgerStats
+	12, // 91: proto.PovAPI.GetMinerStats:output_type -> proto.PovMinerStats
+	14, // 92: proto.PovAPI.GetRepStats:output_type -> proto.PovRepStats
+	65, // 93: proto.PovAPI.GetMinerDayStat:output_type -> types.PovMinerDayStat
+	65, // 94: proto.PovAPI.GetMinerDayStatByHeight:output_type -> types.PovMinerDayStat
+	66, // 95: proto.PovAPI.GetDiffDayStat:output_type -> types.PovDiffDayStat
+	66, // 96: proto.PovAPI.GetDiffDayStatByHeight:output_type -> types.PovDiffDayStat
+	34, // 97: proto.PovAPI.GetHashInfo:output_type -> proto.PovApiHashInfo
+	59, // 98: proto.PovAPI.StartMining:output_type -> google.protobuf.Empty
+	59, // 99: proto.PovAPI.StopMining:output_type -> google.protobuf.Empty
+	33, // 100: proto.PovAPI.GetMiningInfo:output_type -> proto.PovApiGetMiningInfo
+	32, // 101: proto.PovAPI.GetWork:output_type -> proto.PovApiGetWork
+	17, // 102: proto.PovAPI.GetLastNHourInfo:output_type -> proto.PovApiGetLastNHourInfo
+	1,  // 103: proto.PovAPI.NewBlock:output_type -> proto.PovApiHeader
+	71, // [71:104] is the sub-list for method output_type
+	38, // [38:71] is the sub-list for method input_type
 	38, // [38:38] is the sub-list for extension type_name
 	38, // [38:38] is the sub-list for extension extendee
 	0,  // [0:38] is the sub-list for field type_name
@@ -4278,6 +4285,7 @@ type PovAPIClient interface {
 	GetMiningInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PovApiGetMiningInfo, error)
 	GetWork(ctx context.Context, in *WorkRequest, opts ...grpc.CallOption) (*PovApiGetWork, error)
 	GetLastNHourInfo(ctx context.Context, in *LastNHourInfoRequest, opts ...grpc.CallOption) (*PovApiGetLastNHourInfo, error)
+	NewBlock(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (PovAPI_NewBlockClient, error)
 }
 
 type povAPIClient struct {
@@ -4576,6 +4584,38 @@ func (c *povAPIClient) GetLastNHourInfo(ctx context.Context, in *LastNHourInfoRe
 	return out, nil
 }
 
+func (c *povAPIClient) NewBlock(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (PovAPI_NewBlockClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_PovAPI_serviceDesc.Streams[0], "/proto.PovAPI/NewBlock", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &povAPINewBlockClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type PovAPI_NewBlockClient interface {
+	Recv() (*PovApiHeader, error)
+	grpc.ClientStream
+}
+
+type povAPINewBlockClient struct {
+	grpc.ClientStream
+}
+
+func (x *povAPINewBlockClient) Recv() (*PovApiHeader, error) {
+	m := new(PovApiHeader)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // PovAPIServer is the server API for PovAPI service.
 type PovAPIServer interface {
 	GetPovStatus(context.Context, *empty.Empty) (*PovStatus, error)
@@ -4622,6 +4662,7 @@ type PovAPIServer interface {
 	GetMiningInfo(context.Context, *empty.Empty) (*PovApiGetMiningInfo, error)
 	GetWork(context.Context, *WorkRequest) (*PovApiGetWork, error)
 	GetLastNHourInfo(context.Context, *LastNHourInfoRequest) (*PovApiGetLastNHourInfo, error)
+	NewBlock(*empty.Empty, PovAPI_NewBlockServer) error
 }
 
 // UnimplementedPovAPIServer can be embedded to have forward compatible implementations.
@@ -4723,6 +4764,9 @@ func (*UnimplementedPovAPIServer) GetWork(context.Context, *WorkRequest) (*PovAp
 }
 func (*UnimplementedPovAPIServer) GetLastNHourInfo(context.Context, *LastNHourInfoRequest) (*PovApiGetLastNHourInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLastNHourInfo not implemented")
+}
+func (*UnimplementedPovAPIServer) NewBlock(*empty.Empty, PovAPI_NewBlockServer) error {
+	return status.Errorf(codes.Unimplemented, "method NewBlock not implemented")
 }
 
 func RegisterPovAPIServer(s *grpc.Server, srv PovAPIServer) {
@@ -5305,6 +5349,27 @@ func _PovAPI_GetLastNHourInfo_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PovAPI_NewBlock_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(empty.Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(PovAPIServer).NewBlock(m, &povAPINewBlockServer{stream})
+}
+
+type PovAPI_NewBlockServer interface {
+	Send(*PovApiHeader) error
+	grpc.ServerStream
+}
+
+type povAPINewBlockServer struct {
+	grpc.ServerStream
+}
+
+func (x *povAPINewBlockServer) Send(m *PovApiHeader) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 var _PovAPI_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.PovAPI",
 	HandlerType: (*PovAPIServer)(nil),
@@ -5438,6 +5503,12 @@ var _PovAPI_serviceDesc = grpc.ServiceDesc{
 			Handler:    _PovAPI_GetLastNHourInfo_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "NewBlock",
+			Handler:       _PovAPI_NewBlock_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "pov.proto",
 }

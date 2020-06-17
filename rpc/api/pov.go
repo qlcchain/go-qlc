@@ -186,7 +186,7 @@ func (api *PovApi) GetPovStatus() (*PovStatus, error) {
 	return apiRsp, nil
 }
 
-func (api *PovApi) fillHeader(header *PovApiHeader) {
+func FillHeader(header *PovApiHeader) {
 	header.AlgoEfficiency = header.GetAlgoEfficiency()
 	header.AlgoName = header.GetAlgoType().String()
 	header.NormBits = header.GetNormBits()
@@ -208,7 +208,7 @@ func (api *PovApi) GetHeaderByHeight(height uint64) (*PovApiHeader, error) {
 	apiHeader := &PovApiHeader{
 		PovHeader: header,
 	}
-	api.fillHeader(apiHeader)
+	FillHeader(apiHeader)
 
 	return apiHeader, nil
 }
@@ -227,7 +227,7 @@ func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) 
 	apiHeader := &PovApiHeader{
 		PovHeader: header,
 	}
-	api.fillHeader(apiHeader)
+	FillHeader(apiHeader)
 
 	return apiHeader, nil
 }
@@ -241,7 +241,7 @@ func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
 	apiHeader := &PovApiHeader{
 		PovHeader: header,
 	}
-	api.fillHeader(apiHeader)
+	FillHeader(apiHeader)
 
 	return apiHeader, nil
 }
@@ -275,7 +275,7 @@ func (api *PovApi) GetFittestHeader(gap uint64) (*PovApiHeader, error) {
 	apiHeader := &PovApiHeader{
 		PovHeader: header,
 	}
-	api.fillHeader(apiHeader)
+	FillHeader(apiHeader)
 
 	return apiHeader, nil
 }
@@ -301,7 +301,7 @@ func (api *PovApi) BatchGetHeadersByHeight(height uint64, count uint64, asc bool
 		apiHdr := &PovApiHeader{
 			PovHeader: dbHdr,
 		}
-		api.fillHeader(apiHdr)
+		FillHeader(apiHdr)
 		apiHeaders = append(apiHeaders, apiHdr)
 	}
 
@@ -1695,18 +1695,18 @@ func (api *PovApi) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	return CreatePovSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			notifyCh := make(chan struct{})
-			api.pubsub.addChan(subscription.ID, notifyCh)
-			defer api.pubsub.removeChan(subscription.ID)
+			api.pubsub.AddChan(string(subscription.ID), notifyCh)
+			defer api.pubsub.RemoveChan(string(subscription.ID))
 
 			for {
 				select {
 				case <-notifyCh:
-					blocks := api.pubsub.fetchBlocks(subscription.ID)
+					blocks := api.pubsub.FetchBlocks(string(subscription.ID))
 
 					for _, block := range blocks {
 						header := block.GetHeader()
 						apiHdr := &PovApiHeader{PovHeader: header}
-						api.fillHeader(apiHdr)
+						FillHeader(apiHdr)
 						err := notifier.Notify(subscription.ID, apiHdr)
 						if err != nil {
 							api.logger.Errorf("notify pov header %d/%s error: %s",

@@ -1,10 +1,17 @@
 package apis
 
 import (
+	"bufio"
 	"context"
-
+	crand "crypto/rand"
+	"encoding/binary"
+	"encoding/hex"
 	"github.com/golang/protobuf/ptypes/empty"
 	"go.uber.org/zap"
+	"math/rand"
+	"strings"
+	"sync"
+	"time"
 
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/event"
@@ -18,12 +25,16 @@ import (
 
 type LedgerAPI struct {
 	ledger *api.LedgerAPI
+	store  ledger.Store
+	pubsub *api.BlockSubscription
 	logger *zap.SugaredLogger
 }
 
 func NewLedgerApi(ctx context.Context, l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *LedgerAPI {
 	ledgerApi := LedgerAPI{
+		store:  l,
 		ledger: api.NewLedgerApi(ctx, l, eb, cc),
+		pubsub: api.NewBlockSubscription(ctx, eb),
 		logger: log.NewLogger("grpc_ledger"),
 	}
 
@@ -629,20 +640,209 @@ func (l *LedgerAPI) Process(ctx context.Context, block *pbtypes.StateBlock) (*pb
 	return toHash(r), nil
 }
 
-func (l *LedgerAPI) NewBlock(*empty.Empty, pb.LedgerAPI_NewBlockServer) error {
-	panic("implement me")
+func randomIDGenerator() func() string {
+	seed, err := binary.ReadVarint(bufio.NewReader(crand.Reader))
+	if err != nil {
+		seed = int64(time.Now().Nanosecond())
+	}
+	var (
+		mu  sync.Mutex
+		rng = rand.New(rand.NewSource(seed))
+	)
+	return func() string {
+		mu.Lock()
+		defer mu.Unlock()
+		id := make([]byte, 16)
+		rng.Read(id)
+		return encodeID(id)
+	}
 }
 
-func (l *LedgerAPI) NewAccountBlock(*pbtypes.Address, pb.LedgerAPI_NewAccountBlockServer) error {
-	panic("implement me")
+func encodeID(b []byte) string {
+	id := hex.EncodeToString(b)
+	id = strings.TrimLeft(id, "0")
+	if id == "" {
+		id = "0" // ID's are RPC quantities, no leading zero's and 0 is 0x0.
+	}
+	return string("0x" + id)
 }
 
-func (l *LedgerAPI) BalanceChange(*pbtypes.Address, pb.LedgerAPI_BalanceChangeServer) error {
-	panic("implement me")
+func (l *LedgerAPI) NewBlock(tx *empty.Empty, srv pb.LedgerAPI_NewBlockServer) error {
+	t := randomIDGenerator()
+	id := t()
+	ch := make(chan struct{})
+	l.logger.Infof("subscription block done, %s", id)
+	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
+	defer l.pubsub.RemoveChan(id)
+
+	for {
+		select {
+		case <-ch:
+			blocks := l.pubsub.FetchBlocks(id)
+			if len(blocks) == 0 {
+				continue
+			}
+
+			latestPov, _ := l.store.GetLatestPovHeader()
+
+			for _, block := range blocks {
+				apiBlk, err := api.GenerateAPIBlock(l.store, block, latestPov)
+				if err != nil {
+					l.logger.Errorf("generateAPIBlock error: %s", err)
+					continue
+				}
+				if err := srv.Send(toAPIBlock(apiBlk)); err != nil {
+					l.logger.Errorf("notify block error: %s", err)
+					return err
+				}
+			}
+		case <-srv.Context().Done():
+			l.logger.Infof("subscription block finished, %s ", id)
+			return nil
+		}
+	}
 }
 
-func (l *LedgerAPI) NewPending(*pbtypes.Address, pb.LedgerAPI_NewPendingServer) error {
-	panic("implement me")
+func (l *LedgerAPI) NewAccountBlock(addr *pbtypes.Address, srv pb.LedgerAPI_NewAccountBlockServer) error {
+	t := randomIDGenerator()
+	id := t()
+	ch := make(chan struct{})
+	l.logger.Infof("subscription account block done, %s", id)
+	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
+	defer l.pubsub.RemoveChan(id)
+
+	for {
+		select {
+		case <-ch:
+			blocks := l.pubsub.FetchBlocks(id)
+			if len(blocks) == 0 {
+				continue
+			}
+
+			latestPov, _ := l.store.GetLatestPovHeader()
+
+			for _, block := range blocks {
+				apiBlk, err := api.GenerateAPIBlock(l.store, block, latestPov)
+				if err != nil {
+					l.logger.Errorf("generateAPIBlock error: %s", err)
+					continue
+				}
+				if err := srv.Send(toAPIBlock(apiBlk)); err != nil {
+					l.logger.Errorf("notify account block error: %s", err)
+					return err
+				}
+			}
+		case <-srv.Context().Done():
+			l.logger.Infof("subscription account block finished, %s ", id)
+			return nil
+		}
+	}
+}
+
+func (l *LedgerAPI) BalanceChange(addr *pbtypes.Address, srv pb.LedgerAPI_BalanceChangeServer) error {
+	t := randomIDGenerator()
+	id := t()
+	ch := make(chan struct{})
+	l.logger.Infof("subscription balance change done, %s", id)
+	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
+	defer l.pubsub.RemoveChan(id)
+
+	address, err := toOriginAddress(addr)
+	if err != nil {
+		return err
+	}
+	for {
+		select {
+		case <-ch:
+			block := l.pubsub.FetchAddrBlock(id)
+			if block == nil {
+				continue
+			}
+
+			if block.GetAddress() == address {
+				am, err := l.store.GetAccountMeta(address)
+				if err != nil {
+					l.logger.Errorf("get account meta: %s", err)
+					continue
+				}
+				aa, err := api.GenerateAPIAccountMeta(l.store, am)
+				if err != nil {
+					l.logger.Errorf("generate APIAccountMeta error: %s", err)
+					continue
+				}
+				if err := srv.Send(toAPIAccount(aa)); err != nil {
+					l.logger.Errorf("notify balance change error: %s", err)
+					return err
+				}
+			}
+		case <-srv.Context().Done():
+			l.logger.Infof("subscription balance change finished, %s ", id)
+			return nil
+		}
+	}
+}
+
+func (l *LedgerAPI) NewPending(addr *pbtypes.Address, srv pb.LedgerAPI_NewPendingServer) error {
+	t := randomIDGenerator()
+	id := t()
+	ch := make(chan struct{})
+	l.logger.Infof("subscription new pending done, %s", id)
+	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
+	defer l.pubsub.RemoveChan(id)
+	address, err := toOriginAddress(addr)
+	if err != nil {
+		return err
+	}
+	for {
+		select {
+		case <-ch:
+			blocks := l.pubsub.FetchBlocks(id)
+			if len(blocks) == 0 {
+				continue
+			}
+
+			for _, block := range blocks {
+				if block.IsSendBlock() {
+					if block.Type == types.Send && block.GetLink() != types.Hash(address) {
+						continue
+					}
+					pk := &types.PendingKey{
+						Address: address,
+						Hash:    block.GetHash(),
+					}
+					if pi, _ := l.store.GetPending(pk); pi != nil {
+						token, err := l.store.GetTokenById(pi.Type)
+						if err != nil {
+							l.logger.Errorf("get token info: %s", err)
+							continue
+						}
+
+						blk, err := l.store.GetStateBlockConfirmed(pk.Hash)
+						if err != nil {
+							l.logger.Errorf("get block info: %s", err)
+							continue
+						}
+
+						ap := &api.APIPending{
+							PendingKey:  pk,
+							PendingInfo: pi,
+							TokenName:   token.TokenName,
+							Timestamp:   blk.Timestamp,
+							BlockType:   blk.GetType(),
+						}
+						if err := srv.Send(toAPIPending(ap)); err != nil {
+							l.logger.Errorf("notify new pending error: %s", err)
+							return err
+						}
+					}
+				}
+			}
+		case <-srv.Context().Done():
+			l.logger.Infof("subscription new pending finished, %s ", id)
+			return nil
+		}
+	}
+
 }
 
 func toAPIBlock(blk *api.APIBlock) *pb.APIBlock {
@@ -733,19 +933,23 @@ func toAPIAccount(acc *api.APIAccount) *pb.APIAccount {
 
 // Pending
 
+func toAPIPending(pending *api.APIPending) *pb.APIPending {
+	return &pb.APIPending{
+		Address:   toAddressValue(pending.Address),
+		Hash:      toHashValue(pending.Hash),
+		Source:    toAddressValue(pending.Source),
+		Amount:    toBalanceValue(pending.Amount),
+		Type:      toHashValue(pending.Type),
+		TokenName: pending.TokenName,
+		Timestamp: pending.Timestamp,
+		BlockType: toBlockTypeValue(pending.BlockType),
+	}
+}
+
 func toAPIPendings(pendings []*api.APIPending) *pb.APIPendings {
 	ps := make([]*pb.APIPending, 0)
 	for _, pending := range pendings {
-		pt := &pb.APIPending{
-			Address:   toAddressValue(pending.Address),
-			Hash:      toHashValue(pending.Hash),
-			Source:    toAddressValue(pending.Source),
-			Amount:    toBalanceValue(pending.Amount),
-			Type:      toHashValue(pending.Type),
-			TokenName: pending.TokenName,
-			Timestamp: pending.Timestamp,
-			BlockType: toBlockTypeValue(pending.BlockType),
-		}
+		pt := toAPIPending(pending)
 		ps = append(ps, pt)
 	}
 	return &pb.APIPendings{Pendings: ps}

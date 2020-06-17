@@ -37,7 +37,7 @@ type BlockSubscription struct {
 	mu         *sync.Mutex
 	eb         event.EventBus
 	subscriber *event.ActorSubscriber
-	allSubs    map[rpc.ID]*BlockSubscriber
+	allSubs    map[string]*BlockSubscriber
 	blocksCh   chan *types.StateBlock
 	ctx        context.Context
 	logger     *zap.SugaredLogger
@@ -55,7 +55,7 @@ func NewBlockSubscription(ctx context.Context, eb event.EventBus) *BlockSubscrip
 	bs := &BlockSubscription{
 		eb:       eb,
 		mu:       &sync.Mutex{},
-		allSubs:  make(map[rpc.ID]*BlockSubscriber),
+		allSubs:  make(map[string]*BlockSubscriber),
 		blocksCh: make(chan *types.StateBlock, MaxNotifyBlocks),
 		ctx:      ctx,
 		logger:   log.NewLogger("api_sub"),
@@ -112,7 +112,7 @@ func (r *BlockSubscription) setSyncBlocks(block *types.StateBlock, done bool) {
 	}
 }
 
-func (r *BlockSubscription) fetchBlocks(subID rpc.ID) []*types.StateBlock {
+func (r *BlockSubscription) FetchBlocks(subID string) []*types.StateBlock {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -129,7 +129,7 @@ func (r *BlockSubscription) fetchBlocks(subID rpc.ID) []*types.StateBlock {
 	return retBlks
 }
 
-func (r *BlockSubscription) fetchAddrBlock(subID rpc.ID) *types.StateBlock {
+func (r *BlockSubscription) FetchAddrBlock(subID string) *types.StateBlock {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -143,7 +143,7 @@ func (r *BlockSubscription) fetchAddrBlock(subID rpc.ID) *types.StateBlock {
 	return retBlk
 }
 
-func (r *BlockSubscription) addChan(subID rpc.ID, addr types.Address, batch bool, ch chan struct{}) {
+func (r *BlockSubscription) AddChan(subID string, addr types.Address, batch bool, ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
@@ -163,7 +163,7 @@ func (r *BlockSubscription) addChan(subID rpc.ID, addr types.Address, batch bool
 	r.allSubs[subID] = sub
 }
 
-func (r *BlockSubscription) removeChan(subID rpc.ID) {
+func (r *BlockSubscription) RemoveChan(subID string) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
