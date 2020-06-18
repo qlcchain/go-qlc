@@ -5,6 +5,7 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/mock"
+	"google.golang.org/grpc"
 	"os"
 	"path/filepath"
 	"testing"
@@ -169,7 +170,7 @@ func TestPovAPI_GetHeaders(t *testing.T) {
 
 	allBlks := mockPovApiGeneratePovBlocksToLedger(t, md, 3)
 
-	hdr, err := md.api.GetLatestHeader(context.Background(), &empty.Empty{})
+	hdr, err := md.api.GetLatestHeader(context.Background(), new(empty.Empty))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +290,7 @@ func TestPovAPI_Mining(t *testing.T) {
 
 	minerAcc := mock.Account()
 
-	rspStatus, err := md.api.GetPovStatus(context.Background(), &empty.Empty{})
+	rspStatus, err := md.api.GetPovStatus(context.Background(), new(empty.Empty))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +309,7 @@ func TestPovAPI_Mining(t *testing.T) {
 		t.Fatalf("failed to GetHashInfo")
 	}
 
-	rspMinerInfo, err := md.api.GetMiningInfo(context.Background(), &empty.Empty{})
+	rspMinerInfo, err := md.api.GetMiningInfo(context.Background(), new(empty.Empty))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +325,7 @@ func TestPovAPI_Mining(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = md.api.StopMining(context.Background(), &empty.Empty{})
+	_, err = md.api.StopMining(context.Background(), new(empty.Empty))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +445,7 @@ func TestPovAPI_ManyBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = md.api.GetLedgerStats(context.Background(), &empty.Empty{})
+	_, err = md.api.GetLedgerStats(context.Background(), new(empty.Empty))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,4 +501,36 @@ func TestPovAPI_ManyBlocks(t *testing.T) {
 
 	_, err = md.api.GetDiffDayStat(context.Background(), &pb.UInt32{Value: 0})
 	_, err = md.api.GetDiffDayStatByHeight(context.Background(), &pb.UInt64{Value: latestHdr.GetHeight()})
+}
+
+func TestPovAPI_NewBlock(t *testing.T) {
+	tearDone, md := setupTestCasePov(t)
+	defer tearDone(t)
+
+	//_ := mockPovApiGeneratePovBlocksToLedger(t, md, 3)
+
+	//go func() {
+	//	time.Sleep(1 * time.Second)
+	//	var prevPov *types.PovBlock
+	//	for i := 0; i < 160; i++ {
+	//		pb, _ := mock.GeneratePovBlock(prevPov, 0)
+	//		prevPov = pb
+	//		md.eb.Publish(topic.EventPovConnectBestBlock, pb)
+	//		time.Sleep(10 * time.Millisecond)
+	//	}
+	//}()
+
+	err := md.api.NewBlock(new(empty.Empty), &povAPINewBlockServer{ServerStream: new(baseStream)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(1 * time.Second)
+}
+
+type povAPINewBlockServer struct {
+	grpc.ServerStream
+}
+
+func (x *povAPINewBlockServer) Send(m *pb.PovApiHeader) error {
+	return x.ServerStream.SendMsg(m)
 }

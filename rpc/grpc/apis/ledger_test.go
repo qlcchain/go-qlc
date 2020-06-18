@@ -6,10 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -847,3 +851,134 @@ func TestLedgerAPI_Process(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLedgerAPI_NewBlock(t *testing.T) {
+	teardownTestCase, l, ledgerApi := setupDefaultLedgerAPI(t)
+	defer teardownTestCase(t)
+
+	ac1 := initAccount(l, t)
+
+	// GenerateSendBlock
+	ac2 := mock.Account()
+	go func() {
+		time.Sleep(1 * time.Second)
+		amount := types.Balance{Int: big.NewInt(int64(100000))}
+		sendBlk1, err := ledgerApi.GenerateSendBlock(context.Background(), &pb.GenerateSendBlockReq{
+			Param: &pb.APISendBlockPara{
+				From:      toAddressValue(ac1.Address()),
+				TokenName: "QLC",
+				To:        toAddressValue(ac2.Address()),
+				Amount:    toBalanceValue(amount),
+			},
+			PrkStr: "",
+		})
+		sendBlk, err := toOriginStateBlock(sendBlk1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		pendingKey := &types.PendingKey{
+			Address: ac2.Address(),
+			Hash:    sendBlk.GetHash(),
+		}
+		pendingInfo := &types.PendingInfo{
+			Source: ac1.Address(),
+			Type:   config.ChainToken(),
+			Amount: amount,
+		}
+		if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := l.AddStateBlock(sendBlk); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	err := ledgerApi.NewBlock(new(empty.Empty), &ledgerAPINewBlockServer{ServerStream: new(baseStream)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ledgerApi.NewAccountBlock(toAddress(ac1.Address()), &ledgerAPINewBlockServer{ServerStream: new(baseStream)})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ledgerApi.BalanceChange(toAddress(ac1.Address()), &ledgerAPIBalanceChangeServer{ServerStream: new(baseStream)})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ledgerApi.NewPending(toAddress(ac2.Address()), &ledgerAPINewPendingServer{ServerStream: new(baseStream)})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(3 * time.Second)
+}
+
+type ledgerAPINewBlockServer struct {
+	grpc.ServerStream
+}
+
+func (x *ledgerAPINewBlockServer) Send(m *pb.APIBlock) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+type ledgerAPIBalanceChangeServer struct {
+	grpc.ServerStream
+}
+
+func (x *ledgerAPIBalanceChangeServer) Send(m *pb.APIAccount) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+type ledgerAPINewPendingServer struct {
+	grpc.ServerStream
+}
+
+func (x *ledgerAPINewPendingServer) Send(m *pb.APIPending) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+type baseStream struct {
+}
+
+func (s *baseStream) SetHeader(metadata.MD) error {
+	panic("implement me")
+}
+
+func (s *baseStream) SendHeader(metadata.MD) error {
+	panic("implement me")
+}
+
+func (s *baseStream) SetTrailer(metadata.MD) {
+	panic("implement me")
+}
+
+func (s *baseStream) Context() context.Context {
+	return context.Background()
+}
+
+func (s *baseStream) SendMsg(m interface{}) error {
+	fmt.Println(m)
+	return nil
+}
+
+func (s *baseStream) RecvMsg(m interface{}) error {
+	panic("implement me")
+}
+
+//
+//func TestLedgerAPI_AddChan(t *testing.T) {
+//	cs := make(map[string]int)
+//	for i := 0; i < 200; i++ {
+//		c := util.RandomFixedString(32)
+//		if _, ok := cs[c]; ok {
+//			t.Fatal("id exist already", i, cs[c])
+//		}
+//		cs[c] = i
+//	}
+//}

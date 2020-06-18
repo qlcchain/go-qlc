@@ -357,7 +357,7 @@ func (p *PovAPI) StartMining(ctx context.Context, param *pb.StartMiningRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return &empty.Empty{}, nil
+	return new(empty.Empty), nil
 }
 
 func (p *PovAPI) StopMining(ctx context.Context, param *empty.Empty) (*empty.Empty, error) {
@@ -365,7 +365,7 @@ func (p *PovAPI) StopMining(ctx context.Context, param *empty.Empty) (*empty.Emp
 	if err != nil {
 		return nil, err
 	}
-	return &empty.Empty{}, nil
+	return new(empty.Empty), nil
 }
 
 func (p *PovAPI) GetMiningInfo(ctx context.Context, param *empty.Empty) (*pb.PovApiGetMiningInfo, error) {
@@ -424,35 +424,39 @@ func (p *PovAPI) GetLastNHourInfo(ctx context.Context, param *pb.LastNHourInfoRe
 //}
 
 func (p *PovAPI) NewBlock(em *empty.Empty, srv pb.PovAPI_NewBlockServer) error {
-	id := getReqId()
-	ch := make(chan struct{})
-	p.logger.Infof("subscription pov block done, %s", id)
-	p.pubsub.AddChan(id, ch)
-	defer p.pubsub.RemoveChan(id)
+	go func() {
+		id := getReqId()
+		ch := make(chan struct{})
+		p.logger.Infof("subscription pov block done, %s", id)
+		p.pubsub.AddChan(id, ch)
+		defer p.pubsub.RemoveChan(id)
 
-	for {
-		select {
-		case <-ch:
-			blocks := p.pubsub.FetchBlocks(id)
+		for {
+			select {
+			case <-ch:
+				p.logger.Debug("to publish pov block")
+				blocks := p.pubsub.FetchBlocks(id)
 
-			for _, block := range blocks {
-				header := block.GetHeader()
-				apiHdr := &api.PovApiHeader{PovHeader: header}
-				api.FillHeader(apiHdr)
+				for _, block := range blocks {
+					header := block.GetHeader()
+					apiHdr := &api.PovApiHeader{PovHeader: header}
+					api.FillHeader(apiHdr)
 
-				if err := srv.Send(toPovApiHeader(apiHdr)); err != nil {
-					p.logger.Errorf("notify pov header %d/%s error: %s",
-						err, header.GetHeight(), header.GetHash())
-					return err
+					p.logger.Debugf("send pov block %s", apiHdr.GetHash())
+					if err := srv.Send(toPovApiHeader(apiHdr)); err != nil {
+						p.logger.Errorf("notify pov header %d/%s error: %s",
+							err, header.GetHeight(), header.GetHash())
+						return
+					}
+
 				}
-
+			case <-srv.Context().Done():
+				p.logger.Infof("subscription  pov block finished, %s ", id)
+				return
 			}
-		case <-srv.Context().Done():
-			p.logger.Infof("subscription  pov block finished, %s ", id)
-			return nil
 		}
-	}
-
+	}()
+	return nil
 }
 
 func toPovStatus(s *api.PovStatus) *pb.PovStatus {

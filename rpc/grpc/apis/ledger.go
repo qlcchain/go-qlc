@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/qlcchain/go-qlc/common/util"
 	"go.uber.org/zap"
 	"math/rand"
 	"strings"
@@ -79,17 +80,6 @@ func (l *LedgerAPI) AccountInfo(ctx context.Context, addr *pbtypes.Address) (*pb
 }
 
 func (l *LedgerAPI) ConfirmedAccountInfo(ctx context.Context, addr *pbtypes.Address) (*pb.APIAccount, error) {
-	//return &pb.APIAccount{
-	//	Address: "qlc_1c6xxzrjgy7qp6oehkjf9gbbeonmupg68zqszfp1okfm3k5y5738hahaus8o",
-	//	Tokens: []*pb.APITokenMeta{
-	//		{
-	//			TokenName: "QLC",
-	//			TokenMeta: &pbtypes.TokenMeta{
-	//				Type: "3f3ab7b5657ce9a7786feea51a0c7660f63bff2e7abb27c6c6ff6a8d3a1955b2",
-	//			},
-	//		},
-	//	},
-	//}, nil
 	address, err := toOriginAddressByValue(addr.GetAddress())
 	if err != nil {
 		return nil, err
@@ -179,30 +169,6 @@ func (l *LedgerAPI) AccountsBalance(ctx context.Context, addresses *pbtypes.Addr
 		result[toAddressValue(addr)] = aff
 	}
 	return &pb.AccountsBalanceRsp{AccountsBalances: result}, nil
-	//return &pb.AccountsBalanceRsp{
-	//	AccountsBalances: map[string]*pb.AccountsBalanceRspBalances{
-	//		"qlc_1c6xxzrjgy7qp6oehkjf9gbbeonmupg68zqszfp1okfm3k5y5738hahaus8o": {
-	//			Balances: map[string]*pb.AccountsBalanceRsp_APIAccountsBalance{
-	//				"3f3ab7b5657ce9a7786feea51a0c7660f63bff2e7abb27c6c6ff6a8d3a1955b2": {
-	//					Balance: 100,
-	//					Vote:    100,
-	//				},
-	//				"660f63bff2e7abb27c6c6ff6a8d3a1955b24f3ab7b5657ce9a7786feea51a0c7": {
-	//					Balance: 200,
-	//					Vote:    200,
-	//				},
-	//			},
-	//		},
-	//		"qlc_upg68zqszfp1okfm3k5y5738hahaus8o1c6xxzrjgy7qp6oehkjf9gbbeonm": {
-	//			Balances: map[string]*pb.AccountsBalanceRsp_APIAccountsBalance{
-	//				"3f3ab7b5657ce9a7786feea51a0c7660f63bff2e7abb27c6c6ff6a8d3a1955b2": {
-	//					Balance: 300,
-	//					Vote:    100,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}, nil
 }
 
 func (l *LedgerAPI) AccountsFrontiers(ctx context.Context, addresses *pbtypes.Addresses) (*pb.AccountsFrontiersRsp, error) {
@@ -668,182 +634,200 @@ func encodeID(b []byte) string {
 }
 
 func getReqId() string {
-	t := randomIDGenerator()
-	return t()
+	return util.RandomFixedString(32)
 }
 
 func (l *LedgerAPI) NewBlock(tx *empty.Empty, srv pb.LedgerAPI_NewBlockServer) error {
-	id := getReqId()
-	ch := make(chan struct{})
-	l.logger.Infof("subscription block done, %s", id)
-	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
-	defer l.pubsub.RemoveChan(id)
-
-	for {
-		select {
-		case <-ch:
-			blocks := l.pubsub.FetchBlocks(id)
-			if len(blocks) == 0 {
-				continue
-			}
-
-			latestPov, _ := l.store.GetLatestPovHeader()
-
-			for _, block := range blocks {
-				apiBlk, err := api.GenerateAPIBlock(l.store, block, latestPov)
-				if err != nil {
-					l.logger.Errorf("generateAPIBlock error: %s", err)
+	go func() {
+		id := getReqId()
+		ch := make(chan struct{})
+		l.logger.Infof("subscription block done, %s", id)
+		l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
+		defer l.pubsub.RemoveChan(id)
+		for {
+			select {
+			case <-ch:
+				l.logger.Debug("to publish block")
+				blocks := l.pubsub.FetchBlocks(id)
+				if len(blocks) == 0 {
 					continue
 				}
-				if err := srv.Send(toAPIBlock(apiBlk)); err != nil {
-					l.logger.Errorf("notify block error: %s", err)
-					return err
+
+				latestPov, _ := l.store.GetLatestPovHeader()
+
+				for _, block := range blocks {
+					apiBlk, err := api.GenerateAPIBlock(l.store, block, latestPov)
+					if err != nil {
+						l.logger.Errorf("generateAPIBlock error: %s", err)
+						continue
+					}
+					l.logger.Debugf("send block [%s]", apiBlk.GetHash())
+					if err := srv.Send(toAPIBlock(apiBlk)); err != nil {
+						l.logger.Errorf("notify block error: %s", err)
+						return
+					}
 				}
+			case <-srv.Context().Done():
+				l.logger.Infof("subscription block finished, %s ", id)
+				return
 			}
-		case <-srv.Context().Done():
-			l.logger.Infof("subscription block finished, %s ", id)
-			return nil
 		}
-	}
+	}()
+	return nil
 }
 
 func (l *LedgerAPI) NewAccountBlock(addr *pbtypes.Address, srv pb.LedgerAPI_NewAccountBlockServer) error {
-	id := getReqId()
-	ch := make(chan struct{})
-	l.logger.Infof("subscription account block done, %s", id)
-	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
-	defer l.pubsub.RemoveChan(id)
+	go func() {
+		id := getReqId()
+		ch := make(chan struct{})
+		l.logger.Infof("subscription account block done, %s", id)
+		l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
+		defer l.pubsub.RemoveChan(id)
 
-	for {
-		select {
-		case <-ch:
-			blocks := l.pubsub.FetchBlocks(id)
-			if len(blocks) == 0 {
-				continue
-			}
-
-			latestPov, _ := l.store.GetLatestPovHeader()
-
-			for _, block := range blocks {
-				apiBlk, err := api.GenerateAPIBlock(l.store, block, latestPov)
-				if err != nil {
-					l.logger.Errorf("generateAPIBlock error: %s", err)
+		for {
+			select {
+			case <-ch:
+				l.logger.Debug("to publish account block")
+				blocks := l.pubsub.FetchBlocks(id)
+				if len(blocks) == 0 {
 					continue
 				}
-				if err := srv.Send(toAPIBlock(apiBlk)); err != nil {
-					l.logger.Errorf("notify account block error: %s", err)
-					return err
+
+				latestPov, _ := l.store.GetLatestPovHeader()
+
+				for _, block := range blocks {
+					apiBlk, err := api.GenerateAPIBlock(l.store, block, latestPov)
+					if err != nil {
+						l.logger.Errorf("generateAPIBlock error: %s", err)
+						continue
+					}
+					l.logger.Debugf("send account block [%s:%s]", addr, apiBlk.GetHash())
+					if err := srv.Send(toAPIBlock(apiBlk)); err != nil {
+						l.logger.Errorf("notify account block error: %s", err)
+						return
+					}
 				}
+			case <-srv.Context().Done():
+				l.logger.Infof("subscription account block finished, %s ", id)
+				return
 			}
-		case <-srv.Context().Done():
-			l.logger.Infof("subscription account block finished, %s ", id)
-			return nil
 		}
-	}
+	}()
+	return nil
+
 }
 
 func (l *LedgerAPI) BalanceChange(addr *pbtypes.Address, srv pb.LedgerAPI_BalanceChangeServer) error {
-	id := getReqId()
-	ch := make(chan struct{})
-	l.logger.Infof("subscription balance change done, %s", id)
-	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
-	defer l.pubsub.RemoveChan(id)
-
 	address, err := toOriginAddress(addr)
 	if err != nil {
 		return err
 	}
-	for {
-		select {
-		case <-ch:
-			block := l.pubsub.FetchAddrBlock(id)
-			if block == nil {
-				continue
-			}
+	go func() {
+		id := getReqId()
+		ch := make(chan struct{})
+		l.logger.Infof("subscription balance change done, %s", id)
+		l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
+		defer l.pubsub.RemoveChan(id)
+		for {
+			select {
+			case <-ch:
+				l.logger.Debug("to publish balance")
+				block := l.pubsub.FetchAddrBlock(id)
+				if block == nil {
+					continue
+				}
 
-			if block.GetAddress() == address {
-				am, err := l.store.GetAccountMeta(address)
-				if err != nil {
-					l.logger.Errorf("get account meta: %s", err)
-					continue
+				if block.GetAddress() == address {
+					am, err := l.store.GetAccountMeta(address)
+					if err != nil {
+						l.logger.Errorf("get account meta: %s", err)
+						continue
+					}
+					aa, err := api.GenerateAPIAccountMeta(l.store, am)
+					if err != nil {
+						l.logger.Errorf("generate APIAccountMeta error: %s", err)
+						continue
+					}
+					l.logger.Debugf("send balance [%s]", aa.Address.String())
+					if err := srv.Send(toAPIAccount(aa)); err != nil {
+						l.logger.Errorf("notify balance change error: %s", err)
+						return
+					}
 				}
-				aa, err := api.GenerateAPIAccountMeta(l.store, am)
-				if err != nil {
-					l.logger.Errorf("generate APIAccountMeta error: %s", err)
-					continue
-				}
-				if err := srv.Send(toAPIAccount(aa)); err != nil {
-					l.logger.Errorf("notify balance change error: %s", err)
-					return err
-				}
+			case <-srv.Context().Done():
+				l.logger.Infof("subscription balance change finished, %s ", id)
+				return
 			}
-		case <-srv.Context().Done():
-			l.logger.Infof("subscription balance change finished, %s ", id)
-			return nil
 		}
-	}
+	}()
+	return nil
 }
 
 func (l *LedgerAPI) NewPending(addr *pbtypes.Address, srv pb.LedgerAPI_NewPendingServer) error {
-	id := getReqId()
-	ch := make(chan struct{})
-	l.logger.Infof("subscription new pending done, %s", id)
-	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
-	defer l.pubsub.RemoveChan(id)
 	address, err := toOriginAddress(addr)
 	if err != nil {
 		return err
 	}
-	for {
-		select {
-		case <-ch:
-			blocks := l.pubsub.FetchBlocks(id)
-			if len(blocks) == 0 {
-				continue
-			}
+	go func() {
+		id := getReqId()
+		ch := make(chan struct{})
+		l.logger.Infof("subscription new pending done, %s", id)
+		l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
+		defer l.pubsub.RemoveChan(id)
 
-			for _, block := range blocks {
-				if block.IsSendBlock() {
-					if block.Type == types.Send && block.GetLink() != types.Hash(address) {
-						continue
-					}
-					pk := &types.PendingKey{
-						Address: address,
-						Hash:    block.GetHash(),
-					}
-					if pi, _ := l.store.GetPending(pk); pi != nil {
-						token, err := l.store.GetTokenById(pi.Type)
-						if err != nil {
-							l.logger.Errorf("get token info: %s", err)
+		for {
+			select {
+			case <-ch:
+				l.logger.Debug("to publish pending")
+				blocks := l.pubsub.FetchBlocks(id)
+				if len(blocks) == 0 {
+					continue
+				}
+
+				for _, block := range blocks {
+					if block.IsSendBlock() {
+						if block.Type == types.Send && block.GetLink() != types.Hash(address) {
 							continue
 						}
-
-						blk, err := l.store.GetStateBlockConfirmed(pk.Hash)
-						if err != nil {
-							l.logger.Errorf("get block info: %s", err)
-							continue
+						pk := &types.PendingKey{
+							Address: address,
+							Hash:    block.GetHash(),
 						}
+						if pi, _ := l.store.GetPending(pk); pi != nil {
+							token, err := l.store.GetTokenById(pi.Type)
+							if err != nil {
+								l.logger.Errorf("get token info: %s", err)
+								continue
+							}
 
-						ap := &api.APIPending{
-							PendingKey:  pk,
-							PendingInfo: pi,
-							TokenName:   token.TokenName,
-							Timestamp:   blk.Timestamp,
-							BlockType:   blk.GetType(),
-						}
-						if err := srv.Send(toAPIPending(ap)); err != nil {
-							l.logger.Errorf("notify new pending error: %s", err)
-							return err
+							blk, err := l.store.GetStateBlockConfirmed(pk.Hash)
+							if err != nil {
+								l.logger.Errorf("get block info: %s", err)
+								continue
+							}
+
+							ap := &api.APIPending{
+								PendingKey:  pk,
+								PendingInfo: pi,
+								TokenName:   token.TokenName,
+								Timestamp:   blk.Timestamp,
+								BlockType:   blk.GetType(),
+							}
+							l.logger.Debugf("send pending [%s]", ap.Address)
+							if err := srv.Send(toAPIPending(ap)); err != nil {
+								l.logger.Errorf("notify new pending error: %s", err)
+								return
+							}
 						}
 					}
 				}
+			case <-srv.Context().Done():
+				l.logger.Infof("subscription new pending finished, %s ", id)
+				return
 			}
-		case <-srv.Context().Done():
-			l.logger.Infof("subscription new pending finished, %s ", id)
-			return nil
 		}
-	}
-
+	}()
+	return nil
 }
 
 func toAPIBlock(blk *api.APIBlock) *pb.APIBlock {
