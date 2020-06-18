@@ -48,10 +48,7 @@ func Start(cfgFile string, ctx context.Context) (*GRPCServer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen: %s (%s,%s)", err, network, address)
 	}
-
-	grpcServer := grpc.NewServer()
 	qrpc := &GRPCServer{
-		rpc:     grpcServer,
 		ledger:  l,
 		eb:      eb,
 		cfg:     cfg,
@@ -60,6 +57,11 @@ func Start(cfgFile string, ctx context.Context) (*GRPCServer, error) {
 		cc:      cc,
 		logger:  log.NewLogger("grpc"),
 	}
+
+	grpcServer := grpc.NewServer(grpc.StreamInterceptor(qrpc.StreamServerInterceptor),
+		grpc.UnaryInterceptor(qrpc.UnaryServerInterceptor))
+
+	qrpc.rpc = grpcServer
 	qrpc.registerApi()
 	reflection.Register(grpcServer)
 	go func() {
@@ -100,8 +102,10 @@ func (r *GRPCServer) newGateway(grpcAddress string) error {
 }
 
 func (r *GRPCServer) Stop() {
-	if err := r.hServer.Shutdown(context.Background()); err != nil {
-		r.logger.Error(err)
+	if r.hServer != nil {
+		if err := r.hServer.Shutdown(context.Background()); err != nil {
+			r.logger.Error(err)
+		}
 	}
 	r.rpc.Stop()
 	r.logger.Info("grpc stopped")
@@ -196,4 +200,19 @@ func registerGWApi(ctx context.Context, gwmux *runtime.ServeMux, endpoint string
 		return err
 	}
 	return nil
+}
+
+func (r *GRPCServer) UnaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	r.logger.Debugf("before unary handling. info: %+v \n", info)
+	resp, err := handler(ctx, req)
+	r.logger.Debugf("after unary handling. resp: %+v \n", resp)
+	return resp, err
+}
+
+// StreamServerInterceptor is a gRPC server-side interceptor that provides Prometheus monitoring for Streaming RPCs.
+func (r *GRPCServer) StreamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	r.logger.Debugf("before stream handling. info: %+v \n", info)
+	err := handler(srv, ss)
+	r.logger.Debugf("after stream handling. err: %v \n", err)
+	return err
 }

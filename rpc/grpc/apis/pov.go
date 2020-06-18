@@ -424,8 +424,7 @@ func (p *PovAPI) GetLastNHourInfo(ctx context.Context, param *pb.LastNHourInfoRe
 //}
 
 func (p *PovAPI) NewBlock(em *empty.Empty, srv pb.PovAPI_NewBlockServer) error {
-	t := randomIDGenerator()
-	id := t()
+	id := getReqId()
 	ch := make(chan struct{})
 	p.logger.Infof("subscription pov block done, %s", id)
 	p.pubsub.AddChan(id, ch)

@@ -667,9 +667,13 @@ func encodeID(b []byte) string {
 	return string("0x" + id)
 }
 
-func (l *LedgerAPI) NewBlock(tx *empty.Empty, srv pb.LedgerAPI_NewBlockServer) error {
+func getReqId() string {
 	t := randomIDGenerator()
-	id := t()
+	return t()
+}
+
+func (l *LedgerAPI) NewBlock(tx *empty.Empty, srv pb.LedgerAPI_NewBlockServer) error {
+	id := getReqId()
 	ch := make(chan struct{})
 	l.logger.Infof("subscription block done, %s", id)
 	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
@@ -704,8 +708,7 @@ func (l *LedgerAPI) NewBlock(tx *empty.Empty, srv pb.LedgerAPI_NewBlockServer) e
 }
 
 func (l *LedgerAPI) NewAccountBlock(addr *pbtypes.Address, srv pb.LedgerAPI_NewAccountBlockServer) error {
-	t := randomIDGenerator()
-	id := t()
+	id := getReqId()
 	ch := make(chan struct{})
 	l.logger.Infof("subscription account block done, %s", id)
 	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
@@ -740,8 +743,7 @@ func (l *LedgerAPI) NewAccountBlock(addr *pbtypes.Address, srv pb.LedgerAPI_NewA
 }
 
 func (l *LedgerAPI) BalanceChange(addr *pbtypes.Address, srv pb.LedgerAPI_BalanceChangeServer) error {
-	t := randomIDGenerator()
-	id := t()
+	id := getReqId()
 	ch := make(chan struct{})
 	l.logger.Infof("subscription balance change done, %s", id)
 	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)
@@ -783,8 +785,7 @@ func (l *LedgerAPI) BalanceChange(addr *pbtypes.Address, srv pb.LedgerAPI_Balanc
 }
 
 func (l *LedgerAPI) NewPending(addr *pbtypes.Address, srv pb.LedgerAPI_NewPendingServer) error {
-	t := randomIDGenerator()
-	id := t()
+	id := getReqId()
 	ch := make(chan struct{})
 	l.logger.Infof("subscription new pending done, %s", id)
 	l.pubsub.AddChan(id, types.ZeroAddress, true, ch)

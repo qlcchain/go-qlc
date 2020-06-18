@@ -56,9 +56,9 @@ func DefaultConfigV2(dir string) (*ConfigV2, error) {
 
 func defaultGRPCConfig() *GRPCConfig {
 	return &GRPCConfig{
-		Enable:                 true,
+		Enable:                 false,
 		ListenAddress:          "tcp://0.0.0.0:19746",
-		HTTPEnable:             true,
+		HTTPEnable:             false,
 		HTTPListenAddress:      "tcp://0.0.0.0:19745",
 		MaxSubscriptionClients: 100,
 	}
