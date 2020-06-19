@@ -1,0 +1,68 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "types/basic.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service AccountAPI{
+    rpc Create(CreateRequest) returns (CreateResponse){
+        option (google.api.http) = {
+           get: "/account/create"
+       };
+    }
+
+    rpc ForPublicKey(String) returns (types.Address){
+        option (google.api.http) = {
+           get: "/account/forPublicKey"
+       };
+    }
+
+    rpc NewSeed(google.protobuf.Empty) returns (String){
+        option (google.api.http) = {
+           get: "/account/newSeed"
+       };
+    }
+
+    rpc NewAccounts(UInt32) returns (AccountsResponse){
+        option (google.api.http) = {
+           get: "/account/newAccounts"
+       };
+    }
+
+    rpc PublicKey(types.Address) returns (String){
+        option (google.api.http) = {
+           get: "/account/publicKey"
+       };
+    }
+
+    rpc Validate(String) returns (Boolean){
+        option (google.api.http) = {
+           get: "/account/validate"
+       };
+    }
+}
+
+message CreateRequest {
+    string seedStr = 1;
+    uint32 index   = 2;
+}
+
+message CreateResponse {
+    map<string,string> value = 1;
+}
+
+
+message Account {
+    string Seed        = 1;
+    string PrivateKey  = 2;
+    string PublicKey   = 3;
+    string Address     = 4;
+}
+
+message AccountsResponse {
+    repeated Account Accounts = 1;
+}

@@ -74,6 +74,10 @@ func parseString(s string) BlockType {
 	}
 }
 
+func BlockTypeFromStr(s string) BlockType {
+	return parseString(s)
+}
+
 func (t BlockType) String() string {
 	switch t {
 	case State:

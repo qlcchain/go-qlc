@@ -1,0 +1,2065 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "pov.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/pov/batchGetHeadersByHeight": {
+      "get": {
+        "operationId": "BatchGetHeadersByHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiBatchHeader"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "asc",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "format": "boolean"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getAccountState": {
+      "get": {
+        "operationId": "GetAccountState",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "stateHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getAccountStateByBlockHash": {
+      "get": {
+        "operationId": "GetAccountStateByBlockHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "blockHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getAccountStateByBlockHeight": {
+      "get": {
+        "operationId": "GetAccountStateByBlockHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getAllRepStatesByBlockHash": {
+      "get": {
+        "operationId": "GetAllRepStatesByBlockHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiRepState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getAllRepStatesByBlockHeight": {
+      "get": {
+        "operationId": "GetAllRepStatesByBlockHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiRepState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getAllRepStatesByStateHash": {
+      "get": {
+        "operationId": "GetAllRepStatesByStateHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiRepState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getBlockByHash": {
+      "get": {
+        "operationId": "GetBlockByHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "blockHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "txOffset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "txLimit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getBlockByHeight": {
+      "get": {
+        "operationId": "GetBlockByHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "txOffset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "txLimit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getDiffDayStat": {
+      "get": {
+        "operationId": "GetDiffDayStat",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesPovDiffDayStat"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getDiffDayStatByHeight": {
+      "get": {
+        "operationId": "GetDiffDayStatByHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesPovDiffDayStat"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getFittestHeader": {
+      "get": {
+        "operationId": "GetFittestHeader",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiHeader"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getHashInfo": {
+      "get": {
+        "operationId": "GetHashInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiHashInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "lookup",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getHeaderByHash": {
+      "get": {
+        "operationId": "GetHeaderByHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiHeader"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getHeaderByHeight": {
+      "get": {
+        "operationId": "GetHeaderByHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiHeader"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getLastNHourInfo": {
+      "post": {
+        "operationId": "GetLastNHourInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiGetLastNHourInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoLastNHourInfoRequest"
+            }
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getLatestAccountState": {
+      "get": {
+        "operationId": "GetLatestAccountState",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getLatestBlock": {
+      "get": {
+        "operationId": "GetLatestBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "txLimit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "txOffset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getLatestHeader": {
+      "get": {
+        "operationId": "GetLatestHeader",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiHeader"
+            }
+          }
+        },
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getLedgerStats": {
+      "get": {
+        "operationId": "GetLedgerStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovLedgerStats"
+            }
+          }
+        },
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getMinerDayStat": {
+      "get": {
+        "operationId": "GetMinerDayStat",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesPovMinerDayStat"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getMinerDayStatByHeight": {
+      "get": {
+        "operationId": "GetMinerDayStatByHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesPovMinerDayStat"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getMinerStats": {
+      "get": {
+        "summary": "rpc GetBlockTDByHash (types.Hash) returns (PovApiTD) {\n       option (google.api.http) = {\n          get: \"/pov/getBlockTDByHash\"\n      };\n   }",
+        "description": "rpc GetBlockTDByHeight (UInt64) returns (PovApiTD) {\n       option (google.api.http) = {\n          get: \"/pov/getBlockTDByHeight\"\n      };\n   }",
+        "operationId": "GetMinerStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovMinerStats"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addresses",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getMiningInfo": {
+      "get": {
+        "operationId": "GetMiningInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiGetMiningInfo"
+            }
+          }
+        },
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getPovStatus": {
+      "get": {
+        "operationId": "GetPovStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovStatus"
+            }
+          }
+        },
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getRepStats": {
+      "get": {
+        "operationId": "GetRepStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovRepStats"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addresses",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getTransaction": {
+      "get": {
+        "operationId": "GetTransaction",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiTxLookup"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getTransactionByBlockHashAndIndex": {
+      "get": {
+        "operationId": "GetTransactionByBlockHashAndIndex",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiTxLookup"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "index",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "blockHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getTransactionByBlockHeightAndIndex": {
+      "get": {
+        "operationId": "GetTransactionByBlockHeightAndIndex",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiTxLookup"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "index",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/getWork": {
+      "get": {
+        "operationId": "GetWork",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPovApiGetWork"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "minerAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "algoName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/newBlock": {
+      "get": {
+        "operationId": "NewBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "$ref": "#/x-stream-definitions/protoPovApiHeader"
+            }
+          }
+        },
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/startMining": {
+      "get": {
+        "operationId": "StartMining",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "properties": {}
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "minerAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "algoName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    },
+    "/pov/stopMining": {
+      "get": {
+        "operationId": "StopMining",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "properties": {}
+            }
+          }
+        },
+        "tags": [
+          "PovAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoLastNHourInfoRequest": {
+      "type": "object",
+      "properties": {
+        "endHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timeSpan": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "protoPovApiBatchHeader": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoPovApiHeader"
+          }
+        }
+      }
+    },
+    "protoPovApiBlock": {
+      "type": "object",
+      "properties": {
+        "Header": {
+          "$ref": "#/definitions/typesPovHeader"
+        },
+        "Body": {
+          "$ref": "#/definitions/typesPovBody"
+        },
+        "algoName": {
+          "type": "string"
+        },
+        "AlgoEfficiency": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "NormBits": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "NormDifficulty": {
+          "type": "number",
+          "format": "double"
+        },
+        "AlgoDifficulty": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protoPovApiGetLastNHourInfo": {
+      "type": "object",
+      "properties": {
+        "maxTxPerBlock": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "minTxPerBlock": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "avgTxPerBlock": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "maxTxPerHour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "minTxPerHour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "avgTxPerHour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "maxBlockPerHour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "minBlockPerHour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "avgBlockPerHour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "allBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "allTxNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sha256dBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "x11BlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "scryptBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "auxBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "hourItemList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoPovApiGetLastNHourItem"
+          }
+        }
+      }
+    },
+    "protoPovApiGetLastNHourItem": {
+      "type": "object",
+      "properties": {
+        "hour": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "allBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "allTxNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "allMinerReward": {
+          "type": "string",
+          "format": "int64"
+        },
+        "allRepReward": {
+          "type": "string",
+          "format": "int64"
+        },
+        "sha256dBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "x11BlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "scryptBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "auxBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "maxTxPerBlock": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "minTxPerBlock": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "avgTxPerBlock": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "protoPovApiGetMiningInfo": {
+      "type": "object",
+      "properties": {
+        "syncState": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "syncStateStr": {
+          "type": "string"
+        },
+        "currentBlockHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "currentBlockHash": {
+          "type": "string"
+        },
+        "currentBlockSize": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "currentBlockTx": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "currentBlockAlgo": {
+          "type": "string"
+        },
+        "pooledTx": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "difficulty": {
+          "type": "number",
+          "format": "double"
+        },
+        "hashInfo": {
+          "$ref": "#/definitions/protoPovApiHashInfo"
+        },
+        "minerAddr": {
+          "type": "string"
+        },
+        "algoName": {
+          "type": "string"
+        },
+        "algoEfficiency": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "cpuMining": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoPovApiGetWork": {
+      "type": "object",
+      "properties": {
+        "workHash": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "bits": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "height": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "minTime": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "merkleBranch": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coinBaseData1": {
+          "type": "string"
+        },
+        "coinBaseData2": {
+          "type": "string"
+        }
+      }
+    },
+    "protoPovApiHashInfo": {
+      "type": "object",
+      "properties": {
+        "chainHashPS": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "sha256dHashPS": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "scryptHashPS": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "x11HashPS": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "protoPovApiHeader": {
+      "type": "object",
+      "properties": {
+        "basHdr": {
+          "$ref": "#/definitions/typesPovBaseHeader",
+          "title": "types.PovHeader povHeader      = 1;"
+        },
+        "auxHdr": {
+          "$ref": "#/definitions/typesPovAuxHeader"
+        },
+        "cbTx": {
+          "$ref": "#/definitions/typesPovCoinBaseTx"
+        },
+        "algoName": {
+          "type": "string"
+        },
+        "algoEfficiency": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "normBits": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "normDifficulty": {
+          "type": "number",
+          "format": "double"
+        },
+        "algoDifficulty": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protoPovApiRepState": {
+      "type": "object",
+      "properties": {
+        "stateHash": {
+          "type": "string"
+        },
+        "reps": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typesPovRepState"
+          }
+        }
+      }
+    },
+    "protoPovApiState": {
+      "type": "object",
+      "properties": {
+        "accountState": {
+          "$ref": "#/definitions/typesPovAccountState"
+        },
+        "repState": {
+          "$ref": "#/definitions/typesPovRepState"
+        },
+        "contractState": {
+          "$ref": "#/definitions/typesPovContractState"
+        }
+      }
+    },
+    "protoPovApiTxLookup": {
+      "type": "object",
+      "properties": {
+        "txHash": {
+          "type": "string"
+        },
+        "txLookup": {
+          "$ref": "#/definitions/typesPovTxLookup"
+        },
+        "coinbaseTx": {
+          "$ref": "#/definitions/typesPovCoinBaseTx"
+        },
+        "accountTx": {
+          "$ref": "#/definitions/typesStateBlock"
+        }
+      }
+    },
+    "protoPovLedgerStats": {
+      "type": "object",
+      "properties": {
+        "povBlockCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "povBestCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "povAllTxCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "povCbTxCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "povStateTxCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "stateBlockCount": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "protoPovMinerStatItem": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "mainBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "mainRewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "stableBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "stableRewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "firstBlockTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastBlockTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "firstBlockHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "lastBlockHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "isHourOnline": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "isDayOnline": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoPovMinerStats": {
+      "type": "object",
+      "properties": {
+        "minerCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "hourOnlineCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "dayOnlineCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "minerStats": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/protoPovMinerStatItem"
+          }
+        },
+        "totalBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "totalRewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "totalMinerReward": {
+          "type": "string",
+          "format": "int64"
+        },
+        "totalRepReward": {
+          "type": "string",
+          "format": "int64"
+        },
+        "latestBlockHeight": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "protoPovRepStatItem": {
+      "type": "object",
+      "properties": {
+        "mainBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "mainRewardAmount": {
+          "type": "string"
+        },
+        "mainOnlinePeriod": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "stableBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "stableRewardAmount": {
+          "type": "string"
+        },
+        "stableOnlinePeriod": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "lastOnlineTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastOnlineHeight": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "isOnline": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoPovRepStats": {
+      "type": "object",
+      "properties": {
+        "repCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "repStats": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/protoPovRepStatItem"
+          }
+        },
+        "totalBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "totalPeriod": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "totalRewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "latestBlockHeight": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "protoPovStatus": {
+      "type": "object",
+      "properties": {
+        "povEnabled": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "syncState": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "syncStateStr": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "typesPovAccountState": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "tokenStates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesPovTokenState"
+          }
+        }
+      }
+    },
+    "typesPovAuxHeader": {
+      "type": "object",
+      "properties": {
+        "auxMerkleBranch": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "auxMerkleIndex": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "parCoinBaseTx": {
+          "$ref": "#/definitions/typesPovBtcTx"
+        },
+        "parCoinBaseMerkle": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parMerkleIndex": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "parBlockHeader": {
+          "$ref": "#/definitions/typesPovBtcHeader"
+        },
+        "parentHash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesPovBaseHeader": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "merkleRoot": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "bits": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "nonce": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "height": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "typesPovBody": {
+      "type": "object",
+      "properties": {
+        "txs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesPovTransaction"
+          }
+        }
+      }
+    },
+    "typesPovBtcHeader": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "merkleRoot": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "bits": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "nonce": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "typesPovBtcOutPoint": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        },
+        "index": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "typesPovBtcTx": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "txIn": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesPovBtcTxIn"
+          }
+        },
+        "txOut": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesPovBtcTxOut"
+          }
+        },
+        "lockTime": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "typesPovBtcTxIn": {
+      "type": "object",
+      "properties": {
+        "previousOutPoint": {
+          "$ref": "#/definitions/typesPovBtcOutPoint"
+        },
+        "signatureScript": {
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "typesPovBtcTxOut": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pkScript": {
+          "type": "string"
+        }
+      }
+    },
+    "typesPovCoinBaseTx": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "txIns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesPovCoinBaseTxIn"
+          }
+        },
+        "txOuts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesPovCoinBaseTxOut"
+          }
+        },
+        "stateHash": {
+          "type": "string"
+        },
+        "txNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Hash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesPovCoinBaseTxIn": {
+      "type": "object",
+      "properties": {
+        "PrevTxHash": {
+          "type": "string"
+        },
+        "PrevTxIdx": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "Extra": {
+          "type": "string"
+        },
+        "Sequence": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "typesPovCoinBaseTxOut": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "int64"
+        },
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "typesPovContractState": {
+      "type": "object",
+      "properties": {
+        "stateHash": {
+          "type": "string"
+        },
+        "codeHash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesPovDiffDayStat": {
+      "type": "object",
+      "properties": {
+        "dayIndex": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "avgDiffRatio": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "maxDiffRatio": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "minDiffRatio": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "maxBlockTime": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "minBlockTime": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "typesPovHeader": {
+      "type": "object",
+      "properties": {
+        "basHdr": {
+          "$ref": "#/definitions/typesPovBaseHeader"
+        },
+        "auxHdr": {
+          "$ref": "#/definitions/typesPovAuxHeader"
+        },
+        "cbTx": {
+          "$ref": "#/definitions/typesPovCoinBaseTx"
+        }
+      }
+    },
+    "typesPovMinerDayStat": {
+      "type": "object",
+      "properties": {
+        "dayIndex": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "minerNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "minerStats": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typesPovMinerStatItem"
+          }
+        }
+      }
+    },
+    "typesPovMinerStatItem": {
+      "type": "object",
+      "properties": {
+        "firstHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "lastHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "blockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "rewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "repBlockNum": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "repReward": {
+          "type": "string",
+          "format": "int64"
+        },
+        "isMiner": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "typesPovRepState": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "height": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "typesPovTokenState": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "typesPovTransaction": {
+      "type": "object",
+      "properties": {
+        "Hash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesPovTxLookup": {
+      "type": "object",
+      "properties": {
+        "blockHash": {
+          "type": "string"
+        },
+        "blockHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "txIndex": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "x-stream-definitions": {
+    "protoPovApiHeader": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/protoPovApiHeader"
+        },
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        }
+      },
+      "title": "Stream result of protoPovApiHeader"
+    }
+  }
+}

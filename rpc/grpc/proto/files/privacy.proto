@@ -1,0 +1,43 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+
+import "types/basic.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service PrivacyAPI {
+    rpc DistributeRawPayload(PrivacyDistributeParam) returns (Bytes){
+        option (google.api.http) = {
+           post: "/privacy/distributeRawPayload"
+           body: "*"
+       };
+    }
+
+    rpc GetRawPayload(Bytes) returns (Bytes){
+        option (google.api.http) = {
+           get: "/privacy/getRawPayload"
+       };
+    }
+
+    rpc GetBlockPrivatePayload(types.Hash) returns (Bytes){
+        option (google.api.http) = {
+           get: "/privacy/getBlockPrivatePayload"
+       };
+    }
+
+    rpc GetDemoKV(Bytes) returns (Bytes){
+        option (google.api.http) = {
+           get: "/privacy/getDemoKV"
+       };
+    }
+}
+
+message PrivacyDistributeParam {
+    bytes  rawPayload     = 1;
+    string privateFrom    = 2;
+    repeated string privateFor  = 3;
+    string privateGroupID = 4;
+}

@@ -1,0 +1,99 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "types/basic.proto";
+import "types/contract.proto";
+import "common.proto";
+
+
+option go_package = ".;proto";
+
+service RewardsAPI {
+    rpc GetUnsignedRewardData (RewardsParam) returns (types.Hash) {
+        option (google.api.http) = {
+           get: "/rewards/getUnsignedRewardData"
+       };
+    }
+
+    rpc GetUnsignedConfidantData (RewardsParam) returns (types.Hash) {
+        option (google.api.http) = {
+           get: "/rewards/getUnsignedConfidantData"
+       };
+    }
+
+    rpc GetSendRewardBlock (RewardsParamWithSign) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/rewards/getSendRewardBlock"
+           body: "*"
+       };
+    }
+    
+    rpc GetSendConfidantBlock (RewardsParamWithSign) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/rewards/getSendConfidantBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetReceiveRewardBlock (types.Hash) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/rewards/getReceiveRewardBlock"
+       };
+    }
+    
+    rpc IsAirdropRewards (Bytes) returns (Boolean) {
+        option (google.api.http) = {
+           get: "/rewards/isAirdropRewards"
+       };
+    }
+
+    rpc GetTotalRewards (String) returns (Int64) {
+        option (google.api.http) = {
+           get: "/rewards/getTotalRewards"
+       };
+    }
+
+    rpc GetRewardsDetail (String) returns (RewardsInfos) {
+        option (google.api.http) = {
+           get: "/rewards/getRewardsDetail"
+       };
+    }
+
+    rpc GetConfidantRewards (types.Address) returns (ConfidantRewardsResponse) {
+        option (google.api.http) = {
+           get: "/rewards/getConfidantRewards"
+       };
+    }
+
+    rpc GetConfidantRewordsDetail (types.Address) returns (RewardsInfosByAddress) {
+        option (google.api.http) = {
+           get: "/rewards/getConfidantRewordsDetail"
+       };
+    }
+}
+
+message RewardsParam  {
+    string id      = 1;
+    int64  amount  = 2;
+    string self    = 3;
+    string to      = 4;
+}
+
+message RewardsParamWithSign  {
+    RewardsParam param   = 1;
+    string       sign    = 2;
+}
+
+
+message RewardsInfos{
+    repeated types.RewardsInfo infos = 1;
+}
+
+message RewardsInfosByAddress{
+    map<string, RewardsInfos> infos = 1;
+}
+
+message ConfidantRewardsResponse{
+    map<string, int64> rewards = 1;
+}

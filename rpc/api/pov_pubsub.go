@@ -38,7 +38,7 @@ type PovSubscription struct {
 	mu         sync.Mutex
 	eb         event.EventBus
 	subscriber *event.ActorSubscriber
-	allSubs    map[rpc.ID]*PovSubscriber
+	allSubs    map[string]*PovSubscriber
 	blocksCh   chan *types.PovBlock
 	ctx        context.Context
 	logger     *zap.SugaredLogger
@@ -52,7 +52,7 @@ type PovSubscriber struct {
 func NewPovSubscription(ctx context.Context, eb event.EventBus) *PovSubscription {
 	be := &PovSubscription{
 		eb:       eb,
-		allSubs:  make(map[rpc.ID]*PovSubscriber),
+		allSubs:  make(map[string]*PovSubscriber),
 		blocksCh: make(chan *types.PovBlock, MaxNotifyPovBlocks),
 		ctx:      ctx,
 		logger:   log.NewLogger("pov_pubsub"),
@@ -89,7 +89,7 @@ func (r *PovSubscription) setBlocks(block *types.PovBlock) {
 	}
 }
 
-func (r *PovSubscription) fetchBlocks(subID rpc.ID) []*types.PovBlock {
+func (r *PovSubscription) FetchBlocks(subID string) []*types.PovBlock {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -106,7 +106,7 @@ func (r *PovSubscription) fetchBlocks(subID rpc.ID) []*types.PovBlock {
 	return retBlks
 }
 
-func (r *PovSubscription) addChan(subID rpc.ID, ch chan struct{}) {
+func (r *PovSubscription) AddChan(subID string, ch chan struct{}) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()
@@ -124,7 +124,7 @@ func (r *PovSubscription) addChan(subID rpc.ID, ch chan struct{}) {
 	r.allSubs[subID] = sub
 }
 
-func (r *PovSubscription) removeChan(subID rpc.ID) {
+func (r *PovSubscription) RemoveChan(subID string) {
 	r.mu.Lock()
 	defer func() {
 		r.mu.Unlock()

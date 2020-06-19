@@ -10,10 +10,9 @@ package chain
 import (
 	"errors"
 
-	"github.com/qlcchain/go-qlc/chain/context"
-
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/log"
 	"github.com/qlcchain/go-qlc/privacy"

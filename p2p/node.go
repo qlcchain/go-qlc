@@ -11,18 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/types"
-
-	ping "github.com/qlcchain/go-qlc/p2p/pinger"
-
-	"github.com/qlcchain/go-qlc/common/topic"
-
-	"github.com/qlcchain/go-qlc/p2p/pubsub"
-
-	"go.uber.org/zap"
-
-	"github.com/qlcchain/go-qlc/log"
-
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -35,8 +23,14 @@ import (
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
+	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/common/topic"
+	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/log"
+	ping "github.com/qlcchain/go-qlc/p2p/pinger"
+	"github.com/qlcchain/go-qlc/p2p/pubsub"
 )
 
 // Error types

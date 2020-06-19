@@ -1,0 +1,556 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "common.proto";
+import "types/basic.proto";
+import "types/pov.proto";
+
+
+option go_package = ".;proto";
+
+service PovAPI {
+    rpc GetPovStatus (google.protobuf.Empty) returns (PovStatus) {
+        option (google.api.http) = {
+           get: "/pov/getPovStatus"
+       };
+    }
+
+    rpc GetHeaderByHeight (UInt64) returns (PovApiHeader) {
+        option (google.api.http) = {
+           get: "/pov/getHeaderByHeight"
+       };
+    }
+
+    rpc GetHeaderByHash (types.Hash) returns (PovApiHeader) {
+        option (google.api.http) = {
+           get: "/pov/getHeaderByHash"
+       };
+    }
+
+    rpc GetLatestHeader (google.protobuf.Empty) returns (PovApiHeader) {
+        option (google.api.http) = {
+           get: "/pov/getLatestHeader"
+       };
+    }
+
+    rpc GetFittestHeader (UInt64) returns (PovApiHeader) {
+        option (google.api.http) = {
+           get: "/pov/getFittestHeader"
+       };
+    }
+
+    rpc BatchGetHeadersByHeight (HeadersByHeightRequest) returns (PovApiBatchHeader) {
+        option (google.api.http) = {
+           get: "/pov/batchGetHeadersByHeight"
+       };
+    }
+
+    rpc GetBlockByHeight (BlockByHeightRequest) returns (PovApiBlock) {
+        option (google.api.http) = {
+           get: "/pov/getBlockByHeight"
+       };
+    }
+
+    rpc GetBlockByHash (BlockByHashRequest) returns (PovApiBlock) {
+        option (google.api.http) = {
+           get: "/pov/getBlockByHash"
+       };
+    }
+
+    rpc GetLatestBlock (LatestBlockRequest) returns (PovApiBlock) {
+        option (google.api.http) = {
+           get: "/pov/getLatestBlock"
+       };
+    }
+
+    rpc GetTransaction (types.Hash) returns (PovApiTxLookup) {
+        option (google.api.http) = {
+           get: "/pov/getTransaction"
+       };
+    }
+
+    rpc GetTransactionByBlockHashAndIndex (TransactionByBlockHashRequest) returns (PovApiTxLookup) {
+        option (google.api.http) = {
+           get: "/pov/getTransactionByBlockHashAndIndex"
+       };
+    }
+
+    rpc GetTransactionByBlockHeightAndIndex (TransactionByBlockHeightRequest) returns (PovApiTxLookup) {
+        option (google.api.http) = {
+           get: "/pov/getTransactionByBlockHeightAndIndex"
+       };
+    }
+
+    rpc GetAccountState (AccountStateRequest) returns (PovApiState) {
+        option (google.api.http) = {
+           get: "/pov/getAccountState"
+       };
+    }
+
+    rpc GetLatestAccountState (types.Address) returns (PovApiState) {
+        option (google.api.http) = {
+           get: "/pov/getLatestAccountState"
+       };
+    }
+
+    rpc GetAccountStateByBlockHash (AccountStateByHashRequest) returns (PovApiState) {
+        option (google.api.http) = {
+           get: "/pov/getAccountStateByBlockHash"
+       };
+    }
+
+    rpc GetAccountStateByBlockHeight (AccountStateByHeightRequest) returns (PovApiState) {
+        option (google.api.http) = {
+           get: "/pov/getAccountStateByBlockHeight"
+       };
+    }
+
+//    rpc DumpBlockState (types.Hash) returns (PovApiDumpState) {
+//        option (google.api.http) = {
+//           get: "/pov/dumpBlockState"
+//       };
+//    }
+//
+//    rpc DumpContractState (types.Hash) returns (PovApiContractState) {
+//        option (google.api.http) = {
+//           get: "/pov/dumpContractState"
+//       };
+//    }
+
+    rpc GetAllRepStatesByStateHash (types.Hash) returns (PovApiRepState) {
+        option (google.api.http) = {
+           get: "/pov/getAllRepStatesByStateHash"
+       };
+    }
+
+    rpc GetAllRepStatesByBlockHash (types.Hash) returns (PovApiRepState) {
+        option (google.api.http) = {
+           get: "/pov/getAllRepStatesByBlockHash"
+       };
+    }
+
+    rpc GetAllRepStatesByBlockHeight (UInt64) returns (PovApiRepState) {
+        option (google.api.http) = {
+           get: "/pov/getAllRepStatesByBlockHeight"
+       };
+    }
+
+    rpc GetLedgerStats (google.protobuf.Empty) returns (PovLedgerStats) {
+        option (google.api.http) = {
+           get: "/pov/getLedgerStats"
+       };
+    }
+
+//    rpc GetBlockTDByHash (types.Hash) returns (PovApiTD) {
+//        option (google.api.http) = {
+//           get: "/pov/getBlockTDByHash"
+//       };
+//    }
+//
+//    rpc GetBlockTDByHeight (UInt64) returns (PovApiTD) {
+//        option (google.api.http) = {
+//           get: "/pov/getBlockTDByHeight"
+//       };
+//    }
+//
+    rpc GetMinerStats (types.Addresses) returns (PovMinerStats) {
+        option (google.api.http) = {
+           get: "/pov/getMinerStats"
+       };
+    }
+
+    rpc GetRepStats (types.Addresses) returns (PovRepStats) {
+        option (google.api.http) = {
+           get: "/pov/getRepStats"
+       };
+    }
+
+    rpc GetMinerDayStat (UInt32) returns (types.PovMinerDayStat) {
+        option (google.api.http) = {
+           get: "/pov/getMinerDayStat"
+       };
+    }
+
+    rpc GetMinerDayStatByHeight (UInt64) returns (types.PovMinerDayStat) {
+        option (google.api.http) = {
+           get: "/pov/getMinerDayStatByHeight"
+       };
+    }
+
+    rpc GetDiffDayStat (UInt32) returns (types.PovDiffDayStat) {
+        option (google.api.http) = {
+           get: "/pov/getDiffDayStat"
+       };
+    }
+
+    rpc GetDiffDayStatByHeight (UInt64) returns (types.PovDiffDayStat) {
+        option (google.api.http) = {
+           get: "/pov/getDiffDayStatByHeight"
+       };
+    }
+
+    rpc GetHashInfo (HashInfoRequest) returns (PovApiHashInfo) {
+        option (google.api.http) = {
+           get: "/pov/getHashInfo"
+       };
+    }
+
+    rpc StartMining (StartMiningRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+           get: "/pov/startMining"
+       };
+    }
+
+    rpc StopMining (google.protobuf.Empty) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+           get: "/pov/stopMining"
+       };
+    }
+
+    rpc GetMiningInfo (google.protobuf.Empty) returns (PovApiGetMiningInfo) {
+        option (google.api.http) = {
+           get: "/pov/getMiningInfo"
+       };
+    }
+
+    rpc GetWork (WorkRequest) returns (PovApiGetWork) {
+        option (google.api.http) = {
+           get: "/pov/getWork"
+       };
+    }
+
+//    rpc SubmitWork (PovApiSubmitWork) returns (google.protobuf.Empty) {
+//        option (google.api.http) = {
+//           get: "/pov/submitWork"
+//       };
+//    }
+
+    rpc GetLastNHourInfo (LastNHourInfoRequest) returns (PovApiGetLastNHourInfo) {
+        option (google.api.http) = {
+           post: "/pov/getLastNHourInfo"
+           body: "*"
+       };
+    }
+
+//    rpc GetAllOnlineRepStates (types.PovHeader) returns (types.PovRepStates) {
+//        option (google.api.http) = {
+//           get: "/pov/getAllOnlineRepStates"
+//       };
+//    }
+//
+//    rpc GetRepStatesByHeightAndAccount (RepStatesByHeightRequset) returns (types.PovRepState) {
+//        option (google.api.http) = {
+//           post: "/pov/getRepStatesByHeightAndAccount"
+//           body: "*"
+//       };
+//    }
+
+//    rpc CheckAllAccountStates (google.protobuf.Empty) returns (PovApiCheckStateRsp) {
+//        option (google.api.http) = {
+//           get: "/pov/checkAllAccountStates"
+//       };
+//    }
+
+    rpc NewBlock(google.protobuf.Empty) returns (stream PovApiHeader){
+        option (google.api.http) = {
+           get: "/pov/newBlock"
+       };
+    }
+}
+
+message PovStatus  {
+    bool   povEnabled    = 1;
+    int32  syncState     = 2;
+    string syncStateStr  = 3;
+}
+
+message  PovApiHeader  {   //merge
+//    types.PovHeader povHeader      = 1;
+    types.PovBaseHeader basHdr   = 1;
+    types.PovAuxHeader  auxHdr   = 2;
+    types.PovCoinBaseTx cbTx     = 3;
+    string    algoName       = 4;
+    uint32    algoEfficiency = 5;
+    uint32    normBits       = 6;
+    double    normDifficulty = 7;
+    double    algoDifficulty = 8;
+}
+
+message  PovApiBatchHeader  {
+    int32   count   = 1;
+    repeated PovApiHeader headers = 2;
+}
+
+message PovApiBlock  {  //merged
+    types.PovHeader Header  = 1;
+    types.PovBody   Body    = 2;
+    string algoName         = 3;
+    uint32 AlgoEfficiency   = 4;
+    uint32 NormBits         = 5;
+    double NormDifficulty   = 6;
+    double AlgoDifficulty   = 7;
+}
+
+message PovApiState  {
+    types.PovAccountState  accountState   = 1;
+    types.PovRepState      repState       = 2;
+    types.PovContractState contractState  = 3;
+}
+
+message PovApiDumpState  {
+    string stateHash     = 1;
+    map<string, types.PovAccountState>  accounts  = 2;
+    map<string, types.PovRepState>      reps      = 3;
+    map<string, types.PovContractState> contracts = 4;
+}
+
+message PovApiRepState  {
+    string  stateHash   = 1;
+    map<string, types.PovRepState> reps  = 2;
+}
+
+message PovApiKeyValPair  {
+    bytes key     = 1;
+    bytes value   = 2;
+}
+
+//message PovApiContractState {
+//    string stateHash  = 1;
+//    string codeHash   = 2;
+//    int32  kvNum      = 3;
+//    [][2]types.HexBytes allKVs
+//}
+
+message PovApiTxLookup  {
+    string         txHash      = 1;
+    types.PovTxLookup    txLookup    = 2;
+    types.PovCoinBaseTx  coinbaseTx  = 3;
+    types.StateBlock     accountTx   = 4;
+}
+
+message PovLedgerStats  {
+    uint64 povBlockCount    = 1;
+    uint64 povBestCount     = 2;
+    uint64 povAllTxCount    = 3;
+    uint64 povCbTxCount     = 4;
+    uint64 povStateTxCount  = 5;
+    uint64 stateBlockCount  = 6;
+}
+
+message PovApiTD  {
+    types.PovHeader header  = 1;
+    types.PovTD     td      = 2;
+}
+
+message PovMinerStatItem {
+    string account             = 1;
+    uint32 mainBlockNum        = 2;
+    int64  mainRewardAmount    = 3;
+    uint32 stableBlockNum      = 4;
+    int64  stableRewardAmount  = 5;
+    int64  firstBlockTime      = 6;
+    int64  lastBlockTime       = 7;
+    uint64 firstBlockHeight    = 8;
+    uint64 lastBlockHeight     = 9;
+    bool   isHourOnline        = 10;
+    bool   isDayOnline         = 11;
+}
+
+message PovMinerStats  {
+    int32  minerCount         = 1;
+    int32  hourOnlineCount    = 2;
+    int32  dayOnlineCount     = 3;
+    map<string, PovMinerStatItem> minerStats = 4;
+    uint32 totalBlockNum      = 5;
+    int64  totalRewardAmount  = 6;
+    int64  totalMinerReward   = 7;
+    int64  totalRepReward     = 8;
+    uint64 latestBlockHeight  = 9;
+}
+
+message PovRepStatItem  {
+    uint32 mainBlockNum       = 1;
+    string mainRewardAmount   = 2;
+    uint32 mainOnlinePeriod   = 3;
+    uint32 stableBlockNum     = 4;
+    string stableRewardAmount = 5;
+    uint32 stableOnlinePeriod = 6;
+    int64  lastOnlineTime     = 7;
+    uint32 lastOnlineHeight   = 8;
+    bool   isOnline           = 9;
+}
+
+message PovRepStats  {
+    uint32 repCount          = 1;
+    map<string, PovRepStatItem> repStats      = 2;
+    uint32 totalBlockNum     = 3;
+    uint32 totalPeriod       = 4;
+    int64  totalRewardAmount = 5;
+    uint64 latestBlockHeight = 6;
+}
+
+message  PovApiSubmitWork  {
+    string workHash      = 1;
+    string blockHash     = 2;
+    string merkleRoot    = 3;
+    uint32 timestamp     = 4;
+    uint32 nonce         = 5;
+    string coinbaseExtra = 6;   //bytes
+    string coinbaseHash  = 7;
+    types.PovAuxHeader auxPow  = 8;
+}
+
+
+message PovApiGetLastNHourItem {
+    uint32 hour             = 1;
+    uint32 allBlockNum      = 2;
+    uint32 allTxNum         = 3;
+    int64  allMinerReward   = 4;
+    int64  allRepReward     = 5;
+    uint32 sha256dBlockNum  = 6;
+    uint32 x11BlockNum      = 7;
+    uint32 scryptBlockNum   = 8;
+    uint32 auxBlockNum      = 9;
+    uint32 maxTxPerBlock    = 10;
+    uint32 minTxPerBlock    = 11;
+    uint32 avgTxPerBlock    = 12;
+}
+
+message PovApiGetLastNHourInfo  {
+    uint32 maxTxPerBlock   = 1;
+    uint32 minTxPerBlock   = 2;
+    uint32 avgTxPerBlock   = 3;
+    uint32 maxTxPerHour    = 4;
+    uint32 minTxPerHour    = 5;
+    uint32 avgTxPerHour    = 6;
+    uint32 maxBlockPerHour = 7;
+    uint32 minBlockPerHour = 8;
+    uint32 avgBlockPerHour = 9;
+    uint32 allBlockNum     = 10;
+    uint32 allTxNum        = 11;
+    uint32 sha256dBlockNum = 12;
+    uint32 x11BlockNum     = 13;
+    uint32 scryptBlockNum  = 14;
+    uint32 auxBlockNum     = 15;
+    repeated PovApiGetLastNHourItem hourItemList  = 16;
+}
+
+message HeadersByHeightRequest {
+    uint64 height  = 1;
+    uint64 count   = 2;
+    bool   asc     = 3;
+}
+
+message BlockByHeightRequest {
+    uint64  height    = 1;
+    uint32  txOffset  = 2;
+    uint32  txLimit   = 3;
+}
+
+message BlockByHashRequest {
+    string blockHash = 1;
+    uint32 txOffset  = 2;
+    uint32 txLimit   = 3;
+}
+
+message LatestBlockRequest {
+    uint32   txLimit   = 1;
+    uint32   txOffset  = 2;
+}
+
+message TransactionByBlockHashRequest {
+    uint32  index       = 1;
+    string  blockHash   = 2;
+}
+
+message TransactionByBlockHeightRequest{
+    uint64  height  = 1;
+    uint32  index   = 2;
+}
+
+message AccountStateRequest{
+    string  address     = 1;
+    string  stateHash   = 2;
+}
+
+message AccountStateByHashRequest{
+    string address    = 1;
+    string blockHash  = 2;
+}
+
+message AccountStateByHeightRequest{
+    string address    = 1;
+    uint64 height     = 2;
+}
+
+message HashInfoRequest{
+    uint64 height  = 1;
+    uint64 lookup  = 2;
+}
+
+message StartMiningRequest{
+    string minerAddr = 1;
+    string algoName  = 2;
+}
+
+message WorkRequest {
+    string minerAddr  = 1;
+    string algoName   = 2;
+}
+
+message LastNHourInfoRequest {
+    uint64 endHeight = 1;
+    uint32 timeSpan  = 2;
+}
+
+message RepStatesByHeightRequset {
+    types.PovHeader header  = 1;
+    string    acc     = 2;
+}
+
+
+message PovApiGetWork  {
+    string workHash    = 1;
+    uint32 version     = 2;
+    string previous    = 3;
+    uint32 bits        = 4;
+    uint64 height      = 5;
+    uint32 minTime     = 6;
+    repeated string merkleBranch  = 7;
+    string coinBaseData1  = 8;  //bytes
+    string coinBaseData2  = 9;  //bytes
+}
+
+message PovApiGetMiningInfo  {
+    int32  syncState           = 1;
+    string syncStateStr        = 2;
+    uint64 currentBlockHeight  = 3;
+    string currentBlockHash    = 4;
+    uint32 currentBlockSize    = 5;
+    uint32 currentBlockTx      = 6;
+    string currentBlockAlgo    = 7;
+    uint32 pooledTx                = 8;
+    double difficulty              = 9;
+    PovApiHashInfo hashInfo           = 10;
+
+    string minerAddr      = 11;
+    string algoName       = 12;
+    uint32 algoEfficiency = 13;
+    bool   cpuMining      = 14;
+}
+
+message PovApiHashInfo  {
+    uint64 chainHashPS   = 1;
+    uint64 sha256dHashPS = 2;
+    uint64 scryptHashPS  = 3;
+    uint64 x11HashPS     = 4;
+}
+
+message PovApiCheckStateRsp  {
+    map<string, types.PovAccountState> accountStates = 1;
+    map<string, types.AccountMeta>     accountMetas  = 2;
+    map<string, types.PovRepState>     repStates     = 3;
+    map<string, types.Benefit>         repMetas      = 4;
+}

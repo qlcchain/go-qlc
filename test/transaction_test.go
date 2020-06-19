@@ -18,14 +18,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qlcchain/go-qlc/chain"
-	"github.com/qlcchain/go-qlc/ledger"
-
 	"github.com/google/uuid"
 	rpc "github.com/qlcchain/jsonrpc2"
 
+	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/config"
+	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 

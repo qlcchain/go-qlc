@@ -1,0 +1,76 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "chain.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/chain/ledgerSize": {
+      "get": {
+        "operationId": "LedgerSize",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoLedgerSizeResponse"
+            }
+          }
+        },
+        "tags": [
+          "ChainAPI"
+        ]
+      }
+    },
+    "/chain/version": {
+      "get": {
+        "operationId": "Version",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoVersionResponse"
+            }
+          }
+        },
+        "tags": [
+          "ChainAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoLedgerSizeResponse": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      }
+    },
+    "protoVersionResponse": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

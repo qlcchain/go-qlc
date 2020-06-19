@@ -6,11 +6,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/qlcchain/go-qlc/crypto/random"
-
-	"github.com/qlcchain/go-qlc/ledger/process"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/crypto/random"
+	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/rpc/api"
 )
 

@@ -1,0 +1,2155 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "settlement.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/settlement/generateInvoices": {
+      "get": {
+        "operationId": "GenerateInvoices",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/generateInvoicesByAccount": {
+      "get": {
+        "operationId": "GenerateInvoicesByAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/generateInvoicesByContract": {
+      "get": {
+        "operationId": "GenerateInvoicesByContract",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/generateInvoicesByCustomer": {
+      "get": {
+        "operationId": "GenerateInvoicesByCustomer",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/generateMultiPartyInvoice": {
+      "get": {
+        "operationId": "GenerateMultiPartyInvoice",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "firstAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "secondAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/generateMultiPartySummaryReport": {
+      "get": {
+        "operationId": "GenerateMultiPartySummaryReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesMultiPartySummaryResult"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "firstAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "secondAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getAddNextStopBlock": {
+      "post": {
+        "operationId": "GetAddNextStopBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoStopParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getAddPreStopBlock": {
+      "post": {
+        "operationId": "GetAddPreStopBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoStopParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getAllAssets": {
+      "get": {
+        "operationId": "GetAllAssets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAssetParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getAllCDRStatus": {
+      "get": {
+        "operationId": "GetAllCDRStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoCDRStatuses"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getAllContracts": {
+      "get": {
+        "operationId": "GetAllContracts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoSettlementContracts"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getAsset": {
+      "get": {
+        "operationId": "GetAsset",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAssetParam"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getAssetsByOwner": {
+      "get": {
+        "operationId": "GetAssetsByOwner",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAssetParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getCDRStatus": {
+      "get": {
+        "operationId": "GetCDRStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoCDRStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getCDRStatusByCdrData": {
+      "get": {
+        "operationId": "GetCDRStatusByCdrData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoCDRStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "index",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "sender",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "destination",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getCDRStatusByDate": {
+      "get": {
+        "operationId": "GetCDRStatusByDate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoCDRStatuses"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getContractAddressByPartyANextStop": {
+      "get": {
+        "operationId": "GetContractAddressByPartyANextStop",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "stopName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getContractAddressByPartyBPreStop": {
+      "get": {
+        "operationId": "GetContractAddressByPartyBPreStop",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "stopName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getContractsAsPartyA": {
+      "get": {
+        "operationId": "GetContractsAsPartyA",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoSettlementContracts"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getContractsAsPartyB": {
+      "get": {
+        "operationId": "GetContractsAsPartyB",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoSettlementContracts"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getContractsByAddress": {
+      "get": {
+        "operationId": "GetContractsByAddress",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoSettlementContracts"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getContractsByStatus": {
+      "get": {
+        "operationId": "GetContractsByStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoSettlementContracts"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getCreateContractBlock": {
+      "post": {
+        "operationId": "GetCreateContractBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoCreateContractParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getExpiredContracts": {
+      "get": {
+        "operationId": "GetExpiredContracts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoSettlementContracts"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getMultiPartyCDRStatus": {
+      "get": {
+        "operationId": "GetMultiPartyCDRStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoCDRStatuses"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "firstAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "secondAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getNextStopNames": {
+      "get": {
+        "operationId": "GetNextStopNames",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoStrings"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getPreStopNames": {
+      "get": {
+        "operationId": "GetPreStopNames",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoStrings"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getProcessCDRBlock": {
+      "post": {
+        "operationId": "GetProcessCDRBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoProcessCDRBlockRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getRegisterAssetBlock": {
+      "get": {
+        "operationId": "GetRegisterAssetBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "owner.Address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "owner.Name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getRemoveNextStopBlock": {
+      "post": {
+        "operationId": "GetRemoveNextStopBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoStopParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getRemovePreStopBlock": {
+      "post": {
+        "operationId": "GetRemovePreStopBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoStopParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getSettlementRewardsBlock": {
+      "get": {
+        "operationId": "GetSettlementRewardsBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getSignContractBlock": {
+      "get": {
+        "operationId": "GetSignContractBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "contractAddress",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getSummaryReport": {
+      "get": {
+        "operationId": "GetSummaryReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesSummaryResult"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getSummaryReportByAccount": {
+      "get": {
+        "operationId": "GetSummaryReportByAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesSummaryResult"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getSummaryReportByCustomer": {
+      "get": {
+        "operationId": "GetSummaryReportByCustomer",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesSummaryResult"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getTerminateContractBlock": {
+      "post": {
+        "operationId": "GetTerminateContractBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoTerminateParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getUpdateNextStopBlock": {
+      "post": {
+        "operationId": "GetUpdateNextStopBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoUpdateStopParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/getUpdatePreStopBlock": {
+      "post": {
+        "operationId": "GetUpdatePreStopBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoUpdateStopParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    },
+    "/settlement/toAddress": {
+      "post": {
+        "operationId": "ToAddress",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesCreateContractParam"
+            }
+          }
+        ],
+        "tags": [
+          "SettlementAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoAsset": {
+      "type": "object",
+      "properties": {
+        "mcc": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "mnc": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "totalAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "sla": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesSLA"
+          }
+        },
+        "assetID": {
+          "type": "string"
+        }
+      }
+    },
+    "protoAssetParam": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "$ref": "#/definitions/typesContractor"
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoAsset"
+          }
+        },
+        "signDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "protoAssetParams": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoAssetParam"
+          }
+        }
+      }
+    },
+    "protoCDRStatus": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "Params": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typesCDRParams"
+          }
+        },
+        "status": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "protoCDRStatuses": {
+      "type": "object",
+      "properties": {
+        "statuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoCDRStatus"
+          }
+        }
+      }
+    },
+    "protoCreateContractParam": {
+      "type": "object",
+      "properties": {
+        "partyA": {
+          "$ref": "#/definitions/typesContractor"
+        },
+        "partyB": {
+          "$ref": "#/definitions/typesContractor"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesContractService"
+          }
+        },
+        "startDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoInvoiceRecords": {
+      "type": "object",
+      "properties": {
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesInvoiceRecord"
+          }
+        }
+      }
+    },
+    "protoProcessCDRBlockRequest": {
+      "type": "object",
+      "properties": {
+        "addr": {
+          "type": "string"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesCDRParam"
+          }
+        }
+      }
+    },
+    "protoSettlementContract": {
+      "type": "object",
+      "properties": {
+        "partyA": {
+          "$ref": "#/definitions/typesContractor"
+        },
+        "partyB": {
+          "$ref": "#/definitions/typesContractor"
+        },
+        "Previous": {
+          "type": "string"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesContractService"
+          }
+        },
+        "signDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "preStops": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nextStops": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confirmDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "terminator": {
+          "$ref": "#/definitions/typesTerminator"
+        },
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "protoSettlementContracts": {
+      "type": "object",
+      "properties": {
+        "contracts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoSettlementContract"
+          }
+        }
+      }
+    },
+    "protoStopParam": {
+      "type": "object",
+      "properties": {
+        "stopParam": {
+          "$ref": "#/definitions/typesStopParam"
+        },
+        "Address": {
+          "type": "string"
+        }
+      }
+    },
+    "protoStrings": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "protoTerminateParam": {
+      "type": "object",
+      "properties": {
+        "terminateParam": {
+          "$ref": "#/definitions/typesTerminateParam"
+        },
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "protoUpdateStopParam": {
+      "type": "object",
+      "properties": {
+        "updateStopParam": {
+          "$ref": "#/definitions/typesUpdateStopParam"
+        },
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "typesAddress": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "typesAsset": {
+      "type": "object",
+      "properties": {
+        "mcc": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "mnc": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "totalAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "sla": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesSLA"
+          }
+        }
+      }
+    },
+    "typesCDRParam": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "smsDt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "account": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string"
+        },
+        "customer": {
+          "type": "string"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "sendingStatus": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "dlrStatus": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "preStop": {
+          "type": "string"
+        },
+        "nextStop": {
+          "type": "string"
+        }
+      }
+    },
+    "typesCDRParams": {
+      "type": "object",
+      "properties": {
+        "cdrParams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesCDRParam"
+          }
+        }
+      }
+    },
+    "typesCompareRecord": {
+      "type": "object",
+      "properties": {
+        "records": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typesMatchingRecord"
+          }
+        }
+      }
+    },
+    "typesCompensation": {
+      "type": "object",
+      "properties": {
+        "low": {
+          "type": "number",
+          "format": "float"
+        },
+        "high": {
+          "type": "number",
+          "format": "float"
+        },
+        "rate": {
+          "type": "number",
+          "format": "float"
+        }
+      }
+    },
+    "typesContractParam": {
+      "type": "object",
+      "properties": {
+        "contractParam": {
+          "$ref": "#/definitions/typesCreateContractParam"
+        },
+        "preStops": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nextStops": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confirmDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "terminator": {
+          "$ref": "#/definitions/typesTerminator"
+        }
+      }
+    },
+    "typesContractService": {
+      "type": "object",
+      "properties": {
+        "serviceId": {
+          "type": "string"
+        },
+        "mcc": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "mnc": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "totalAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "unitPrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "currency": {
+          "type": "string"
+        }
+      }
+    },
+    "typesContractor": {
+      "type": "object",
+      "properties": {
+        "Address": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        }
+      }
+    },
+    "typesCreateContractParam": {
+      "type": "object",
+      "properties": {
+        "partyA": {
+          "$ref": "#/definitions/typesContractor"
+        },
+        "partyB": {
+          "$ref": "#/definitions/typesContractor"
+        },
+        "Previous": {
+          "type": "string"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesContractService"
+          }
+        },
+        "signDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "typesInvoiceRecord": {
+      "type": "object",
+      "properties": {
+        "Address": {
+          "type": "string"
+        },
+        "StartDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "EndDate": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Customer": {
+          "type": "string"
+        },
+        "CustomerSr": {
+          "type": "string"
+        },
+        "Country": {
+          "type": "string"
+        },
+        "Operator": {
+          "type": "string"
+        },
+        "ServiceId": {
+          "type": "string"
+        },
+        "MCC": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "MNC": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "Currency": {
+          "type": "string"
+        },
+        "UnitPrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "SumOfBillableSMSCustomer": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "SumOfTOTPrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "typesMatchingRecord": {
+      "type": "object",
+      "properties": {
+        "orphan": {
+          "$ref": "#/definitions/typesSummaryRecord"
+        },
+        "matching": {
+          "$ref": "#/definitions/typesSummaryRecord"
+        }
+      }
+    },
+    "typesMultiPartySummaryResult": {
+      "type": "object",
+      "properties": {
+        "contracts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesContractParam"
+          }
+        },
+        "records": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typesCompareRecord"
+          }
+        },
+        "total": {
+          "$ref": "#/definitions/typesCompareRecord"
+        }
+      }
+    },
+    "typesSLA": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "priority": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "value": {
+          "type": "number",
+          "format": "float"
+        },
+        "compensations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesCompensation"
+          }
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        }
+      }
+    },
+    "typesStopParam": {
+      "type": "object",
+      "properties": {
+        "contractAddress": {
+          "type": "string"
+        },
+        "stopName": {
+          "type": "string"
+        }
+      }
+    },
+    "typesSummaryRecord": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "success": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "fail": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "result": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "typesSummaryResult": {
+      "type": "object",
+      "properties": {
+        "contract": {
+          "$ref": "#/definitions/typesContractParam"
+        },
+        "records": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typesCompareRecord"
+          }
+        },
+        "total": {
+          "$ref": "#/definitions/typesCompareRecord"
+        }
+      }
+    },
+    "typesTerminateParam": {
+      "type": "object",
+      "properties": {
+        "contractAddress": {
+          "type": "string"
+        },
+        "request": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "typesTerminator": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "request": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "typesUpdateStopParam": {
+      "type": "object",
+      "properties": {
+        "contractAddress": {
+          "type": "string"
+        },
+        "stopName": {
+          "type": "string"
+        },
+        "newName": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

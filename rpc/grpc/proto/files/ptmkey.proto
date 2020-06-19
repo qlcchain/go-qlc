@@ -1,0 +1,50 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "types/basic.proto";
+
+option go_package = ".;proto";
+
+service PtmKeyAPI {
+    rpc GetPtmKeyUpdateBlock (PtmKeyUpdateParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/ptmkey/getPtmKeyUpdateBlock"
+       };
+    }
+
+    rpc GetPtmKeyDeleteBlock (PtmKeyByAccountAndBtypeParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/ptmkey/getPtmKeyDeleteBlock"
+       };
+    }
+
+    rpc GetPtmKeyByAccount (types.Address) returns (PtmKeyUpdateParams) {
+        option (google.api.http) = {
+           get: "/ptmkey/getPtmKeyByAccount"
+       };
+    }
+
+    rpc GetPtmKeyByAccountAndBtype (PtmKeyByAccountAndBtypeParam) returns (PtmKeyUpdateParams) {
+        option (google.api.http) = {
+           get: "/ptmkey/getPtmKeyByAccountAndBtype"
+       };
+    }
+}
+
+
+message PtmKeyUpdateParam  {
+    string account = 1;
+    string btype   = 2;
+    string pubkey  = 3;
+}
+
+message PtmKeyUpdateParams{
+    repeated PtmKeyUpdateParam params = 1;
+}
+
+message PtmKeyByAccountAndBtypeParam  {
+    string account  = 1;
+    string btype    = 2;
+}
+

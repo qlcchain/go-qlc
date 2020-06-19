@@ -149,35 +149,6 @@ func checkOffset(count int, offset *int) (int, int, error) {
 	return count, o, nil
 }
 
-func generateAPIBlock(store ledger.Store, block *types.StateBlock, latestPov *types.PovHeader) (*APIBlock, error) {
-	ab := new(APIBlock)
-	ab.StateBlock = block
-	ab.Hash = block.GetHash()
-	if amount, err := store.CalculateAmount(block); err != nil {
-		return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
-	} else {
-		ab.Amount = amount
-	}
-	token, err := store.GetTokenById(block.GetToken())
-	if err != nil {
-		return nil, err
-	}
-	ab.TokenName = token.TokenName
-
-	// pov tx lookup
-	if latestPov != nil {
-		povTxl, _ := store.GetPovTxLookup(ab.Hash)
-		if povTxl != nil {
-			ab.PovConfirmHeight = povTxl.BlockHeight
-			if latestPov.GetHeight() > ab.PovConfirmHeight {
-				ab.PovConfirmCount = latestPov.GetHeight() - ab.PovConfirmHeight
-			}
-		}
-	}
-
-	return ab, nil
-}
-
 // AccountHistoryTopn returns blocks of the account, blocks count of each token in the account up to n
 func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset *int) ([]*APIBlock, error) {
 	c, o, err := checkOffset(count, offset)
@@ -197,7 +168,7 @@ func (l *LedgerAPI) AccountHistoryTopn(address types.Address, count int, offset 
 		if err != nil {
 			return nil, fmt.Errorf("can not get block %s", block.GetHash().String())
 		}
-		b, err := generateAPIBlock(l.ledger, block, latestPov)
+		b, err := GenerateAPIBlock(l.ledger, block, latestPov)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +182,7 @@ func (l *LedgerAPI) AccountInfo(address types.Address) (*APIAccount, error) {
 	if err != nil {
 		return nil, err
 	}
-	return l.generateAPIAccountMeta(am)
+	return GenerateAPIAccountMeta(l.ledger, am)
 }
 
 func (l *LedgerAPI) ConfirmedAccountInfo(address types.Address) (*APIAccount, error) {
@@ -219,39 +190,7 @@ func (l *LedgerAPI) ConfirmedAccountInfo(address types.Address) (*APIAccount, er
 	if err != nil {
 		return nil, err
 	}
-	return l.generateAPIAccountMeta(am)
-}
-
-func (l *LedgerAPI) generateAPIAccountMeta(am *types.AccountMeta) (*APIAccount, error) {
-	aa := new(APIAccount)
-	for _, t := range am.Tokens {
-		if t.Type == config.ChainToken() {
-			aa.CoinBalance = &t.Balance
-			aa.Representative = &t.Representative
-			aa.CoinVote = &am.CoinVote
-			aa.CoinNetwork = &am.CoinNetwork
-			aa.CoinOracle = &am.CoinOracle
-			aa.CoinStorage = &am.CoinStorage
-		}
-		info, err := l.ledger.GetTokenById(t.Type)
-		if err != nil {
-			return nil, err
-		}
-		amount, err := l.ledger.PendingAmount(am.Address, t.Type)
-		if err != nil {
-			l.logger.Errorf("pending amount error: %s", err)
-			return nil, err
-		}
-
-		tm := APITokenMeta{
-			TokenMeta: t,
-			TokenName: info.TokenName,
-			Pending:   amount,
-		}
-		aa.Tokens = append(aa.Tokens, &tm)
-	}
-	aa.Address = am.Address
-	return aa, nil
+	return GenerateAPIAccountMeta(l.ledger, am)
 }
 
 func (l *LedgerAPI) AccountRepresentative(addr types.Address) (types.Address, error) {
@@ -389,16 +328,16 @@ func (l *LedgerAPI) AccountsCount() (uint64, error) {
 	return l.ledger.CountAccountMetas()
 }
 
-func (l *LedgerAPI) Accounts(count int, offset *int) ([]*types.Address, error) {
+func (l *LedgerAPI) Accounts(count int, offset *int) ([]types.Address, error) {
 	c, o, err := checkOffset(count, offset)
 	if err != nil {
 		return nil, err
 	}
-	as := make([]*types.Address, 0)
+	as := make([]types.Address, 0)
 	index := 0
 	err = l.ledger.GetAccountMetas(func(am *types.AccountMeta) error {
 		if index >= o && index < o+c {
-			as = append(as, &am.Address)
+			as = append(as, am.Address)
 		}
 		index = index + 1
 		return nil
@@ -505,7 +444,7 @@ func (l *LedgerAPI) BlocksInfo(hash []types.Hash) ([]*APIBlock, error) {
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b, err := generateAPIBlock(l.ledger, block, latestPov)
+		b, err := GenerateAPIBlock(l.ledger, block, latestPov)
 		if err != nil {
 			return nil, err
 		}
@@ -526,7 +465,7 @@ func (l *LedgerAPI) ConfirmedBlocksInfo(hash []types.Hash) ([]*APIBlock, error) 
 			}
 			return nil, fmt.Errorf("%s, %s", h, err)
 		}
-		b, err := generateAPIBlock(l.ledger, block, latestPov)
+		b, err := GenerateAPIBlock(l.ledger, block, latestPov)
 		if err != nil {
 			return nil, err
 		}
@@ -554,7 +493,7 @@ func (l *LedgerAPI) Blocks(count int, offset *int) ([]*APIBlock, error) {
 			return nil, err
 		}
 		if block != nil {
-			b, err := generateAPIBlock(l.ledger, block, latestPov)
+			b, err := GenerateAPIBlock(l.ledger, block, latestPov)
 			if err != nil {
 				return nil, err
 			}
@@ -991,13 +930,13 @@ func (l *LedgerAPI) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(subscription.ID, types.ZeroAddress, true, ch)
-			defer l.blockSubscription.removeChan(subscription.ID)
+			l.blockSubscription.AddChan(string(string(subscription.ID)), types.ZeroAddress, true, ch)
+			defer l.blockSubscription.RemoveChan(string(subscription.ID))
 
 			for {
 				select {
 				case <-ch:
-					blocks := l.blockSubscription.fetchBlocks(subscription.ID)
+					blocks := l.blockSubscription.FetchBlocks(string(subscription.ID))
 					if len(blocks) == 0 {
 						continue
 					}
@@ -1005,7 +944,7 @@ func (l *LedgerAPI) NewBlock(ctx context.Context) (*rpc.Subscription, error) {
 					latestPov, _ := l.ledger.GetLatestPovHeader()
 
 					for _, block := range blocks {
-						apiBlk, err := generateAPIBlock(l.ledger, block, latestPov)
+						apiBlk, err := GenerateAPIBlock(l.ledger, block, latestPov)
 						if err != nil {
 							l.logger.Errorf("generateAPIBlock error: %s", err)
 							continue
@@ -1034,13 +973,13 @@ func (l *LedgerAPI) NewAccountBlock(ctx context.Context, address types.Address) 
 	sub, err := createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(subscription.ID, address, true, ch)
-			defer l.blockSubscription.removeChan(subscription.ID)
+			l.blockSubscription.AddChan(string(subscription.ID), address, true, ch)
+			defer l.blockSubscription.RemoveChan(string(subscription.ID))
 
 			for {
 				select {
 				case <-ch:
-					blocks := l.blockSubscription.fetchBlocks(subscription.ID)
+					blocks := l.blockSubscription.FetchBlocks(string(subscription.ID))
 					if len(blocks) == 0 {
 						continue
 					}
@@ -1048,7 +987,7 @@ func (l *LedgerAPI) NewAccountBlock(ctx context.Context, address types.Address) 
 					latestPov, _ := l.ledger.GetLatestPovHeader()
 
 					for _, block := range blocks {
-						apiBlk, err := generateAPIBlock(l.ledger, block, latestPov)
+						apiBlk, err := GenerateAPIBlock(l.ledger, block, latestPov)
 						if err != nil {
 							l.logger.Errorf("generateAPIBlock error: %s", err)
 							continue
@@ -1077,13 +1016,13 @@ func (l *LedgerAPI) BalanceChange(ctx context.Context, address types.Address) (*
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(subscription.ID, address, false, ch)
-			defer l.blockSubscription.removeChan(subscription.ID)
+			l.blockSubscription.AddChan(string(subscription.ID), address, false, ch)
+			defer l.blockSubscription.RemoveChan(string(subscription.ID))
 
 			for {
 				select {
 				case <-ch:
-					block := l.blockSubscription.fetchAddrBlock(subscription.ID)
+					block := l.blockSubscription.FetchAddrBlock(string(subscription.ID))
 					if block == nil {
 						continue
 					}
@@ -1094,7 +1033,7 @@ func (l *LedgerAPI) BalanceChange(ctx context.Context, address types.Address) (*
 							l.logger.Errorf("get account meta: %s", err)
 							return
 						}
-						aa, err := l.generateAPIAccountMeta(am)
+						aa, err := GenerateAPIAccountMeta(l.ledger, am)
 						if err != nil {
 							l.logger.Errorf("generate APIAccountMeta error: %s", err)
 							return
@@ -1117,13 +1056,13 @@ func (l *LedgerAPI) NewPending(ctx context.Context, address types.Address) (*rpc
 	return createSubscription(ctx, func(notifier *rpc.Notifier, subscription *rpc.Subscription) {
 		go func() {
 			ch := make(chan struct{})
-			l.blockSubscription.addChan(subscription.ID, types.ZeroAddress, true, ch)
-			defer l.blockSubscription.removeChan(subscription.ID)
+			l.blockSubscription.AddChan(string(subscription.ID), types.ZeroAddress, true, ch)
+			defer l.blockSubscription.RemoveChan(string(subscription.ID))
 
 			for {
 				select {
 				case <-ch:
-					blocks := l.blockSubscription.fetchBlocks(subscription.ID)
+					blocks := l.blockSubscription.FetchBlocks(string(subscription.ID))
 					if len(blocks) == 0 {
 						continue
 					}
@@ -1229,4 +1168,64 @@ func (l *LedgerAPI) IsGenesisToken(hash types.Hash) bool {
 
 func (l *LedgerAPI) AllGenesisBlocks() []types.StateBlock {
 	return config.AllGenesisBlocks()
+}
+
+func GenerateAPIBlock(store ledger.Store, block *types.StateBlock, latestPov *types.PovHeader) (*APIBlock, error) {
+	ab := new(APIBlock)
+	ab.StateBlock = block
+	ab.Hash = block.GetHash()
+	if amount, err := store.CalculateAmount(block); err != nil {
+		return nil, fmt.Errorf("block:%s, type:%s err:%s", ab.Hash.String(), ab.Type.String(), err)
+	} else {
+		ab.Amount = amount
+	}
+	token, err := store.GetTokenById(block.GetToken())
+	if err != nil {
+		return nil, err
+	}
+	ab.TokenName = token.TokenName
+
+	// pov tx lookup
+	if latestPov != nil {
+		povTxl, _ := store.GetPovTxLookup(ab.Hash)
+		if povTxl != nil {
+			ab.PovConfirmHeight = povTxl.BlockHeight
+			if latestPov.GetHeight() > ab.PovConfirmHeight {
+				ab.PovConfirmCount = latestPov.GetHeight() - ab.PovConfirmHeight
+			}
+		}
+	}
+
+	return ab, nil
+}
+
+func GenerateAPIAccountMeta(store ledger.Store, am *types.AccountMeta) (*APIAccount, error) {
+	aa := new(APIAccount)
+	for _, t := range am.Tokens {
+		if t.Type == config.ChainToken() {
+			aa.CoinBalance = &t.Balance
+			aa.Representative = &t.Representative
+			aa.CoinVote = &am.CoinVote
+			aa.CoinNetwork = &am.CoinNetwork
+			aa.CoinOracle = &am.CoinOracle
+			aa.CoinStorage = &am.CoinStorage
+		}
+		info, err := store.GetTokenById(t.Type)
+		if err != nil {
+			return nil, err
+		}
+		amount, err := store.PendingAmount(am.Address, t.Type)
+		if err != nil {
+			return nil, fmt.Errorf("pending amount error: %s", err)
+		}
+
+		tm := APITokenMeta{
+			TokenMeta: t,
+			TokenName: info.TokenName,
+			Pending:   amount,
+		}
+		aa.Tokens = append(aa.Tokens, &tm)
+	}
+	aa.Address = am.Address
+	return aa, nil
 }

@@ -1,0 +1,470 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "types/basic.proto";
+import "types/contract.proto";
+import "common.proto";
+
+option go_package = ".;proto";
+
+service SettlementAPI {
+    rpc ToAddress (types.CreateContractParam) returns (types.Address) {
+        option (google.api.http) = {
+           post: "/settlement/toAddress"
+           body: "*"
+       };
+    }
+
+    rpc GetSettlementRewardsBlock (types.Hash) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/settlement/getSettlementRewardsBlock"
+       };
+    }
+
+    rpc GetCreateContractBlock (CreateContractParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getCreateContractBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetSignContractBlock (SignContractParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/settlement/getSignContractBlock"
+       };
+    }
+
+    rpc GetAddPreStopBlock (StopParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getAddPreStopBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetRemovePreStopBlock (StopParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getRemovePreStopBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetUpdatePreStopBlock (UpdateStopParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getUpdatePreStopBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetAddNextStopBlock (StopParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getAddNextStopBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetRemoveNextStopBlock (StopParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getRemoveNextStopBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetUpdateNextStopBlock (UpdateStopParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getUpdateNextStopBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetAllContracts (Offset) returns (SettlementContracts) {
+        option (google.api.http) = {
+           get: "/settlement/getAllContracts"
+       };
+    }
+
+    rpc GetContractsByAddress (ContractsByAddressRequest) returns (SettlementContracts) {
+        option (google.api.http) = {
+           get: "/settlement/getContractsByAddress"
+       };
+    }
+
+    rpc GetContractsByStatus (ContractsByStatusRequest) returns (SettlementContracts) {
+        option (google.api.http) = {
+           get: "/settlement/getContractsByStatus"
+       };
+    }
+
+    rpc GetExpiredContracts (ContractsByAddressRequest) returns (SettlementContracts) {
+        option (google.api.http) = {
+           get: "/settlement/getExpiredContracts"
+       };
+    }
+
+    rpc GetContractsAsPartyA (ContractsByAddressRequest) returns (SettlementContracts) {
+        option (google.api.http) = {
+           get: "/settlement/getContractsAsPartyA"
+       };
+    }
+
+    rpc GetContractsAsPartyB (ContractsByAddressRequest) returns (SettlementContracts) {
+        option (google.api.http) = {
+           get: "/settlement/getContractsAsPartyB"
+       };
+    }
+
+    rpc GetContractAddressByPartyANextStop (ContractAddressByPartyRequest) returns (types.Address) {
+        option (google.api.http) = {
+           get: "/settlement/getContractAddressByPartyANextStop"
+       };
+    }
+
+    rpc GetContractAddressByPartyBPreStop (ContractAddressByPartyRequest) returns (types.Address) {
+        option (google.api.http) = {
+           get: "/settlement/getContractAddressByPartyBPreStop"
+       };
+    }
+
+    rpc GetProcessCDRBlock (ProcessCDRBlockRequest) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getProcessCDRBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetTerminateContractBlock (TerminateParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/settlement/getTerminateContractBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetCDRStatus (CDRStatusRequest) returns (CDRStatus) {
+        option (google.api.http) = {
+           get: "/settlement/getCDRStatus"
+       };
+    }
+
+    rpc GetCDRStatusByCdrData (CDRStatusByCdrDataRequest) returns (CDRStatus) {
+        option (google.api.http) = {
+           get: "/settlement/getCDRStatusByCdrData"
+       };
+    }
+
+    rpc GetCDRStatusByDate (CDRStatusByDateRequest) returns (CDRStatuses) {
+        option (google.api.http) = {
+           get: "/settlement/getCDRStatusByDate"
+       };
+    }
+
+    rpc GetAllCDRStatus (ContractsByAddressRequest) returns (CDRStatuses) {
+        option (google.api.http) = {
+           get: "/settlement/getAllCDRStatus"
+       };
+    }
+
+    rpc GetMultiPartyCDRStatus (MultiPartyCDRStatusRequest) returns (CDRStatuses) {
+        option (google.api.http) = {
+           get: "/settlement/getMultiPartyCDRStatus"
+       };
+    }
+
+    rpc GetSummaryReport (ReportRequest) returns (types.SummaryResult) {
+        option (google.api.http) = {
+           get: "/settlement/getSummaryReport"
+       };
+    }
+
+    rpc GetSummaryReportByAccount (ReportByAccountRequest) returns (types.SummaryResult) {
+        option (google.api.http) = {
+           get: "/settlement/getSummaryReportByAccount"
+       };
+    }
+
+    rpc GetSummaryReportByCustomer (ReportByCustomerRequest) returns (types.SummaryResult) {
+        option (google.api.http) = {
+           get: "/settlement/getSummaryReportByCustomer"
+       };
+    }
+
+    rpc GenerateInvoices (InvoicesRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateInvoices"
+       };
+    }
+
+    rpc GenerateInvoicesByAccount (InvoicesByAccountRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateInvoicesByAccount"
+       };
+    }
+
+    rpc GenerateInvoicesByCustomer (InvoicesByCustomerRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateInvoicesByCustomer"
+       };
+    }
+
+    rpc GenerateInvoicesByContract (InvoicesRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateInvoicesByContract"
+       };
+    }
+
+    rpc GenerateMultiPartyInvoice (MultiPartyInvoiceRequest) returns (InvoiceRecords) {
+        option (google.api.http) = {
+           get: "/settlement/generateMultiPartyInvoice"
+       };
+    }
+
+    rpc GenerateMultiPartySummaryReport (MultiPartyInvoiceRequest) returns (types.MultiPartySummaryResult) {
+        option (google.api.http) = {
+           get: "/settlement/generateMultiPartySummaryReport"
+       };
+    }
+
+    rpc GetPreStopNames (types.Address) returns (Strings) {
+        option (google.api.http) = {
+           get: "/settlement/getPreStopNames"
+       };
+    }
+
+    rpc GetNextStopNames (types.Address) returns (Strings) {
+        option (google.api.http) = {
+           get: "/settlement/getNextStopNames"
+       };
+    }
+
+    rpc GetRegisterAssetBlock (RegisterAssetParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/settlement/getRegisterAssetBlock"
+       };
+    }
+
+    rpc GetAllAssets (Offset) returns (AssetParams) {
+        option (google.api.http) = {
+           get: "/settlement/getAllAssets"
+       };
+    }
+
+
+    rpc GetAssetsByOwner (AssetsByOwnerRequest) returns (AssetParams) {
+        option (google.api.http) = {
+           get: "/settlement/getAssetsByOwner"
+       };
+    }
+
+    rpc GetAsset (types.Address) returns (AssetParam) {
+        option (google.api.http) = {
+           get: "/settlement/getAsset"
+       };
+    }
+
+}
+
+
+message SignContractParam {
+    string contractAddress = 1;
+    string address         = 2;
+}
+
+message CreateContractParam {
+    types.Contractor partyA     = 1;
+    types.Contractor partyB     = 2;
+    repeated types.ContractService services   = 3;
+    int64 startDate       = 4;
+    int64 endDate         = 5;
+}
+
+message StopParam {
+    types.StopParam stopParam = 1;
+    string     Address  = 2;
+}
+
+message UpdateStopParam {
+    types.UpdateStopParam updateStopParam = 1;
+    string          address         = 2;
+}
+
+
+//message SettlementContract {
+//    types.ContractParam contractParam = 1;
+//    string address              = 2;
+//}
+
+
+message SettlementContract  {   //merge field
+    types.Contractor partyA     = 1;
+    types.Contractor partyB     = 2;
+    string     Previous         = 3;
+    repeated types.ContractService services  = 4;
+    int64 signDate              = 5;
+    int64 startDate             = 6;
+    int64 endDate               = 7;
+
+    repeated string preStops     = 8;
+    repeated string nextStops    = 9;
+    int64    confirmDate         = 10;
+    int32    status              = 11;
+    types.Terminator      terminator   = 12;
+    string address               = 13;
+}
+
+message SettlementContracts {
+    repeated SettlementContract contracts = 1;
+}
+
+message TerminateParam {
+    types.TerminateParam terminateParam = 1;
+    string address                = 2;
+}
+
+message CDRStatus {
+    string address      = 1;
+    map<string, types.CDRParams> Params = 2;
+    int32 status        = 3;
+}
+
+message CDRStatuses {
+    repeated CDRStatus statuses = 1;
+}
+
+message RegisterAssetParam {
+    types.Contractor owner       = 1;
+    repeated types.Asset assets  = 2;
+    int64    startDate     = 3;
+    int64    endDate       = 4;
+    string   status        = 5;
+}
+
+message ContractsByAddressRequest {
+    string addr    = 1;
+    int32  count   = 2;
+    int32  offset  = 3;
+}
+
+message ContractsByStatusRequest {
+    string addr    = 1;
+    string status  = 2;
+    int32  count   = 3;
+    int32  offset  = 4;
+}
+
+message ContractAddressByPartyRequest {
+    string addr      = 1;
+    string stopName  = 2;
+}
+
+message ProcessCDRBlockRequest{
+    string addr               = 1;
+    repeated types.CDRParam params  = 2;
+}
+
+message CDRStatusRequest{
+    string addr   = 1;
+    string hash   = 2;
+}
+
+message CDRStatusByCdrDataRequest{
+    string addr     = 1;
+    uint64 index    = 2;
+    string sender   = 3;
+    string destination  = 4;
+}
+
+message CDRStatusByDateRequest{
+    string addr   = 1;
+    int64  start  = 2;
+    int64  end    = 3;
+    int32  count  = 4;
+    int32  offset = 5;
+}
+
+message MultiPartyCDRStatusRequest{
+    string firstAddr   = 1;
+    string secondAddr  = 2;
+    int32  count       = 3;
+    int32  offset      = 4;
+}
+
+message ReportRequest {
+    string addr   = 1;
+    int64 start   = 2;
+    int64 end     = 3;
+}
+
+
+message ReportByAccountRequest {
+    string addr    = 1;
+    string account = 2;
+    int64 start    = 3;
+    int64 end      = 4;
+}
+
+message ReportByCustomerRequest {
+    string addr     = 1;
+    string customer = 2;
+    int64 start     = 3;
+    int64 end       = 4;
+}
+
+message InvoicesRequest {
+    string addr   = 1;
+    int64 start   = 2;
+    int64 end     = 3;
+}
+
+
+message InvoicesByAccountRequest {
+    string addr    = 1;
+    string account = 2;
+    int64 start    = 3;
+    int64 end      = 4;
+}
+
+message InvoicesByCustomerRequest {
+    string addr     = 1;
+    string customer = 2;
+    int64  start     = 3;
+    int64  end       = 4;
+}
+
+message MultiPartyInvoiceRequest {
+    string firstAddr  = 1;
+    string secondAddr = 2;
+    int64 start     = 3;
+    int64 end       = 4;
+}
+
+message AssetsByOwnerRequest {
+    string owner    = 1;
+    int32 count     = 2;
+    int32 offset    = 3;
+}
+
+
+message InvoiceRecords  {
+   repeated types.InvoiceRecord records = 1;
+}
+
+message AssetParams  {
+    repeated AssetParam params = 1;
+}
+
+message AssetParam {
+    types.Contractor owner = 1;
+    repeated Asset assets = 2;
+    int64 signDate        = 3;
+    int64 startDate       = 4;
+    int64 endDate         = 5;
+    int32 status          = 6;
+    string address        = 7;
+}
+
+message Asset  {
+    uint64 mcc          = 1;
+    uint64 mnc          = 2 ;
+    uint64 totalAmount  = 3;
+    repeated types.SLA sla    = 4;
+    string assetID      = 5;
+}

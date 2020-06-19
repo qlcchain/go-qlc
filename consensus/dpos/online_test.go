@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/qlcchain/go-qlc/common"
-
 	"github.com/qlcchain/go-qlc/mock"
 )
 

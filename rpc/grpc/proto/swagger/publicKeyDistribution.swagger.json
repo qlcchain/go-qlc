@@ -1,0 +1,1266 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "publicKeyDistribution.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/pkdistribution/getActiveVerifiers": {
+      "get": {
+        "operationId": "GetActiveVerifiers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoVerifierRegParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getAllVerifierStatesByBlockHeight": {
+      "get": {
+        "operationId": "GetAllVerifierStatesByBlockHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPKDVerifierStateList"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getAllVerifiers": {
+      "get": {
+        "operationId": "GetAllVerifiers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoVerifierRegParams"
+            }
+          }
+        },
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getAvailRewardInfo": {
+      "get": {
+        "operationId": "GetAvailRewardInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPKDAvailRewardInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getOracleBlock": {
+      "get": {
+        "operationId": "GetOracleBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "keyType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pubKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getOracleInfosByAccountAndType": {
+      "get": {
+        "operationId": "GetOracleInfosByAccountAndType",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoOracleParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getOracleInfosByHash": {
+      "get": {
+        "operationId": "GetOracleInfosByHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoOracleParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getOracleInfosByType": {
+      "get": {
+        "operationId": "GetOracleInfosByType",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoOracleParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      },
+      "post": {
+        "operationId": "GetOracleInfosByTypeAndID",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoOracleParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoTypeAndIDParam"
+            }
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getPubKeyByTypeAndID": {
+      "get": {
+        "operationId": "GetPubKeyByTypeAndID",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPublishInfoStates"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pID",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getPublishBlock": {
+      "post": {
+        "operationId": "GetPublishBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPublishRet"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoPublishParam"
+            }
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getPublishInfosByAccountAndType": {
+      "get": {
+        "operationId": "GetPublishInfosByAccountAndType",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPublishInfoStates"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getPublishInfosByType": {
+      "get": {
+        "operationId": "GetPublishInfosByType",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPublishInfoStates"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getRecommendPubKey": {
+      "get": {
+        "operationId": "GetRecommendPubKey",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPublishInfoState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pType",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pID",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getRewardHistory": {
+      "get": {
+        "operationId": "GetRewardHistory",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPKDHistoryRewardInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getRewardRecvBlock": {
+      "post": {
+        "operationId": "GetRewardRecvBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getRewardRecvBlockBySendHash": {
+      "get": {
+        "operationId": "GetRewardRecvBlockBySendHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getRewardSendBlock": {
+      "get": {
+        "operationId": "GetRewardSendBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "endHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardAmount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getUnPublishBlock": {
+      "post": {
+        "operationId": "GetUnPublishBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoUnPublishParam"
+            }
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getVerifierHeartBlock": {
+      "post": {
+        "operationId": "GetVerifierHeartBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoVerifierHeartBlockRequest"
+            }
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getVerifierRegisterBlock": {
+      "get": {
+        "operationId": "GetVerifierRegisterBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getVerifierStateByBlockHeight": {
+      "get": {
+        "operationId": "GetVerifierStateByBlockHeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesPovVerifierState"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getVerifierUnregisterBlock": {
+      "get": {
+        "operationId": "GetVerifierUnregisterBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getVerifiersByAccount": {
+      "get": {
+        "operationId": "GetVerifiersByAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoVerifierRegParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/getVerifiersByType": {
+      "get": {
+        "operationId": "GetVerifiersByType",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoVerifierRegParams"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/packRewardData": {
+      "get": {
+        "operationId": "PackRewardData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "endHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "rewardAmount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    },
+    "/pkdistribution/unpackRewardData": {
+      "get": {
+        "operationId": "UnpackRewardData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPKDRewardParam"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "tags": [
+          "PublicKeyDistributionAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoBytes": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protoOracleParam": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "keyType": {
+          "type": "string"
+        },
+        "pubKey": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "protoOracleParams": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoOracleParam"
+          }
+        }
+      }
+    },
+    "protoPKDAvailRewardInfo": {
+      "type": "object",
+      "properties": {
+        "LastEndHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "LatestBlockHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "NodeRewardHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "AvailEndHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "AvailRewardAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "NeedCallReward": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoPKDHistoryRewardInfo": {
+      "type": "object",
+      "properties": {
+        "lastEndHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "lastBeneficial": {
+          "type": "string"
+        },
+        "lastRewardTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "rewardAmount": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoPKDRewardParam": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "beneficial": {
+          "type": "string"
+        },
+        "endHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "rewardAmount": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoPKDVerifierStateList": {
+      "type": "object",
+      "properties": {
+        "verifierNum": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "allVerifiers": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/typesPovVerifierState"
+          }
+        }
+      }
+    },
+    "protoPublishInfoState": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string",
+          "title": "PublishParam    publishParam = 1;"
+        },
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pubKey": {
+          "type": "string"
+        },
+        "keyType": {
+          "type": "string"
+        },
+        "fee": {
+          "type": "string",
+          "format": "int64"
+        },
+        "verifiers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hash": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/definitions/typesPovPublishState"
+        }
+      }
+    },
+    "protoPublishInfoStates": {
+      "type": "object",
+      "properties": {
+        "states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoPublishInfoState"
+          }
+        }
+      }
+    },
+    "protoPublishParam": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pubKey": {
+          "type": "string"
+        },
+        "keyType": {
+          "type": "string"
+        },
+        "fee": {
+          "type": "string",
+          "format": "int64"
+        },
+        "verifiers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "protoPublishRet": {
+      "type": "object",
+      "properties": {
+        "block": {
+          "$ref": "#/definitions/typesStateBlock"
+        },
+        "verifiers": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/protoVerifierContent"
+          }
+        }
+      }
+    },
+    "protoTypeAndIDParam": {
+      "type": "object",
+      "properties": {
+        "pType": {
+          "type": "string"
+        },
+        "pID": {
+          "type": "string"
+        }
+      }
+    },
+    "protoUnPublishParam": {
+      "type": "object",
+      "properties": {
+        "Account": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pubKey": {
+          "type": "string"
+        },
+        "keyType": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "protoVerifierContent": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "pubKey": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "protoVerifierHeartBlockRequest": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "vTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "protoVerifierRegParam": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        }
+      }
+    },
+    "protoVerifierRegParams": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoVerifierRegParam"
+          }
+        }
+      }
+    },
+    "typesPovPublishState": {
+      "type": "object",
+      "properties": {
+        "oracleAccounts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "publishHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "verifiedHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "verifiedStatus": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "bonusFee": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "typesPovVerifierState": {
+      "type": "object",
+      "properties": {
+        "totalVerify": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "totalReward": {
+          "type": "string",
+          "format": "int64"
+        },
+        "activeHeight": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "uint64"
+          }
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

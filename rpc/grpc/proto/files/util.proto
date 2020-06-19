@@ -1,0 +1,50 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "common.proto";
+
+
+option go_package = ".;proto";
+
+service UtilAPI{
+    rpc Decrypt(DecryptRequest) returns (String){
+        option (google.api.http) = {
+              get: "/util/decrypt"
+         };
+    }
+
+    rpc Encrypt(EncryptRequest) returns (String){
+        option (google.api.http) = {
+              get: "/util/encrypt"
+         };
+    }
+
+    rpc RawToBalance(RawBalance) returns (Float){
+        option (google.api.http) = {
+              get: "/util/rawToBalance"
+         };
+    }
+
+    rpc BalanceToRaw(RawBalance) returns (Int64){
+        option (google.api.http) = {
+              get: "/util/balanceToRaw"
+         };
+    }
+}
+
+message DecryptRequest{
+    string cryptograph = 1;
+    string passphrase  = 2;
+}
+
+message EncryptRequest{
+    string raw         = 1;
+    string passphrase  = 2;
+}
+
+message RawBalance{
+    int64  balance   = 1;
+    string unit    = 2;
+    string tokenName = 3;
+}

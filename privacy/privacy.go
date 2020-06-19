@@ -3,13 +3,11 @@ package privacy
 import (
 	"encoding/hex"
 
-	"github.com/qlcchain/go-qlc/common"
-
+	"github.com/AsynkronIT/protoactor-go/actor"
 	"go.uber.org/zap"
 
-	"github.com/AsynkronIT/protoactor-go/actor"
-
 	"github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/config"

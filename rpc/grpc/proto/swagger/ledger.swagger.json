@@ -1,0 +1,2271 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "ledger.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/ledger/accountBlocksCount": {
+      "get": {
+        "operationId": "AccountBlocksCount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInt64"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accountHistoryTopn": {
+      "get": {
+        "operationId": "AccountHistoryTopn",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIBlocks"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accountInfo": {
+      "get": {
+        "operationId": "AccountInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIAccount"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accountRepresentative": {
+      "get": {
+        "operationId": "AccountRepresentative",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accountVotingWeight": {
+      "get": {
+        "operationId": "AccountVotingWeight",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesBalance"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accounts": {
+      "get": {
+        "operationId": "Accounts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddresses"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accountsBalance": {
+      "get": {
+        "operationId": "AccountsBalance",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAccountsBalanceRsp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addresses",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accountsCount": {
+      "get": {
+        "operationId": "AccountsCount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoUInt64"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accountsFrontiers": {
+      "get": {
+        "operationId": "AccountsFrontiers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAccountsFrontiersRsp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addresses",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/accountsPending": {
+      "get": {
+        "operationId": "AccountsPending",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAccountsPendingRsp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "addresses",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/allGenesisBlocks": {
+      "get": {
+        "operationId": "AllGenesisBlocks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlocks"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/balanceChange": {
+      "get": {
+        "operationId": "BalanceChange",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "$ref": "#/x-stream-definitions/protoAPIAccount"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/blockAccount": {
+      "get": {
+        "operationId": "BlockAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/blockConfirmedStatus": {
+      "get": {
+        "operationId": "BlockConfirmedStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBoolean"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/blockHash": {
+      "get": {
+        "operationId": "BlockHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "balance",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "vote",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "network",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "storage",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "oracle",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "previous",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "link",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sender",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          },
+          {
+            "name": "receiver",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          },
+          {
+            "name": "message",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "data",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          },
+          {
+            "name": "poVHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "extra",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "representative",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "privateFrom",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "privateFor",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "privateGroupID",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "work",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "signature",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/blocks": {
+      "get": {
+        "operationId": "Blocks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIBlocks"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/blocksCount": {
+      "get": {
+        "operationId": "BlocksCount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBlocksCountRsp"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/blocksCount2": {
+      "get": {
+        "operationId": "BlocksCount2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBlocksCountRsp"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/blocksCountByType": {
+      "get": {
+        "operationId": "BlocksCountByType",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBlocksCountRsp"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/blocksInfo": {
+      "get": {
+        "operationId": "BlocksInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIBlocks"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hashes",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/chain": {
+      "get": {
+        "operationId": "Chain",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHashes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/chainToken": {
+      "get": {
+        "operationId": "ChainToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/confirmedAccountInfo": {
+      "get": {
+        "operationId": "ConfirmedAccountInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIAccount"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/confirmedBlocksInfo": {
+      "get": {
+        "operationId": "ConfirmedBlocksInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIBlocks"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hashes",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/delegators": {
+      "get": {
+        "operationId": "Delegators",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIAccountBalances"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/delegatorsCount": {
+      "get": {
+        "operationId": "DelegatorsCount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoInt64"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/gasAddress": {
+      "get": {
+        "operationId": "GasAddress",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/gasBlock": {
+      "get": {
+        "operationId": "GasBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/gasBlockHash": {
+      "get": {
+        "operationId": "GasBlockHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/gasMintageBlock": {
+      "get": {
+        "operationId": "GasMintageBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/gasToken": {
+      "get": {
+        "operationId": "GasToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/generateChangeBlock": {
+      "post": {
+        "operationId": "GenerateChangeBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoGenerateChangeBlockReq"
+            }
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/generateReceiveBlock": {
+      "post": {
+        "operationId": "GenerateReceiveBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoGenerateReceiveBlockReq"
+            }
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/generateReceiveBlockByHash": {
+      "post": {
+        "operationId": "GenerateReceiveBlockByHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoGenerateReceiveBlockByHashReq"
+            }
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/generateSendBlock": {
+      "post": {
+        "operationId": "GenerateSendBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoGenerateSendBlockReq"
+            }
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/genesisAddress": {
+      "get": {
+        "operationId": "GenesisAddress",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddress"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/genesisBlock": {
+      "get": {
+        "operationId": "GenesisBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/genesisBlockHash": {
+      "get": {
+        "operationId": "GenesisBlockHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/genesisMintageBlock": {
+      "get": {
+        "operationId": "GenesisMintageBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/genesisMintageHash": {
+      "get": {
+        "operationId": "GenesisMintageHash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/getAccountOnlineBlock": {
+      "get": {
+        "operationId": "GetAccountOnlineBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlocks"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/isGenesisBlock": {
+      "get": {
+        "operationId": "IsGenesisBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBoolean"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "balance",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "vote",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "network",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "storage",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "oracle",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "previous",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "link",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sender",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          },
+          {
+            "name": "receiver",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          },
+          {
+            "name": "message",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "data",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          },
+          {
+            "name": "poVHeight",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "extra",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "representative",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "privateFrom",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "privateFor",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "privateGroupID",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "work",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "signature",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/isGenesisToken": {
+      "get": {
+        "operationId": "IsGenesisToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBoolean"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/newAccountBlock": {
+      "get": {
+        "operationId": "NewAccountBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "$ref": "#/x-stream-definitions/protoAPIBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/newBlock": {
+      "get": {
+        "operationId": "NewBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "$ref": "#/x-stream-definitions/protoAPIBlock"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/newPending": {
+      "get": {
+        "operationId": "NewPending",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "$ref": "#/x-stream-definitions/protoAPIPending"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/pendings": {
+      "get": {
+        "operationId": "Pendings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIPendings"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/process": {
+      "post": {
+        "operationId": "Process",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesHash"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/representatives": {
+      "get": {
+        "operationId": "Representatives",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoAPIRepresentatives"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "format": "boolean"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/tokenInfoById": {
+      "get": {
+        "operationId": "TokenInfoById",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesTokenInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/tokenInfoByName": {
+      "get": {
+        "operationId": "TokenInfoByName",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesTokenInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/tokens": {
+      "get": {
+        "operationId": "Tokens",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesTokenInfos"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    },
+    "/ledger/transactionsCount": {
+      "get": {
+        "operationId": "TransactionsCount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBlocksCountRsp"
+            }
+          }
+        },
+        "tags": [
+          "LedgerAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "APIAccountBalancesAPIAccountBalance": {
+      "type": "object",
+      "properties": {
+        "Address": {
+          "type": "string"
+        },
+        "Balance": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "AccountsBalanceRspAPIAccountsBalance": {
+      "type": "object",
+      "properties": {
+        "Balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Pending": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "AccountsBalanceRspbalances": {
+      "type": "object",
+      "properties": {
+        "balances": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/AccountsBalanceRspAPIAccountsBalance"
+          }
+        }
+      }
+    },
+    "AccountsFrontiersRspfrontier": {
+      "type": "object",
+      "properties": {
+        "frontier": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "protoAPIAccount": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "coinBalance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "coinVote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "coinNetwork": {
+          "type": "string",
+          "format": "int64"
+        },
+        "coinStorage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "coinOracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "tokens": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoAPITokenMeta"
+          }
+        }
+      }
+    },
+    "protoAPIAccountBalances": {
+      "type": "object",
+      "properties": {
+        "balances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/APIAccountBalancesAPIAccountBalance"
+          }
+        }
+      }
+    },
+    "protoAPIBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "tokenName": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "povConfirmHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "povConfirmCount": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "protoAPIBlocks": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoAPIBlock"
+          }
+        }
+      }
+    },
+    "protoAPIPending": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "type": {
+          "type": "string"
+        },
+        "TokenName": {
+          "type": "string"
+        },
+        "Timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "BlockType": {
+          "type": "string"
+        }
+      }
+    },
+    "protoAPIPendings": {
+      "type": "object",
+      "properties": {
+        "pendings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoAPIPending"
+          }
+        }
+      }
+    },
+    "protoAPIRepresentative": {
+      "type": "object",
+      "properties": {
+        "Address": {
+          "type": "string"
+        },
+        "Balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoAPIRepresentatives": {
+      "type": "object",
+      "properties": {
+        "representatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoAPIRepresentative"
+          }
+        }
+      }
+    },
+    "protoAPISendBlockPara": {
+      "type": "object",
+      "properties": {
+        "From": {
+          "type": "string"
+        },
+        "TokenName": {
+          "type": "string"
+        },
+        "To": {
+          "type": "string"
+        },
+        "Amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "Sender": {
+          "type": "string"
+        },
+        "Receiver": {
+          "type": "string"
+        },
+        "Message": {
+          "type": "string"
+        }
+      }
+    },
+    "protoAPITokenMeta": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "header": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "openBlock": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "belongTo": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "string",
+          "format": "int64"
+        },
+        "blockCount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "tokenName": {
+          "type": "string"
+        },
+        "pending": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoAccountsBalanceRsp": {
+      "type": "object",
+      "properties": {
+        "accountsBalances": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/AccountsBalanceRspbalances"
+          }
+        }
+      }
+    },
+    "protoAccountsFrontiersRsp": {
+      "type": "object",
+      "properties": {
+        "accountsFrontiers": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/AccountsFrontiersRspfrontier"
+          }
+        }
+      }
+    },
+    "protoAccountsPendingRsp": {
+      "type": "object",
+      "properties": {
+        "accountsPendings": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/protoAPIPendings"
+          }
+        }
+      }
+    },
+    "protoBlocksCountRsp": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "uint64"
+          }
+        }
+      }
+    },
+    "protoBoolean": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoGenerateChangeBlockReq": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "prkStr": {
+          "type": "string"
+        }
+      }
+    },
+    "protoGenerateReceiveBlockByHashReq": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        },
+        "prkStr": {
+          "type": "string"
+        }
+      }
+    },
+    "protoGenerateReceiveBlockReq": {
+      "type": "object",
+      "properties": {
+        "block": {
+          "$ref": "#/definitions/typesStateBlock"
+        },
+        "prkStr": {
+          "type": "string"
+        }
+      }
+    },
+    "protoGenerateSendBlockReq": {
+      "type": "object",
+      "properties": {
+        "param": {
+          "$ref": "#/definitions/protoAPISendBlockPara"
+        },
+        "prkStr": {
+          "type": "string"
+        }
+      }
+    },
+    "protoInt64": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoUInt64": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "typesAddress": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "typesAddresses": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "typesBalance": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "typesHash": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        }
+      }
+    },
+    "typesHashes": {
+      "type": "object",
+      "properties": {
+        "hashes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        }
+      }
+    },
+    "typesStateBlocks": {
+      "type": "object",
+      "properties": {
+        "stateBlocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesStateBlock"
+          }
+        }
+      }
+    },
+    "typesTokenInfo": {
+      "type": "object",
+      "properties": {
+        "tokenId": {
+          "type": "string"
+        },
+        "tokenName": {
+          "type": "string"
+        },
+        "tokenSymbol": {
+          "type": "string"
+        },
+        "totalSupply": {
+          "type": "string",
+          "format": "int64"
+        },
+        "decimals": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "pledgeAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "withdrawTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pledgeAddress": {
+          "type": "string"
+        },
+        "NEP5TxId": {
+          "type": "string"
+        }
+      }
+    },
+    "typesTokenInfos": {
+      "type": "object",
+      "properties": {
+        "tokenInfos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/typesTokenInfo"
+          }
+        }
+      }
+    }
+  },
+  "x-stream-definitions": {
+    "protoAPIAccount": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/protoAPIAccount"
+        },
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        }
+      },
+      "title": "Stream result of protoAPIAccount"
+    },
+    "protoAPIBlock": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/protoAPIBlock"
+        },
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        }
+      },
+      "title": "Stream result of protoAPIBlock"
+    },
+    "protoAPIPending": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/protoAPIPending"
+        },
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        }
+      },
+      "title": "Stream result of protoAPIPending"
+    }
+  }
+}

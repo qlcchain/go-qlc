@@ -1,0 +1,336 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "net.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/net/connectPeersInfo": {
+      "get": {
+        "operationId": "ConnectPeersInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPeerInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    },
+    "/net/getAllPeersInfo": {
+      "get": {
+        "operationId": "GetAllPeersInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPeerInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    },
+    "/net/getBandwidthStats": {
+      "get": {
+        "operationId": "GetBandwidthStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoEventBandwidthStats"
+            }
+          }
+        },
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    },
+    "/net/getOnlinePeersInfo": {
+      "get": {
+        "operationId": "GetOnlinePeersInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPeerInfos"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    },
+    "/net/getPeerId": {
+      "get": {
+        "operationId": "GetPeerId",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoString"
+            }
+          }
+        },
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    },
+    "/net/onlineRepresentatives": {
+      "get": {
+        "operationId": "OnlineRepresentatives",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesAddresses"
+            }
+          }
+        },
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    },
+    "/net/onlineRepsInfo": {
+      "get": {
+        "operationId": "OnlineRepsInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoOnlineRepTotal"
+            }
+          }
+        },
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    },
+    "/net/peersCount": {
+      "get": {
+        "operationId": "PeersCount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoPeersCountResponse"
+            }
+          }
+        },
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    },
+    "/net/syncing": {
+      "get": {
+        "operationId": "Syncing",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBoolean"
+            }
+          }
+        },
+        "tags": [
+          "NetAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoBoolean": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "protoEventBandwidthStats": {
+      "type": "object",
+      "properties": {
+        "TotalIn": {
+          "type": "string",
+          "format": "int64"
+        },
+        "TotalOut": {
+          "type": "string",
+          "format": "int64"
+        },
+        "RateIn": {
+          "type": "number",
+          "format": "double"
+        },
+        "RateOut": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protoOnlineRepInfo": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoOnlineRepTotal": {
+      "type": "object",
+      "properties": {
+        "reps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoOnlineRepInfo"
+          }
+        },
+        "validVotes": {
+          "type": "string",
+          "format": "int64"
+        },
+        "validVotesPercent": {
+          "type": "string"
+        }
+      }
+    },
+    "protoPeerInfo": {
+      "type": "object",
+      "properties": {
+        "peerID": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "rtt": {
+          "type": "number",
+          "format": "double"
+        },
+        "lastUpdateTime": {
+          "type": "string"
+        }
+      }
+    },
+    "protoPeerInfos": {
+      "type": "object",
+      "properties": {
+        "peerInfos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoPeerInfo"
+          }
+        }
+      }
+    },
+    "protoPeersCountResponse": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "uint64"
+          }
+        }
+      }
+    },
+    "protoString": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "typesAddresses": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

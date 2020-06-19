@@ -1,0 +1,71 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "common.proto";
+import "types/basic.proto";
+
+
+option go_package = ".;proto";
+
+service MintageAPI {
+    rpc GetMintageData (MintageParams) returns (Bytes) {
+        option (google.api.http) = {
+           get: "/miner/getMintageData"
+       };
+    }
+
+    rpc GetMintageBlock (MintageParams) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/miner/getMintageBlock"
+       };
+    }
+
+    rpc GetRewardBlock (types.StateBlock) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/miner/getRewardBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetWithdrawMintageData (types.Hash) returns (Bytes) {
+        option (google.api.http) = {
+           get: "/miner/getWithdrawMintageData"
+       };
+    }
+
+    rpc ParseTokenInfo (Bytes) returns (types.TokenInfo) {
+        option (google.api.http) = {
+           get: "/miner/getWithdrawMintageData"
+       };
+    }
+
+    rpc GetWithdrawMintageBlock (WithdrawParams) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/miner/getWithdrawMintageBlock"
+       };
+    }
+
+    rpc GetWithdrawRewardBlock (types.StateBlock) returns (types.StateBlock) {
+        option (google.api.http) = {
+           post: "/miner/getWithdrawRewardBlock"
+           body: "*"
+       };
+    }
+}
+
+message MintageParams  {
+    string SelfAddr     = 1;
+    string PrevHash     = 2;
+    string TokenName    = 3;
+    string TokenSymbol  = 4;
+    string TotalSupply  = 5;
+    int32  Decimals     = 6;
+    string Beneficial   = 7;
+    string NEP5TxId     = 8;
+}
+
+message WithdrawParams  {
+    string selfAddr = 1;
+    string tokenId  = 2;
+}

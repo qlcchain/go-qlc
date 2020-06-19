@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,6 +18,7 @@ import (
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/log"
+	grpcServer "github.com/qlcchain/go-qlc/rpc/grpc/server"
 	"github.com/qlcchain/go-qlc/wallet"
 )
 
@@ -48,6 +50,7 @@ type RPC struct {
 	cfgFile string
 	logger  *zap.SugaredLogger
 	cc      *chainctx.ChainContext
+	grpc    *grpcServer.GRPCServer
 }
 
 func NewRPC(cfgFile string) (*RPC, error) {
@@ -212,6 +215,9 @@ func (r *RPC) StopRPC() {
 	if r.config.RPC.Enable && r.config.RPC.WSEnabled {
 		r.stopWS()
 	}
+	if r.config.RPC.Enable && r.config.RPC.GRPCConfig.Enable {
+		r.grpc.Stop()
+	}
 }
 
 func (r *RPC) StartRPC() error {
@@ -253,6 +259,13 @@ func (r *RPC) StartRPC() error {
 		}
 	}
 
+	if r.config.RPC.Enable && r.config.RPC.GRPCConfig.Enable {
+		grpc, err := grpcServer.Start(r.cfgFile, r.ctx)
+		if err != nil {
+			return fmt.Errorf("grpcserver start error: %s", err)
+		}
+		r.grpc = grpc
+	}
 	return nil
 }
 

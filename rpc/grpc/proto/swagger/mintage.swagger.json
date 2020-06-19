@@ -1,0 +1,398 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "mintage.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/miner/getMintageBlock": {
+      "get": {
+        "operationId": "GetMintageBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "SelfAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PrevHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TokenName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TokenSymbol",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TotalSupply",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Decimals",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "Beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "NEP5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getMintageData": {
+      "get": {
+        "operationId": "GetMintageData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoBytes"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "SelfAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "PrevHash",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TokenName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TokenSymbol",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "TotalSupply",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "Decimals",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "Beneficial",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "NEP5TxId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getRewardBlock": {
+      "post": {
+        "operationId": "GetRewardBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getWithdrawMintageBlock": {
+      "get": {
+        "operationId": "GetWithdrawMintageBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "selfAddr",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "tokenId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getWithdrawMintageData": {
+      "get": {
+        "operationId": "ParseTokenInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesTokenInfo"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    },
+    "/miner/getWithdrawRewardBlock": {
+      "post": {
+        "operationId": "GetWithdrawRewardBlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/typesStateBlock"
+            }
+          }
+        ],
+        "tags": [
+          "MintageAPI"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoBytes": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "typesStateBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "string",
+          "format": "int64"
+        },
+        "vote": {
+          "type": "string",
+          "format": "int64"
+        },
+        "network": {
+          "type": "string",
+          "format": "int64"
+        },
+        "storage": {
+          "type": "string",
+          "format": "int64"
+        },
+        "oracle": {
+          "type": "string",
+          "format": "int64"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string",
+          "format": "byte"
+        },
+        "receiver": {
+          "type": "string",
+          "format": "byte"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "poVHeight": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "extra": {
+          "type": "string"
+        },
+        "representative": {
+          "type": "string"
+        },
+        "privateFrom": {
+          "type": "string"
+        },
+        "privateFor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privateGroupID": {
+          "type": "string"
+        },
+        "work": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "signature": {
+          "type": "string"
+        }
+      }
+    },
+    "typesTokenInfo": {
+      "type": "object",
+      "properties": {
+        "tokenId": {
+          "type": "string"
+        },
+        "tokenName": {
+          "type": "string"
+        },
+        "tokenSymbol": {
+          "type": "string"
+        },
+        "totalSupply": {
+          "type": "string",
+          "format": "int64"
+        },
+        "decimals": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "pledgeAmount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "withdrawTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pledgeAddress": {
+          "type": "string"
+        },
+        "NEP5TxId": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

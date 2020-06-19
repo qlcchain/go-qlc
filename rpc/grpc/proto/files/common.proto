@@ -1,0 +1,48 @@
+syntax = "proto3";
+package proto;
+option go_package = ".;proto";
+
+message Empty {}
+
+message Int32 {
+    int32 value = 1;
+}
+
+message Int64 {
+    int64 value = 1;
+}
+
+message UInt32 {
+    uint32 value = 1;
+}
+
+message UInt64 {
+    uint64 value = 1;
+}
+
+message Boolean {
+    bool value = 1;
+}
+
+message String {
+    string value = 1;
+}
+
+message Strings {
+    repeated string value = 1;
+}
+
+
+
+message Bytes {
+    bytes value = 1;
+}
+
+message Float {
+    float value = 1;
+}
+
+message Offset {
+    int32   count      = 1;
+    int32   offset     = 2;
+}

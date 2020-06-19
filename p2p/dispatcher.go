@@ -3,13 +3,11 @@ package p2p
 import (
 	"sync"
 
-	"github.com/qlcchain/go-qlc/common"
-
+	lru "github.com/hashicorp/golang-lru"
 	"go.uber.org/zap"
 
+	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/log"
-
-	lru "github.com/hashicorp/golang-lru"
 )
 
 // Dispatcher a message dispatcher service.

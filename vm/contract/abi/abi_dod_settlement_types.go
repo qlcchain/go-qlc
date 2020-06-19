@@ -3,9 +3,8 @@ package abi
 import (
 	"fmt"
 
-	"github.com/qlcchain/go-qlc/vm/vmstore"
-
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
 //go:generate go-enum -f=$GOFILE --marshal --names

@@ -1,0 +1,167 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "common.proto";
+import "types/basic.proto";
+import "types/contract.proto";
+
+option go_package = ".;proto";
+
+service NEP5PledgeAPI{
+    rpc GetPledgeData(PledgeParam) returns (Bytes){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeData"
+       };
+    }
+
+    rpc GetPledgeBlock(PledgeParam) returns (types.StateBlock){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeBlock"
+       };
+    }
+
+    rpc GetPledgeRewardBlock(types.StateBlock) returns (types.StateBlock){
+        option (google.api.http) = {
+           post: "/pledge/getPledgeRewardBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetPledgeRewardBlockBySendHash(types.Hash) returns (types.StateBlock){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeRewardBlockBySendHash"
+       };
+    }
+
+    rpc GetWithdrawPledgeData(WithdrawPledgeParam) returns (Bytes){
+        option (google.api.http) = {
+           get: "/pledge/getWithdrawPledgeData"
+       };
+    }
+
+    rpc GetWithdrawPledgeBlock(WithdrawPledgeParam) returns (types.StateBlock){
+        option (google.api.http) = {
+           get: "/pledge/getWithdrawPledgeBlock"
+       };
+    }
+
+    rpc GetWithdrawRewardBlock(types.StateBlock) returns (types.StateBlock){
+        option (google.api.http) = {
+           post: "/pledge/getWithdrawRewardBlock"
+           body: "*"
+       };
+    }
+
+    rpc GetWithdrawRewardBlockBySendHash(types.Hash) returns (types.StateBlock){
+        option (google.api.http) = {
+           get: "/pledge/getWithdrawRewardBlockBySendHash"
+       };
+    }
+
+    rpc ParsePledgeInfo(Bytes) returns (types.NEP5PledgeInfo){
+        option (google.api.http) = {
+           get: "/pledge/parsePledgeInfo"
+       };
+    }
+
+    rpc GetPledgeInfosByPledgeAddress(types.Address) returns (PledgeInfos){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeInfosByPledgeAddress"
+       };
+    }
+
+    rpc GetPledgeBeneficialTotalAmount(types.Address) returns (Int64){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeBeneficialTotalAmount"
+       };
+    }
+
+    rpc GetBeneficialPledgeInfosByAddress(types.Address) returns (PledgeInfos){
+        option (google.api.http) = {
+           get: "/pledge/getBeneficialPledgeInfosByAddress"
+       };
+    }
+
+    rpc GetBeneficialPledgeInfos(BeneficialPledgeRequest) returns (PledgeInfos){
+        option (google.api.http) = {
+           get: "/pledge/getBeneficialPledgeInfos"
+       };
+    }
+
+    rpc GetPledgeBeneficialAmount(BeneficialPledgeRequest) returns (Int64){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeBeneficialAmount"
+       };
+    }
+
+    rpc GetPledgeInfo(WithdrawPledgeParam) returns (NEP5PledgeInfos){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeInfo"
+       };
+    }
+
+    rpc GetPledgeInfoWithNEP5TxId(WithdrawPledgeParam) returns (NEP5PledgeInfo){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeInfoWithNEP5TxId"
+       };
+    }
+
+    rpc GetPledgeInfoWithTimeExpired(WithdrawPledgeParam) returns (NEP5PledgeInfos){
+        option (google.api.http) = {
+           get: "/pledge/getPledgeInfoWithTimeExpired"
+       };
+    }
+
+    rpc GetAllPledgeInfo(google.protobuf.Empty) returns (NEP5PledgeInfos){
+        option (google.api.http) = {
+           get: "/pledge/getAllPledgeInfo"
+       };
+    }
+
+    rpc GetTotalPledgeAmount(google.protobuf.Empty) returns (Int64){
+        option (google.api.http) = {
+           get: "/pledge/getTotalPledgeAmount"
+       };
+    }
+}
+
+message BeneficialPledgeRequest{
+    string beneficial = 1;
+    string pType      = 2;
+}
+
+message PledgeParam  {
+    string beneficial    = 1;
+    string pledgeAddress = 2;
+    int64  amount        = 3;
+    string pType         = 4;
+    string nep5TxId      = 5;
+}
+
+message WithdrawPledgeParam  {
+    string beneficial = 1;
+    int64  amount     = 2;
+    string pType      = 3;
+    string nep5TxId   = 4;
+}
+
+
+message NEP5PledgeInfo  {
+    string pType       = 1;
+    int64 Amount       = 2;
+    string WithdrawTime = 3;
+    string Beneficial  = 4;
+    string PledgeAddress  = 5;
+    string NEP5TxId       = 6;
+}
+
+message NEP5PledgeInfos {
+    repeated NEP5PledgeInfo PledgeInfos    = 1;
+}
+
+message PledgeInfos  {
+    repeated NEP5PledgeInfo PledgeInfos    = 1;
+    int64 totalAmounts   = 2;
+}

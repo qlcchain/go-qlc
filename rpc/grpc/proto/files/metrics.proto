@@ -1,0 +1,108 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = ".;proto";
+
+service MetricsAPI {
+    rpc GetCPUInfo(google.protobuf.Empty) returns (InfoStats){
+        option (google.api.http) = {
+              get: "/metrics/getCPUInfo"
+         };
+    }
+
+    rpc GetAllCPUTimeStats(google.protobuf.Empty) returns (TimesStats){
+        option (google.api.http) = {
+              get: "/metrics/getAllCPUTimeStats"
+         };
+    }
+
+    rpc GetCPUTimeStats(google.protobuf.Empty) returns (TimesStats){
+        option (google.api.http) = {
+              get: "/metrics/getCPUTimeStats"
+         };
+    }
+
+    rpc DiskInfo(google.protobuf.Empty) returns (UsageStat){
+        option (google.api.http) = {
+              get: "/metrics/diskInfo"
+         };
+    }
+
+    rpc GetNetworkInterfaces(google.protobuf.Empty) returns (IOCountersStats){
+        option (google.api.http) = {
+              get: "/metrics/getNetworkInterfaces"
+         };
+    }
+}
+
+message InfoStats {
+    repeated InfoStat stats = 1;
+}
+
+message InfoStat  {
+    int32  cpu        = 1;
+    string VendorID   = 2;
+    string family     = 3;
+    string model      = 4;
+    int32  stepping   = 5;
+    string physicalId = 6;
+    string coreId     = 7;
+    int32  cores      = 8;
+    string modelName  = 9;
+    double mhz        = 10;
+    int32  cacheSize       = 11;
+    repeated string flags = 12;
+    string microcode      = 13;
+}
+
+message TimesStats {
+    repeated TimesStat stats = 1;
+}
+
+message TimesStat  {
+    string cpu      = 1;
+    double User     = 2;
+    double System   = 3;
+    double Idle     = 4;
+    double Nice     = 5;
+    double Iowait   = 6;
+    double Irq      = 7;
+    double Softirq  = 8;
+    double Steal    = 9;
+    double Guest    = 10;
+    double GuestNice  = 11;
+}
+
+message UsageStat  {
+    string path         = 1;
+    string fstype       = 2;
+    uint64 total        = 3;
+    uint64 free         = 4;
+    uint64 used         = 5;
+    double usedPercent  = 6;
+    uint64 inodesTotal  = 7;
+    uint64 inodesUsed   = 8;
+    uint64 inodesFree   = 9;
+    double inodesUsedPercent  = 10;
+}
+
+message IOCountersStat  {
+    string name          = 1;
+    uint64 bytesSent     = 2;
+    uint64 bytesRecv     = 3;
+    uint64 packetsSent   = 4;
+    uint64 packetsRecv   = 5;
+    uint64 errin         = 6;
+    uint64 errout        = 7;
+    uint64 dropin        = 8;
+    uint64 dropout       = 9;
+    uint64 fifoin        = 10;
+    uint64 fifoout       = 11;
+}
+
+message IOCountersStats{
+    repeated IOCountersStat stats = 1;
+}

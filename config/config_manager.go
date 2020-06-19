@@ -13,10 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/atomic"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/viper"
+	"go.uber.org/atomic"
 	"gopkg.in/validator.v2"
 
 	"github.com/qlcchain/go-qlc/common/util"

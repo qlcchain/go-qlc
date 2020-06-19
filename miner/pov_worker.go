@@ -6,18 +6,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
-
-	"github.com/qlcchain/go-qlc/common/statedb"
-
 	"go.uber.org/zap"
 
 	"github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/merkle"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/topic"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/log"
 )

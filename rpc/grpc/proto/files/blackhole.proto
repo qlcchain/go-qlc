@@ -1,0 +1,43 @@
+syntax = "proto3";
+package proto;
+
+import "google/api/annotations.proto";
+import "types/basic.proto";
+import "types/contract.proto";
+
+option go_package = ".;proto";
+
+
+service BlackHoleAPI {
+    rpc GetSendBlock (DestroyParam) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/blockhole/getsendblock"
+       };
+    }
+
+    rpc GetRewardsBlock (types.Hash) returns (types.StateBlock) {
+        option (google.api.http) = {
+           get: "/blockhole/getrewardsblock"
+       };
+    }
+
+    rpc GetTotalDestroyInfo (types.Address) returns (types.Balance) {
+        option (google.api.http) = {
+           get: "/blockhole/gettotaldestroyinfo"
+       };
+    }
+
+    rpc GetDestroyInfoDetail (types.Address) returns (types.DestroyInfos) {
+        option (google.api.http) = {
+           get: "/blockhole/getdestroyinfodetail"
+       };
+    }
+}
+
+message DestroyParam {
+    string Owner     = 1;
+    string Previous  = 2;
+    string Token     = 3;
+    int64  Amount    = 4;
+    string Sign      = 5;
+}
