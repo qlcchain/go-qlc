@@ -18,11 +18,15 @@ import (
 	"strings"
 
 	"github.com/dgraph-io/badger/v2"
+
+	"github.com/qlcchain/go-qlc/log"
 )
 
+var logBadger = log.NewLogger("badger")
+
 func MigrationTo20(dir string) error {
+	fmt.Println("migrate badger to v2.0, ", toolName)
 	toolPath := filepath.Join(filepath.Dir(dir), toolName)
-	fmt.Println("migrate badger to v2.0 ")
 	if _, err := os.Stat(toolPath); err != nil {
 		if err := downloadTool(toolPath); err != nil {
 			return err
@@ -49,6 +53,7 @@ func MigrationTo20(dir string) error {
 }
 
 func doRestore(sstDir, vlogDir, restoreFile string) error {
+	logBadger.Info("backup ledger")
 	maxPendingWrites := 256
 	// Check if the DB already exists
 	manifestFile := path.Join(sstDir, badger.ManifestFilename)
@@ -73,12 +78,13 @@ func doRestore(sstDir, vlogDir, restoreFile string) error {
 		return err
 	}
 	defer f.Close()
-
+	logBadger.Info("restore ledger")
 	// Run restore
 	return db.Load(f, maxPendingWrites)
 }
 
 func downloadTool(dir string) error {
+	logBadger.Info("download tool")
 	url := "https://github.com/qlcchain/qlc-go-sdk/releases/download/v1.3.5"
 
 	// get tool
@@ -96,6 +102,7 @@ func downloadTool(dir string) error {
 		return fmt.Errorf("write file: %s", err)
 	}
 
+	logBadger.Info("download tool successfully")
 	// get tool hash
 	checkUrl := fmt.Sprintf("%s/checksums.txt", url)
 	res, err := http.Get(checkUrl)
@@ -119,7 +126,7 @@ func downloadTool(dir string) error {
 	if toolHash == "" {
 		return fmt.Errorf("get tool failed: %s, %s", runtime.GOOS, runtime.GOARCH)
 	}
-
+	logBadger.Info("check tool md5")
 	// check tool hash
 	f, err := os.Open(dir)
 	if err != nil {

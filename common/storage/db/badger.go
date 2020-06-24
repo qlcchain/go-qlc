@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/storage/db/migration"
 	"strings"
 
 	"github.com/dgraph-io/badger/v2"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
+	"github.com/qlcchain/go-qlc/common/storage/db/migration"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 )
