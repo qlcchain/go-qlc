@@ -33,7 +33,7 @@ func MigrationTo20(dir string) error {
 		}
 		defer os.Remove(toolPath)
 	}
-
+	logBadger.Info("backup ledger")
 	backup := filepath.Join(filepath.Dir(dir), "ledger16.backup")
 	os.Remove(backup)
 	command := []string{"", "backup", "--dir", dir, "-f", backup}
@@ -53,7 +53,7 @@ func MigrationTo20(dir string) error {
 }
 
 func doRestore(sstDir, vlogDir, restoreFile string) error {
-	logBadger.Info("backup ledger")
+	logBadger.Info("restore ledger")
 	maxPendingWrites := 256
 	// Check if the DB already exists
 	manifestFile := path.Join(sstDir, badger.ManifestFilename)
@@ -78,7 +78,6 @@ func doRestore(sstDir, vlogDir, restoreFile string) error {
 		return err
 	}
 	defer f.Close()
-	logBadger.Info("restore ledger")
 	// Run restore
 	return db.Load(f, maxPendingWrites)
 }
