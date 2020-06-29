@@ -32,6 +32,10 @@ type UncheckedBlockStore interface {
 	AddGapDoDSettleStateBlock(key types.Hash, block *types.StateBlock, sync types.SynchronizedKind) error
 	GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error
 	DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error
+
+	PovHeightAddGap(height uint64) error
+	PovHeightHasGap(height uint64) (bool, error)
+	PovHeightDeleteGap(height uint64) error
 }
 
 func (l *Ledger) uncheckedKindToPrefix(kind types.UncheckedKind) storage.KeyPrefix {
@@ -185,6 +189,33 @@ func (l *Ledger) CountUncheckedBlocks() (uint64, error) {
 	}
 
 	return count + count2 + count3 + count4 + count5, nil
+}
+
+func (l *Ledger) PovHeightAddGap(height uint64) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapPovHeight, height)
+	if err != nil {
+		return err
+	}
+
+	return l.store.Put(k, nil)
+}
+
+func (l *Ledger) PovHeightHasGap(height uint64) (bool, error) {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapPovHeight, height)
+	if err != nil {
+		return false, err
+	}
+
+	return l.store.Has(k)
+}
+
+func (l *Ledger) PovHeightDeleteGap(height uint64) error {
+	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapPovHeight, height)
+	if err != nil {
+		return err
+	}
+
+	return l.store.Delete(k)
 }
 
 func (l *Ledger) AddGapPovBlock(height uint64, blk *types.StateBlock, sync types.SynchronizedKind) error {

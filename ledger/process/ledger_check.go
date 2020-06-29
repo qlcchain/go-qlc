@@ -61,7 +61,7 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 			return errorP(block, GapSource, nil)
 		}
 
-		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), block.GetPayload()); ok && err == nil {
+		if c, ok, err := contract.GetChainContract(types.Address(linkBlk.GetLink()), linkBlk.GetPayload()); ok && err == nil {
 			checkWork = c.GetDescribe().WithWork()
 			checkSign = c.GetDescribe().WithSignature()
 		}
