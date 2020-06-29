@@ -83,7 +83,6 @@ const (
 	KeyPrefixAccountBlockHash
 	KeyPrefixAccountPovHeight
 	KeyPrefixPrivatePayload
-	KeyPrefixGapDoDSettleState
 	KeyPrefixGapPovHeight
 
 	// Trie key space should be different

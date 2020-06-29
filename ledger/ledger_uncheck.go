@@ -29,10 +29,6 @@ type UncheckedBlockStore interface {
 	DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error
 	GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error
 
-	AddGapDoDSettleStateBlock(key types.Hash, block *types.StateBlock, sync types.SynchronizedKind) error
-	GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error
-	DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error
-
 	PovHeightAddGap(height uint64) error
 	PovHeightHasGap(height uint64) (bool, error)
 	PovHeightDeleteGap(height uint64) error
@@ -183,12 +179,7 @@ func (l *Ledger) CountUncheckedBlocks() (uint64, error) {
 		return 0, err
 	}
 
-	count5, err := l.store.Count([]byte{byte(storage.KeyPrefixGapDoDSettleState)})
-	if err != nil {
-		return 0, err
-	}
-
-	return count + count2 + count3 + count4 + count5, nil
+	return count + count2 + count3 + count4, nil
 }
 
 func (l *Ledger) PovHeightAddGap(height uint64) error {
@@ -351,71 +342,4 @@ func (l *Ledger) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockW
 		return errors.New(strings.Join(errStr, ", "))
 	}
 	return nil
-}
-
-func (l *Ledger) AddGapDoDSettleStateBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error {
-	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key, blk.GetHash())
-	if err != nil {
-		return err
-	}
-
-	if b, _ := l.store.Has(k); b {
-		return ErrUncheckedBlockExists
-	}
-	value := types.Unchecked{
-		Block: blk,
-		Kind:  sync,
-	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-	return l.store.Put(k, v)
-}
-
-func (l *Ledger) GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error {
-	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key)
-	if err != nil {
-		return err
-	}
-
-	errStr := make([]string, 0)
-	err = l.store.Iterator(k, nil, func(key []byte, val []byte) error {
-		u := new(types.Unchecked)
-		if err := u.Deserialize(val); err != nil {
-			return fmt.Errorf("uncheck deserialize err: %s", err)
-		}
-
-		if u.Block.IsPrivate() {
-			pl, err := l.GetBlockPrivatePayload(u.Block.GetHash())
-			if err == nil {
-				u.Block.SetPrivatePayload(pl)
-			}
-		}
-
-		err = visit(u.Block, u.Kind)
-		if err != nil {
-			errStr = append(errStr, err.Error())
-			return nil
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	if len(errStr) != 0 {
-		return errors.New(strings.Join(errStr, ", "))
-	}
-
-	return nil
-}
-
-func (l *Ledger) DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error {
-	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState, key, blkHash)
-	if err != nil {
-		return err
-	}
-
-	return l.store.Delete(k)
 }

@@ -155,13 +155,6 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewPtmKeyApi(r.cfgFile, r.ledger),
 			Public:    true,
 		}
-	case "DoDSettlement":
-		return rpc.API{
-			Namespace: "DoDSettlement",
-			Version:   "1.0",
-			Service:   api.NewDoDSettlementAPI(r.cfgFile, r.ledger),
-			Public:    true,
-		}
 	default:
 		return rpc.API{}
 	}
