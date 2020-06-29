@@ -77,11 +77,11 @@ builds:
     - 7
 
 # Test net
-- id: gqlc-darwin-test
+- id: gqlc-darwin-enterprise
   flags:
     - -tags=testnet
   ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=TestNet
-  binary: gqlct
+  binary: gqlce
   env:
     - CGO_ENABLED=1  
     - CC=o64-clang 
@@ -91,11 +91,11 @@ builds:
     - darwin
   goarch:
     - amd64
-- id: gqlc-linux-test
+- id: gqlc-linux-enterprise
   flags:
     - -tags=testnet
   ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=TestNet
-  binary: gqlct
+  binary: gqlce
   env:
     - CGO_ENABLED=1
   main: ./cmd/main.go
@@ -103,11 +103,11 @@ builds:
     - linux
   goarch:
     - amd64    
-- id: gqlc-windows-test
+- id: gqlc-windows-enterprise
   flags:
     - -tags=testnet
   ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=TestNet
-  binary: gqlct
+  binary: gqlce
   env:
     - CGO_ENABLED=1
     - CC=x86_64-w64-mingw32-gcc
@@ -118,11 +118,11 @@ builds:
   goarch:
     - amd64
     # - 386
-- id: gqlc-confidant-test
+- id: gqlc-confidant-enterprise
   flags:
     - -tags="confidant testnet"
   ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=TestNet
-  binary: gqlct
+  binary: gqlce
   env:
     - CGO_ENABLED=1
     - CC=arm-linux-gnueabihf-gcc
