@@ -419,3 +419,29 @@ func TestLedger_AddGapDoDSettleStateBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLedger_PovHeightAddGap(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	height := uint64(100)
+	err := l.PovHeightAddGap(height)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	has, err := l.PovHeightHasGap(height)
+	if err != nil || !has {
+		t.Fatal(err)
+	}
+
+	err = l.PovHeightDeleteGap(height)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	has, err = l.PovHeightHasGap(height)
+	if err != nil || has {
+		t.Fatal(err)
+	}
+}
