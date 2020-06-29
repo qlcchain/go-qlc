@@ -199,16 +199,17 @@ func (el *Election) tally(isSync bool) map[types.Hash]*BlockReceivedVotes {
 		repAddress := key.(types.Address)
 		if !isSync {
 			weight = el.dps.ledger.Weight(repAddress)
+			el.dps.logger.Infof("rep[%s] ack block[%s] weight[%s]", repAddress, hash, weight)
 		} else {
 			if w, ok := el.dps.totalVote[repAddress]; ok {
 				weight = w
 			} else {
 				weight = el.dps.ledger.Weight(repAddress)
 			}
+			el.dps.logger.Warnf("rep[%s] ack block[%s] weight[%s]", repAddress, hash, weight)
 		}
 
 		totals[hash].balance = totals[hash].balance.Add(weight)
-		el.dps.logger.Infof("rep[%s] ack block[%s] weight[%s]", repAddress, hash, weight)
 		return true
 	})
 

@@ -124,6 +124,7 @@ type DPoS struct {
 	gapPovCh            chan *consensus.BlockSource
 	povChange           chan *types.PovBlock
 	lastGapHeight       uint64
+	gapHeight           chan uint64
 	getFrontier         chan types.StateBlockList
 	isFindingRep        int32
 	ebDone              chan struct{}
@@ -193,6 +194,7 @@ func NewDPoS(cfgFile string) *DPoS {
 		febRpcMsgCh:         make(chan *topic.EventRPCSyncCallMsg, 1),
 		repVH:               make(chan *repVoteHeart, 409600),
 		exited:              new(sync.WaitGroup),
+		gapHeight:           make(chan uint64, 10240),
 
 		privateRecvBlocks: make(chan *consensus.BlockSource, common.DPoSMaxBlocks),
 		privateRecvRspCh:  make(chan *topic.EventPrivacyRecvRspMsg, common.DPoSMaxBlocks),
@@ -279,7 +281,7 @@ func (dps *DPoS) Start() {
 	dps.processorStart()
 
 	timerRefreshPri := time.NewTicker(refreshPriInterval)
-	timerDequeueGap := time.NewTicker(10 * time.Second)
+	timerDequeueGap := time.NewTicker(time.Second)
 	timerUpdateSyncTime := time.NewTicker(5 * time.Second)
 	timerGC := time.NewTicker(1 * time.Minute)
 	dps.exited.Add(1)
@@ -324,7 +326,7 @@ func (dps *DPoS) Start() {
 				dps.updateLastProcessSyncTime()
 			}
 		case <-timerDequeueGap.C:
-			dealGapPovToken = 10
+			dealGapPovToken = 1000
 			for {
 				if dps.lastGapHeight <= dps.curPovHeight && dealGapPovToken > 0 {
 					if dps.dequeueGapPovBlocksFromDb(dps.lastGapHeight) {
@@ -380,6 +382,11 @@ func (dps *DPoS) Start() {
 			dps.confirmedBlocks.gc()
 		case vh := <-dps.repVH:
 			dps.heartAndVoteIncDo(vh.hash, vh.addr, vh.kind)
+		case height := <-dps.gapHeight:
+			err := dps.ledger.PovHeightAddGap(height)
+			if err != nil {
+				dps.logger.Errorf("add gap height %d err %s", height, err)
+			}
 		}
 	}
 }
@@ -1305,9 +1312,13 @@ func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
 		return true
 	}
 
+	if has, _ := dps.ledger.PovHeightHasGap(height); !has {
+		return true
+	}
+
 	dayIndex := uint32((height - common.PovMinerRewardHeightGapToLatest) / uint64(common.POVChainBlocksPerDay))
 	if !dps.ledger.HasPovMinerStat(dayIndex) {
-		dps.logger.Infof("miner stat [%d] not exist", dayIndex)
+		dps.logger.Warnf("miner stat [%d] not exist", dayIndex)
 		return false
 	}
 
@@ -1329,6 +1340,10 @@ func (dps *DPoS) dequeueGapPovBlocksFromDb(height uint64) bool {
 		return nil
 	})
 
+	if err := dps.ledger.PovHeightDeleteGap(height); err != nil {
+		dps.logger.Errorf("del gap pov height %d err %s", height, err)
+	}
+
 	return true
 }
 
@@ -1342,14 +1357,6 @@ func (dps *DPoS) updateLastProcessSyncTime() {
 func (dps *DPoS) info(in interface{}, out interface{}) {
 	outArgs := out.(map[string]interface{})
 	rootsNum := 0
-
-	outArgs["err"] = nil
-	outArgs["tps"] = dps.tps
-	outArgs["povSyncState"] = dps.povSyncState.String()
-	outArgs["blockSyncState"] = dps.blockSyncState.String()
-	outArgs["blockQueue"] = len(dps.recvBlocks)
-	outArgs["privateBlockQueue"] = len(dps.privateRecvBlocks)
-	outArgs["privateRecvRspQueue"] = len(dps.privateRecvRspCh)
 
 	pStats := make([]*processorStat, 0)
 	for _, p := range dps.processors {
@@ -1375,6 +1382,16 @@ func (dps *DPoS) info(in interface{}, out interface{}) {
 		rootsNum++
 		return true
 	})
+
+	outArgs["err"] = nil
+	outArgs["tps"] = dps.tps
+	outArgs["povSyncState"] = dps.povSyncState.String()
+	outArgs["blockSyncState"] = dps.blockSyncState.String()
+	outArgs["blockQueue"] = len(dps.recvBlocks)
+	outArgs["privateBlockQueue"] = len(dps.privateRecvBlocks)
+	outArgs["privateRecvRspQueue"] = len(dps.privateRecvRspCh)
+	outArgs["lastGapPovHeight"] = dps.lastGapHeight
+	outArgs["curPovHeight"] = dps.curPovHeight
 	outArgs["rootsNum"] = rootsNum
 }
 

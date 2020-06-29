@@ -84,6 +84,7 @@ const (
 	KeyPrefixAccountPovHeight
 	KeyPrefixPrivatePayload
 	KeyPrefixGapDoDSettleState
+	KeyPrefixGapPovHeight
 
 	// Trie key space should be different
 	KeyPrefixTrieVMStorage = 100 // Deprecated vm_store.go, idPrefixStorage
