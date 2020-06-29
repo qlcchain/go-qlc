@@ -239,6 +239,7 @@ func TestDequeueGapPovBlocksFromDb(t *testing.T) {
 
 	blk := mock.StateBlockWithoutWork()
 	dps.ledger.AddGapPovBlock(2880, blk, types.UnSynchronized)
+	dps.ledger.PovHeightAddGap(2880)
 
 	ds := types.NewPovMinerDayStat()
 	it := types.NewPovMinerStatItem()

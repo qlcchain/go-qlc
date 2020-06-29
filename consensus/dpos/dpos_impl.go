@@ -126,7 +126,6 @@ type DPoS struct {
 	lastGapHeight       uint64
 	gapHeight           chan uint64
 	getFrontier         chan types.StateBlockList
-	isFindingRep        int32
 	ebDone              chan struct{}
 	lastProcessSyncTime time.Time
 	updateSync          chan struct{}
@@ -184,7 +183,6 @@ func NewDPoS(cfgFile string) *DPoS {
 		povChange:           make(chan *types.PovBlock, 10240),
 		voteCache:           gcache.New(voteCacheSize).LRU().Build(),
 		blockSyncState:      topic.SyncNotStart,
-		isFindingRep:        0,
 		ebDone:              make(chan struct{}, 1),
 		updateSync:          make(chan struct{}, 1),
 		block2Ledger:        make(chan struct{}, 409600),
@@ -303,16 +301,12 @@ func (dps *DPoS) Start() {
 
 			if dps.povSyncState == topic.SyncDone {
 				// need calculate heart num, so use the pov height to trigger online
-				// isFindingRep is used to forbidding too many goroutings
-				if dps.curPovHeight%2 == 0 && atomic.CompareAndSwapInt32(&dps.isFindingRep, 0, 1) {
-					go func() {
-						err := dps.findOnlineRepresentatives()
-						if err != nil {
-							dps.logger.Error(err)
-						}
-						dps.cleanOnlineReps()
-						atomic.StoreInt32(&dps.isFindingRep, 0)
-					}()
+				if dps.curPovHeight%2 == 0 {
+					err := dps.findOnlineRepresentatives()
+					if err != nil {
+						dps.logger.Error(err)
+					}
+					dps.cleanOnlineReps()
 				}
 
 				if dps.curPovHeight-dps.lastSendHeight >= common.DPosOnlinePeriod &&
