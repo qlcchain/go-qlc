@@ -79,10 +79,14 @@ func (l *DebugApi) Action(at storage.ActionType, t int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if s, ok := r.(string); ok {
-		return s, nil
+	if r == nil {
+		return "", nil
 	} else {
-		return "", errors.New("error action")
+		if s, ok := r.(string); ok {
+			return s, nil
+		} else {
+			return "", errors.New("error action")
+		}
 	}
 }
 

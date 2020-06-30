@@ -225,13 +225,13 @@ func (r *RPC) StartRPC() error {
 	//rpcapi.Init(node.config.DataDir, node.config.LogLevel, node.config.TestTokenHexPrivKey, node.config.TestTokenTti)
 
 	// Start the various API endpoints, terminating all in case of errors
-	if err := r.startInProcess(r.GetInProcessApis()); err != nil {
+	if err := r.startInProcess(r.GetInProcessApis(r.config.RPC.PublicModules)); err != nil {
 		return err
 	}
 
 	//Start rpc
 	if r.config.RPC.Enable && r.config.RPC.IPCEnabled {
-		api := r.GetIpcApis()
+		api := r.GetIpcApis(r.config.RPC.PublicModules)
 		if err := r.startIPC(api); err != nil {
 			r.stopInProcess()
 			return err
@@ -239,7 +239,7 @@ func (r *RPC) StartRPC() error {
 	}
 
 	if r.config.RPC.Enable && r.config.RPC.HTTPEnabled {
-		apis := r.GetHttpApis()
+		apis := r.GetHttpApis(r.config.RPC.PublicModules)
 		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, rpc.HTTPTimeouts{}); err != nil {
 			r.logger.Info(err)
 			r.stopInProcess()
@@ -249,7 +249,7 @@ func (r *RPC) StartRPC() error {
 	}
 
 	if r.config.RPC.Enable && r.config.RPC.WSEnabled {
-		apis := r.GetWSApis()
+		apis := r.GetWSApis(r.config.RPC.PublicModules)
 		if err := r.startWS(r.config.RPC.WSEndpoint, apis, nil, r.config.RPC.HTTPCors, false); err != nil {
 			r.logger.Info(err)
 			r.stopInProcess()

@@ -63,3 +63,10 @@ func defaultGRPCConfig() *GRPCConfig {
 		MaxSubscriptionClients: 100,
 	}
 }
+
+func defaultModules() []string {
+	modules := []string{"ledger", "account", "net", "util", "mintage", "contract", "pledge",
+		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement",
+		"permission", "privacy", "ptmkey", "DoDSettlement"}
+	return modules
+}
