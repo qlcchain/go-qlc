@@ -1,7 +1,7 @@
-*  @gythialy @wenyuangui @wenchaopeng @zengchen221 @lc3091
+*  @gythialy @wenchaopeng @zengchen221 @lc3091 @coolc4
 
 /ledger/         @zengchen221
+/rpc/            @zengchen221
 /p2p/            @wenchaopeng
-/consensus/pov   @wenyuangui
-/consensus/dpos  @lc3091
+/consensus/      @lc3091
 /vm/             @gythialy 

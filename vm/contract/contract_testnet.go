@@ -1,4 +1,4 @@
-// +build !testnet
+// +build testnet
 
 /*
  * Copyright (c) 2019 QLC Chain Team
@@ -230,8 +230,10 @@ func init() {
 	RegisterContracts(contractaddress.BlackHoleAddress, BlackHoleContract)
 	RegisterContracts(contractaddress.MinerAddress, MinerContract)
 	RegisterContracts(contractaddress.RepAddress, RepContract)
+	RegisterContracts(contractaddress.SettlementAddress, SettlementContract)
 	RegisterContracts(contractaddress.PubKeyDistributionAddress, PKDContract)
 	RegisterContracts(contractaddress.PermissionAddress, PermissionContract)
 	RegisterContracts(contractaddress.PrivacyDemoKVAddress, PdkvContract)
 	RegisterContracts(contractaddress.PtmKeyKVAddress, PtmkeyContract)
+	RegisterContracts(contractaddress.DoDSettlementAddress, DoDSettlementContract)
 }
