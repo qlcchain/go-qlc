@@ -358,7 +358,6 @@ func (p *Processor) confirmChain(hash types.Hash) {
 
 		vh, ok := p.chainHeight.Load(ck)
 		if !ok {
-			dps.logger.Errorf("get chain height err")
 			return
 		}
 		height := vh.(uint64)
@@ -412,7 +411,7 @@ func (p *Processor) processAck(vi *voteInfo) {
 			if dps.acTrx.voteFrontier(vi) {
 				p.dps.frontiersStatus.Store(vi.hash, frontierConfirmed)
 				p.processAckedSync(vi.hash)
-				dps.logger.Infof("frontier %s confirmed", vi.hash)
+				dps.logger.Warnf("frontier %s confirmed", vi.hash)
 			}
 		} else {
 			if has, _ := dps.ledger.HasStateBlockConfirmed(vi.hash); !has {
@@ -754,6 +753,8 @@ func (p *Processor) enqueueUncheckedToDb(result process.ProcessResult, bs *conse
 					if err != nil {
 						dps.logger.Errorf("add gap pov block to ledger err %s", err)
 					}
+
+					dps.gapHeight <- height
 				}
 			}
 		}
