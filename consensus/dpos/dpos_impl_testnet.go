@@ -1,4 +1,4 @@
-// +build !testnet
+// +build testnet
 
 package dpos
 
@@ -811,6 +811,32 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 					}
 				}
 			}
+		} else if types.Address(blk.GetLink()) == contractaddress.DoDSettlementAddress {
+			method, err := cabi.DoDSettlementABI.MethodById(blk.GetPayload())
+			if err != nil {
+				dps.logger.Errorf("get contract method err %s", err)
+			} else {
+				if method.Name == cabi.MethodNameDoDSettleUpdateOrderInfo {
+					param := new(cabi.DoDSettleUpdateOrderInfoParam)
+					err := param.FromABI(blk.GetPayload())
+					if err != nil {
+						dps.logger.Errorf("unpack data err %s", err)
+						return
+					}
+
+					vmCtx := vmstore.NewVMContext(dps.ledger, &contractaddress.DoDSettlementAddress)
+					order, err := cabi.DoDSettleGetOrderInfoByInternalId(vmCtx, param.InternalId)
+					if err != nil {
+						dps.logger.Errorf("get order info err %s", err)
+						return
+					}
+
+					index := dps.getProcessorIndex(order.Seller.Address)
+					if localIndex != index {
+						dps.processors[index].dodSettleStateChangeNotify(hash)
+					}
+				}
+			}
 		}
 	case types.ContractReward: // deal gap tokenInfo
 		// check private tx
@@ -833,6 +859,21 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 					index := dps.getProcessorIndex(input.Address)
 					if localIndex != index {
 						dps.processors[index].tokenCreateNotify(hash)
+					}
+				}
+			}
+		} else if types.Address(input.GetLink()) == contractaddress.DoDSettlementAddress {
+			method, err := cabi.DoDSettlementABI.MethodById(input.GetPayload())
+			if err != nil {
+				dps.logger.Debug("get contract method err %s", err)
+			} else {
+				if method.Name == cabi.MethodNameDoDSettleCreateOrder || method.Name == cabi.MethodNameDoDSettleChangeOrder ||
+					method.Name == cabi.MethodNameDoDSettleTerminateOrder {
+					dps.logger.Info("dod confirm block", blk.GetHash())
+					index := dps.getProcessorIndex(input.Address)
+					if localIndex != index {
+						dps.logger.Info("dod confirm block notify", blk.GetHash(), index)
+						dps.processors[index].dodSettleStateChangeNotify(hash)
 					}
 				}
 			}
