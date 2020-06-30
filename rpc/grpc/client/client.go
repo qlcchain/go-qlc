@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/golang/protobuf/ptypes/empty"
-	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
-	"google.golang.org/grpc"
 	"log"
+
+	"github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/grpc"
+
+	pb "github.com/qlcchain/go-qlc/rpc/grpc/proto"
 )
 
 func main() {

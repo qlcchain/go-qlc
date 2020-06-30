@@ -1,4 +1,4 @@
-// +build !testnet
+// +build testnet
 
 package grpcServer
 
@@ -139,6 +139,7 @@ func (r *GRPCServer) registerApi() {
 	pb.RegisterPublicKeyDistributionAPIServer(r.rpc, apis.NewPublicKeyDistributionAPI(r.cfgFile, r.ledger))
 	pb.RegisterRepAPIServer(r.rpc, apis.NewRepAPI(r.cfg, r.ledger))
 	pb.RegisterRewardsAPIServer(r.rpc, apis.NewRewardsAPI(r.ledger, r.cc))
+	pb.RegisterSettlementAPIServer(r.rpc, apis.NewSettlementAPI(r.ledger, r.cc))
 	pb.RegisterUtilAPIServer(r.rpc, apis.NewUtilApi(r.ledger))
 }
 

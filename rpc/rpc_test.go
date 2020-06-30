@@ -48,9 +48,10 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *RPC) {
 		HTTPEndpoint: "tcp4://0.0.0.0:19705",
 		WSEndpoint:   "tcp4://0.0.0.0:19706",
 		//IPCEndpoint:  defaultIPCEndpoint(filepath.Join(rpcDir, "qlc_test.ipc")),
-		WSEnabled:   true,
-		IPCEnabled:  true,
-		HTTPEnabled: true,
+		WSEnabled:     true,
+		IPCEnabled:    true,
+		HTTPEnabled:   true,
+		PublicModules: []string{"ledger", "account"},
 		GRPCConfig: &config.GRPCConfig{
 			Enable:            false,
 			ListenAddress:     "",

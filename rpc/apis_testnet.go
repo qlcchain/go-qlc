@@ -1,4 +1,4 @@
-// +build !testnet
+// +build testnet
 
 package rpc
 
@@ -122,6 +122,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewChainApi(r.ledger),
 			Public:    true,
 		}
+	case "settlement":
+		return rpc.API{
+			Namespace: "settlement",
+			Version:   "1.0",
+			Service:   api.NewSettlement(r.ledger, r.cc),
+			Public:    true,
+		}
 	case "dpki":
 		return rpc.API{
 			Namespace: "dpki",
@@ -148,6 +155,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Namespace: "ptmkey",
 			Version:   "1.0",
 			Service:   api.NewPtmKeyApi(r.cfgFile, r.ledger),
+			Public:    true,
+		}
+	case "DoDSettlement":
+		return rpc.API{
+			Namespace: "DoDSettlement",
+			Version:   "1.0",
+			Service:   api.NewDoDSettlementAPI(r.cfgFile, r.ledger),
 			Public:    true,
 		}
 	default:
