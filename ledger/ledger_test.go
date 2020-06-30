@@ -20,7 +20,7 @@ import (
 )
 
 func setupTestCase(t *testing.T) (func(t *testing.T), *Ledger) {
-	//t.Parallel()
+	t.Parallel()
 
 	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	_ = os.RemoveAll(dir)
