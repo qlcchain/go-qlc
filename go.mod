@@ -31,12 +31,12 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lib/pq v1.2.0
-	github.com/libp2p/go-libp2p v0.8.4-0.20200515163103-887f2c40cfe7
-	github.com/libp2p/go-libp2p-core v0.5.6-0.20200515082713-a1c90aa3dfdf
-	github.com/libp2p/go-libp2p-discovery v0.4.0
-	github.com/libp2p/go-libp2p-kad-dht v0.4.1
-	github.com/libp2p/go-libp2p-pubsub v0.2.7-0.20200516165813-eef4d41e0e6e
-	github.com/libp2p/go-libp2p-swarm v0.2.4
+	github.com/libp2p/go-libp2p v0.10.0
+	github.com/libp2p/go-libp2p-core v0.6.0
+	github.com/libp2p/go-libp2p-discovery v0.5.0
+	github.com/libp2p/go-libp2p-kad-dht v0.8.1
+	github.com/libp2p/go-libp2p-pubsub v0.3.2
+	github.com/libp2p/go-libp2p-swarm v0.2.8
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
@@ -56,19 +56,18 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.6.3
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.0
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
 	go.uber.org/atomic v1.6.0
-	go.uber.org/zap v1.14.1
+	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/tools v0.0.0-20200117170720-ade7f2547e48 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20200430143042-b979b6f78d84
 	google.golang.org/grpc v1.28.1
-	google.golang.org/protobuf v1.22.0
+	google.golang.org/protobuf v1.23.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
