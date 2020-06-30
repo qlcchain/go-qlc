@@ -1,3 +1,5 @@
+// +build testnet
+
 package commands
 
 import (
@@ -9,11 +11,10 @@ import (
 	"github.com/abiosoft/ishell"
 	rpc "github.com/qlcchain/jsonrpc2"
 
-	"github.com/qlcchain/go-qlc/rpc/api"
-
 	"github.com/qlcchain/go-qlc/cmd/util"
 	"github.com/qlcchain/go-qlc/common/types"
 	cutil "github.com/qlcchain/go-qlc/common/util"
+	"github.com/qlcchain/go-qlc/rpc/api"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 )
 
