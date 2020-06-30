@@ -24,6 +24,7 @@ func (m *MigrationV7ToV8) Migration(data []byte, version int) ([]byte, int, erro
 	}
 	cfg8.ConfigV7 = cfg7
 	cfg8.Version = configVersion
+	cfg8.RPC.PublicModules = defaultModules()
 
 	cfg8.RPC.GRPCConfig = defaultGRPCConfig()
 

@@ -176,28 +176,28 @@ func (r *RPC) GetApis(apiModule ...string) []rpc.API {
 }
 
 //In-proc apis
-func (r *RPC) GetInProcessApis() []rpc.API {
-	return r.GetPublicApis()
+func (r *RPC) GetInProcessApis(apiModules []string) []rpc.API {
+	return r.GetPublicApis(apiModules)
 }
 
 //Ipc apis
-func (r *RPC) GetIpcApis() []rpc.API {
-	return r.GetPublicApis()
+func (r *RPC) GetIpcApis(apiModules []string) []rpc.API {
+	return r.GetPublicApis(apiModules)
 }
 
 //Http apis
-func (r *RPC) GetHttpApis() []rpc.API {
-	return r.GetPublicApis()
+func (r *RPC) GetHttpApis(apiModules []string) []rpc.API {
+	return r.GetPublicApis(apiModules)
 }
 
 //WS apis
-func (r *RPC) GetWSApis() []rpc.API {
-	return r.GetPublicApis()
+func (r *RPC) GetWSApis(apiModules []string) []rpc.API {
+	return r.GetPublicApis(apiModules)
 }
 
-func (r *RPC) GetPublicApis() []rpc.API {
-	apiModules := []string{"ledger", "account", "net", "util", "mintage", "contract", "pledge",
-		"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement",
-		"permission", "privacy", "ptmkey", "DoDSettlement"}
+func (r *RPC) GetPublicApis(apiModules []string) []rpc.API {
+	//apiModules := []string{"account", "net", "util", "mintage", "contract", "pledge",
+	//	"rewards", "pov", "miner", "config", "debug", "destroy", "metrics", "rep", "chain", "dpki", "settlement",
+	//	"permission", "privacy", "ptmkey", "DoDSettlement"}
 	return r.GetApis(apiModules...)
 }
