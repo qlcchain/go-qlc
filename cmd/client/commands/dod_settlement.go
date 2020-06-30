@@ -1,3 +1,5 @@
+// +build testnet
+
 package commands
 
 import (
