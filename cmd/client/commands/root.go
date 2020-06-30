@@ -77,22 +77,3 @@ func isInteractive(osArgs []string) bool {
 	}
 	return false
 }
-
-func addcommands() {
-	version()
-	addAccountCmd()
-	addDebugCmd()
-	addLedgerCmd()
-	addMinerCmd()
-	addWalletCmd()
-	addMintageCmd()
-	addPovCmd()
-	addPledgeCmd()
-	addRepCmd()
-	addTxCmd()
-	addPKDCmd()
-	addPermissionCmd()
-	addPrivacyCmd()
-	addPtmKeyCmd()
-	addDoDSettlementCmd()
-}

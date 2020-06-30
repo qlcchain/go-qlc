@@ -194,9 +194,6 @@ func registerGWApi(ctx context.Context, gwmux *runtime.ServeMux, endpoint string
 	if err := pb.RegisterRewardsAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
 		return err
 	}
-	if err := pb.RegisterSettlementAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
-		return err
-	}
 	if err := pb.RegisterUtilAPIHandlerFromEndpoint(ctx, gwmux, endpoint, opts); err != nil {
 		return err
 	}

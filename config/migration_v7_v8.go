@@ -1,6 +1,8 @@
 package config
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type MigrationV7ToV8 struct {
 	startVersion int
