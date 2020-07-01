@@ -63,7 +63,7 @@ func InitNode(t *testing.T) (*Node, error) {
 
 func setDefaultConfig(cfg *config.Config) {
 	cfg.PoV.PovEnabled = true
-	cfg.LogLevel = "error"
+	cfg.LogLevel = "debug"
 }
 
 func InitNodes(count int, t *testing.T) ([]*Node, error) {
@@ -559,13 +559,13 @@ func (n *Node) VoteBlock(acc *types.Account, blk *types.StateBlock) {
 	n.dps.processors[index].acks <- vi
 }
 
-func (n *Node) TestWithTimeout(to time.Duration, fn func() bool) {
+func (n *Node) TestWithTimeout(err string, to time.Duration, fn func() bool) {
 	ti := time.NewTimer(to)
 	defer ti.Stop()
 	for {
 		select {
 		case <-ti.C:
-			n.t.Fatal()
+			n.t.Fatal(err)
 		default:
 			if fn() {
 				return
