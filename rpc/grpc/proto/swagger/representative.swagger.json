@@ -4,10 +4,6 @@
     "title": "representative.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/rep/getAvailRewardInfo": {
       "get": {
-        "operationId": "GetAvailRewardInfo",
+        "operationId": "RepAPI_GetAvailRewardInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoRepAvailRewardInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -41,12 +43,18 @@
     },
     "/rep/getRepStateWithHeight": {
       "get": {
-        "operationId": "GetRepStateWithHeight",
+        "operationId": "RepAPI_GetRepStateWithHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesPovRepState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -72,12 +80,18 @@
     },
     "/rep/getRewardData": {
       "get": {
-        "operationId": "GetRewardData",
+        "operationId": "RepAPI_GetRewardData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -130,12 +144,18 @@
     },
     "/rep/getRewardHistory": {
       "get": {
-        "operationId": "GetRewardHistory",
+        "operationId": "RepAPI_GetRewardHistory",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoRepHistoryRewardInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -154,12 +174,18 @@
     },
     "/rep/getRewardRecvBlock": {
       "post": {
-        "operationId": "GetRewardRecvBlock",
+        "operationId": "RepAPI_GetRewardRecvBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -180,12 +206,18 @@
     },
     "/rep/getRewardRecvBlockBySendHash": {
       "get": {
-        "operationId": "GetRewardRecvBlockBySendHash",
+        "operationId": "RepAPI_GetRewardRecvBlockBySendHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -204,12 +236,18 @@
     },
     "/rep/getRewardSendBlock": {
       "get": {
-        "operationId": "GetRewardSendBlock",
+        "operationId": "RepAPI_GetRewardSendBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -262,12 +300,18 @@
     },
     "/rep/unpackRewardData": {
       "get": {
-        "operationId": "UnpackRewardData",
+        "operationId": "RepAPI_UnpackRewardData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoRepRewardParam"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -378,6 +422,39 @@
         "rewardAmount": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

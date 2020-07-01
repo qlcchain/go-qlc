@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -24,11 +25,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// Suppress "imported and not used" errors
 var _ codes.Code
 var _ io.Reader
 var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
+var _ = descriptor.ForMessage
 
 var (
 	filter_NEP5PledgeAPI_GetPledgeData_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
@@ -38,11 +41,30 @@ func request_NEP5PledgeAPI_GetPledgeData_0(ctx context.Context, marshaler runtim
 	var protoReq PledgeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeData_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeData_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeData(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeData_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq PledgeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeData_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeData(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -55,11 +77,30 @@ func request_NEP5PledgeAPI_GetPledgeBlock_0(ctx context.Context, marshaler runti
 	var protoReq PledgeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeBlock_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeBlock_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq PledgeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeBlock_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeBlock(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -81,6 +122,23 @@ func request_NEP5PledgeAPI_GetPledgeRewardBlock_0(ctx context.Context, marshaler
 
 }
 
+func local_request_NEP5PledgeAPI_GetPledgeRewardBlock_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.StateBlock
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeRewardBlock(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 var (
 	filter_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
@@ -89,11 +147,30 @@ func request_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0(ctx context.Context,
 	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeRewardBlockBySendHash(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Hash
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeRewardBlockBySendHash(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -106,11 +183,30 @@ func request_NEP5PledgeAPI_GetWithdrawPledgeData_0(ctx context.Context, marshale
 	var protoReq WithdrawPledgeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetWithdrawPledgeData_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetWithdrawPledgeData_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetWithdrawPledgeData(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetWithdrawPledgeData_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq WithdrawPledgeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetWithdrawPledgeData_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetWithdrawPledgeData(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -123,11 +219,30 @@ func request_NEP5PledgeAPI_GetWithdrawPledgeBlock_0(ctx context.Context, marshal
 	var protoReq WithdrawPledgeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetWithdrawPledgeBlock_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetWithdrawPledgeBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetWithdrawPledgeBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetWithdrawPledgeBlock_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq WithdrawPledgeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetWithdrawPledgeBlock_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetWithdrawPledgeBlock(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -149,6 +264,23 @@ func request_NEP5PledgeAPI_GetWithdrawRewardBlock_0(ctx context.Context, marshal
 
 }
 
+func local_request_NEP5PledgeAPI_GetWithdrawRewardBlock_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.StateBlock
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetWithdrawRewardBlock(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 var (
 	filter_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
@@ -157,11 +289,30 @@ func request_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0(ctx context.Contex
 	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetWithdrawRewardBlockBySendHash(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Hash
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetWithdrawRewardBlockBySendHash(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -174,11 +325,30 @@ func request_NEP5PledgeAPI_ParsePledgeInfo_0(ctx context.Context, marshaler runt
 	var protoReq Bytes
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_ParsePledgeInfo_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_ParsePledgeInfo_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.ParsePledgeInfo(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_ParsePledgeInfo_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq Bytes
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_ParsePledgeInfo_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.ParsePledgeInfo(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -191,11 +361,30 @@ func request_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0(ctx context.Context, 
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeInfosByPledgeAddress(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Address
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeInfosByPledgeAddress(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -208,11 +397,30 @@ func request_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0(ctx context.Context,
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeBeneficialTotalAmount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Address
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeBeneficialTotalAmount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -225,11 +433,30 @@ func request_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0(ctx context.Conte
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetBeneficialPledgeInfosByAddress(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Address
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetBeneficialPledgeInfosByAddress(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -242,11 +469,30 @@ func request_NEP5PledgeAPI_GetBeneficialPledgeInfos_0(ctx context.Context, marsh
 	var protoReq BeneficialPledgeRequest
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetBeneficialPledgeInfos_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetBeneficialPledgeInfos_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetBeneficialPledgeInfos(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetBeneficialPledgeInfos_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq BeneficialPledgeRequest
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetBeneficialPledgeInfos_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetBeneficialPledgeInfos(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -259,11 +505,30 @@ func request_NEP5PledgeAPI_GetPledgeBeneficialAmount_0(ctx context.Context, mars
 	var protoReq BeneficialPledgeRequest
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeBeneficialAmount_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeBeneficialAmount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeBeneficialAmount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeBeneficialAmount_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq BeneficialPledgeRequest
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeBeneficialAmount_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeBeneficialAmount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -276,11 +541,30 @@ func request_NEP5PledgeAPI_GetPledgeInfo_0(ctx context.Context, marshaler runtim
 	var protoReq WithdrawPledgeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeInfo_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeInfo_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeInfo(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeInfo_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq WithdrawPledgeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeInfo_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeInfo(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -293,11 +577,30 @@ func request_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0(ctx context.Context, mars
 	var protoReq WithdrawPledgeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeInfoWithNEP5TxId(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq WithdrawPledgeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeInfoWithNEP5TxId(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -310,11 +613,30 @@ func request_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0(ctx context.Context, m
 	var protoReq WithdrawPledgeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPledgeInfoWithTimeExpired(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq WithdrawPledgeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPledgeInfoWithTimeExpired(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -328,6 +650,15 @@ func request_NEP5PledgeAPI_GetAllPledgeInfo_0(ctx context.Context, marshaler run
 
 }
 
+func local_request_NEP5PledgeAPI_GetAllPledgeInfo_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.GetAllPledgeInfo(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 func request_NEP5PledgeAPI_GetTotalPledgeAmount_0(ctx context.Context, marshaler runtime.Marshaler, client NEP5PledgeAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq empty.Empty
 	var metadata runtime.ServerMetadata
@@ -335,6 +666,403 @@ func request_NEP5PledgeAPI_GetTotalPledgeAmount_0(ctx context.Context, marshaler
 	msg, err := client.GetTotalPledgeAmount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
+}
+
+func local_request_NEP5PledgeAPI_GetTotalPledgeAmount_0(ctx context.Context, marshaler runtime.Marshaler, server NEP5PledgeAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.GetTotalPledgeAmount(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
+// RegisterNEP5PledgeAPIHandlerServer registers the http handlers for service NEP5PledgeAPI to "mux".
+// UnaryRPC     :call NEP5PledgeAPIServer directly.
+// StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+func RegisterNEP5PledgeAPIHandlerServer(ctx context.Context, mux *runtime.ServeMux, server NEP5PledgeAPIServer) error {
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeData_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeData_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_NEP5PledgeAPI_GetPledgeRewardBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeRewardBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeRewardBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetWithdrawPledgeData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetWithdrawPledgeData_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetWithdrawPledgeData_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetWithdrawPledgeBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetWithdrawPledgeBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetWithdrawPledgeBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_NEP5PledgeAPI_GetWithdrawRewardBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetWithdrawRewardBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetWithdrawRewardBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_ParsePledgeInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_ParsePledgeInfo_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_ParsePledgeInfo_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetBeneficialPledgeInfos_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetBeneficialPledgeInfos_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetBeneficialPledgeInfos_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeBeneficialAmount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeBeneficialAmount_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeBeneficialAmount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeInfo_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeInfo_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetAllPledgeInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetAllPledgeInfo_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetAllPledgeInfo_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_NEP5PledgeAPI_GetTotalPledgeAmount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NEP5PledgeAPI_GetTotalPledgeAmount_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NEP5PledgeAPI_GetTotalPledgeAmount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	return nil
 }
 
 // RegisterNEP5PledgeAPIHandlerFromEndpoint is same as RegisterNEP5PledgeAPIHandler but
@@ -759,43 +1487,43 @@ func RegisterNEP5PledgeAPIHandlerClient(ctx context.Context, mux *runtime.ServeM
 }
 
 var (
-	pattern_NEP5PledgeAPI_GetPledgeData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeData"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeData"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeBlock"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeRewardBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeRewardBlock"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeRewardBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeRewardBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeRewardBlockBySendHash"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeRewardBlockBySendHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeRewardBlockBySendHash"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetWithdrawPledgeData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getWithdrawPledgeData"}, ""))
+	pattern_NEP5PledgeAPI_GetWithdrawPledgeData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getWithdrawPledgeData"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetWithdrawPledgeBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getWithdrawPledgeBlock"}, ""))
+	pattern_NEP5PledgeAPI_GetWithdrawPledgeBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getWithdrawPledgeBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetWithdrawRewardBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getWithdrawRewardBlock"}, ""))
+	pattern_NEP5PledgeAPI_GetWithdrawRewardBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getWithdrawRewardBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getWithdrawRewardBlockBySendHash"}, ""))
+	pattern_NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getWithdrawRewardBlockBySendHash"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_ParsePledgeInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "parsePledgeInfo"}, ""))
+	pattern_NEP5PledgeAPI_ParsePledgeInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "parsePledgeInfo"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeInfosByPledgeAddress"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeInfosByPledgeAddress_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeInfosByPledgeAddress"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeBeneficialTotalAmount"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeBeneficialTotalAmount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeBeneficialTotalAmount"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getBeneficialPledgeInfosByAddress"}, ""))
+	pattern_NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getBeneficialPledgeInfosByAddress"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetBeneficialPledgeInfos_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getBeneficialPledgeInfos"}, ""))
+	pattern_NEP5PledgeAPI_GetBeneficialPledgeInfos_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getBeneficialPledgeInfos"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeBeneficialAmount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeBeneficialAmount"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeBeneficialAmount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeBeneficialAmount"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeInfo"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeInfo"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeInfoWithNEP5TxId"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeInfoWithNEP5TxId"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeInfoWithTimeExpired"}, ""))
+	pattern_NEP5PledgeAPI_GetPledgeInfoWithTimeExpired_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getPledgeInfoWithTimeExpired"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetAllPledgeInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getAllPledgeInfo"}, ""))
+	pattern_NEP5PledgeAPI_GetAllPledgeInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getAllPledgeInfo"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_NEP5PledgeAPI_GetTotalPledgeAmount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getTotalPledgeAmount"}, ""))
+	pattern_NEP5PledgeAPI_GetTotalPledgeAmount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pledge", "getTotalPledgeAmount"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

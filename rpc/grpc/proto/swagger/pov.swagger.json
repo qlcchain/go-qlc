@@ -4,10 +4,6 @@
     "title": "pov.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/pov/batchGetHeadersByHeight": {
       "get": {
-        "operationId": "BatchGetHeadersByHeight",
+        "operationId": "PovAPI_BatchGetHeadersByHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiBatchHeader"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -56,12 +58,18 @@
     },
     "/pov/getAccountState": {
       "get": {
-        "operationId": "GetAccountState",
+        "operationId": "PovAPI_GetAccountState",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -86,12 +94,18 @@
     },
     "/pov/getAccountStateByBlockHash": {
       "get": {
-        "operationId": "GetAccountStateByBlockHash",
+        "operationId": "PovAPI_GetAccountStateByBlockHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -116,12 +130,18 @@
     },
     "/pov/getAccountStateByBlockHeight": {
       "get": {
-        "operationId": "GetAccountStateByBlockHeight",
+        "operationId": "PovAPI_GetAccountStateByBlockHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -147,12 +167,18 @@
     },
     "/pov/getAllRepStatesByBlockHash": {
       "get": {
-        "operationId": "GetAllRepStatesByBlockHash",
+        "operationId": "PovAPI_GetAllRepStatesByBlockHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiRepState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -171,12 +197,18 @@
     },
     "/pov/getAllRepStatesByBlockHeight": {
       "get": {
-        "operationId": "GetAllRepStatesByBlockHeight",
+        "operationId": "PovAPI_GetAllRepStatesByBlockHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiRepState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -196,12 +228,18 @@
     },
     "/pov/getAllRepStatesByStateHash": {
       "get": {
-        "operationId": "GetAllRepStatesByStateHash",
+        "operationId": "PovAPI_GetAllRepStatesByStateHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiRepState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -220,12 +258,18 @@
     },
     "/pov/getBlockByHash": {
       "get": {
-        "operationId": "GetBlockByHash",
+        "operationId": "PovAPI_GetBlockByHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -258,12 +302,18 @@
     },
     "/pov/getBlockByHeight": {
       "get": {
-        "operationId": "GetBlockByHeight",
+        "operationId": "PovAPI_GetBlockByHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -297,12 +347,18 @@
     },
     "/pov/getDiffDayStat": {
       "get": {
-        "operationId": "GetDiffDayStat",
+        "operationId": "PovAPI_GetDiffDayStat",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesPovDiffDayStat"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -322,12 +378,18 @@
     },
     "/pov/getDiffDayStatByHeight": {
       "get": {
-        "operationId": "GetDiffDayStatByHeight",
+        "operationId": "PovAPI_GetDiffDayStatByHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesPovDiffDayStat"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -347,12 +409,18 @@
     },
     "/pov/getFittestHeader": {
       "get": {
-        "operationId": "GetFittestHeader",
+        "operationId": "PovAPI_GetFittestHeader",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiHeader"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -372,12 +440,18 @@
     },
     "/pov/getHashInfo": {
       "get": {
-        "operationId": "GetHashInfo",
+        "operationId": "PovAPI_GetHashInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiHashInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -404,12 +478,18 @@
     },
     "/pov/getHeaderByHash": {
       "get": {
-        "operationId": "GetHeaderByHash",
+        "operationId": "PovAPI_GetHeaderByHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiHeader"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -428,12 +508,18 @@
     },
     "/pov/getHeaderByHeight": {
       "get": {
-        "operationId": "GetHeaderByHeight",
+        "operationId": "PovAPI_GetHeaderByHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiHeader"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -453,12 +539,18 @@
     },
     "/pov/getLastNHourInfo": {
       "post": {
-        "operationId": "GetLastNHourInfo",
+        "operationId": "PovAPI_GetLastNHourInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiGetLastNHourInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -479,12 +571,18 @@
     },
     "/pov/getLatestAccountState": {
       "get": {
-        "operationId": "GetLatestAccountState",
+        "operationId": "PovAPI_GetLatestAccountState",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -503,12 +601,18 @@
     },
     "/pov/getLatestBlock": {
       "get": {
-        "operationId": "GetLatestBlock",
+        "operationId": "PovAPI_GetLatestBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -535,12 +639,18 @@
     },
     "/pov/getLatestHeader": {
       "get": {
-        "operationId": "GetLatestHeader",
+        "operationId": "PovAPI_GetLatestHeader",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiHeader"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -551,12 +661,18 @@
     },
     "/pov/getLedgerStats": {
       "get": {
-        "operationId": "GetLedgerStats",
+        "operationId": "PovAPI_GetLedgerStats",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovLedgerStats"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -567,12 +683,18 @@
     },
     "/pov/getMinerDayStat": {
       "get": {
-        "operationId": "GetMinerDayStat",
+        "operationId": "PovAPI_GetMinerDayStat",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesPovMinerDayStat"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -592,12 +714,18 @@
     },
     "/pov/getMinerDayStatByHeight": {
       "get": {
-        "operationId": "GetMinerDayStatByHeight",
+        "operationId": "PovAPI_GetMinerDayStatByHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesPovMinerDayStat"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -619,12 +747,18 @@
       "get": {
         "summary": "rpc GetBlockTDByHash (types.Hash) returns (PovApiTD) {\n       option (google.api.http) = {\n          get: \"/pov/getBlockTDByHash\"\n      };\n   }",
         "description": "rpc GetBlockTDByHeight (UInt64) returns (PovApiTD) {\n       option (google.api.http) = {\n          get: \"/pov/getBlockTDByHeight\"\n      };\n   }",
-        "operationId": "GetMinerStats",
+        "operationId": "PovAPI_GetMinerStats",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovMinerStats"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -647,12 +781,18 @@
     },
     "/pov/getMiningInfo": {
       "get": {
-        "operationId": "GetMiningInfo",
+        "operationId": "PovAPI_GetMiningInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiGetMiningInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -663,12 +803,18 @@
     },
     "/pov/getPovStatus": {
       "get": {
-        "operationId": "GetPovStatus",
+        "operationId": "PovAPI_GetPovStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovStatus"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -679,12 +825,18 @@
     },
     "/pov/getRepStats": {
       "get": {
-        "operationId": "GetRepStats",
+        "operationId": "PovAPI_GetRepStats",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovRepStats"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -707,12 +859,18 @@
     },
     "/pov/getTransaction": {
       "get": {
-        "operationId": "GetTransaction",
+        "operationId": "PovAPI_GetTransaction",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiTxLookup"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -731,12 +889,18 @@
     },
     "/pov/getTransactionByBlockHashAndIndex": {
       "get": {
-        "operationId": "GetTransactionByBlockHashAndIndex",
+        "operationId": "PovAPI_GetTransactionByBlockHashAndIndex",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiTxLookup"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -762,12 +926,18 @@
     },
     "/pov/getTransactionByBlockHeightAndIndex": {
       "get": {
-        "operationId": "GetTransactionByBlockHeightAndIndex",
+        "operationId": "PovAPI_GetTransactionByBlockHeightAndIndex",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiTxLookup"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -794,12 +964,18 @@
     },
     "/pov/getWork": {
       "get": {
-        "operationId": "GetWork",
+        "operationId": "PovAPI_GetWork",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPovApiGetWork"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -824,12 +1000,27 @@
     },
     "/pov/newBlock": {
       "get": {
-        "operationId": "NewBlock",
+        "operationId": "PovAPI_NewBlock",
         "responses": {
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/x-stream-definitions/protoPovApiHeader"
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/protoPovApiHeader"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of protoPovApiHeader"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -840,12 +1031,18 @@
     },
     "/pov/startMining": {
       "get": {
-        "operationId": "StartMining",
+        "operationId": "PovAPI_StartMining",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -870,12 +1067,18 @@
     },
     "/pov/stopMining": {
       "get": {
-        "operationId": "StopMining",
+        "operationId": "PovAPI_StopMining",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1480,6 +1683,27 @@
         }
       }
     },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
     "runtimeStreamError": {
       "type": "object",
       "properties": {
@@ -2046,20 +2270,6 @@
           "type": "string"
         }
       }
-    }
-  },
-  "x-stream-definitions": {
-    "protoPovApiHeader": {
-      "type": "object",
-      "properties": {
-        "result": {
-          "$ref": "#/definitions/protoPovApiHeader"
-        },
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        }
-      },
-      "title": "Stream result of protoPovApiHeader"
     }
   }
 }

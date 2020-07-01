@@ -4,10 +4,6 @@
     "title": "contract.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/contract/contractAddressList": {
       "get": {
-        "operationId": "ContractAddressList",
+        "operationId": "ContractAPI_ContractAddressList",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddresses"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -33,12 +35,18 @@
     },
     "/contract/generateRewardBlock": {
       "get": {
-        "operationId": "GenerateRewardBlock",
+        "operationId": "ContractAPI_GenerateRewardBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -57,12 +65,18 @@
     },
     "/contract/generateSendBlock": {
       "post": {
-        "operationId": "GenerateSendBlock",
+        "operationId": "ContractAPI_GenerateSendBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -83,12 +97,18 @@
     },
     "/contract/getAbiByContractAddress": {
       "get": {
-        "operationId": "GetAbiByContractAddress",
+        "operationId": "ContractAPI_GetAbiByContractAddress",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoString"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -107,12 +127,18 @@
     },
     "/contract/packChainContractData": {
       "post": {
-        "operationId": "PackChainContractData",
+        "operationId": "ContractAPI_PackChainContractData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -133,12 +159,18 @@
     },
     "/contract/packContractData": {
       "post": {
-        "operationId": "PackContractData",
+        "operationId": "ContractAPI_PackContractData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -245,6 +277,39 @@
       "properties": {
         "value": {
           "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

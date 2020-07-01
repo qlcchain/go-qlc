@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -23,17 +24,28 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// Suppress "imported and not used" errors
 var _ codes.Code
 var _ io.Reader
 var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
+var _ = descriptor.ForMessage
 
 func request_MetricsAPI_GetCPUInfo_0(ctx context.Context, marshaler runtime.Marshaler, client MetricsAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq empty.Empty
 	var metadata runtime.ServerMetadata
 
 	msg, err := client.GetCPUInfo(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_MetricsAPI_GetCPUInfo_0(ctx context.Context, marshaler runtime.Marshaler, server MetricsAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.GetCPUInfo(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -47,11 +59,29 @@ func request_MetricsAPI_GetAllCPUTimeStats_0(ctx context.Context, marshaler runt
 
 }
 
+func local_request_MetricsAPI_GetAllCPUTimeStats_0(ctx context.Context, marshaler runtime.Marshaler, server MetricsAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.GetAllCPUTimeStats(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 func request_MetricsAPI_GetCPUTimeStats_0(ctx context.Context, marshaler runtime.Marshaler, client MetricsAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq empty.Empty
 	var metadata runtime.ServerMetadata
 
 	msg, err := client.GetCPUTimeStats(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_MetricsAPI_GetCPUTimeStats_0(ctx context.Context, marshaler runtime.Marshaler, server MetricsAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.GetCPUTimeStats(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -65,6 +95,15 @@ func request_MetricsAPI_DiskInfo_0(ctx context.Context, marshaler runtime.Marsha
 
 }
 
+func local_request_MetricsAPI_DiskInfo_0(ctx context.Context, marshaler runtime.Marshaler, server MetricsAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.DiskInfo(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 func request_MetricsAPI_GetNetworkInterfaces_0(ctx context.Context, marshaler runtime.Marshaler, client MetricsAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq empty.Empty
 	var metadata runtime.ServerMetadata
@@ -72,6 +111,123 @@ func request_MetricsAPI_GetNetworkInterfaces_0(ctx context.Context, marshaler ru
 	msg, err := client.GetNetworkInterfaces(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
+}
+
+func local_request_MetricsAPI_GetNetworkInterfaces_0(ctx context.Context, marshaler runtime.Marshaler, server MetricsAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.GetNetworkInterfaces(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
+// RegisterMetricsAPIHandlerServer registers the http handlers for service MetricsAPI to "mux".
+// UnaryRPC     :call MetricsAPIServer directly.
+// StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+func RegisterMetricsAPIHandlerServer(ctx context.Context, mux *runtime.ServeMux, server MetricsAPIServer) error {
+
+	mux.Handle("GET", pattern_MetricsAPI_GetCPUInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_MetricsAPI_GetCPUInfo_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_MetricsAPI_GetCPUInfo_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_MetricsAPI_GetAllCPUTimeStats_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_MetricsAPI_GetAllCPUTimeStats_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_MetricsAPI_GetAllCPUTimeStats_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_MetricsAPI_GetCPUTimeStats_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_MetricsAPI_GetCPUTimeStats_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_MetricsAPI_GetCPUTimeStats_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_MetricsAPI_DiskInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_MetricsAPI_DiskInfo_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_MetricsAPI_DiskInfo_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_MetricsAPI_GetNetworkInterfaces_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_MetricsAPI_GetNetworkInterfaces_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_MetricsAPI_GetNetworkInterfaces_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	return nil
 }
 
 // RegisterMetricsAPIHandlerFromEndpoint is same as RegisterMetricsAPIHandler but
@@ -216,15 +372,15 @@ func RegisterMetricsAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 }
 
 var (
-	pattern_MetricsAPI_GetCPUInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "getCPUInfo"}, ""))
+	pattern_MetricsAPI_GetCPUInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "getCPUInfo"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_MetricsAPI_GetAllCPUTimeStats_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "getAllCPUTimeStats"}, ""))
+	pattern_MetricsAPI_GetAllCPUTimeStats_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "getAllCPUTimeStats"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_MetricsAPI_GetCPUTimeStats_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "getCPUTimeStats"}, ""))
+	pattern_MetricsAPI_GetCPUTimeStats_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "getCPUTimeStats"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_MetricsAPI_DiskInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "diskInfo"}, ""))
+	pattern_MetricsAPI_DiskInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "diskInfo"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_MetricsAPI_GetNetworkInterfaces_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "getNetworkInterfaces"}, ""))
+	pattern_MetricsAPI_GetNetworkInterfaces_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"metrics", "getNetworkInterfaces"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

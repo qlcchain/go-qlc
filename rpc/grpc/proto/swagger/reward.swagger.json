@@ -4,10 +4,6 @@
     "title": "reward.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/rewards/getConfidantRewards": {
       "get": {
-        "operationId": "GetConfidantRewards",
+        "operationId": "RewardsAPI_GetConfidantRewards",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoConfidantRewardsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -41,12 +43,18 @@
     },
     "/rewards/getConfidantRewordsDetail": {
       "get": {
-        "operationId": "GetConfidantRewordsDetail",
+        "operationId": "RewardsAPI_GetConfidantRewordsDetail",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoRewardsInfosByAddress"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -65,12 +73,18 @@
     },
     "/rewards/getReceiveRewardBlock": {
       "get": {
-        "operationId": "GetReceiveRewardBlock",
+        "operationId": "RewardsAPI_GetReceiveRewardBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -89,12 +103,18 @@
     },
     "/rewards/getRewardsDetail": {
       "get": {
-        "operationId": "GetRewardsDetail",
+        "operationId": "RewardsAPI_GetRewardsDetail",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoRewardsInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -113,12 +133,18 @@
     },
     "/rewards/getSendConfidantBlock": {
       "post": {
-        "operationId": "GetSendConfidantBlock",
+        "operationId": "RewardsAPI_GetSendConfidantBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -139,12 +165,18 @@
     },
     "/rewards/getSendRewardBlock": {
       "post": {
-        "operationId": "GetSendRewardBlock",
+        "operationId": "RewardsAPI_GetSendRewardBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -165,12 +197,18 @@
     },
     "/rewards/getTotalRewards": {
       "get": {
-        "operationId": "GetTotalRewards",
+        "operationId": "RewardsAPI_GetTotalRewards",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInt64"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -189,12 +227,18 @@
     },
     "/rewards/getUnsignedConfidantData": {
       "get": {
-        "operationId": "GetUnsignedConfidantData",
+        "operationId": "RewardsAPI_GetUnsignedConfidantData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -232,12 +276,18 @@
     },
     "/rewards/getUnsignedRewardData": {
       "get": {
-        "operationId": "GetUnsignedRewardData",
+        "operationId": "RewardsAPI_GetUnsignedRewardData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -275,12 +325,18 @@
     },
     "/rewards/isAirdropRewards": {
       "get": {
-        "operationId": "IsAirdropRewards",
+        "operationId": "RewardsAPI_IsAirdropRewards",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBoolean"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -378,6 +434,39 @@
         },
         "sign": {
           "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

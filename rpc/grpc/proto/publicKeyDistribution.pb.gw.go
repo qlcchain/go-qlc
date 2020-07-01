@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -24,11 +25,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// Suppress "imported and not used" errors
 var _ codes.Code
 var _ io.Reader
 var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
+var _ = descriptor.ForMessage
 
 var (
 	filter_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
@@ -38,11 +41,30 @@ func request_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0(ctx context.Con
 	var protoReq VerifierRegParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetVerifierRegisterBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq VerifierRegParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetVerifierRegisterBlock(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -55,11 +77,30 @@ func request_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0(ctx context.C
 	var protoReq VerifierUnRegParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetVerifierUnregisterBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq VerifierUnRegParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetVerifierUnregisterBlock(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -73,6 +114,15 @@ func request_PublicKeyDistributionAPI_GetAllVerifiers_0(ctx context.Context, mar
 
 }
 
+func local_request_PublicKeyDistributionAPI_GetAllVerifiers_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq empty.Empty
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.GetAllVerifiers(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 var (
 	filter_PublicKeyDistributionAPI_GetVerifiersByType_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
@@ -81,11 +131,30 @@ func request_PublicKeyDistributionAPI_GetVerifiersByType_0(ctx context.Context, 
 	var protoReq String
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifiersByType_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifiersByType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetVerifiersByType(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetVerifiersByType_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq String
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifiersByType_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetVerifiersByType(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -98,11 +167,30 @@ func request_PublicKeyDistributionAPI_GetActiveVerifiers_0(ctx context.Context, 
 	var protoReq String
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetActiveVerifiers_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetActiveVerifiers_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetActiveVerifiers(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetActiveVerifiers_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq String
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetActiveVerifiers_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetActiveVerifiers(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -115,11 +203,30 @@ func request_PublicKeyDistributionAPI_GetVerifiersByAccount_0(ctx context.Contex
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifiersByAccount_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifiersByAccount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetVerifiersByAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetVerifiersByAccount_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Address
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifiersByAccount_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetVerifiersByAccount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -132,11 +239,30 @@ func request_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0(ctx contex
 	var protoReq VerifierStateByBlockHeightRequest
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetVerifierStateByBlockHeight(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq VerifierStateByBlockHeightRequest
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetVerifierStateByBlockHeight(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -149,11 +275,30 @@ func request_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0(ctx co
 	var protoReq UInt64
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetAllVerifierStatesByBlockHeight(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UInt64
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetAllVerifierStatesByBlockHeight(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -175,6 +320,23 @@ func request_PublicKeyDistributionAPI_GetPublishBlock_0(ctx context.Context, mar
 
 }
 
+func local_request_PublicKeyDistributionAPI_GetPublishBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq PublishParam
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPublishBlock(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 func request_PublicKeyDistributionAPI_GetUnPublishBlock_0(ctx context.Context, marshaler runtime.Marshaler, client PublicKeyDistributionAPIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UnPublishParam
 	var metadata runtime.ServerMetadata
@@ -192,6 +354,23 @@ func request_PublicKeyDistributionAPI_GetUnPublishBlock_0(ctx context.Context, m
 
 }
 
+func local_request_PublicKeyDistributionAPI_GetUnPublishBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnPublishParam
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetUnPublishBlock(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 var (
 	filter_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
@@ -200,11 +379,30 @@ func request_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0(ctx context.Context
 	var protoReq TypeAndIDParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPubKeyByTypeAndID(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq TypeAndIDParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPubKeyByTypeAndID(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -217,11 +415,30 @@ func request_PublicKeyDistributionAPI_GetRecommendPubKey_0(ctx context.Context, 
 	var protoReq TypeAndIDParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetRecommendPubKey_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetRecommendPubKey_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetRecommendPubKey(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetRecommendPubKey_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq TypeAndIDParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetRecommendPubKey_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetRecommendPubKey(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -234,11 +451,30 @@ func request_PublicKeyDistributionAPI_GetPublishInfosByType_0(ctx context.Contex
 	var protoReq String
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetPublishInfosByType_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetPublishInfosByType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPublishInfosByType(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetPublishInfosByType_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq String
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetPublishInfosByType_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPublishInfosByType(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -251,11 +487,30 @@ func request_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0(ctx cont
 	var protoReq AccountAndTypeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPublishInfosByAccountAndType(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq AccountAndTypeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPublishInfosByAccountAndType(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -268,11 +523,30 @@ func request_PublicKeyDistributionAPI_GetOracleBlock_0(ctx context.Context, mars
 	var protoReq OracleParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetOracleBlock_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetOracleBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetOracleBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetOracleBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq OracleParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetOracleBlock_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetOracleBlock(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -285,11 +559,30 @@ func request_PublicKeyDistributionAPI_GetOracleInfosByType_0(ctx context.Context
 	var protoReq String
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetOracleInfosByType_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetOracleInfosByType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetOracleInfosByType(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetOracleInfosByType_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq String
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetOracleInfosByType_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetOracleInfosByType(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -311,6 +604,23 @@ func request_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0(ctx context.Co
 
 }
 
+func local_request_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq TypeAndIDParam
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetOracleInfosByTypeAndID(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 var (
 	filter_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
@@ -319,11 +629,30 @@ func request_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0(ctx conte
 	var protoReq AccountAndTypeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetOracleInfosByAccountAndType(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq AccountAndTypeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetOracleInfosByAccountAndType(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -336,11 +665,30 @@ func request_PublicKeyDistributionAPI_GetOracleInfosByHash_0(ctx context.Context
 	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetOracleInfosByHash_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetOracleInfosByHash_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetOracleInfosByHash(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetOracleInfosByHash_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Hash
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetOracleInfosByHash_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetOracleInfosByHash(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -353,11 +701,30 @@ func request_PublicKeyDistributionAPI_PackRewardData_0(ctx context.Context, mars
 	var protoReq PKDRewardParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_PackRewardData_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_PackRewardData_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.PackRewardData(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_PackRewardData_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq PKDRewardParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_PackRewardData_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.PackRewardData(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -370,11 +737,30 @@ func request_PublicKeyDistributionAPI_UnpackRewardData_0(ctx context.Context, ma
 	var protoReq Bytes
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_UnpackRewardData_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_UnpackRewardData_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.UnpackRewardData(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_UnpackRewardData_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq Bytes
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_UnpackRewardData_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.UnpackRewardData(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -387,11 +773,30 @@ func request_PublicKeyDistributionAPI_GetRewardSendBlock_0(ctx context.Context, 
 	var protoReq PKDRewardParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetRewardSendBlock_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetRewardSendBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetRewardSendBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetRewardSendBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq PKDRewardParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetRewardSendBlock_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetRewardSendBlock(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -413,6 +818,23 @@ func request_PublicKeyDistributionAPI_GetRewardRecvBlock_0(ctx context.Context, 
 
 }
 
+func local_request_PublicKeyDistributionAPI_GetRewardRecvBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.StateBlock
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetRewardRecvBlock(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 var (
 	filter_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
@@ -421,11 +843,30 @@ func request_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0(ctx context
 	var protoReq types.Hash
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetRewardRecvBlockBySendHash(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Hash
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetRewardRecvBlockBySendHash(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -438,11 +879,30 @@ func request_PublicKeyDistributionAPI_GetRewardHistory_0(ctx context.Context, ma
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetRewardHistory_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetRewardHistory_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetRewardHistory(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetRewardHistory_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Address
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetRewardHistory_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetRewardHistory(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -455,11 +915,30 @@ func request_PublicKeyDistributionAPI_GetAvailRewardInfo_0(ctx context.Context, 
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PublicKeyDistributionAPI_GetAvailRewardInfo_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetAvailRewardInfo_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetAvailRewardInfo(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PublicKeyDistributionAPI_GetAvailRewardInfo_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Address
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PublicKeyDistributionAPI_GetAvailRewardInfo_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetAvailRewardInfo(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -479,6 +958,571 @@ func request_PublicKeyDistributionAPI_GetVerifierHeartBlock_0(ctx context.Contex
 	msg, err := client.GetVerifierHeartBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
+}
+
+func local_request_PublicKeyDistributionAPI_GetVerifierHeartBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PublicKeyDistributionAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq VerifierHeartBlockRequest
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetVerifierHeartBlock(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
+// RegisterPublicKeyDistributionAPIHandlerServer registers the http handlers for service PublicKeyDistributionAPI to "mux".
+// UnaryRPC     :call PublicKeyDistributionAPIServer directly.
+// StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+func RegisterPublicKeyDistributionAPIHandlerServer(ctx context.Context, mux *runtime.ServeMux, server PublicKeyDistributionAPIServer) error {
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetAllVerifiers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetAllVerifiers_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetAllVerifiers_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifiersByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetVerifiersByType_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetVerifiersByType_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetActiveVerifiers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetActiveVerifiers_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetActiveVerifiers_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifiersByAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetVerifiersByAccount_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetVerifiersByAccount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetPublishBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetPublishBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetPublishBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetUnPublishBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetUnPublishBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetUnPublishBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetRecommendPubKey_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetRecommendPubKey_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetRecommendPubKey_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetPublishInfosByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetPublishInfosByType_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetPublishInfosByType_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetOracleBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetOracleBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetOracleBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetOracleInfosByType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetOracleInfosByType_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetOracleInfosByType_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetOracleInfosByHash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetOracleInfosByHash_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetOracleInfosByHash_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_PackRewardData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_PackRewardData_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_PackRewardData_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_UnpackRewardData_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_UnpackRewardData_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_UnpackRewardData_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetRewardSendBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetRewardSendBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetRewardSendBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetRewardRecvBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetRewardRecvBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetRewardRecvBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetRewardHistory_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetRewardHistory_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetRewardHistory_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PublicKeyDistributionAPI_GetAvailRewardInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetAvailRewardInfo_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetAvailRewardInfo_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_PublicKeyDistributionAPI_GetVerifierHeartBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PublicKeyDistributionAPI_GetVerifierHeartBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PublicKeyDistributionAPI_GetVerifierHeartBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	return nil
 }
 
 // RegisterPublicKeyDistributionAPIHandlerFromEndpoint is same as RegisterPublicKeyDistributionAPIHandler but
@@ -1063,59 +2107,59 @@ func RegisterPublicKeyDistributionAPIHandlerClient(ctx context.Context, mux *run
 }
 
 var (
-	pattern_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifierRegisterBlock"}, ""))
+	pattern_PublicKeyDistributionAPI_GetVerifierRegisterBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifierRegisterBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifierUnregisterBlock"}, ""))
+	pattern_PublicKeyDistributionAPI_GetVerifierUnregisterBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifierUnregisterBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetAllVerifiers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getAllVerifiers"}, ""))
+	pattern_PublicKeyDistributionAPI_GetAllVerifiers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getAllVerifiers"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetVerifiersByType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifiersByType"}, ""))
+	pattern_PublicKeyDistributionAPI_GetVerifiersByType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifiersByType"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetActiveVerifiers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getActiveVerifiers"}, ""))
+	pattern_PublicKeyDistributionAPI_GetActiveVerifiers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getActiveVerifiers"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetVerifiersByAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifiersByAccount"}, ""))
+	pattern_PublicKeyDistributionAPI_GetVerifiersByAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifiersByAccount"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifierStateByBlockHeight"}, ""))
+	pattern_PublicKeyDistributionAPI_GetVerifierStateByBlockHeight_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifierStateByBlockHeight"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getAllVerifierStatesByBlockHeight"}, ""))
+	pattern_PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getAllVerifierStatesByBlockHeight"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetPublishBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getPublishBlock"}, ""))
+	pattern_PublicKeyDistributionAPI_GetPublishBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getPublishBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetUnPublishBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getUnPublishBlock"}, ""))
+	pattern_PublicKeyDistributionAPI_GetUnPublishBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getUnPublishBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getPubKeyByTypeAndID"}, ""))
+	pattern_PublicKeyDistributionAPI_GetPubKeyByTypeAndID_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getPubKeyByTypeAndID"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetRecommendPubKey_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRecommendPubKey"}, ""))
+	pattern_PublicKeyDistributionAPI_GetRecommendPubKey_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRecommendPubKey"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetPublishInfosByType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getPublishInfosByType"}, ""))
+	pattern_PublicKeyDistributionAPI_GetPublishInfosByType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getPublishInfosByType"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getPublishInfosByAccountAndType"}, ""))
+	pattern_PublicKeyDistributionAPI_GetPublishInfosByAccountAndType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getPublishInfosByAccountAndType"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetOracleBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleBlock"}, ""))
+	pattern_PublicKeyDistributionAPI_GetOracleBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetOracleInfosByType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleInfosByType"}, ""))
+	pattern_PublicKeyDistributionAPI_GetOracleInfosByType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleInfosByType"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleInfosByType"}, ""))
+	pattern_PublicKeyDistributionAPI_GetOracleInfosByTypeAndID_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleInfosByType"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleInfosByAccountAndType"}, ""))
+	pattern_PublicKeyDistributionAPI_GetOracleInfosByAccountAndType_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleInfosByAccountAndType"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetOracleInfosByHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleInfosByHash"}, ""))
+	pattern_PublicKeyDistributionAPI_GetOracleInfosByHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getOracleInfosByHash"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_PackRewardData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "packRewardData"}, ""))
+	pattern_PublicKeyDistributionAPI_PackRewardData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "packRewardData"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_UnpackRewardData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "unpackRewardData"}, ""))
+	pattern_PublicKeyDistributionAPI_UnpackRewardData_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "unpackRewardData"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetRewardSendBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRewardSendBlock"}, ""))
+	pattern_PublicKeyDistributionAPI_GetRewardSendBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRewardSendBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetRewardRecvBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRewardRecvBlock"}, ""))
+	pattern_PublicKeyDistributionAPI_GetRewardRecvBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRewardRecvBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRewardRecvBlockBySendHash"}, ""))
+	pattern_PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRewardRecvBlockBySendHash"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetRewardHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRewardHistory"}, ""))
+	pattern_PublicKeyDistributionAPI_GetRewardHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getRewardHistory"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetAvailRewardInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getAvailRewardInfo"}, ""))
+	pattern_PublicKeyDistributionAPI_GetAvailRewardInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getAvailRewardInfo"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PublicKeyDistributionAPI_GetVerifierHeartBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifierHeartBlock"}, ""))
+	pattern_PublicKeyDistributionAPI_GetVerifierHeartBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"pkdistribution", "getVerifierHeartBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

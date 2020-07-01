@@ -4,10 +4,6 @@
     "title": "ptmkey.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/ptmkey/getPtmKeyByAccount": {
       "get": {
-        "operationId": "GetPtmKeyByAccount",
+        "operationId": "PtmKeyAPI_GetPtmKeyByAccount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPtmKeyUpdateParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -41,12 +43,18 @@
     },
     "/ptmkey/getPtmKeyByAccountAndBtype": {
       "get": {
-        "operationId": "GetPtmKeyByAccountAndBtype",
+        "operationId": "PtmKeyAPI_GetPtmKeyByAccountAndBtype",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPtmKeyUpdateParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -71,12 +79,18 @@
     },
     "/ptmkey/getPtmKeyDeleteBlock": {
       "get": {
-        "operationId": "GetPtmKeyDeleteBlock",
+        "operationId": "PtmKeyAPI_GetPtmKeyDeleteBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -101,12 +115,18 @@
     },
     "/ptmkey/getPtmKeyUpdateBlock": {
       "get": {
-        "operationId": "GetPtmKeyUpdateBlock",
+        "operationId": "PtmKeyAPI_GetPtmKeyUpdateBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -158,6 +178,39 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/protoPtmKeyUpdateParam"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
           }
         }
       }

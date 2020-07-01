@@ -4,10 +4,6 @@
     "title": "mintage.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/miner/getMintageBlock": {
       "get": {
-        "operationId": "GetMintageBlock",
+        "operationId": "MintageAPI_GetMintageBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -84,12 +86,18 @@
     },
     "/miner/getMintageData": {
       "get": {
-        "operationId": "GetMintageData",
+        "operationId": "MintageAPI_GetMintageData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -151,12 +159,18 @@
     },
     "/miner/getRewardBlock": {
       "post": {
-        "operationId": "GetRewardBlock",
+        "operationId": "MintageAPI_GetRewardBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -177,12 +191,18 @@
     },
     "/miner/getWithdrawMintageBlock": {
       "get": {
-        "operationId": "GetWithdrawMintageBlock",
+        "operationId": "MintageAPI_GetWithdrawMintageBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -207,12 +227,18 @@
     },
     "/miner/getWithdrawMintageData": {
       "get": {
-        "operationId": "ParseTokenInfo",
+        "operationId": "MintageAPI_ParseTokenInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesTokenInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -232,12 +258,18 @@
     },
     "/miner/getWithdrawRewardBlock": {
       "post": {
-        "operationId": "GetWithdrawRewardBlock",
+        "operationId": "MintageAPI_GetWithdrawRewardBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -264,6 +296,39 @@
         "value": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

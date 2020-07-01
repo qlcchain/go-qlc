@@ -4,10 +4,6 @@
     "title": "permission.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/permission/getAdmin": {
       "get": {
-        "operationId": "GetAdmin",
+        "operationId": "PermissionAPI_GetAdmin",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAdminUser"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -33,12 +35,18 @@
     },
     "/permission/getAdminHandoverBlock": {
       "get": {
-        "operationId": "GetAdminHandoverBlock",
+        "operationId": "PermissionAPI_GetAdminHandoverBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -69,12 +77,18 @@
     },
     "/permission/getNode": {
       "get": {
-        "operationId": "GetNode",
+        "operationId": "PermissionAPI_GetNode",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoNodeInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -93,12 +107,18 @@
     },
     "/permission/getNodeUpdateBlock": {
       "get": {
-        "operationId": "GetNodeUpdateBlock",
+        "operationId": "PermissionAPI_GetNodeUpdateBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -135,12 +155,18 @@
     },
     "/permission/getNodes": {
       "get": {
-        "operationId": "GetNodes",
+        "operationId": "PermissionAPI_GetNodes",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoNodeInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -167,12 +193,18 @@
     },
     "/permission/getNodesCount": {
       "get": {
-        "operationId": "GetNodesCount",
+        "operationId": "PermissionAPI_GetNodesCount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInt32"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -224,6 +256,39 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/protoNodeInfo"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
           }
         }
       }

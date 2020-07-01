@@ -4,10 +4,6 @@
     "title": "privacy.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/privacy/distributeRawPayload": {
       "post": {
-        "operationId": "DistributeRawPayload",
+        "operationId": "PrivacyAPI_DistributeRawPayload",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -43,12 +45,18 @@
     },
     "/privacy/getBlockPrivatePayload": {
       "get": {
-        "operationId": "GetBlockPrivatePayload",
+        "operationId": "PrivacyAPI_GetBlockPrivatePayload",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -67,12 +75,18 @@
     },
     "/privacy/getDemoKV": {
       "get": {
-        "operationId": "GetDemoKV",
+        "operationId": "PrivacyAPI_GetDemoKV",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -92,12 +106,18 @@
     },
     "/privacy/getRawPayload": {
       "get": {
-        "operationId": "GetRawPayload",
+        "operationId": "PrivacyAPI_GetRawPayload",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -144,6 +164,39 @@
         },
         "privateGroupID": {
           "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     }

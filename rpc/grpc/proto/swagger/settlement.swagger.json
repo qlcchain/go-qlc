@@ -4,10 +4,6 @@
     "title": "settlement.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/settlement/generateInvoices": {
       "get": {
-        "operationId": "GenerateInvoices",
+        "operationId": "SettlementAPI_GenerateInvoices",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -55,12 +57,18 @@
     },
     "/settlement/generateInvoicesByAccount": {
       "get": {
-        "operationId": "GenerateInvoicesByAccount",
+        "operationId": "SettlementAPI_GenerateInvoicesByAccount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -99,12 +107,18 @@
     },
     "/settlement/generateInvoicesByContract": {
       "get": {
-        "operationId": "GenerateInvoicesByContract",
+        "operationId": "SettlementAPI_GenerateInvoicesByContract",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -137,12 +151,18 @@
     },
     "/settlement/generateInvoicesByCustomer": {
       "get": {
-        "operationId": "GenerateInvoicesByCustomer",
+        "operationId": "SettlementAPI_GenerateInvoicesByCustomer",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -181,12 +201,18 @@
     },
     "/settlement/generateMultiPartyInvoice": {
       "get": {
-        "operationId": "GenerateMultiPartyInvoice",
+        "operationId": "SettlementAPI_GenerateMultiPartyInvoice",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInvoiceRecords"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -225,12 +251,18 @@
     },
     "/settlement/generateMultiPartySummaryReport": {
       "get": {
-        "operationId": "GenerateMultiPartySummaryReport",
+        "operationId": "SettlementAPI_GenerateMultiPartySummaryReport",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesMultiPartySummaryResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -269,12 +301,18 @@
     },
     "/settlement/getAddNextStopBlock": {
       "post": {
-        "operationId": "GetAddNextStopBlock",
+        "operationId": "SettlementAPI_GetAddNextStopBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -295,12 +333,18 @@
     },
     "/settlement/getAddPreStopBlock": {
       "post": {
-        "operationId": "GetAddPreStopBlock",
+        "operationId": "SettlementAPI_GetAddPreStopBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -321,12 +365,18 @@
     },
     "/settlement/getAllAssets": {
       "get": {
-        "operationId": "GetAllAssets",
+        "operationId": "SettlementAPI_GetAllAssets",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAssetParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -353,12 +403,18 @@
     },
     "/settlement/getAllCDRStatus": {
       "get": {
-        "operationId": "GetAllCDRStatus",
+        "operationId": "SettlementAPI_GetAllCDRStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoCDRStatuses"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -391,12 +447,18 @@
     },
     "/settlement/getAllContracts": {
       "get": {
-        "operationId": "GetAllContracts",
+        "operationId": "SettlementAPI_GetAllContracts",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoSettlementContracts"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -423,12 +485,18 @@
     },
     "/settlement/getAsset": {
       "get": {
-        "operationId": "GetAsset",
+        "operationId": "SettlementAPI_GetAsset",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAssetParam"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -447,12 +515,18 @@
     },
     "/settlement/getAssetsByOwner": {
       "get": {
-        "operationId": "GetAssetsByOwner",
+        "operationId": "SettlementAPI_GetAssetsByOwner",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAssetParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -485,12 +559,18 @@
     },
     "/settlement/getCDRStatus": {
       "get": {
-        "operationId": "GetCDRStatus",
+        "operationId": "SettlementAPI_GetCDRStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoCDRStatus"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -515,12 +595,18 @@
     },
     "/settlement/getCDRStatusByCdrData": {
       "get": {
-        "operationId": "GetCDRStatusByCdrData",
+        "operationId": "SettlementAPI_GetCDRStatusByCdrData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoCDRStatus"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -558,12 +644,18 @@
     },
     "/settlement/getCDRStatusByDate": {
       "get": {
-        "operationId": "GetCDRStatusByDate",
+        "operationId": "SettlementAPI_GetCDRStatusByDate",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoCDRStatuses"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -610,12 +702,18 @@
     },
     "/settlement/getContractAddressByPartyANextStop": {
       "get": {
-        "operationId": "GetContractAddressByPartyANextStop",
+        "operationId": "SettlementAPI_GetContractAddressByPartyANextStop",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddress"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -640,12 +738,18 @@
     },
     "/settlement/getContractAddressByPartyBPreStop": {
       "get": {
-        "operationId": "GetContractAddressByPartyBPreStop",
+        "operationId": "SettlementAPI_GetContractAddressByPartyBPreStop",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddress"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -670,12 +774,18 @@
     },
     "/settlement/getContractsAsPartyA": {
       "get": {
-        "operationId": "GetContractsAsPartyA",
+        "operationId": "SettlementAPI_GetContractsAsPartyA",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoSettlementContracts"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -708,12 +818,18 @@
     },
     "/settlement/getContractsAsPartyB": {
       "get": {
-        "operationId": "GetContractsAsPartyB",
+        "operationId": "SettlementAPI_GetContractsAsPartyB",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoSettlementContracts"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -746,12 +862,18 @@
     },
     "/settlement/getContractsByAddress": {
       "get": {
-        "operationId": "GetContractsByAddress",
+        "operationId": "SettlementAPI_GetContractsByAddress",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoSettlementContracts"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -784,12 +906,18 @@
     },
     "/settlement/getContractsByStatus": {
       "get": {
-        "operationId": "GetContractsByStatus",
+        "operationId": "SettlementAPI_GetContractsByStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoSettlementContracts"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -828,12 +956,18 @@
     },
     "/settlement/getCreateContractBlock": {
       "post": {
-        "operationId": "GetCreateContractBlock",
+        "operationId": "SettlementAPI_GetCreateContractBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -854,12 +988,18 @@
     },
     "/settlement/getExpiredContracts": {
       "get": {
-        "operationId": "GetExpiredContracts",
+        "operationId": "SettlementAPI_GetExpiredContracts",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoSettlementContracts"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -892,12 +1032,18 @@
     },
     "/settlement/getMultiPartyCDRStatus": {
       "get": {
-        "operationId": "GetMultiPartyCDRStatus",
+        "operationId": "SettlementAPI_GetMultiPartyCDRStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoCDRStatuses"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -936,12 +1082,18 @@
     },
     "/settlement/getNextStopNames": {
       "get": {
-        "operationId": "GetNextStopNames",
+        "operationId": "SettlementAPI_GetNextStopNames",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoStrings"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -960,12 +1112,18 @@
     },
     "/settlement/getPreStopNames": {
       "get": {
-        "operationId": "GetPreStopNames",
+        "operationId": "SettlementAPI_GetPreStopNames",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoStrings"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -984,12 +1142,18 @@
     },
     "/settlement/getProcessCDRBlock": {
       "post": {
-        "operationId": "GetProcessCDRBlock",
+        "operationId": "SettlementAPI_GetProcessCDRBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1010,12 +1174,18 @@
     },
     "/settlement/getRegisterAssetBlock": {
       "get": {
-        "operationId": "GetRegisterAssetBlock",
+        "operationId": "SettlementAPI_GetRegisterAssetBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1060,12 +1230,18 @@
     },
     "/settlement/getRemoveNextStopBlock": {
       "post": {
-        "operationId": "GetRemoveNextStopBlock",
+        "operationId": "SettlementAPI_GetRemoveNextStopBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1086,12 +1262,18 @@
     },
     "/settlement/getRemovePreStopBlock": {
       "post": {
-        "operationId": "GetRemovePreStopBlock",
+        "operationId": "SettlementAPI_GetRemovePreStopBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1112,12 +1294,18 @@
     },
     "/settlement/getSettlementRewardsBlock": {
       "get": {
-        "operationId": "GetSettlementRewardsBlock",
+        "operationId": "SettlementAPI_GetSettlementRewardsBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1136,12 +1324,18 @@
     },
     "/settlement/getSignContractBlock": {
       "get": {
-        "operationId": "GetSignContractBlock",
+        "operationId": "SettlementAPI_GetSignContractBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1166,12 +1360,18 @@
     },
     "/settlement/getSummaryReport": {
       "get": {
-        "operationId": "GetSummaryReport",
+        "operationId": "SettlementAPI_GetSummaryReport",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesSummaryResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1204,12 +1404,18 @@
     },
     "/settlement/getSummaryReportByAccount": {
       "get": {
-        "operationId": "GetSummaryReportByAccount",
+        "operationId": "SettlementAPI_GetSummaryReportByAccount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesSummaryResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1248,12 +1454,18 @@
     },
     "/settlement/getSummaryReportByCustomer": {
       "get": {
-        "operationId": "GetSummaryReportByCustomer",
+        "operationId": "SettlementAPI_GetSummaryReportByCustomer",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesSummaryResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1292,12 +1504,18 @@
     },
     "/settlement/getTerminateContractBlock": {
       "post": {
-        "operationId": "GetTerminateContractBlock",
+        "operationId": "SettlementAPI_GetTerminateContractBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1318,12 +1536,18 @@
     },
     "/settlement/getUpdateNextStopBlock": {
       "post": {
-        "operationId": "GetUpdateNextStopBlock",
+        "operationId": "SettlementAPI_GetUpdateNextStopBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1344,12 +1568,18 @@
     },
     "/settlement/getUpdatePreStopBlock": {
       "post": {
-        "operationId": "GetUpdatePreStopBlock",
+        "operationId": "SettlementAPI_GetUpdatePreStopBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1370,12 +1600,18 @@
     },
     "/settlement/toAddress": {
       "post": {
-        "operationId": "ToAddress",
+        "operationId": "SettlementAPI_ToAddress",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddress"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1655,6 +1891,39 @@
         },
         "address": {
           "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

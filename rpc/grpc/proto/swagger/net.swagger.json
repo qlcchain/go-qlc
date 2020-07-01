@@ -4,10 +4,6 @@
     "title": "net.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/net/connectPeersInfo": {
       "get": {
-        "operationId": "ConnectPeersInfo",
+        "operationId": "NetAPI_ConnectPeersInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPeerInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -49,12 +51,18 @@
     },
     "/net/getAllPeersInfo": {
       "get": {
-        "operationId": "GetAllPeersInfo",
+        "operationId": "NetAPI_GetAllPeersInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPeerInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -81,12 +89,18 @@
     },
     "/net/getBandwidthStats": {
       "get": {
-        "operationId": "GetBandwidthStats",
+        "operationId": "NetAPI_GetBandwidthStats",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoEventBandwidthStats"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -97,12 +111,18 @@
     },
     "/net/getOnlinePeersInfo": {
       "get": {
-        "operationId": "GetOnlinePeersInfo",
+        "operationId": "NetAPI_GetOnlinePeersInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPeerInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -129,12 +149,18 @@
     },
     "/net/getPeerId": {
       "get": {
-        "operationId": "GetPeerId",
+        "operationId": "NetAPI_GetPeerId",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoString"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -145,12 +171,18 @@
     },
     "/net/onlineRepresentatives": {
       "get": {
-        "operationId": "OnlineRepresentatives",
+        "operationId": "NetAPI_OnlineRepresentatives",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddresses"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -161,12 +193,18 @@
     },
     "/net/onlineRepsInfo": {
       "get": {
-        "operationId": "OnlineRepsInfo",
+        "operationId": "NetAPI_OnlineRepsInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoOnlineRepTotal"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -177,12 +215,18 @@
     },
     "/net/peersCount": {
       "get": {
-        "operationId": "PeersCount",
+        "operationId": "NetAPI_PeersCount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPeersCountResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -193,12 +237,18 @@
     },
     "/net/syncing": {
       "get": {
-        "operationId": "Syncing",
+        "operationId": "NetAPI_Syncing",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBoolean"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -318,6 +368,39 @@
       "properties": {
         "value": {
           "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

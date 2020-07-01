@@ -4,10 +4,6 @@
     "title": "ledger.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/ledger/accountBlocksCount": {
       "get": {
-        "operationId": "AccountBlocksCount",
+        "operationId": "LedgerAPI_AccountBlocksCount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInt64"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -41,12 +43,18 @@
     },
     "/ledger/accountHistoryTopn": {
       "get": {
-        "operationId": "AccountHistoryTopn",
+        "operationId": "LedgerAPI_AccountHistoryTopn",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIBlocks"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -79,12 +87,18 @@
     },
     "/ledger/accountInfo": {
       "get": {
-        "operationId": "AccountInfo",
+        "operationId": "LedgerAPI_AccountInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIAccount"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -103,12 +117,18 @@
     },
     "/ledger/accountRepresentative": {
       "get": {
-        "operationId": "AccountRepresentative",
+        "operationId": "LedgerAPI_AccountRepresentative",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddress"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -127,12 +147,18 @@
     },
     "/ledger/accountVotingWeight": {
       "get": {
-        "operationId": "AccountVotingWeight",
+        "operationId": "LedgerAPI_AccountVotingWeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesBalance"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -151,12 +177,18 @@
     },
     "/ledger/accounts": {
       "get": {
-        "operationId": "Accounts",
+        "operationId": "LedgerAPI_Accounts",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddresses"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -183,12 +215,18 @@
     },
     "/ledger/accountsBalance": {
       "get": {
-        "operationId": "AccountsBalance",
+        "operationId": "LedgerAPI_AccountsBalance",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAccountsBalanceRsp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -211,12 +249,18 @@
     },
     "/ledger/accountsCount": {
       "get": {
-        "operationId": "AccountsCount",
+        "operationId": "LedgerAPI_AccountsCount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoUInt64"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -227,12 +271,18 @@
     },
     "/ledger/accountsFrontiers": {
       "get": {
-        "operationId": "AccountsFrontiers",
+        "operationId": "LedgerAPI_AccountsFrontiers",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAccountsFrontiersRsp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -255,12 +305,18 @@
     },
     "/ledger/accountsPending": {
       "get": {
-        "operationId": "AccountsPending",
+        "operationId": "LedgerAPI_AccountsPending",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAccountsPendingRsp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -290,12 +346,18 @@
     },
     "/ledger/allGenesisBlocks": {
       "get": {
-        "operationId": "AllGenesisBlocks",
+        "operationId": "LedgerAPI_AllGenesisBlocks",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlocks"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -306,12 +368,27 @@
     },
     "/ledger/balanceChange": {
       "get": {
-        "operationId": "BalanceChange",
+        "operationId": "LedgerAPI_BalanceChange",
         "responses": {
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/x-stream-definitions/protoAPIAccount"
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/protoAPIAccount"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of protoAPIAccount"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -330,12 +407,18 @@
     },
     "/ledger/blockAccount": {
       "get": {
-        "operationId": "BlockAccount",
+        "operationId": "LedgerAPI_BlockAccount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddress"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -354,12 +437,18 @@
     },
     "/ledger/blockConfirmedStatus": {
       "get": {
-        "operationId": "BlockConfirmedStatus",
+        "operationId": "LedgerAPI_BlockConfirmedStatus",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBoolean"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -378,12 +467,18 @@
     },
     "/ledger/blockHash": {
       "get": {
-        "operationId": "BlockHash",
+        "operationId": "LedgerAPI_BlockHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -549,12 +644,18 @@
     },
     "/ledger/blocks": {
       "get": {
-        "operationId": "Blocks",
+        "operationId": "LedgerAPI_Blocks",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIBlocks"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -581,12 +682,18 @@
     },
     "/ledger/blocksCount": {
       "get": {
-        "operationId": "BlocksCount",
+        "operationId": "LedgerAPI_BlocksCount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBlocksCountRsp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -597,12 +704,18 @@
     },
     "/ledger/blocksCount2": {
       "get": {
-        "operationId": "BlocksCount2",
+        "operationId": "LedgerAPI_BlocksCount2",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBlocksCountRsp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -613,12 +726,18 @@
     },
     "/ledger/blocksCountByType": {
       "get": {
-        "operationId": "BlocksCountByType",
+        "operationId": "LedgerAPI_BlocksCountByType",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBlocksCountRsp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -629,12 +748,18 @@
     },
     "/ledger/blocksInfo": {
       "get": {
-        "operationId": "BlocksInfo",
+        "operationId": "LedgerAPI_BlocksInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIBlocks"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -657,12 +782,18 @@
     },
     "/ledger/chain": {
       "get": {
-        "operationId": "Chain",
+        "operationId": "LedgerAPI_Chain",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHashes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -688,12 +819,18 @@
     },
     "/ledger/chainToken": {
       "get": {
-        "operationId": "ChainToken",
+        "operationId": "LedgerAPI_ChainToken",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -704,12 +841,18 @@
     },
     "/ledger/confirmedAccountInfo": {
       "get": {
-        "operationId": "ConfirmedAccountInfo",
+        "operationId": "LedgerAPI_ConfirmedAccountInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIAccount"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -728,12 +871,18 @@
     },
     "/ledger/confirmedBlocksInfo": {
       "get": {
-        "operationId": "ConfirmedBlocksInfo",
+        "operationId": "LedgerAPI_ConfirmedBlocksInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIBlocks"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -756,12 +905,18 @@
     },
     "/ledger/delegators": {
       "get": {
-        "operationId": "Delegators",
+        "operationId": "LedgerAPI_Delegators",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIAccountBalances"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -780,12 +935,18 @@
     },
     "/ledger/delegatorsCount": {
       "get": {
-        "operationId": "DelegatorsCount",
+        "operationId": "LedgerAPI_DelegatorsCount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInt64"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -804,12 +965,18 @@
     },
     "/ledger/gasAddress": {
       "get": {
-        "operationId": "GasAddress",
+        "operationId": "LedgerAPI_GasAddress",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddress"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -820,12 +987,18 @@
     },
     "/ledger/gasBlock": {
       "get": {
-        "operationId": "GasBlock",
+        "operationId": "LedgerAPI_GasBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -836,12 +1009,18 @@
     },
     "/ledger/gasBlockHash": {
       "get": {
-        "operationId": "GasBlockHash",
+        "operationId": "LedgerAPI_GasBlockHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -852,12 +1031,18 @@
     },
     "/ledger/gasMintageBlock": {
       "get": {
-        "operationId": "GasMintageBlock",
+        "operationId": "LedgerAPI_GasMintageBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -868,12 +1053,18 @@
     },
     "/ledger/gasToken": {
       "get": {
-        "operationId": "GasToken",
+        "operationId": "LedgerAPI_GasToken",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -884,12 +1075,18 @@
     },
     "/ledger/generateChangeBlock": {
       "post": {
-        "operationId": "GenerateChangeBlock",
+        "operationId": "LedgerAPI_GenerateChangeBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -910,12 +1107,18 @@
     },
     "/ledger/generateReceiveBlock": {
       "post": {
-        "operationId": "GenerateReceiveBlock",
+        "operationId": "LedgerAPI_GenerateReceiveBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -936,12 +1139,18 @@
     },
     "/ledger/generateReceiveBlockByHash": {
       "post": {
-        "operationId": "GenerateReceiveBlockByHash",
+        "operationId": "LedgerAPI_GenerateReceiveBlockByHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -962,12 +1171,18 @@
     },
     "/ledger/generateSendBlock": {
       "post": {
-        "operationId": "GenerateSendBlock",
+        "operationId": "LedgerAPI_GenerateSendBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -988,12 +1203,18 @@
     },
     "/ledger/genesisAddress": {
       "get": {
-        "operationId": "GenesisAddress",
+        "operationId": "LedgerAPI_GenesisAddress",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesAddress"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1004,12 +1225,18 @@
     },
     "/ledger/genesisBlock": {
       "get": {
-        "operationId": "GenesisBlock",
+        "operationId": "LedgerAPI_GenesisBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1020,12 +1247,18 @@
     },
     "/ledger/genesisBlockHash": {
       "get": {
-        "operationId": "GenesisBlockHash",
+        "operationId": "LedgerAPI_GenesisBlockHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1036,12 +1269,18 @@
     },
     "/ledger/genesisMintageBlock": {
       "get": {
-        "operationId": "GenesisMintageBlock",
+        "operationId": "LedgerAPI_GenesisMintageBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1052,12 +1291,18 @@
     },
     "/ledger/genesisMintageHash": {
       "get": {
-        "operationId": "GenesisMintageHash",
+        "operationId": "LedgerAPI_GenesisMintageHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1068,12 +1313,18 @@
     },
     "/ledger/getAccountOnlineBlock": {
       "get": {
-        "operationId": "GetAccountOnlineBlock",
+        "operationId": "LedgerAPI_GetAccountOnlineBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlocks"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1092,12 +1343,18 @@
     },
     "/ledger/isGenesisBlock": {
       "get": {
-        "operationId": "IsGenesisBlock",
+        "operationId": "LedgerAPI_IsGenesisBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBoolean"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1263,12 +1520,18 @@
     },
     "/ledger/isGenesisToken": {
       "get": {
-        "operationId": "IsGenesisToken",
+        "operationId": "LedgerAPI_IsGenesisToken",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBoolean"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1287,12 +1550,27 @@
     },
     "/ledger/newAccountBlock": {
       "get": {
-        "operationId": "NewAccountBlock",
+        "operationId": "LedgerAPI_NewAccountBlock",
         "responses": {
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/x-stream-definitions/protoAPIBlock"
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/protoAPIBlock"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of protoAPIBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1311,12 +1589,27 @@
     },
     "/ledger/newBlock": {
       "get": {
-        "operationId": "NewBlock",
+        "operationId": "LedgerAPI_NewBlock",
         "responses": {
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/x-stream-definitions/protoAPIBlock"
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/protoAPIBlock"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of protoAPIBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1327,12 +1620,27 @@
     },
     "/ledger/newPending": {
       "get": {
-        "operationId": "NewPending",
+        "operationId": "LedgerAPI_NewPending",
         "responses": {
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "$ref": "#/x-stream-definitions/protoAPIPending"
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/protoAPIPending"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of protoAPIPending"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1351,12 +1659,18 @@
     },
     "/ledger/pendings": {
       "get": {
-        "operationId": "Pendings",
+        "operationId": "LedgerAPI_Pendings",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIPendings"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1367,12 +1681,18 @@
     },
     "/ledger/process": {
       "post": {
-        "operationId": "Process",
+        "operationId": "LedgerAPI_Process",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesHash"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1393,12 +1713,18 @@
     },
     "/ledger/representatives": {
       "get": {
-        "operationId": "Representatives",
+        "operationId": "LedgerAPI_Representatives",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoAPIRepresentatives"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1418,12 +1744,18 @@
     },
     "/ledger/tokenInfoById": {
       "get": {
-        "operationId": "TokenInfoById",
+        "operationId": "LedgerAPI_TokenInfoById",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesTokenInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1442,12 +1774,18 @@
     },
     "/ledger/tokenInfoByName": {
       "get": {
-        "operationId": "TokenInfoByName",
+        "operationId": "LedgerAPI_TokenInfoByName",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesTokenInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1466,12 +1804,18 @@
     },
     "/ledger/tokens": {
       "get": {
-        "operationId": "Tokens",
+        "operationId": "LedgerAPI_Tokens",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesTokenInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1482,12 +1826,18 @@
     },
     "/ledger/transactionsCount": {
       "get": {
-        "operationId": "TransactionsCount",
+        "operationId": "LedgerAPI_TransactionsCount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBlocksCountRsp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -2008,6 +2358,27 @@
         }
       }
     },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
     "runtimeStreamError": {
       "type": "object",
       "properties": {
@@ -2228,44 +2599,6 @@
           }
         }
       }
-    }
-  },
-  "x-stream-definitions": {
-    "protoAPIAccount": {
-      "type": "object",
-      "properties": {
-        "result": {
-          "$ref": "#/definitions/protoAPIAccount"
-        },
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        }
-      },
-      "title": "Stream result of protoAPIAccount"
-    },
-    "protoAPIBlock": {
-      "type": "object",
-      "properties": {
-        "result": {
-          "$ref": "#/definitions/protoAPIBlock"
-        },
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        }
-      },
-      "title": "Stream result of protoAPIBlock"
-    },
-    "protoAPIPending": {
-      "type": "object",
-      "properties": {
-        "result": {
-          "$ref": "#/definitions/protoAPIPending"
-        },
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        }
-      },
-      "title": "Stream result of protoAPIPending"
     }
   }
 }

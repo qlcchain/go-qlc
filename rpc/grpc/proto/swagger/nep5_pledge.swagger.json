@@ -4,10 +4,6 @@
     "title": "nep5_pledge.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/pledge/getAllPledgeInfo": {
       "get": {
-        "operationId": "GetAllPledgeInfo",
+        "operationId": "NEP5PledgeAPI_GetAllPledgeInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoNEP5PledgeInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -33,12 +35,18 @@
     },
     "/pledge/getBeneficialPledgeInfos": {
       "get": {
-        "operationId": "GetBeneficialPledgeInfos",
+        "operationId": "NEP5PledgeAPI_GetBeneficialPledgeInfos",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPledgeInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -63,12 +71,18 @@
     },
     "/pledge/getBeneficialPledgeInfosByAddress": {
       "get": {
-        "operationId": "GetBeneficialPledgeInfosByAddress",
+        "operationId": "NEP5PledgeAPI_GetBeneficialPledgeInfosByAddress",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPledgeInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -87,12 +101,18 @@
     },
     "/pledge/getPledgeBeneficialAmount": {
       "get": {
-        "operationId": "GetPledgeBeneficialAmount",
+        "operationId": "NEP5PledgeAPI_GetPledgeBeneficialAmount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInt64"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -117,12 +137,18 @@
     },
     "/pledge/getPledgeBeneficialTotalAmount": {
       "get": {
-        "operationId": "GetPledgeBeneficialTotalAmount",
+        "operationId": "NEP5PledgeAPI_GetPledgeBeneficialTotalAmount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInt64"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -141,12 +167,18 @@
     },
     "/pledge/getPledgeBlock": {
       "get": {
-        "operationId": "GetPledgeBlock",
+        "operationId": "NEP5PledgeAPI_GetPledgeBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -190,12 +222,18 @@
     },
     "/pledge/getPledgeData": {
       "get": {
-        "operationId": "GetPledgeData",
+        "operationId": "NEP5PledgeAPI_GetPledgeData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -239,12 +277,18 @@
     },
     "/pledge/getPledgeInfo": {
       "get": {
-        "operationId": "GetPledgeInfo",
+        "operationId": "NEP5PledgeAPI_GetPledgeInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoNEP5PledgeInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -282,12 +326,18 @@
     },
     "/pledge/getPledgeInfoWithNEP5TxId": {
       "get": {
-        "operationId": "GetPledgeInfoWithNEP5TxId",
+        "operationId": "NEP5PledgeAPI_GetPledgeInfoWithNEP5TxId",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoNEP5PledgeInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -325,12 +375,18 @@
     },
     "/pledge/getPledgeInfoWithTimeExpired": {
       "get": {
-        "operationId": "GetPledgeInfoWithTimeExpired",
+        "operationId": "NEP5PledgeAPI_GetPledgeInfoWithTimeExpired",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoNEP5PledgeInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -368,12 +424,18 @@
     },
     "/pledge/getPledgeInfosByPledgeAddress": {
       "get": {
-        "operationId": "GetPledgeInfosByPledgeAddress",
+        "operationId": "NEP5PledgeAPI_GetPledgeInfosByPledgeAddress",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPledgeInfos"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -392,12 +454,18 @@
     },
     "/pledge/getPledgeRewardBlock": {
       "post": {
-        "operationId": "GetPledgeRewardBlock",
+        "operationId": "NEP5PledgeAPI_GetPledgeRewardBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -418,12 +486,18 @@
     },
     "/pledge/getPledgeRewardBlockBySendHash": {
       "get": {
-        "operationId": "GetPledgeRewardBlockBySendHash",
+        "operationId": "NEP5PledgeAPI_GetPledgeRewardBlockBySendHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -442,12 +516,18 @@
     },
     "/pledge/getTotalPledgeAmount": {
       "get": {
-        "operationId": "GetTotalPledgeAmount",
+        "operationId": "NEP5PledgeAPI_GetTotalPledgeAmount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInt64"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -458,12 +538,18 @@
     },
     "/pledge/getWithdrawPledgeBlock": {
       "get": {
-        "operationId": "GetWithdrawPledgeBlock",
+        "operationId": "NEP5PledgeAPI_GetWithdrawPledgeBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -501,12 +587,18 @@
     },
     "/pledge/getWithdrawPledgeData": {
       "get": {
-        "operationId": "GetWithdrawPledgeData",
+        "operationId": "NEP5PledgeAPI_GetWithdrawPledgeData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -544,12 +636,18 @@
     },
     "/pledge/getWithdrawRewardBlock": {
       "post": {
-        "operationId": "GetWithdrawRewardBlock",
+        "operationId": "NEP5PledgeAPI_GetWithdrawRewardBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -570,12 +668,18 @@
     },
     "/pledge/getWithdrawRewardBlockBySendHash": {
       "get": {
-        "operationId": "GetWithdrawRewardBlockBySendHash",
+        "operationId": "NEP5PledgeAPI_GetWithdrawRewardBlockBySendHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -594,12 +698,18 @@
     },
     "/pledge/parsePledgeInfo": {
       "get": {
-        "operationId": "ParsePledgeInfo",
+        "operationId": "NEP5PledgeAPI_ParsePledgeInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesNEP5PledgeInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -684,6 +794,39 @@
         "totalAmounts": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

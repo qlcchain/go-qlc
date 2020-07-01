@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/utilities"
@@ -23,11 +24,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// Suppress "imported and not used" errors
 var _ codes.Code
 var _ io.Reader
 var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
+var _ = descriptor.ForMessage
 
 var (
 	filter_PtmKeyAPI_GetPtmKeyUpdateBlock_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
@@ -37,11 +40,30 @@ func request_PtmKeyAPI_GetPtmKeyUpdateBlock_0(ctx context.Context, marshaler run
 	var protoReq PtmKeyUpdateParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PtmKeyAPI_GetPtmKeyUpdateBlock_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PtmKeyAPI_GetPtmKeyUpdateBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPtmKeyUpdateBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PtmKeyAPI_GetPtmKeyUpdateBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PtmKeyAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq PtmKeyUpdateParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PtmKeyAPI_GetPtmKeyUpdateBlock_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPtmKeyUpdateBlock(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -54,11 +76,30 @@ func request_PtmKeyAPI_GetPtmKeyDeleteBlock_0(ctx context.Context, marshaler run
 	var protoReq PtmKeyByAccountAndBtypeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PtmKeyAPI_GetPtmKeyDeleteBlock_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PtmKeyAPI_GetPtmKeyDeleteBlock_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPtmKeyDeleteBlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PtmKeyAPI_GetPtmKeyDeleteBlock_0(ctx context.Context, marshaler runtime.Marshaler, server PtmKeyAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq PtmKeyByAccountAndBtypeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PtmKeyAPI_GetPtmKeyDeleteBlock_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPtmKeyDeleteBlock(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -71,11 +112,30 @@ func request_PtmKeyAPI_GetPtmKeyByAccount_0(ctx context.Context, marshaler runti
 	var protoReq types.Address
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PtmKeyAPI_GetPtmKeyByAccount_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PtmKeyAPI_GetPtmKeyByAccount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPtmKeyByAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_PtmKeyAPI_GetPtmKeyByAccount_0(ctx context.Context, marshaler runtime.Marshaler, server PtmKeyAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq types.Address
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PtmKeyAPI_GetPtmKeyByAccount_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPtmKeyByAccount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -88,13 +148,120 @@ func request_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0(ctx context.Context, marshal
 	var protoReq PtmKeyByAccountAndBtypeParam
 	var metadata runtime.ServerMetadata
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0); err != nil {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetPtmKeyByAccountAndBtype(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
+}
+
+func local_request_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0(ctx context.Context, marshaler runtime.Marshaler, server PtmKeyAPIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq PtmKeyByAccountAndBtypeParam
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.GetPtmKeyByAccountAndBtype(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
+// RegisterPtmKeyAPIHandlerServer registers the http handlers for service PtmKeyAPI to "mux".
+// UnaryRPC     :call PtmKeyAPIServer directly.
+// StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+func RegisterPtmKeyAPIHandlerServer(ctx context.Context, mux *runtime.ServeMux, server PtmKeyAPIServer) error {
+
+	mux.Handle("GET", pattern_PtmKeyAPI_GetPtmKeyUpdateBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PtmKeyAPI_GetPtmKeyUpdateBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PtmKeyAPI_GetPtmKeyUpdateBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PtmKeyAPI_GetPtmKeyDeleteBlock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PtmKeyAPI_GetPtmKeyDeleteBlock_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PtmKeyAPI_GetPtmKeyDeleteBlock_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PtmKeyAPI_GetPtmKeyByAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PtmKeyAPI_GetPtmKeyByAccount_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PtmKeyAPI_GetPtmKeyByAccount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	return nil
 }
 
 // RegisterPtmKeyAPIHandlerFromEndpoint is same as RegisterPtmKeyAPIHandler but
@@ -219,13 +386,13 @@ func RegisterPtmKeyAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, 
 }
 
 var (
-	pattern_PtmKeyAPI_GetPtmKeyUpdateBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"ptmkey", "getPtmKeyUpdateBlock"}, ""))
+	pattern_PtmKeyAPI_GetPtmKeyUpdateBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"ptmkey", "getPtmKeyUpdateBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PtmKeyAPI_GetPtmKeyDeleteBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"ptmkey", "getPtmKeyDeleteBlock"}, ""))
+	pattern_PtmKeyAPI_GetPtmKeyDeleteBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"ptmkey", "getPtmKeyDeleteBlock"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PtmKeyAPI_GetPtmKeyByAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"ptmkey", "getPtmKeyByAccount"}, ""))
+	pattern_PtmKeyAPI_GetPtmKeyByAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"ptmkey", "getPtmKeyByAccount"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"ptmkey", "getPtmKeyByAccountAndBtype"}, ""))
+	pattern_PtmKeyAPI_GetPtmKeyByAccountAndBtype_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"ptmkey", "getPtmKeyByAccountAndBtype"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (
