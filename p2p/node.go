@@ -114,9 +114,6 @@ func NewNode(config *config.Config) (*QlcNode, error) {
 		return nil, err
 	}
 	node.reporter = p2pmetrics.NewBandwidthCounter()
-	if node.cfg.P2P.IsBootNode {
-		node.boostrapAddrs = append(node.boostrapAddrs, strings.ReplaceAll(node.cfg.P2P.Listen, "0.0.0.0", node.cfg.P2P.ListeningIp)+"/p2p/"+node.cfg.P2P.ID.PeerID)
-	}
 	return node, nil
 }
 
@@ -221,6 +218,16 @@ func (node *QlcNode) buildHost() error {
 	}
 	// New ping service
 	node.ping = ping.NewPinger(node.host)
+	if node.cfg.P2P.IsBootNode {
+		node.boostrapAddrs = append(node.boostrapAddrs, strings.ReplaceAll(node.cfg.P2P.Listen, "0.0.0.0", node.cfg.P2P.ListeningIp)+"/p2p/"+node.cfg.P2P.ID.PeerID)
+	}
+	pi := &types.PeerInfo{
+		PeerID:         node.ID.Pretty(),
+		Address:        strings.ReplaceAll(node.cfg.P2P.Listen, "0.0.0.0", node.cfg.P2P.ListeningIp),
+		LastUpdateTime: time.Now().Format(time.RFC3339),
+	}
+	_ = node.netService.msgService.ledger.AddPeerInfo(pi)
+	node.streamManager.AddOnlineInfo(pi)
 	return nil
 }
 
@@ -454,6 +461,18 @@ func (node *QlcNode) findPeers() error {
 	if err != nil {
 		return err
 	}
+	node.updatePeersInfo(peers)
+	for _, p := range peers {
+		if p.ID == node.ID || len(p.Addrs) == 0 {
+			// No sense connecting to ourselves or if addrs are not available
+			continue
+		}
+		node.streamManager.createStreamWithPeer(p.ID)
+	}
+	return nil
+}
+
+func (node *QlcNode) updatePeersInfo(peers []peer.AddrInfo) {
 	node.streamManager.onlinePeersInfo.Range(func(key, value interface{}) bool {
 		k := key.(string)
 		var i int
@@ -463,7 +482,9 @@ func (node *QlcNode) findPeers() error {
 			}
 		}
 		if i == len(peers) {
-			node.streamManager.onlinePeersInfo.Delete(k)
+			if k != node.ID.Pretty() {
+				node.streamManager.onlinePeersInfo.Delete(k)
+			}
 		}
 		return true
 	})
@@ -484,17 +505,20 @@ func (node *QlcNode) findPeers() error {
 		pi.LastUpdateTime = time.Now().Format(time.RFC3339)
 		_ = node.netService.msgService.ledger.AddPeerInfo(pi)
 		node.streamManager.AddOnlineInfo(pi)
-		if p.ID == node.ID || len(p.Addrs) == 0 {
-			// No sense connecting to ourselves or if addrs are not available
-			continue
-		}
-		node.streamManager.createStreamWithPeer(p.ID)
 	}
-	return nil
 }
 
 func (node *QlcNode) handleStream(s network.Stream) {
 	node.logger.Infof("Got a new stream from %s!", s.Conn().RemotePeer().Pretty())
+	var addrs []ma.Multiaddr
+	var infos []peer.AddrInfo
+	addrs = append(addrs, s.Conn().RemoteMultiaddr())
+	info := peer.AddrInfo{
+		ID:    s.Conn().RemotePeer(),
+		Addrs: addrs,
+	}
+	infos = append(infos, info)
+	node.updatePeersInfo(infos)
 	node.streamManager.Add(s)
 }
 
