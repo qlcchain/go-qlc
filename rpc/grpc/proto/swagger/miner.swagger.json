@@ -4,10 +4,6 @@
     "title": "miner.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/miner/getAvailRewardInfo": {
       "get": {
-        "operationId": "GetAvailRewardInfo",
+        "operationId": "MinerAPI_GetAvailRewardInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoMinerAvailRewardInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -41,12 +43,18 @@
     },
     "/miner/getRewardData": {
       "get": {
-        "operationId": "GetRewardData",
+        "operationId": "MinerAPI_GetRewardData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -99,12 +107,18 @@
     },
     "/miner/getRewardHistory": {
       "get": {
-        "operationId": "GetRewardHistory",
+        "operationId": "MinerAPI_GetRewardHistory",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoMinerHistoryRewardInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -123,12 +137,18 @@
     },
     "/miner/getRewardRecvBlock": {
       "post": {
-        "operationId": "GetRewardRecvBlock",
+        "operationId": "MinerAPI_GetRewardRecvBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -149,12 +169,18 @@
     },
     "/miner/getRewardRecvBlockBySendHash": {
       "get": {
-        "operationId": "GetRewardRecvBlockBySendHash",
+        "operationId": "MinerAPI_GetRewardRecvBlockBySendHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -173,12 +199,18 @@
     },
     "/miner/getRewardSendBlock": {
       "get": {
-        "operationId": "GetRewardSendBlock",
+        "operationId": "MinerAPI_GetRewardSendBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -231,12 +263,18 @@
     },
     "/miner/unpackRewardData": {
       "get": {
-        "operationId": "UnpackRewardData",
+        "operationId": "MinerAPI_UnpackRewardData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoRewardParam"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -347,6 +385,39 @@
         "rewardAmount": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     },

@@ -4,10 +4,6 @@
     "title": "publicKeyDistribution.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/pkdistribution/getActiveVerifiers": {
       "get": {
-        "operationId": "GetActiveVerifiers",
+        "operationId": "PublicKeyDistributionAPI_GetActiveVerifiers",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoVerifierRegParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -41,12 +43,18 @@
     },
     "/pkdistribution/getAllVerifierStatesByBlockHeight": {
       "get": {
-        "operationId": "GetAllVerifierStatesByBlockHeight",
+        "operationId": "PublicKeyDistributionAPI_GetAllVerifierStatesByBlockHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPKDVerifierStateList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -66,12 +74,18 @@
     },
     "/pkdistribution/getAllVerifiers": {
       "get": {
-        "operationId": "GetAllVerifiers",
+        "operationId": "PublicKeyDistributionAPI_GetAllVerifiers",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoVerifierRegParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -82,12 +96,18 @@
     },
     "/pkdistribution/getAvailRewardInfo": {
       "get": {
-        "operationId": "GetAvailRewardInfo",
+        "operationId": "PublicKeyDistributionAPI_GetAvailRewardInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPKDAvailRewardInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -106,12 +126,18 @@
     },
     "/pkdistribution/getOracleBlock": {
       "get": {
-        "operationId": "GetOracleBlock",
+        "operationId": "PublicKeyDistributionAPI_GetOracleBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -166,12 +192,18 @@
     },
     "/pkdistribution/getOracleInfosByAccountAndType": {
       "get": {
-        "operationId": "GetOracleInfosByAccountAndType",
+        "operationId": "PublicKeyDistributionAPI_GetOracleInfosByAccountAndType",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoOracleParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -196,12 +228,18 @@
     },
     "/pkdistribution/getOracleInfosByHash": {
       "get": {
-        "operationId": "GetOracleInfosByHash",
+        "operationId": "PublicKeyDistributionAPI_GetOracleInfosByHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoOracleParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -220,12 +258,18 @@
     },
     "/pkdistribution/getOracleInfosByType": {
       "get": {
-        "operationId": "GetOracleInfosByType",
+        "operationId": "PublicKeyDistributionAPI_GetOracleInfosByType",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoOracleParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -242,12 +286,18 @@
         ]
       },
       "post": {
-        "operationId": "GetOracleInfosByTypeAndID",
+        "operationId": "PublicKeyDistributionAPI_GetOracleInfosByTypeAndID",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoOracleParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -268,12 +318,18 @@
     },
     "/pkdistribution/getPubKeyByTypeAndID": {
       "get": {
-        "operationId": "GetPubKeyByTypeAndID",
+        "operationId": "PublicKeyDistributionAPI_GetPubKeyByTypeAndID",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPublishInfoStates"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -298,12 +354,18 @@
     },
     "/pkdistribution/getPublishBlock": {
       "post": {
-        "operationId": "GetPublishBlock",
+        "operationId": "PublicKeyDistributionAPI_GetPublishBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPublishRet"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -324,12 +386,18 @@
     },
     "/pkdistribution/getPublishInfosByAccountAndType": {
       "get": {
-        "operationId": "GetPublishInfosByAccountAndType",
+        "operationId": "PublicKeyDistributionAPI_GetPublishInfosByAccountAndType",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPublishInfoStates"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -354,12 +422,18 @@
     },
     "/pkdistribution/getPublishInfosByType": {
       "get": {
-        "operationId": "GetPublishInfosByType",
+        "operationId": "PublicKeyDistributionAPI_GetPublishInfosByType",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPublishInfoStates"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -378,12 +452,18 @@
     },
     "/pkdistribution/getRecommendPubKey": {
       "get": {
-        "operationId": "GetRecommendPubKey",
+        "operationId": "PublicKeyDistributionAPI_GetRecommendPubKey",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPublishInfoState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -408,12 +488,18 @@
     },
     "/pkdistribution/getRewardHistory": {
       "get": {
-        "operationId": "GetRewardHistory",
+        "operationId": "PublicKeyDistributionAPI_GetRewardHistory",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPKDHistoryRewardInfo"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -432,12 +518,18 @@
     },
     "/pkdistribution/getRewardRecvBlock": {
       "post": {
-        "operationId": "GetRewardRecvBlock",
+        "operationId": "PublicKeyDistributionAPI_GetRewardRecvBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -458,12 +550,18 @@
     },
     "/pkdistribution/getRewardRecvBlockBySendHash": {
       "get": {
-        "operationId": "GetRewardRecvBlockBySendHash",
+        "operationId": "PublicKeyDistributionAPI_GetRewardRecvBlockBySendHash",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -482,12 +580,18 @@
     },
     "/pkdistribution/getRewardSendBlock": {
       "get": {
-        "operationId": "GetRewardSendBlock",
+        "operationId": "PublicKeyDistributionAPI_GetRewardSendBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -526,12 +630,18 @@
     },
     "/pkdistribution/getUnPublishBlock": {
       "post": {
-        "operationId": "GetUnPublishBlock",
+        "operationId": "PublicKeyDistributionAPI_GetUnPublishBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -552,12 +662,18 @@
     },
     "/pkdistribution/getVerifierHeartBlock": {
       "post": {
-        "operationId": "GetVerifierHeartBlock",
+        "operationId": "PublicKeyDistributionAPI_GetVerifierHeartBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -578,12 +694,18 @@
     },
     "/pkdistribution/getVerifierRegisterBlock": {
       "get": {
-        "operationId": "GetVerifierRegisterBlock",
+        "operationId": "PublicKeyDistributionAPI_GetVerifierRegisterBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -620,12 +742,18 @@
     },
     "/pkdistribution/getVerifierStateByBlockHeight": {
       "get": {
-        "operationId": "GetVerifierStateByBlockHeight",
+        "operationId": "PublicKeyDistributionAPI_GetVerifierStateByBlockHeight",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesPovVerifierState"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -651,12 +779,18 @@
     },
     "/pkdistribution/getVerifierUnregisterBlock": {
       "get": {
-        "operationId": "GetVerifierUnregisterBlock",
+        "operationId": "PublicKeyDistributionAPI_GetVerifierUnregisterBlock",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/typesStateBlock"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -681,12 +815,18 @@
     },
     "/pkdistribution/getVerifiersByAccount": {
       "get": {
-        "operationId": "GetVerifiersByAccount",
+        "operationId": "PublicKeyDistributionAPI_GetVerifiersByAccount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoVerifierRegParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -705,12 +845,18 @@
     },
     "/pkdistribution/getVerifiersByType": {
       "get": {
-        "operationId": "GetVerifiersByType",
+        "operationId": "PublicKeyDistributionAPI_GetVerifiersByType",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoVerifierRegParams"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -729,12 +875,18 @@
     },
     "/pkdistribution/packRewardData": {
       "get": {
-        "operationId": "PackRewardData",
+        "operationId": "PublicKeyDistributionAPI_PackRewardData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoBytes"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -773,12 +925,18 @@
     },
     "/pkdistribution/unpackRewardData": {
       "get": {
-        "operationId": "UnpackRewardData",
+        "operationId": "PublicKeyDistributionAPI_UnpackRewardData",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoPKDRewardParam"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -1123,6 +1281,39 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/protoVerifierRegParam"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
           }
         }
       }

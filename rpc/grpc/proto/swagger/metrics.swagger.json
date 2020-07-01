@@ -4,10 +4,6 @@
     "title": "metrics.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/metrics/diskInfo": {
       "get": {
-        "operationId": "DiskInfo",
+        "operationId": "MetricsAPI_DiskInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoUsageStat"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -33,12 +35,18 @@
     },
     "/metrics/getAllCPUTimeStats": {
       "get": {
-        "operationId": "GetAllCPUTimeStats",
+        "operationId": "MetricsAPI_GetAllCPUTimeStats",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoTimesStats"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -49,12 +57,18 @@
     },
     "/metrics/getCPUInfo": {
       "get": {
-        "operationId": "GetCPUInfo",
+        "operationId": "MetricsAPI_GetCPUInfo",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoInfoStats"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -65,12 +79,18 @@
     },
     "/metrics/getCPUTimeStats": {
       "get": {
-        "operationId": "GetCPUTimeStats",
+        "operationId": "MetricsAPI_GetCPUTimeStats",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoTimesStats"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -81,12 +101,18 @@
     },
     "/metrics/getNetworkInterfaces": {
       "get": {
-        "operationId": "GetNetworkInterfaces",
+        "operationId": "MetricsAPI_GetNetworkInterfaces",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/protoIOCountersStats"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -318,6 +344,39 @@
         "inodesUsedPercent": {
           "type": "number",
           "format": "double"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
         }
       }
     }
