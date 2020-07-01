@@ -377,7 +377,7 @@ func (dps *DPoS) Start() {
 		case <-timerGC.C:
 			dps.confirmedBlocks.gc()
 		case vh := <-dps.repVH:
-			dps.heartAndVoteIncDo(vh.hash, vh.addr, vh.kind)
+			dps.heartAndVoteIncDo(vh.hash, vh.addr, vh.kind, vh.height)
 		case height := <-dps.gapHeight:
 			err := dps.ledger.PovHeightAddGap(height)
 			if err != nil {

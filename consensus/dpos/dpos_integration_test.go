@@ -123,13 +123,13 @@ func TestOnline(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	n1.TestWithTimeout(30*time.Second, func() bool {
+	n1.TestWithTimeout("heart num err", 30*time.Second, func() bool {
 		repOnline := make(map[uint64]*RepOnlinePeriod)
 		n1.cons.RPC(common.RpcDPoSOnlineInfo, nil, repOnline)
 		return repOnline[0].Stat[TestAccount.Address()].HeartCount == 59
 	})
 
-	n1.TestWithTimeout(30*time.Second, func() bool {
+	n1.TestWithTimeout("no online block", 30*time.Second, func() bool {
 		hasOnline := false
 		err = n1.dps.ledger.GetStateBlocksConfirmed(func(block *types.StateBlock) error {
 			if block.Type == types.Online && block.Address == TestAccount.Address() {
@@ -239,14 +239,14 @@ func TestRollback(t *testing.T) {
 	blks = append(blks, s)
 	n1.dps.acTrx.rollBack(blks)
 
-	n1.TestWithTimeout(30*time.Second, func() bool {
+	n1.TestWithTimeout("no send block", 30*time.Second, func() bool {
 		if has, _ := n1.ledger.HasStateBlockConfirmed(s.GetHash()); has {
 			return false
 		}
 		return true
 	})
 
-	n1.TestWithTimeout(30*time.Second, func() bool {
+	n1.TestWithTimeout("no recv block", 30*time.Second, func() bool {
 		if has, _ := n1.ledger.HasStateBlockConfirmed(r.GetHash()); has {
 			return false
 		}

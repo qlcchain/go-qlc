@@ -33,9 +33,10 @@ type RepOnlinePeriod struct {
 }
 
 type repVoteHeart struct {
-	hash types.Hash
-	addr types.Address
-	kind onlineKind
+	hash   types.Hash
+	addr   types.Address
+	kind   onlineKind
+	height uint64
 }
 
 type voteHistory struct {
@@ -96,9 +97,10 @@ func (dps *DPoS) isValidVote(hash types.Hash, addr types.Address) bool {
 
 func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlineKind) {
 	vh := &repVoteHeart{
-		hash: hash,
-		addr: addr,
-		kind: kind,
+		hash:   hash,
+		addr:   addr,
+		kind:   kind,
+		height: dps.curPovHeight,
 	}
 
 	select {
@@ -107,7 +109,7 @@ func (dps *DPoS) heartAndVoteInc(hash types.Hash, addr types.Address, kind onlin
 	}
 }
 
-func (dps *DPoS) heartAndVoteIncDo(hash types.Hash, addr types.Address, kind onlineKind) {
+func (dps *DPoS) heartAndVoteIncDo(hash types.Hash, addr types.Address, kind onlineKind, height uint64) {
 	period := dps.curPovHeight / common.DPosOnlinePeriod
 	var repPeriod *RepOnlinePeriod
 
@@ -134,9 +136,9 @@ func (dps *DPoS) heartAndVoteIncDo(hash types.Hash, addr types.Address, kind onl
 	defer lock.Unlock()
 
 	if ok {
-		if kind == onlineKindHeart && dps.curPovHeight-stat.LastHeartHeight >= 2 {
+		if kind == onlineKindHeart && height-stat.LastHeartHeight >= 2 {
 			stat.HeartCount++
-			stat.LastHeartHeight = dps.curPovHeight
+			stat.LastHeartHeight = height
 		} else if kind == onlineKindVote {
 			if dps.isValidVote(hash, addr) {
 				stat.VoteCount++
