@@ -304,7 +304,6 @@ func (dps *DPoS) Start() {
 			if dps.povSyncState == topic.SyncDone {
 				// need calculate heart num, so use the pov height to trigger online
 				if dps.curPovHeight%2 == 0 {
-					dps.logger.Info("send heart")
 					err := dps.findOnlineRepresentatives()
 					if err != nil {
 						dps.logger.Error(err)
@@ -378,7 +377,7 @@ func (dps *DPoS) Start() {
 		case <-timerGC.C:
 			dps.confirmedBlocks.gc()
 		case vh := <-dps.repVH:
-			dps.heartAndVoteIncDo(vh.hash, vh.addr, vh.kind)
+			dps.heartAndVoteIncDo(vh.hash, vh.addr, vh.kind, vh.height)
 		case height := <-dps.gapHeight:
 			err := dps.ledger.PovHeightAddGap(height)
 			if err != nil {
