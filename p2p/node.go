@@ -192,7 +192,7 @@ func (node *QlcNode) buildHost() error {
 		}
 	}
 	node.host.SetStreamHandler(QlcProtocolID, node.handleStream)
-	node.kadDht, err = dht.New(node.ctx, node.host)
+	node.kadDht, err = dht.New(node.ctx, node.host, dht.Mode(dht.ModeServer))
 	if err != nil {
 		return err
 	}
