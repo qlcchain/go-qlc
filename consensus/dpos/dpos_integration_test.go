@@ -126,6 +126,7 @@ func TestOnline(t *testing.T) {
 	n1.TestWithTimeout("heart num err", 30*time.Second, func() bool {
 		repOnline := make(map[uint64]*RepOnlinePeriod)
 		n1.cons.RPC(common.RpcDPoSOnlineInfo, nil, repOnline)
+		t.Log(repOnline[0].Stat[TestAccount.Address()].HeartCount)
 		return repOnline[0].Stat[TestAccount.Address()].HeartCount == 59
 	})
 
