@@ -63,7 +63,7 @@ release: changelog
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(GOPATH)/src:/go/src \
 		-w /go-qlc \
-		goreng/golang-cross:$(GO_BUILDER_VERSION) --rm-dist --release-notes=CHANGELOG.md --release-footer=assets/FOOTER.md
+		goreng/golang-cross:$(GO_BUILDER_VERSION) --rm-dist --release-notes=CHANGELOG.md
 
 lint: 
 	golangci-lint run --fix
