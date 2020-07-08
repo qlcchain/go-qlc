@@ -470,7 +470,7 @@ func (dps *DPoS) processBlocks() {
 					dps.logger.Debugf("pov sync state[%s] cache blocks", dps.povSyncState)
 					dps.cacheBlocks <- bs
 				} else {
-					dps.logger.Debugf("pov not ready! cache block too much, drop it!")
+					dps.logger.Debug("pov not ready! cache block too much, drop it!")
 				}
 			}
 		case state := <-dps.povState:
@@ -853,7 +853,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		if types.Address(input.GetLink()) == contractaddress.MintageAddress {
 			method, err := mintage.MintageABI.MethodById(input.GetPayload())
 			if err != nil {
-				dps.logger.Debug("get contract method err %s", err)
+				dps.logger.Debugf("get contract method err %s", err)
 			} else {
 				if method.Name == mintage.MethodNameMintage {
 					index := dps.getProcessorIndex(input.Address)
@@ -865,7 +865,7 @@ func (dps *DPoS) dispatchAckedBlock(blk *types.StateBlock, hash types.Hash, loca
 		} else if types.Address(input.GetLink()) == contractaddress.DoDSettlementAddress {
 			method, err := cabi.DoDSettlementABI.MethodById(input.GetPayload())
 			if err != nil {
-				dps.logger.Debug("get contract method err %s", err)
+				dps.logger.Debugf("get contract method err %s", err)
 			} else {
 				if method.Name == cabi.MethodNameDoDSettleCreateOrder || method.Name == cabi.MethodNameDoDSettleChangeOrder ||
 					method.Name == cabi.MethodNameDoDSettleTerminateOrder {
