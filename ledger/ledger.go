@@ -202,7 +202,7 @@ func (l *Ledger) removeBlockConfirmed() error {
 				if len(l.blockConfirmed) > 0 {
 					for b := range l.blockConfirmed {
 						blocks = append(blocks, b)
-						if len(blocks) >= 1000 {
+						if len(blocks) >= 10000 {
 							break
 						}
 						if len(l.blockConfirmed) == 0 {
