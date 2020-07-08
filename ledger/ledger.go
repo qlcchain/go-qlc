@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -114,7 +115,7 @@ func NewLedger(cfgFile string) *Ledger {
 			EB:             cc.EventBus(),
 			ctx:            ctx,
 			cancel:         cancel,
-			blockConfirmed: make(chan *types.StateBlock, 10240),
+			blockConfirmed: make(chan *types.StateBlock, 20480),
 			deletedSchema:  make([]types.Schema, 0),
 			logger:         log.NewLogger("ledger"),
 			tokenCache:     sync.Map{},
@@ -190,13 +191,14 @@ func (l *Ledger) removeBlockConfirmed() error {
 		return fmt.Errorf("removeBlockConfirmed error : %s", err)
 	}
 	go func() {
+		timer := time.NewTicker(3 * time.Second)
 		blocks := make([]*types.StateBlock, 0)
 		for {
 			select {
 			case <-l.ctx.Done():
+				timer.Stop()
 				return
-			case block := <-l.blockConfirmed:
-				blocks = append(blocks, block)
+			case <-timer.C:
 				if len(l.blockConfirmed) > 0 {
 					for b := range l.blockConfirmed {
 						blocks = append(blocks, b)
@@ -209,18 +211,20 @@ func (l *Ledger) removeBlockConfirmed() error {
 					}
 				}
 
-				err := l.store.BatchWrite(false, func(batch storage.Batch) error {
-					for _, blk := range blocks {
-						if err := l.DeleteBlockCache(blk.GetHash(), batch); err != nil {
-							l.logger.Error(err)
+				if len(blocks) > 0 {
+					err := l.store.BatchWrite(false, func(batch storage.Batch) error {
+						for _, blk := range blocks {
+							if err := l.DeleteBlockCache(blk.GetHash(), batch); err != nil {
+								l.logger.Error(err)
+							}
 						}
+						return nil
+					})
+					if err != nil {
+						l.logger.Errorf("batch delete block cache error: %s", err)
 					}
-					return nil
-				})
-				if err != nil {
-					l.logger.Errorf("batch delete block cache error: %s", err)
+					blocks = blocks[:0]
 				}
-				blocks = blocks[:0]
 			}
 		}
 	}()
