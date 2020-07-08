@@ -114,7 +114,7 @@ func NewLedger(cfgFile string) *Ledger {
 			EB:             cc.EventBus(),
 			ctx:            ctx,
 			cancel:         cancel,
-			blockConfirmed: make(chan *types.StateBlock, 1024),
+			blockConfirmed: make(chan *types.StateBlock, 10240),
 			deletedSchema:  make([]types.Schema, 0),
 			logger:         log.NewLogger("ledger"),
 			tokenCache:     sync.Map{},
@@ -200,6 +200,9 @@ func (l *Ledger) removeBlockConfirmed() error {
 				if len(l.blockConfirmed) > 0 {
 					for b := range l.blockConfirmed {
 						blocks = append(blocks, b)
+						if len(blocks) >= 1000 {
+							break
+						}
 						if len(l.blockConfirmed) == 0 {
 							break
 						}

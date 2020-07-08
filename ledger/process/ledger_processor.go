@@ -271,7 +271,7 @@ func (lv *LedgerVerifier) BlockProcess(block *types.StateBlock) error {
 	}
 	lv.logger.Debug("publish addRelation,", block.GetHash())
 	lv.l.EventBus().Publish(topic.EventAddRelation, block)
-	lv.l.BlockConfirmed(block)
+	//lv.l.BlockConfirmed(block)
 	return nil
 }
 
