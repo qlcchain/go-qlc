@@ -100,6 +100,7 @@ type PovStore interface {
 
 	CountPovBlocks() (uint64, error)
 	CountPovTxs() (uint64, error)
+	CountPovAccountTxs() (uint64, error)
 	CountPovBestHashs() (uint64, error)
 	DebugAllPovInfos()
 }
@@ -1187,6 +1188,26 @@ func (l *Ledger) CountPovBlocks() (uint64, error) {
 
 func (l *Ledger) CountPovTxs() (uint64, error) {
 	return l.store.Count([]byte{byte(storage.KeyPrefixPovTxLookup)})
+}
+
+func (l *Ledger) CountPovAccountTxs() (uint64, error) {
+	cnt := uint64(0)
+
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPovTxLookup)
+	err := l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
+		tx := new(types.PovTxLookup)
+		if err := tx.Deserialize(val); err != nil {
+			return err
+		}
+
+		if tx.TxIndex != 0 {
+			cnt++
+		}
+
+		return nil
+	})
+
+	return cnt, err
 }
 
 func (l *Ledger) CountPovBestHashs() (uint64, error) {
