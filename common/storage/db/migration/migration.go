@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 
+	badger16 "github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/v2"
 
 	"github.com/qlcchain/go-qlc/log"
@@ -25,6 +26,7 @@ import (
 var logBadger = log.NewLogger("badger")
 
 func MigrationTo20(dir string) error {
+	fmt.Println(badger16.DefaultIteratorOptions)
 	fmt.Println("migrate badger to v2.0, ", toolName)
 	toolPath := filepath.Join(filepath.Dir(dir), toolName)
 	if _, err := os.Stat(toolPath); err != nil {
