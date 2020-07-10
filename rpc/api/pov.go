@@ -664,14 +664,15 @@ func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
 		return nil, err
 	}
 
+	stats.PovCbTxCount = stats.PovBestCount
 	stats.PovAllTxCount, err = api.l.CountPovTxs()
 	if err != nil {
 		return nil, err
 	}
 
-	stats.PovCbTxCount = stats.PovBestCount
-	if stats.PovAllTxCount > stats.PovCbTxCount {
-		stats.PovStateTxCount = stats.PovAllTxCount - stats.PovCbTxCount
+	stats.PovStateTxCount, err = api.l.CountPovAccountTxs()
+	if err != nil {
+		return nil, err
 	}
 
 	stats.StateBlockCount, err = api.l.CountStateBlocks()
