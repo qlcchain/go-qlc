@@ -664,6 +664,7 @@ func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
 		return nil, err
 	}
 
+	stats.PovCbTxCount = stats.PovBestCount
 	stats.PovAllTxCount, err = api.l.CountPovTxs()
 	if err != nil {
 		return nil, err
