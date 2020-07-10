@@ -45,7 +45,7 @@ jobs:
           done
           make clean build
 
-      - uses: codecov/codecov-action@v1.0.2
+      - uses: codecov/codecov-action@v1.0.10
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.txt
@@ -71,7 +71,7 @@ jobs:
           mkdir -p artifact && cp dist/*.{tar.gz,zip,txt,sig} artifact/
 
       - name: Upload snapshot artifacts
-        uses: actions/upload-artifact@v1.0.0
+        uses: actions/upload-artifact@v2.0.1
         with:
           name: gqlc-artifact
           path: artifact/

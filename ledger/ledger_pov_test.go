@@ -467,6 +467,11 @@ func TestLedger_PovTxLookup(t *testing.T) {
 		t.Fatal("CountPovTxs", txCnt, len(allTxls))
 	}
 
+	accTxCnt, err := l.CountPovAccountTxs()
+	if accTxCnt != 2 {
+		t.Fatal("CountPovAccountTxs", accTxCnt, 2)
+	}
+
 	retTxL0, err := l.GetPovTxLookup(txH0)
 	if retTxL0 == nil {
 		t.Fatalf("tx %s not exist", txH0)

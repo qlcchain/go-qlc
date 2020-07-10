@@ -118,7 +118,7 @@ func (l *Ledger) AddStateBlock(block *types.StateBlock) error {
 	}
 
 	l.logger.Debug("publish addRelation,", block.GetHash())
-	l.blockConfirmed <- block
+	l.BlockConfirmed(block)
 	l.EB.Publish(topic.EventAddRelation, block)
 	return nil
 }
