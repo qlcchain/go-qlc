@@ -18,7 +18,7 @@ import (
 var logBadger = log.NewLogger("badger")
 
 func MigrationTo20(dir string) error {
-	logBadger.Info("migration badger to v2.0")
+	logBadger.Info("WARN: Migration Data. It will take a long time, maybe from 10 minutes to 1 hour. Please wait patiently and do not end the program")
 	backup := filepath.Join(filepath.Dir(dir), "ledger16.backup")
 	os.Remove(backup)
 
