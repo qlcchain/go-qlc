@@ -11,6 +11,7 @@ import (
 	badger16 "github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/y"
+	"github.com/verybluebot/tarinator-go"
 
 	"github.com/qlcchain/go-qlc/log"
 )
@@ -22,6 +23,26 @@ func MigrationTo20(dir string) error {
 	backup := filepath.Join(filepath.Dir(dir), "ledger16.backup")
 	os.Remove(backup)
 
+	tarFile := fmt.Sprintf("%s/ledger_backup_v1.6.tar.gz", filepath.Dir(dir))
+	tarTemp := fmt.Sprintf("%s/tar.Temp", filepath.Dir(dir))
+	if _, err := os.Stat(tarFile); err != nil {
+		if err := tar(dir, tarFile, tarTemp); err != nil {
+			return err
+		}
+	} else {
+		if _, err := os.Stat(tarTemp); err != nil { // interrupt when tar ledger, so tar file isn't integrity
+			os.RemoveAll(tarFile)
+			if err := tar(dir, tarFile, tarTemp); err != nil {
+				return err
+			}
+		} else { // interrupt when badger v1 backup, so .backup isn't integrity
+			os.RemoveAll(backup)
+			//if err := untar(dir, tarFile); err != nil {
+			//	return err
+			//}
+		}
+	}
+
 	if err := doBackup(dir, dir, backup); err != nil {
 		return fmt.Errorf("doBackup error: %s", err)
 	}
@@ -31,6 +52,27 @@ func MigrationTo20(dir string) error {
 		return fmt.Errorf("doRestore error: %s", err)
 	}
 	os.Remove(backup)
+	return nil
+}
+
+func tar(dir, tarPath, tarTemp string) error {
+	err := tarinator.Tarinate([]string{dir}, tarPath)
+	if err != nil {
+		return fmt.Errorf("pack ledger error: %s", err)
+	}
+	file, err := os.Create(tarTemp)
+	if err != nil {
+		return fmt.Errorf("create file error: %s", err)
+	}
+	defer file.Close()
+	return nil
+}
+
+func untar(dir, tarPath string) error {
+	err := tarinator.UnTarinate(filepath.Dir(dir), tarPath)
+	if err != nil {
+		return fmt.Errorf("unpack ledger error: %s", err)
+	}
 	return nil
 }
 
