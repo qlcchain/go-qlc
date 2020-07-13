@@ -12,7 +12,8 @@ require (
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/dchest/siphash v1.2.1
-	github.com/dgraph-io/badger/v2 v2.0.3
+	github.com/dgraph-io/badger v1.6.1
+	github.com/dgraph-io/badger/v2 v2.0.0-20200630163423-09dfa663bbc3
 	github.com/fatih/color v1.9.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
@@ -58,6 +59,7 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.0
+	github.com/verybluebot/tarinator-go v0.0.0-20190613183509-5ab4e1193986
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
 	go.uber.org/atomic v1.6.0

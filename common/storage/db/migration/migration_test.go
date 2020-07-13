@@ -1,8 +1,6 @@
 package migration
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -28,13 +26,13 @@ func TestMigrationTo20(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	tool := filepath.Join(filepath.Dir(dir), toolName)
-	fmt.Println(tool)
-	f, err := os.Create(tool)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.Close()
-	fmt.Println(err)
+	//tool := filepath.Join(filepath.Dir(dir), toolName)
+	//fmt.Println(tool)
+	//f, err := os.Create(tool)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//f.Close()
+	//fmt.Println(err)
 	_ = MigrationTo20(dir)
 }
