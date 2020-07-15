@@ -236,4 +236,5 @@ func init() {
 	RegisterContracts(contractaddress.PrivacyDemoKVAddress, PdkvContract)
 	RegisterContracts(contractaddress.PtmKeyKVAddress, PtmkeyContract)
 	RegisterContracts(contractaddress.DoDSettlementAddress, DoDSettlementContract)
+	RegisterContracts(contractaddress.KYCAddress, KYCContract)
 }

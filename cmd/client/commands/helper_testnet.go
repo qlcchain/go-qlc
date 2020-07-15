@@ -19,4 +19,5 @@ func addcommands() {
 	addPrivacyCmd()
 	addPtmKeyCmd()
 	addDoDSettlementCmd()
+	addKYCCmd()
 }
