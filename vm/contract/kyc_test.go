@@ -297,7 +297,7 @@ func TestKYCTradeAddressUpdate_ProcessSend(t *testing.T) {
 	ka := new(abi.KYCAddress)
 	ka.ChainAddress = mock.Address()
 	ka.TradeAddress = ""
-	ka.Action = abi.KYCTradeAddressInvalid
+	ka.Action = abi.KYCActionInvalid
 	ka.Comment = strings.Repeat("x", abi.KYCCommentMaxLen+1)
 	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCTradeAddressUpdate, ka.ChainAddress, ka.Action, ka.TradeAddress, ka.Comment)
 	_, _, err = a.ProcessSend(ctx, blk)
@@ -305,7 +305,7 @@ func TestKYCTradeAddressUpdate_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ka.Action = abi.KYCTradeAddressAdd
+	ka.Action = abi.KYCActionAdd
 	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCTradeAddressUpdate, ka.ChainAddress, ka.Action, ka.TradeAddress, ka.Comment)
 	_, _, err = a.ProcessSend(ctx, blk)
 	if err != ErrCheckParam {
@@ -365,7 +365,7 @@ func TestKYCTradeAddressUpdate_DoSendOnPov(t *testing.T) {
 	ka := new(abi.KYCAddress)
 	ka.ChainAddress = mock.Address()
 	ka.TradeAddress = "0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826"
-	ka.Action = abi.KYCTradeAddressAdd
+	ka.Action = abi.KYCActionAdd
 	ka.Comment = strings.Repeat("x", abi.KYCCommentMaxLen)
 	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCTradeAddressUpdate, ka.ChainAddress, ka.Action, ka.TradeAddress, ka.Comment)
 	err = a.DoSendOnPov(ctx, csdb, 10, blk)
@@ -373,8 +373,109 @@ func TestKYCTradeAddressUpdate_DoSendOnPov(t *testing.T) {
 		t.Fatal()
 	}
 
-	ka.Action = abi.KYCTradeAddressRemove
+	ka.Action = abi.KYCActionRemove
 	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCTradeAddressUpdate, ka.ChainAddress, ka.Action, ka.TradeAddress, ka.Comment)
+	err = a.DoSendOnPov(ctx, csdb, 10, blk)
+	if err != nil {
+		t.Fatal()
+	}
+}
+
+func TestKYCOperatorUpdate_ProcessSend(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.KYCAddress)
+	blk := mock.StateBlockWithoutWork()
+	a := new(KYCOperatorUpdate)
+
+	blk.Token = mock.Hash()
+	_, _, err := a.ProcessSend(ctx, blk)
+	if err != ErrToken {
+		t.Fatal(err)
+	}
+
+	blk.Token = cfg.ChainToken()
+	_, _, err = a.ProcessSend(ctx, blk)
+	if err != ErrUnpackMethod {
+		t.Fatal(err)
+	}
+
+	koa := new(abi.KYCOperatorAccount)
+	koa.Action = abi.KYCActionInvalid
+	koa.Comment = strings.Repeat("x", abi.KYCCommentMaxLen+1)
+	koa.Account = mock.Address()
+	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCOperatorUpdate, koa.Account, koa.Action, koa.Comment)
+	_, _, err = a.ProcessSend(ctx, blk)
+	if err != ErrCheckParam {
+		t.Fatal(err)
+	}
+
+	koa.Action = abi.KYCActionAdd
+	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCOperatorUpdate, koa.Account, koa.Action, koa.Comment)
+	_, _, err = a.ProcessSend(ctx, blk)
+	if err != ErrCheckParam {
+		t.Fatal(err)
+	}
+
+	koa.Comment = strings.Repeat("x", abi.KYCCommentMaxLen)
+	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCOperatorUpdate, koa.Account, koa.Action, koa.Comment)
+	blk.SetFromSync()
+	_, _, err = a.ProcessSend(ctx, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk.Flag = 0
+	_, _, err = a.ProcessSend(ctx, blk)
+	if err != ErrInvalidAdmin {
+		t.Fatal(err)
+	}
+
+	admin := &abi.KYCAdminAccount{
+		Account: blk.Address,
+		Comment: "admin",
+		Valid:   true,
+	}
+	addKYCTestAdmin(t, l, admin, 10)
+	_, _, err = a.ProcessSend(ctx, blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestKYCOperatorUpdate_DoSendOnPov(t *testing.T) {
+	clear, l := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.KYCAddress)
+	blk := mock.StateBlockWithoutWork()
+	csdb := statedb.NewPovContractStateDB(l.DBStore(), types.NewPovContractState())
+	a := new(KYCOperatorUpdate)
+
+	err := a.DoSendOnPov(ctx, csdb, 10, blk)
+	if err == nil {
+		t.Fatal()
+	}
+
+	koa := new(abi.KYCOperatorAccount)
+	koa.Account = mock.Address()
+	koa.Action = abi.KYCActionAdd
+	koa.Comment = strings.Repeat("x", abi.KYCCommentMaxLen)
+	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCOperatorUpdate, koa.Account, koa.Action, koa.Comment)
+	err = a.DoSendOnPov(ctx, csdb, 10, blk)
+	if err != nil {
+		t.Fatal()
+	}
+
+	koa.Action = abi.KYCActionRemove
+	blk.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCOperatorUpdate, koa.Account, koa.Action, koa.Comment)
 	err = a.DoSendOnPov(ctx, csdb, 10, blk)
 	if err != nil {
 		t.Fatal()

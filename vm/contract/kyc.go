@@ -42,6 +42,16 @@ var KYCContract = NewChainContract(
 				},
 			},
 		},
+		abi.MethodNameKYCOperatorUpdate: &KYCOperatorUpdate{
+			BaseContract: BaseContract{
+				Describe: Describe{
+					specVer:   SpecVer2,
+					signature: true,
+					work:      true,
+					povState:  true,
+				},
+			},
+		},
 	},
 	abi.KYCStatusABI,
 	abi.JsonKYCStatus,
@@ -162,7 +172,7 @@ func (n *KYCStatusUpdate) ProcessSend(ctx *vmstore.VMContext, block *types.State
 
 	// check admin if the block is not synced
 	if !block.IsFromSync() {
-		if !abi.KYCIsAdmin(ctx, block.Address) {
+		if !abi.KYCIsAdmin(ctx, block.Address) && !abi.KYCIsOperator(ctx, block.Address) {
 			return nil, nil, ErrInvalidAdmin
 		}
 	}
@@ -232,8 +242,8 @@ func (n *KYCTradeAddressUpdate) ProcessSend(ctx *vmstore.VMContext, block *types
 
 func (n *KYCTradeAddressUpdate) VerifyParam(ctx *vmstore.VMContext, ka *abi.KYCAddress) error {
 	switch ka.Action {
-	case abi.KYCTradeAddressAdd:
-	case abi.KYCTradeAddressRemove:
+	case abi.KYCActionAdd:
+	case abi.KYCActionRemove:
 		_, err := abi.KYCGetStatusByTradeAddress(ctx, ka.TradeAddress)
 		if err != nil {
 			return fmt.Errorf("trade address %s not exist", ka.TradeAddress)
@@ -261,7 +271,7 @@ func (n *KYCTradeAddressUpdate) DoSendOnPov(ctx *vmstore.VMContext, csdb *stated
 	}
 
 	switch ka.Action {
-	case abi.KYCTradeAddressAdd:
+	case abi.KYCActionAdd:
 		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataAddress, ka.GetMixKey())
 
 		ka.Valid = true
@@ -280,7 +290,7 @@ func (n *KYCTradeAddressUpdate) DoSendOnPov(ctx *vmstore.VMContext, csdb *stated
 		if err != nil {
 			return err
 		}
-	case abi.KYCTradeAddressRemove:
+	case abi.KYCActionRemove:
 		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataAddress, ka.GetMixKey())
 		data, err := csdb.GetValue(trieKey)
 		if err != nil {
@@ -295,6 +305,106 @@ func (n *KYCTradeAddressUpdate) DoSendOnPov(ctx *vmstore.VMContext, csdb *stated
 
 		oka.Valid = false
 		data, err = oka.MarshalMsg(nil)
+		if err != nil {
+			return err
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type KYCOperatorUpdate struct {
+	BaseContract
+}
+
+func (a *KYCOperatorUpdate) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
+	if block.GetToken() != cfg.ChainToken() {
+		return nil, nil, ErrToken
+	}
+
+	oa := new(abi.KYCOperatorAccount)
+	err := abi.KYCStatusABI.UnpackMethod(oa, abi.MethodNameKYCOperatorUpdate, block.Data)
+	if err != nil {
+		return nil, nil, ErrUnpackMethod
+	}
+
+	err = a.VerifyParam(ctx, oa)
+	if err != nil {
+		return nil, nil, ErrCheckParam
+	}
+
+	// check admin if the block is not synced
+	if !block.IsFromSync() {
+		if !abi.KYCIsAdmin(ctx, block.Address) {
+			return nil, nil, ErrInvalidAdmin
+		}
+	}
+
+	block.Data, err = abi.KYCStatusABI.PackMethod(abi.MethodNameKYCOperatorUpdate, oa.Account, oa.Action, oa.Comment)
+
+	return nil, nil, nil
+}
+
+func (a *KYCOperatorUpdate) VerifyParam(ctx *vmstore.VMContext, oa *abi.KYCOperatorAccount) error {
+	switch oa.Action {
+	case abi.KYCActionAdd:
+	case abi.KYCActionRemove:
+		if !abi.KYCIsOperator(ctx, oa.Account) {
+			return fmt.Errorf("operator %s not exist", oa.Account)
+		}
+	default:
+		return fmt.Errorf("invalid action")
+	}
+
+	if len(oa.Comment) > abi.KYCCommentMaxLen {
+		return fmt.Errorf("invalid comment len (max %d)", abi.KYCCommentMaxLen)
+	}
+
+	return nil
+}
+
+func (a *KYCOperatorUpdate) DoSendOnPov(ctx *vmstore.VMContext, csdb *statedb.PovContractStateDB, povHeight uint64, block *types.StateBlock) error {
+	oa := new(abi.KYCOperatorAccount)
+	err := abi.KYCStatusABI.UnpackMethod(oa, abi.MethodNameKYCOperatorUpdate, block.Data)
+	if err != nil {
+		return err
+	}
+
+	switch oa.Action {
+	case abi.KYCActionAdd:
+		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataOperator, oa.Account.Bytes())
+
+		oa.Valid = true
+		data, err := oa.MarshalMsg(nil)
+		if err != nil {
+			return err
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			return err
+		}
+	case abi.KYCActionRemove:
+		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataOperator, oa.Account.Bytes())
+
+		data, err := csdb.GetValue(trieKey)
+		if err != nil {
+			return err
+		}
+
+		noa := new(abi.KYCOperatorAccount)
+		_, err = noa.UnmarshalMsg(data)
+		if err != nil {
+			return err
+		}
+
+		noa.Valid = false
+		data, err = noa.MarshalMsg(nil)
 		if err != nil {
 			return err
 		}

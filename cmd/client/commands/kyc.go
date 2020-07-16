@@ -19,6 +19,7 @@ func addKYCCmd() {
 		addKYCAdminUpdateCmdByShell(cmd)
 		addKYCStatusUpdateCmdByShell(cmd)
 		addKYCTradeAddressUpdateCmdByShell(cmd)
+		addKYOperatorUpdateCmdByShell(cmd)
 	} else {
 		var cmd = &cobra.Command{
 			Use:   "kyc",

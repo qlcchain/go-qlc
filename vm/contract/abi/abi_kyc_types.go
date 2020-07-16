@@ -10,12 +10,13 @@ const (
 	KYCDataStatus
 	KYCDataAddress
 	KYCDataTradeAddress
+	KYCDataOperator
 )
 
 const (
-	KYCTradeAddressAdd uint8 = iota
-	KYCTradeAddressRemove
-	KYCTradeAddressInvalid
+	KYCActionAdd uint8 = iota
+	KYCActionRemove
+	KYCActionInvalid
 )
 
 const (
@@ -25,6 +26,14 @@ const (
 //go:generate msgp
 type KYCAdminAccount struct {
 	Account types.Address `msg:"-" json:"account"`
+	Comment string        `msg:"c" json:"comment"`
+	Valid   bool          `msg:"v" json:"valid"`
+}
+
+//go:generate msgp
+type KYCOperatorAccount struct {
+	Account types.Address `msg:"-" json:"account"`
+	Action  uint8         `msg:"-" json:"action"`
 	Comment string        `msg:"c" json:"comment"`
 	Valid   bool          `msg:"v" json:"valid"`
 }
@@ -59,22 +68,22 @@ func (z *KYCAddress) GetKey() []byte {
 	return taKey[:]
 }
 
-func KYCTradeAddressActionFromString(action string) (uint8, error) {
+func KYCActionFromString(action string) (uint8, error) {
 	switch action {
 	case "add":
-		return KYCTradeAddressAdd, nil
+		return KYCActionAdd, nil
 	case "remove":
-		return KYCTradeAddressRemove, nil
+		return KYCActionRemove, nil
 	default:
-		return KYCTradeAddressInvalid, errors.New("wrong action")
+		return KYCActionInvalid, errors.New("wrong action")
 	}
 }
 
-func KYCTradeAddressActionToString(action uint8) string {
+func KYCActionToString(action uint8) string {
 	switch action {
-	case KYCTradeAddressAdd:
+	case KYCActionAdd:
 		return "add"
-	case KYCTradeAddressRemove:
+	case KYCActionRemove:
 		return "remove"
 	default:
 		return "wrong action"

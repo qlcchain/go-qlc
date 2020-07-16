@@ -49,7 +49,7 @@ type KYCAdminUser struct {
 }
 
 type KYCUpdateStatusParam struct {
-	Admin        types.Address `json:"admin"`
+	Operator     types.Address `json:"operator"`
 	ChainAddress types.Address `json:"chainAddress"`
 	Status       string        `json:"status"`
 }
@@ -75,6 +75,18 @@ type KYCTradeAddress struct {
 type KYCTradeAddressPack struct {
 	ChainAddress types.Address      `json:"chainAddress"`
 	TradeAddress []*KYCTradeAddress `json:"tradeAddress"`
+}
+
+type KYCUpdateOperatorParam struct {
+	Admin    types.Address `json:"admin"`
+	Operator types.Address `json:"operator"`
+	Action   string        `json:"action"`
+	Comment  string        `json:"comment"`
+}
+
+type KYCOperatorInfo struct {
+	Operator types.Address `json:"operator"`
+	Comment  string        `json:"comment"`
 }
 
 func (p *KYCApi) GetAdminHandoverBlock(param *KYCAdminUpdateParam) (*types.StateBlock, error) {
@@ -122,7 +134,7 @@ func (p *KYCApi) GetUpdateStatusBlock(param *KYCUpdateStatusParam) (*types.State
 	}
 
 	pa := &ContractSendBlockPara{
-		Address:   param.Admin,
+		Address:   param.Operator,
 		TokenName: "QLC",
 		To:        contractaddress.KYCAddress,
 		Amount:    types.NewBalance(0),
@@ -200,7 +212,7 @@ func (p *KYCApi) GetUpdateTradeAddressBlock(param *KYCUpdateTradeAddressParam) (
 		return nil, ErrParameterNil
 	}
 
-	action, err := abi.KYCTradeAddressActionFromString(param.Action)
+	action, err := abi.KYCActionFromString(param.Action)
 	if err != nil {
 		return nil, err
 	}
@@ -241,4 +253,65 @@ func (p *KYCApi) GetTradeAddress(address types.Address) (*KYCTradeAddressPack, e
 	}
 
 	return ktap, nil
+}
+
+func (p *KYCApi) GetUpdateOperatorBlock(param *KYCUpdateOperatorParam) (*types.StateBlock, error) {
+	if param == nil {
+		return nil, ErrParameterNil
+	}
+
+	action, err := abi.KYCActionFromString(param.Action)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := abi.KYCStatusABI.PackMethod(abi.MethodNameKYCOperatorUpdate, param.Operator, action, param.Comment)
+	if err != nil {
+		return nil, err
+	}
+
+	pa := &ContractSendBlockPara{
+		Address:   param.Admin,
+		TokenName: "QLC",
+		To:        contractaddress.KYCAddress,
+		Amount:    types.NewBalance(0),
+		Data:      data,
+	}
+
+	return p.ca.GenerateSendBlock(pa)
+}
+
+func (p *KYCApi) GetOperatorCount() int {
+	oc, err := abi.KYCGetOperator(p.ctx)
+	if err != nil {
+		return 0
+	} else {
+		return len(oc)
+	}
+}
+
+func (p *KYCApi) GetOperator(count int, offset int) ([]*KYCOperatorInfo, error) {
+	os, err := abi.KYCGetOperator(p.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ois := make([]*KYCOperatorInfo, 0)
+	for i, o := range os {
+		if i < offset {
+			continue
+		}
+
+		if i >= offset+count {
+			break
+		}
+
+		oi := &KYCOperatorInfo{
+			Operator: o.Account,
+			Comment:  o.Comment,
+		}
+		ois = append(ois, oi)
+	}
+
+	return ois, nil
 }

@@ -119,7 +119,7 @@ func updateKYCTradeAddress(t *testing.T, l *ledger.Ledger, ka *abi.KYCAddress, c
 	povBlk.Header.BasHdr.Height = 10
 
 	switch ka.Action {
-	case abi.KYCTradeAddressAdd:
+	case abi.KYCActionAdd:
 		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataAddress, ka.GetMixKey())
 
 		ka.Valid = true
@@ -138,7 +138,7 @@ func updateKYCTradeAddress(t *testing.T, l *ledger.Ledger, ka *abi.KYCAddress, c
 		if err != nil {
 			t.Fatal(err)
 		}
-	case abi.KYCTradeAddressRemove:
+	case abi.KYCActionRemove:
 		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataAddress, ka.GetMixKey())
 		data, err := csdb.GetValue(trieKey)
 		if err != nil {
@@ -153,6 +153,82 @@ func updateKYCTradeAddress(t *testing.T, l *ledger.Ledger, ka *abi.KYCAddress, c
 
 		oka.Valid = false
 		data, err = oka.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err := gsdb.CommitToTrie()
+	if err != nil {
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func updateKYCOperator(t *testing.T, l *ledger.Ledger, koa *abi.KYCOperatorAccount, csdb *statedb.PovContractStateDB, gsdb *statedb.PovGlobalStateDB) {
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.BasHdr.Height = 10
+
+	switch koa.Action {
+	case abi.KYCActionAdd:
+		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataOperator, koa.Account.Bytes())
+
+		koa.Valid = true
+		data, err := koa.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	case abi.KYCActionRemove:
+		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataOperator, koa.Account.Bytes())
+		data, err := csdb.GetValue(trieKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		okoa := new(abi.KYCOperatorAccount)
+		_, err = okoa.UnmarshalMsg(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		okoa.Valid = false
+		data, err = okoa.MarshalMsg(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -346,7 +422,7 @@ func TestKYCApi_GetTradeAddress(t *testing.T) {
 	ka := new(abi.KYCAddress)
 	ka.ChainAddress = mock.Address()
 	ka.TradeAddress = "0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826"
-	ka.Action = abi.KYCTradeAddressAdd
+	ka.Action = abi.KYCActionAdd
 
 	_, err := p.GetTradeAddress(ka.ChainAddress)
 	if err == nil {
@@ -365,4 +441,65 @@ func TestKYCApi_GetTradeAddress(t *testing.T) {
 	if err != nil || kas == nil || kas.ChainAddress != ka.ChainAddress || kas.TradeAddress[0].Address != ka.TradeAddress {
 		t.Fatal()
 	}
+}
+
+func TestKYCApi_GetOperator(t *testing.T) {
+	clear, l, cfgFile := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	p := NewKYCApi(cfgFile, l)
+
+	if p.GetOperatorCount() != 0 {
+		t.Fatal()
+	}
+
+	_, err := p.GetOperator(10, 0)
+	if err == nil {
+		t.Fatal()
+	}
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.KYCAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	koa := &abi.KYCOperatorAccount{Account: mock.Address(), Action: abi.KYCActionAdd, Comment: "op1"}
+	updateKYCOperator(t, l, koa, csdb, gsdb)
+
+	if p.GetOperatorCount() != 1 {
+		t.Fatal()
+	}
+
+	koas, err := p.GetOperator(10, 0)
+	if err != nil || len(koas) != 1 || koas[0].Operator != koa.Account {
+		t.Fatal()
+	}
+}
+
+func TestKYCApi_GetUpdateOperatorBlock(t *testing.T) {
+	clear, l, cfgFile := getTestLedger()
+	if l == nil {
+		t.Fatal()
+	}
+	defer clear()
+
+	p := NewKYCApi(cfgFile, l)
+	param := new(KYCUpdateOperatorParam)
+
+	_, err := p.GetUpdateOperatorBlock(nil)
+	if err != ErrParameterNil {
+		t.Fatal()
+	}
+
+	_, err = p.GetUpdateOperatorBlock(param)
+	if err == nil {
+		t.Fatal()
+	}
+
+	param.Action = "add"
+	_, _ = p.GetUpdateOperatorBlock(param)
 }

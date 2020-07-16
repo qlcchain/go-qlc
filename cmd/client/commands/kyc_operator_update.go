@@ -11,29 +11,35 @@ import (
 	rpc "github.com/qlcchain/jsonrpc2"
 )
 
-func addKYCStatusUpdateCmdByShell(parentCmd *ishell.Cmd) {
+func addKYOperatorUpdateCmdByShell(parentCmd *ishell.Cmd) {
 	admin := util.Flag{
 		Name:  "admin",
 		Must:  true,
 		Usage: "admin user (private key in hex string)",
 		Value: "",
 	}
-	address := util.Flag{
-		Name:  "address",
+	operator := util.Flag{
+		Name:  "operator",
 		Must:  true,
-		Usage: "user's chain address",
+		Usage: "operator address",
 		Value: "",
 	}
-	status := util.Flag{
-		Name:  "status",
-		Must:  true,
-		Usage: "kyc status",
+	action := util.Flag{
+		Name:  "action",
+		Must:  false,
+		Usage: "add/remove operator",
 		Value: "",
 	}
-	args := []util.Flag{admin, address, status}
+	comment := util.Flag{
+		Name:  "comment",
+		Must:  false,
+		Usage: "operator comment",
+		Value: "",
+	}
+	args := []util.Flag{admin, operator, action, comment}
 	c := &ishell.Cmd{
-		Name:                "statusUpdate",
-		Help:                "update kyc status",
+		Name:                "operatorUpdate",
+		Help:                "update operator",
 		CompleterWithPrefix: util.OptsCompleter(args),
 		Func: func(c *ishell.Context) {
 			if util.HelpText(c, args) {
@@ -46,10 +52,11 @@ func addKYCStatusUpdateCmdByShell(parentCmd *ishell.Cmd) {
 			}
 
 			adminP := util.StringVar(c.Args, admin)
-			addressP := util.StringVar(c.Args, address)
-			statusP := util.StringVar(c.Args, status)
+			operatorP := util.StringVar(c.Args, operator)
+			actionP := util.StringVar(c.Args, action)
+			commentP := util.StringVar(c.Args, comment)
 
-			err := statusUpdate(adminP, addressP, statusP)
+			err := operatorUpdate(adminP, operatorP, actionP, commentP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -58,16 +65,16 @@ func addKYCStatusUpdateCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func statusUpdate(admin, addressP, status string) error {
-	if admin == "" {
+func operatorUpdate(adminP, operatorP, actionP, commentP string) error {
+	if adminP == "" {
 		return fmt.Errorf("admin can not be null")
 	}
 
-	if addressP == "" {
+	if operatorP == "" {
 		return fmt.Errorf("address can not be null")
 	}
 
-	accBytes, err := hex.DecodeString(admin)
+	accBytes, err := hex.DecodeString(adminP)
 	if err != nil {
 		return err
 	}
@@ -77,7 +84,7 @@ func statusUpdate(admin, addressP, status string) error {
 		return fmt.Errorf("account format err")
 	}
 
-	address, err := types.HexToAddress(addressP)
+	operator, err := types.HexToAddress(operatorP)
 	if err != nil {
 		return fmt.Errorf("address format err")
 	}
@@ -88,14 +95,15 @@ func statusUpdate(admin, addressP, status string) error {
 	}
 	defer client.Close()
 
-	param := &api.KYCUpdateStatusParam{
-		Operator:     acc.Address(),
-		ChainAddress: address,
-		Status:       status,
+	param := &api.KYCUpdateOperatorParam{
+		Admin:    acc.Address(),
+		Operator: operator,
+		Action:   actionP,
+		Comment:  commentP,
 	}
 
 	var block types.StateBlock
-	err = client.Call(&block, "KYC_getUpdateStatusBlock", param)
+	err = client.Call(&block, "KYC_getUpdateOperatorBlock", param)
 	if err != nil {
 		return err
 	}

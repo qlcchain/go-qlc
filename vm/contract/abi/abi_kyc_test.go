@@ -120,7 +120,7 @@ func updateKYCTradeAddress(t *testing.T, l *ledger.Ledger, ka *KYCAddress, csdb 
 	povBlk.Header.BasHdr.Height = 10
 
 	switch ka.Action {
-	case KYCTradeAddressAdd:
+	case KYCActionAdd:
 		trieKey := statedb.PovCreateContractLocalStateKey(KYCDataAddress, ka.GetMixKey())
 
 		ka.Valid = true
@@ -139,7 +139,7 @@ func updateKYCTradeAddress(t *testing.T, l *ledger.Ledger, ka *KYCAddress, csdb 
 		if err != nil {
 			t.Fatal(err)
 		}
-	case KYCTradeAddressRemove:
+	case KYCActionRemove:
 		trieKey := statedb.PovCreateContractLocalStateKey(KYCDataAddress, ka.GetMixKey())
 		data, err := csdb.GetValue(trieKey)
 		if err != nil {
@@ -154,6 +154,82 @@ func updateKYCTradeAddress(t *testing.T, l *ledger.Ledger, ka *KYCAddress, csdb 
 
 		oka.Valid = false
 		data, err = oka.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err := gsdb.CommitToTrie()
+	if err != nil {
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func updateKYCOperator(t *testing.T, l *ledger.Ledger, koa *KYCOperatorAccount, csdb *statedb.PovContractStateDB, gsdb *statedb.PovGlobalStateDB) {
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.BasHdr.Height = 10
+
+	switch koa.Action {
+	case KYCActionAdd:
+		trieKey := statedb.PovCreateContractLocalStateKey(KYCDataOperator, koa.Account.Bytes())
+
+		koa.Valid = true
+		data, err := koa.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	case KYCActionRemove:
+		trieKey := statedb.PovCreateContractLocalStateKey(KYCDataOperator, koa.Account.Bytes())
+		data, err := csdb.GetValue(trieKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		okoa := new(KYCOperatorAccount)
+		_, err = okoa.UnmarshalMsg(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		okoa.Valid = false
+		data, err = okoa.MarshalMsg(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -327,7 +403,7 @@ func TestKYCGetTradeAddress(t *testing.T) {
 		t.Fatal()
 	}
 
-	ka := &KYCAddress{ChainAddress: chainAddress, TradeAddress: tradeAddress, Comment: "a1", Action: KYCTradeAddressAdd}
+	ka := &KYCAddress{ChainAddress: chainAddress, TradeAddress: tradeAddress, Comment: "a1", Action: KYCActionAdd}
 	updateKYCTradeAddress(t, l, ka, csdb, gsdb)
 
 	kas, err := KYCGetTradeAddress(ctx, chainAddress)
@@ -343,7 +419,7 @@ func TestKYCGetTradeAddress(t *testing.T) {
 		t.Fatal()
 	}
 
-	ka = &KYCAddress{ChainAddress: chainAddress, TradeAddress: tradeAddress, Comment: "a1", Action: KYCTradeAddressRemove}
+	ka = &KYCAddress{ChainAddress: chainAddress, TradeAddress: tradeAddress, Comment: "a1", Action: KYCActionRemove}
 	updateKYCTradeAddress(t, l, ka, csdb, gsdb)
 
 	kas, err = KYCGetTradeAddress(ctx, chainAddress)
@@ -353,33 +429,67 @@ func TestKYCGetTradeAddress(t *testing.T) {
 }
 
 func TestKYCTradeAddressActionFromString(t *testing.T) {
-	action, _ := KYCTradeAddressActionFromString("add")
-	if action != KYCTradeAddressAdd {
+	action, _ := KYCActionFromString("add")
+	if action != KYCActionAdd {
 		t.Fatal()
 	}
 
-	action, _ = KYCTradeAddressActionFromString("remove")
-	if action != KYCTradeAddressRemove {
+	action, _ = KYCActionFromString("remove")
+	if action != KYCActionRemove {
 		t.Fatal()
 	}
 
-	action, err := KYCTradeAddressActionFromString("wrong")
+	action, err := KYCActionFromString("wrong")
 	if err == nil {
 		t.Fatal()
 	}
 
-	actions := KYCTradeAddressActionToString(KYCTradeAddressAdd)
+	actions := KYCActionToString(KYCActionAdd)
 	if actions != "add" {
 		t.Fatal()
 	}
 
-	actions = KYCTradeAddressActionToString(KYCTradeAddressRemove)
+	actions = KYCActionToString(KYCActionRemove)
 	if actions != "remove" {
 		t.Fatal()
 	}
 
-	actions = KYCTradeAddressActionToString(KYCTradeAddressInvalid)
+	actions = KYCActionToString(KYCActionInvalid)
 	if actions != "wrong action" {
+		t.Fatal()
+	}
+}
+
+func TestKYCGetOperator(t *testing.T) {
+	teardownTestCase, l := setupLedgerForTestCase(t)
+	defer teardownTestCase(t)
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.KYCAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := vmstore.NewVMContext(l, &contractaddress.KYCAddress)
+	koa := &KYCOperatorAccount{Account: mock.Address(), Action: KYCActionAdd, Comment: "op1"}
+
+	_, err = KYCGetOperator(ctx)
+	if err == nil {
+		t.Fatal()
+	}
+
+	if KYCIsOperator(ctx, koa.Account) {
+		t.Fatal()
+	}
+
+	updateKYCOperator(t, l, koa, csdb, gsdb)
+
+	ops, err := KYCGetOperator(ctx)
+	if err != nil || len(ops) != 1 || ops[0].Account != koa.Account {
+		t.Fatal()
+	}
+
+	if !KYCIsOperator(ctx, koa.Account) {
 		t.Fatal()
 	}
 }

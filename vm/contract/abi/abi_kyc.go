@@ -24,12 +24,18 @@ const (
 			{"name":"action","type":"uint8"},
 			{"name":"tradeAddress","type":"string"},
 			{"name":"comment","type":"string"}
+		]},
+		{"type":"function","name":"KYCOperatorUpdate","inputs":[
+			{"name":"account","type":"address"},
+			{"name":"action","type":"uint8"},
+			{"name":"comment","type":"string"}
 		]}
 	]`
 
 	MethodNameKYCAdminHandOver      = "KYCAdminHandOver"
 	MethodNameKYCStatusUpdate       = "KYCStatusUpdate"
 	MethodNameKYCTradeAddressUpdate = "KYCTradeAddressUpdate"
+	MethodNameKYCOperatorUpdate     = "KYCOperatorUpdate"
 )
 
 var (
@@ -95,8 +101,8 @@ func KYCGetAdmin(ctx *vmstore.VMContext) ([]*KYCAdminAccount, error) {
 	if err != nil {
 		return nil, err
 	}
-	itor := csdb.NewCurTireIterator(statedb.PovCreateContractLocalStateKey(KYCDataAdmin, nil))
 
+	itor := csdb.NewCurTireIterator(statedb.PovCreateContractLocalStateKey(KYCDataAdmin, nil))
 	for key, val, ok := itor.Next(); ok; key, val, ok = itor.Next() {
 		admin := new(KYCAdminAccount)
 		_, err := admin.UnmarshalMsg(val)
@@ -124,6 +130,57 @@ func KYCGetAdmin(ctx *vmstore.VMContext) ([]*KYCAdminAccount, error) {
 	}
 
 	return admins, nil
+}
+
+func KYCIsOperator(ctx *vmstore.VMContext, addr types.Address) bool {
+	csdb, err := ctx.PoVContractState()
+	if err != nil {
+		return false
+	}
+
+	trieKey := statedb.PovCreateContractLocalStateKey(KYCDataOperator, addr.Bytes())
+
+	valBytes, err := csdb.GetValue(trieKey)
+	if err != nil || len(valBytes) == 0 {
+		return false
+	}
+
+	oa := new(KYCOperatorAccount)
+	_, err = oa.UnmarshalMsg(valBytes)
+	if err != nil {
+		return false
+	}
+
+	return oa.Valid
+}
+
+func KYCGetOperator(ctx *vmstore.VMContext) ([]*KYCOperatorAccount, error) {
+	oas := make([]*KYCOperatorAccount, 0)
+	csdb, err := ctx.PoVContractState()
+	if err != nil {
+		return nil, err
+	}
+
+	itor := csdb.NewCurTireIterator(statedb.PovCreateContractLocalStateKey(KYCDataOperator, nil))
+	for key, val, ok := itor.Next(); ok; key, val, ok = itor.Next() {
+		oa := new(KYCOperatorAccount)
+		_, err := oa.UnmarshalMsg(val)
+		if err != nil {
+			return nil, err
+		}
+
+		addr, err := types.BytesToAddress(key[2:])
+		if err != nil {
+			return nil, err
+		}
+
+		if oa.Valid {
+			oa.Account = addr
+			oas = append(oas, oa)
+		}
+	}
+
+	return oas, nil
 }
 
 func KYCGetAllStatus(ctx *vmstore.VMContext) ([]*KYCStatus, error) {
