@@ -170,10 +170,10 @@ func (n *KYCStatusUpdate) ProcessSend(ctx *vmstore.VMContext, block *types.State
 		return nil, nil, ErrCheckParam
 	}
 
-	// check admin if the block is not synced
+	// check operator right if the block is not synced
 	if !block.IsFromSync() {
-		if !abi.KYCIsAdmin(ctx, block.Address) && !abi.KYCIsOperator(ctx, block.Address) {
-			return nil, nil, ErrInvalidAdmin
+		if !abi.KYCIsOperator(ctx, block.Address) {
+			return nil, nil, ErrInvalidOperator
 		}
 	}
 
@@ -228,10 +228,10 @@ func (n *KYCTradeAddressUpdate) ProcessSend(ctx *vmstore.VMContext, block *types
 		return nil, nil, ErrCheckParam
 	}
 
-	// check admin if the block is not synced
+	// check operator right if the block is not synced
 	if !block.IsFromSync() {
-		if !abi.KYCIsAdmin(ctx, block.Address) {
-			return nil, nil, ErrInvalidAdmin
+		if !abi.KYCIsOperator(ctx, block.Address) {
+			return nil, nil, ErrInvalidOperator
 		}
 	}
 

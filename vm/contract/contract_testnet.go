@@ -41,6 +41,7 @@ var (
 	ErrGetAdmin         = errors.New("get admin err")
 	ErrInvalidAdmin     = errors.New("invalid admin")
 	ErrInvalidLen       = errors.New("invalid len")
+	ErrInvalidOperator  = errors.New("invalid operator")
 )
 
 type BaseContract struct {

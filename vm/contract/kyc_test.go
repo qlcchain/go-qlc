@@ -68,6 +68,88 @@ func addKYCTestAdmin(t *testing.T, l *ledger.Ledger, admin *abi.KYCAdminAccount,
 	}
 }
 
+func updateKYCOperator(t *testing.T, l *ledger.Ledger, koa *abi.KYCOperatorAccount) {
+	povBlk, povTd := mock.GeneratePovBlockByFakePow(nil, 0)
+	povBlk.Header.BasHdr.Height = 10
+
+	gsdb := statedb.NewPovGlobalStateDB(l.DBStore(), types.ZeroHash)
+	csdb, err := gsdb.LookupContractStateDB(contractaddress.KYCAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	switch koa.Action {
+	case abi.KYCActionAdd:
+		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataOperator, koa.Account.Bytes())
+
+		koa.Valid = true
+		data, err := koa.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	case abi.KYCActionRemove:
+		trieKey := statedb.PovCreateContractLocalStateKey(abi.KYCDataOperator, koa.Account.Bytes())
+		data, err := csdb.GetValue(trieKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		okoa := new(abi.KYCOperatorAccount)
+		_, err = okoa.UnmarshalMsg(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		okoa.Valid = false
+		data, err = okoa.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = csdb.SetValue(trieKey, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err = gsdb.CommitToTrie()
+	if err != nil {
+		t.Fatal(err)
+	}
+	txn := l.DBStore().Batch(true)
+	err = gsdb.CommitToDB(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.DBStore().PutBatch(txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	povBlk.Header.CbTx.StateHash = gsdb.GetCurHash()
+	mock.UpdatePovHash(povBlk)
+
+	err = l.AddPovBlock(povBlk, povTd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.AddPovBestHash(povBlk.GetHeight(), povBlk.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = l.SetPovLatestHeight(povBlk.GetHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestKYCAdminHandOver_ProcessSend(t *testing.T) {
 	clear, l := getTestLedger()
 	if l == nil {
@@ -228,16 +310,17 @@ func TestKYCStatusUpdate_ProcessSend(t *testing.T) {
 
 	blk.Flag = 0
 	_, _, err = a.ProcessSend(ctx, blk)
-	if err != ErrInvalidAdmin {
+	if err != ErrInvalidOperator {
 		t.Fatal(err)
 	}
 
-	admin := &abi.KYCAdminAccount{
+	operator := &abi.KYCOperatorAccount{
 		Account: blk.Address,
-		Comment: "admin",
+		Action:  abi.KYCActionAdd,
+		Comment: "op1",
 		Valid:   true,
 	}
-	addKYCTestAdmin(t, l, admin, 10)
+	updateKYCOperator(t, l, operator)
 	_, _, err = a.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
@@ -329,16 +412,17 @@ func TestKYCTradeAddressUpdate_ProcessSend(t *testing.T) {
 
 	blk.Flag = 0
 	_, _, err = a.ProcessSend(ctx, blk)
-	if err != ErrInvalidAdmin {
+	if err != ErrInvalidOperator {
 		t.Fatal(err)
 	}
 
-	admin := &abi.KYCAdminAccount{
+	operator := &abi.KYCOperatorAccount{
 		Account: blk.Address,
-		Comment: "admin",
+		Action:  abi.KYCActionAdd,
+		Comment: "op1",
 		Valid:   true,
 	}
-	addKYCTestAdmin(t, l, admin, 10)
+	updateKYCOperator(t, l, operator)
 	_, _, err = a.ProcessSend(ctx, blk)
 	if err != nil {
 		t.Fatal(err)

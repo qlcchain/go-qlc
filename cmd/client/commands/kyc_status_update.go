@@ -12,10 +12,10 @@ import (
 )
 
 func addKYCStatusUpdateCmdByShell(parentCmd *ishell.Cmd) {
-	admin := util.Flag{
-		Name:  "admin",
+	operator := util.Flag{
+		Name:  "operator",
 		Must:  true,
-		Usage: "admin user (private key in hex string)",
+		Usage: "operator user (private key in hex string)",
 		Value: "",
 	}
 	address := util.Flag{
@@ -30,7 +30,7 @@ func addKYCStatusUpdateCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "kyc status",
 		Value: "",
 	}
-	args := []util.Flag{admin, address, status}
+	args := []util.Flag{operator, address, status}
 	c := &ishell.Cmd{
 		Name:                "statusUpdate",
 		Help:                "update kyc status",
@@ -45,11 +45,11 @@ func addKYCStatusUpdateCmdByShell(parentCmd *ishell.Cmd) {
 				return
 			}
 
-			adminP := util.StringVar(c.Args, admin)
+			operatorP := util.StringVar(c.Args, operator)
 			addressP := util.StringVar(c.Args, address)
 			statusP := util.StringVar(c.Args, status)
 
-			err := statusUpdate(adminP, addressP, statusP)
+			err := statusUpdate(operatorP, addressP, statusP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -58,16 +58,16 @@ func addKYCStatusUpdateCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func statusUpdate(admin, addressP, status string) error {
-	if admin == "" {
-		return fmt.Errorf("admin can not be null")
+func statusUpdate(operator, addressP, status string) error {
+	if operator == "" {
+		return fmt.Errorf("operator can not be null")
 	}
 
 	if addressP == "" {
 		return fmt.Errorf("address can not be null")
 	}
 
-	accBytes, err := hex.DecodeString(admin)
+	accBytes, err := hex.DecodeString(operator)
 	if err != nil {
 		return err
 	}

@@ -12,10 +12,10 @@ import (
 )
 
 func addKYCTradeAddressUpdateCmdByShell(parentCmd *ishell.Cmd) {
-	admin := util.Flag{
-		Name:  "admin",
+	operator := util.Flag{
+		Name:  "operator",
 		Must:  true,
-		Usage: "admin user (private key in hex string)",
+		Usage: "operator user (private key in hex string)",
 		Value: "",
 	}
 	address := util.Flag{
@@ -42,7 +42,7 @@ func addKYCTradeAddressUpdateCmdByShell(parentCmd *ishell.Cmd) {
 		Usage: "address comment",
 		Value: "",
 	}
-	args := []util.Flag{admin, address, action, tradeAddress, comment}
+	args := []util.Flag{operator, address, action, tradeAddress, comment}
 	c := &ishell.Cmd{
 		Name:                "tradeAddressUpdate",
 		Help:                "update kyc trade address",
@@ -57,13 +57,13 @@ func addKYCTradeAddressUpdateCmdByShell(parentCmd *ishell.Cmd) {
 				return
 			}
 
-			adminP := util.StringVar(c.Args, admin)
+			operatorP := util.StringVar(c.Args, operator)
 			addressP := util.StringVar(c.Args, address)
 			actionP := util.StringVar(c.Args, action)
 			tradeAddressP := util.StringVar(c.Args, tradeAddress)
 			commentP := util.StringVar(c.Args, comment)
 
-			err := tradeAddressUpdate(adminP, addressP, actionP, tradeAddressP, commentP)
+			err := tradeAddressUpdate(operatorP, addressP, actionP, tradeAddressP, commentP)
 			if err != nil {
 				util.Warn(err)
 			}
@@ -72,8 +72,8 @@ func addKYCTradeAddressUpdateCmdByShell(parentCmd *ishell.Cmd) {
 	parentCmd.AddCmd(c)
 }
 
-func tradeAddressUpdate(adminP, addressP, actionP, tradeAddressP, commentP string) error {
-	if adminP == "" {
+func tradeAddressUpdate(operatorP, addressP, actionP, tradeAddressP, commentP string) error {
+	if operatorP == "" {
 		return fmt.Errorf("admin can not be null")
 	}
 
@@ -81,7 +81,7 @@ func tradeAddressUpdate(adminP, addressP, actionP, tradeAddressP, commentP strin
 		return fmt.Errorf("address can not be null")
 	}
 
-	accBytes, err := hex.DecodeString(adminP)
+	accBytes, err := hex.DecodeString(operatorP)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func tradeAddressUpdate(adminP, addressP, actionP, tradeAddressP, commentP strin
 	defer client.Close()
 
 	param := &api.KYCUpdateTradeAddressParam{
-		Admin:        acc.Address(),
+		Operator:     acc.Address(),
 		ChainAddress: address,
 		Action:       actionP,
 		TradeAddress: tradeAddressP,

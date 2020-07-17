@@ -60,7 +60,7 @@ type KYCStatusInfo struct {
 }
 
 type KYCUpdateTradeAddressParam struct {
-	Admin        types.Address `json:"admin"`
+	Operator     types.Address `json:"operator"`
 	ChainAddress types.Address `json:"chainAddress"`
 	Action       string        `json:"action"`
 	TradeAddress string        `json:"tradeAddress"`
@@ -224,13 +224,12 @@ func (p *KYCApi) GetUpdateTradeAddressBlock(param *KYCUpdateTradeAddressParam) (
 	}
 
 	pa := &ContractSendBlockPara{
-		Address:   param.Admin,
+		Address:   param.Operator,
 		TokenName: "QLC",
 		To:        contractaddress.KYCAddress,
 		Amount:    types.NewBalance(0),
 		Data:      data,
 	}
-
 	return p.ca.GenerateSendBlock(pa)
 }
 
