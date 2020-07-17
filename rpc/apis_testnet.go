@@ -164,6 +164,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewDoDSettlementAPI(r.cfgFile, r.ledger),
 			Public:    true,
 		}
+	case "KYC":
+		return rpc.API{
+			Namespace: "KYC",
+			Version:   "1.0",
+			Service:   api.NewKYCApi(r.cfgFile, r.ledger),
+			Public:    true,
+		}
 	default:
 		return rpc.API{}
 	}
