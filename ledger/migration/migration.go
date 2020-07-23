@@ -162,12 +162,12 @@ type MigrationV13ToV14 struct {
 
 func (m MigrationV13ToV14) Migrate(store storage.Store) error {
 	return store.BatchWrite(false, func(batch storage.Batch) error {
-		fmt.Println("migrate ledger v13 to v14 ")
 		b, err := checkVersion(m, store)
 		if err != nil {
 			return err
 		}
 		if b {
+			fmt.Println("migrate ledger v13 to v14 ")
 			if err := store.Upgrade(m.StartVersion()); err != nil {
 				return fmt.Errorf("migrate to %d error: %s", m.EndVersion(), err)
 			}
@@ -185,7 +185,7 @@ func (m MigrationV13ToV14) EndVersion() int {
 	return 14
 }
 
-type contractKV struct {
+type bytesKV struct {
 	key   []byte
 	value []byte
 }
@@ -195,13 +195,13 @@ type MigrationV14ToV15 struct {
 
 func (m MigrationV14ToV15) Migrate(store storage.Store) error {
 	return store.BatchWrite(false, func(batch storage.Batch) error {
-		fmt.Println("migrate ledger v14 to v15 ")
 		b, err := checkVersion(m, store)
 		if err != nil {
 			return err
 		}
 		if b {
-			cs := make([]contractKV, 0)
+			fmt.Println("migrate ledger v14 to v15 ")
+			cs := make([]bytesKV, 0)
 			prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixTrieVMStorage)
 			if err := store.Iterator(prefix, nil, func(k, v []byte) error {
 				//fmt.Println("==key ", k)
@@ -209,7 +209,7 @@ func (m MigrationV14ToV15) Migrate(store storage.Store) error {
 				copy(key, k)
 				value := make([]byte, len(v))
 				copy(value, v)
-				c := contractKV{
+				c := bytesKV{
 					key:   key,
 					value: value,
 				}
@@ -255,6 +255,110 @@ func (m MigrationV14ToV15) StartVersion() int {
 
 func (m MigrationV14ToV15) EndVersion() int {
 	return 15
+}
+
+type pendingKV struct {
+	key   *types.PendingKey
+	value []byte
+}
+
+type MigrationV15ToV16 struct {
+}
+
+func (m MigrationV15ToV16) Migrate(store storage.Store) error {
+	b, err := checkVersion(m, store)
+	if err != nil {
+		return err
+	}
+	if b {
+		fmt.Println("migrate ledger v15 to v16 ")
+		count := 0
+		reset := false
+		bs := make([]bytesKV, 0)
+		pendingKvs := make([]*pendingKV, 0)
+
+		// get all pending infos from db
+		prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPending)
+		err := store.Iterator(prefix, nil, func(k, v []byte) error {
+			key := make([]byte, len(k))
+			copy(key, k)
+			value := make([]byte, len(v))
+			copy(value, v)
+			c := bytesKV{
+				key:   key,
+				value: value,
+			}
+			bs = append(bs, c)
+
+			pk := new(types.PendingKey)
+			if err := pk.Deserialize(key[1:]); err != nil {
+				if _, err := pk.UnmarshalMsg(key[1:]); err != nil {
+					return fmt.Errorf("pendingKey unmarshalMsg err: %s", err)
+				}
+				reset = true
+			}
+			pkv := &pendingKV{
+				key:   pk,
+				value: value,
+			}
+			pendingKvs = append(pendingKvs, pkv)
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("get pendings info err: %s", err)
+		}
+
+		if reset {
+			// copy all pending infos to another table
+			err = store.BatchWrite(false, func(batch storage.Batch) error {
+				for _, b := range bs {
+					nk := make([]byte, 0)
+					nk = append(nk, storage.KeyPrefixPendingBackup)
+					nk = append(nk, b.key[1:]...)
+					if err := batch.Put(nk, b.value); err != nil {
+						return err
+					}
+					count++
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("backup pending table error: %s", err)
+			}
+
+			// reset pending table
+			if count != len(pendingKvs) {
+				return fmt.Errorf("pending count err: %d, %d", count, len(pendingKvs))
+			}
+			return store.BatchWrite(false, func(batch storage.Batch) error {
+				for _, b := range bs {
+					if err := batch.Delete(b.key); err != nil {
+						return err
+					}
+				}
+
+				for _, pkv := range pendingKvs {
+					pKey, err := storage.GetKeyOfParts(storage.KeyPrefixPending, pkv.key)
+					if err != nil {
+						return err
+					}
+					if err := batch.Put(pKey, pkv.value); err != nil {
+						return err
+					}
+				}
+				return updateVersion(m, batch)
+			})
+		}
+	}
+	return nil
+}
+
+func (m MigrationV15ToV16) StartVersion() int {
+	return 15
+}
+
+func (m MigrationV15ToV16) EndVersion() int {
+	return 16
 }
 
 func checkVersion(m Migration, s storage.Store) (bool, error) {

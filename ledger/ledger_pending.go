@@ -81,10 +81,10 @@ func (l *Ledger) GetPendings(fn func(pendingKey *types.PendingKey, pendingInfo *
 		}
 		pendingInfo := new(types.PendingInfo)
 		if err := pendingInfo.Deserialize(val); err != nil {
-			return fmt.Errorf("pendingKey deserialize: %s", err)
+			return fmt.Errorf("pendingInfo deserialize: %s", err)
 		}
 		if err := fn(pendingKey, pendingInfo); err != nil {
-			return fmt.Errorf("pendingKey deserialize: %s", err)
+			return fmt.Errorf("pending func: %s", err)
 		}
 		return nil
 	})
