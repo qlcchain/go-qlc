@@ -290,18 +290,25 @@ func (m MigrationV15ToV16) Migrate(store storage.Store) error {
 			}
 			bs = append(bs, c)
 
-			pk := new(types.PendingKey)
-			if err := pk.Deserialize(key[1:]); err != nil {
-				if _, err := pk.UnmarshalMsg(key[1:]); err != nil {
-					return fmt.Errorf("pendingKey unmarshalMsg err: %s", err)
+			pi := new(types.PendingInfo)
+			if err := pi.Deserialize(value); err != nil {
+				return fmt.Errorf("pendingInfo deserialize err: %s", err)
+			}
+			// if pending is not from nep5 contract
+			if pi.Source != contractaddress.NEP5PledgeAddress {
+				pk := new(types.PendingKey)
+				if err := pk.Deserialize(key[1:]); err != nil {
+					if _, err := pk.UnmarshalMsg(key[1:]); err != nil {
+						return fmt.Errorf("pendingKey unmarshalMsg err: %s", err)
+					}
+					reset = true
 				}
-				reset = true
+				pkv := &pendingKV{
+					key:   pk,
+					value: value,
+				}
+				pendingKvs = append(pendingKvs, pkv)
 			}
-			pkv := &pendingKV{
-				key:   pk,
-				value: value,
-			}
-			pendingKvs = append(pendingKvs, pkv)
 			return nil
 		})
 		if err != nil {
