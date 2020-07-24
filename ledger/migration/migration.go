@@ -348,6 +348,10 @@ func (m MigrationV15ToV16) Migrate(store storage.Store) error {
 				}
 				return updateVersion(m, batch)
 			})
+		} else {
+			return store.BatchWrite(false, func(batch storage.Batch) error {
+				return updateVersion(m, batch)
+			})
 		}
 	}
 	return nil
