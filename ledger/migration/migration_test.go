@@ -2,6 +2,7 @@ package migration
 
 import (
 	"encoding/binary"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -72,7 +73,7 @@ func TestMigration_Migrate(t *testing.T) {
 	if err := store.Put(frontierK, frontierV); err != nil {
 		t.Fatal(err)
 	}
-	migrations := []Migration{MigrationV11ToV12{}, MigrationV12ToV13{}, MigrationV13ToV14{}, MigrationV14ToV15{}}
+	migrations := []Migration{MigrationV11ToV12{}, MigrationV12ToV13{}, MigrationV13ToV14{}, MigrationV14ToV15{}, MigrationV15ToV16{}}
 	if err := Upgrade(migrations, store); err != nil {
 		t.Fatal(err)
 	}
@@ -118,4 +119,52 @@ func TestMigration_MigrateV14ToV15(t *testing.T) {
 		t.Fatal(err)
 	}
 
+}
+
+func TestMigration_MigrateV15ToV16(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "store", uuid.New().String())
+	store, err := db.NewBadgerStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		os.Remove(dir)
+	}()
+
+	key := []byte{byte(storage.KeyPrefixVersion)}
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, 15)
+	if err := store.Put(key, buf[:n]); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 10; i++ {
+		pendingKey := &types.PendingKey{
+			Address: mock.Address(),
+			Hash:    mock.Hash(),
+		}
+		pendingInfo := &types.PendingInfo{
+			Source: mock.Address(),
+			Type:   mock.Hash(),
+			Amount: types.Balance{Int: big.NewInt(100)},
+		}
+		kBytes, err := pendingKey.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pk := make([]byte, 0)
+		pk = append(pk, byte(storage.KeyPrefixPending))
+		pk = append(pk, kBytes...)
+		iBytes, err := pendingInfo.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := store.Put(pk, iBytes); err != nil {
+			t.Fatal(err)
+		}
+	}
+	migrations := []Migration{MigrationV15ToV16{}}
+	if err := Upgrade(migrations, store); err != nil {
+		t.Fatal(err)
+	}
 }

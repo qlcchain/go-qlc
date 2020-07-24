@@ -261,8 +261,11 @@ func TestLedgerAPI_AccountBlocksCount(t *testing.T) {
 }
 
 func TestLedgerAPI_AccountHistoryTopn(t *testing.T) {
-	teardownTestCase, _, ledgerApi := setupDefaultLedgerAPI(t)
+	teardownTestCase, l, ledgerApi := setupDefaultLedgerAPI(t)
 	defer teardownTestCase(t)
+	if err := l.Flush(); err != nil {
+		t.Fatal(err)
+	}
 	r, err := ledgerApi.AccountHistoryTopn(account1.Address(), 100, nil)
 	if err != nil {
 		t.Fatal(err)
