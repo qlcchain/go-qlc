@@ -2,6 +2,7 @@ package abi
 
 import (
 	"errors"
+
 	"github.com/qlcchain/go-qlc/common/types"
 )
 

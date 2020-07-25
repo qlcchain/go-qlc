@@ -68,7 +68,7 @@ func (r *PovSubscription) subscribeEvent() {
 		case *types.PovBlock:
 			r.setBlocks(msg)
 		}
-	}))
+	}), r.eb)
 
 	if err := r.subscriber.Subscribe(topic.EventPovConnectBestBlock); err != nil {
 		r.logger.Error("subscribe EventPovConnectBestBlock error, ", err)

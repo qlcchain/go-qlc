@@ -19,11 +19,12 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	localdiscovery "github.com/libp2p/go-libp2p/p2p/discovery"
+	"go.uber.org/zap"
+
 	chaincontext "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/config"
 	ping "github.com/qlcchain/go-qlc/p2p/pinger"
 	"github.com/qlcchain/go-qlc/p2p/pubsub"
-	"go.uber.org/zap"
 
 	"github.com/google/uuid"
 	//"github.com/qlcchain/go-qlc/ledger"
