@@ -6,7 +6,7 @@ require (
 	github.com/abiosoft/ishell v0.0.0-20190613190920-79d20b1325a4
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db
 	github.com/awnumar/memguard v0.22.2
-	github.com/beevik/ntp v0.2.0
+	github.com/beevik/ntp v0.3.0
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
 	github.com/cheekybits/genny v1.0.0
 	github.com/chzyer/logex v1.1.10 // indirect
