@@ -276,6 +276,7 @@ func (m MigrationV15ToV16) Migrate(store storage.Store) error {
 		reset := false
 		bs := make([]bytesKV, 0)
 		pendingKvs := make([]*pendingKV, 0)
+		nep5PendingKvs := make([]*pendingKV, 0)
 
 		// get all pending infos from db
 		prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixPending)
@@ -290,6 +291,10 @@ func (m MigrationV15ToV16) Migrate(store storage.Store) error {
 			}
 			bs = append(bs, c)
 
+			pi := new(types.PendingInfo)
+			if err := pi.Deserialize(value); err != nil {
+				return fmt.Errorf("pendingInfo deserialize err: %s", err)
+			}
 			pk := new(types.PendingKey)
 			if err := pk.Deserialize(key[1:]); err != nil {
 				if _, err := pk.UnmarshalMsg(key[1:]); err != nil {
@@ -302,6 +307,11 @@ func (m MigrationV15ToV16) Migrate(store storage.Store) error {
 				value: value,
 			}
 			pendingKvs = append(pendingKvs, pkv)
+
+			// if pending is from nep5 contract
+			if pi.Source == contractaddress.NEP5PledgeAddress {
+				nep5PendingKvs = append(nep5PendingKvs, pkv)
+			}
 			return nil
 		})
 		if err != nil {
@@ -346,10 +356,28 @@ func (m MigrationV15ToV16) Migrate(store storage.Store) error {
 						return err
 					}
 				}
+				for _, pkv := range nep5PendingKvs {
+					pKey, err := storage.GetKeyOfParts(storage.KeyPrefixPending, pkv.key)
+					if err != nil {
+						return err
+					}
+					if err := batch.Delete(pKey); err != nil {
+						return err
+					}
+				}
 				return updateVersion(m, batch)
 			})
 		} else {
 			return store.BatchWrite(false, func(batch storage.Batch) error {
+				for _, pkv := range nep5PendingKvs {
+					pKey, err := storage.GetKeyOfParts(storage.KeyPrefixPending, pkv.key)
+					if err != nil {
+						return err
+					}
+					if err := batch.Delete(pKey); err != nil {
+						return err
+					}
+				}
 				return updateVersion(m, batch)
 			})
 		}

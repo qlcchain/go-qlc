@@ -3,11 +3,12 @@
 package dpos
 
 import (
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/mock"
 	cabi "github.com/qlcchain/go-qlc/vm/contract/abi"
-	"testing"
 )
 
 func TestDispatchAckedBlock(t *testing.T) {

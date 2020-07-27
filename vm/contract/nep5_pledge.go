@@ -101,19 +101,20 @@ func (*Nep5Pledge) DoSend(ctx *vmstore.VMContext, block *types.StateBlock) error
 }
 
 func (*Nep5Pledge) DoPending(block *types.StateBlock) (*types.PendingKey, *types.PendingInfo, error) {
-	param, err := cabi.ParsePledgeParam(block.GetData())
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid beneficial address, %s", err)
-	}
-
-	return &types.PendingKey{
-			Address: param.Beneficial,
-			Hash:    block.GetHash(),
-		}, &types.PendingInfo{
-			Source: types.Address(block.GetLink()),
-			Amount: types.ZeroBalance,
-			Type:   block.Token,
-		}, nil
+	return nil, nil, errors.New("not implemented")
+	//param, err := cabi.ParsePledgeParam(block.GetData())
+	//if err != nil {
+	//	return nil, nil, fmt.Errorf("invalid beneficial address, %s", err)
+	//}
+	//
+	//return &types.PendingKey{
+	//		Address: param.Beneficial,
+	//		Hash:    block.GetHash(),
+	//	}, &types.PendingInfo{
+	//		Source: types.Address(block.GetLink()),
+	//		Amount: types.ZeroBalance,
+	//		Type:   block.Token,
+	//	}, nil
 }
 
 func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {

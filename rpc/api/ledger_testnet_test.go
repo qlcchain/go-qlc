@@ -3,8 +3,9 @@
 package api
 
 import (
-	"github.com/qlcchain/go-qlc/common/types"
 	"testing"
+
+	"github.com/qlcchain/go-qlc/common/types"
 )
 
 func TestLedgerAPI_GenesisInfo(t *testing.T) {

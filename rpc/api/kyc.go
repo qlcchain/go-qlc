@@ -1,6 +1,8 @@
 package api
 
 import (
+	"go.uber.org/zap"
+
 	chainctx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
@@ -9,7 +11,6 @@ import (
 	"github.com/qlcchain/go-qlc/vm/contract"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"go.uber.org/zap"
 )
 
 type KYCApi struct {

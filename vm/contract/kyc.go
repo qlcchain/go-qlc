@@ -3,6 +3,7 @@ package contract
 import (
 	"errors"
 	"fmt"
+
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	cfg "github.com/qlcchain/go-qlc/config"

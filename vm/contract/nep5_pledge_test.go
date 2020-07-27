@@ -62,11 +62,11 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if pending, info, err := pledge.DoPending(send); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Log(pending, info)
-	}
+	//if pending, info, err := pledge.DoPending(send); err != nil {
+	//	t.Fatal(err)
+	//} else {
+	//	t.Log(pending, info)
+	//}
 
 	if receiver, err := pledge.GetTargetReceiver(ctx, send); err != nil {
 		t.Fatal(err)

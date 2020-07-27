@@ -1,6 +1,9 @@
 package contract
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
@@ -9,8 +12,6 @@ import (
 	"github.com/qlcchain/go-qlc/mock"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"strings"
-	"testing"
 )
 
 func addKYCTestAdmin(t *testing.T, l *ledger.Ledger, admin *abi.KYCAdminAccount, povHeight uint64) {
