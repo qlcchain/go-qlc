@@ -1,5 +1,5 @@
 # Build gqlc in a stock Go builder container
-FROM golang:1.14-alpine as builder
+FROM golang:1.15.0-alpine as builder
 
 ARG BUILD_ACT=build
 
