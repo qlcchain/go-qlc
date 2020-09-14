@@ -16,7 +16,7 @@ MAIN = cmd/main.go
 BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%FT%TZ%z')
-GO_BUILDER_VERSION=v1.14.4
+GO_BUILDER_VERSION=v1.15.1
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
