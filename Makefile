@@ -6,7 +6,7 @@
 # Check for required command tools to build or stop immediately
 EXECUTABLES = git go find pwd
 K := $(foreach exec,$(EXECUTABLES),\
-        $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH)))
+        $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
 
 # server
 VERSION ?= $(shell git describe --tags `git rev-list --tags --max-count=1`)
@@ -16,7 +16,7 @@ MAIN = cmd/main.go
 BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%FT%TZ%z')
-GO_BUILDER_VERSION=v1.14.4
+GO_BUILDER_VERSION=v1.15.1
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
@@ -45,7 +45,8 @@ clean:
 
 changelog:
 	git-chglog $(VERSION) > CHANGELOG.md
-	
+	@cat assets/footer.txt >> CHANGELOG.md
+
 snapshot:
 	docker run --rm --privileged \
 		-e PRIVATE_KEY=$(PRIVATE_KEY) \
