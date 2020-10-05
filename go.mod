@@ -39,7 +39,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.3.2
 	github.com/libp2p/go-libp2p-swarm v0.2.8
 	github.com/mattn/go-colorable v0.1.6 // indirect
-	github.com/mattn/go-sqlite3 v1.14.2
+	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
