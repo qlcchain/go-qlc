@@ -62,7 +62,7 @@ require (
 	github.com/verybluebot/tarinator-go v0.0.0-20190613183509-5ab4e1193986
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
-	go.uber.org/atomic v1.6.0
+	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/tools v0.0.0-20200117170720-ade7f2547e48 // indirect
