@@ -7,7 +7,7 @@ COPY . /qlcchain/go-qlc
 RUN cd /qlcchain/go-qlc && make clean ${BUILD_ACT}
 
 # Pull gqlc into a second stage deploy alpine container
-FROM alpine:3.12.0
+FROM alpine:3.12.1
 LABEL maintainer="developers@qlink.mobi"
 
 ENV QLCHOME /qlcchain
