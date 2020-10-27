@@ -745,3 +745,17 @@ func (l *DebugApi) GetPrivacyInfo() (map[string]interface{}, error) {
 
 	return outArgs, nil
 }
+
+func (l *DebugApi) BadgerTableSize(keyPrefixs []storage.KeyPrefix) (int64, error) {
+	var size int64
+	for _, p := range keyPrefixs {
+		prefix, _ := storage.GetKeyOfParts(p)
+		if err := l.ledger.DBStore().Iterator(prefix, nil, func(key []byte, val []byte) error {
+			size = int64(len(key)) + int64(len(val)) + size
+			return nil
+		}); err != nil {
+			return 0, err
+		}
+	}
+	return size, nil
+}
