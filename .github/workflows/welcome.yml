@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - name: First interaction
-        uses: actions/first-interaction@v1.0.0
+        uses: actions/first-interaction@v1
         with:
           repo-token: ${{ secrets.GH_TOKEN }}
           issue-message: "Hey, thanks for opening your first issue! 🙂 Be sure to check out the contribution guidelines if you haven't already. Thanks!"

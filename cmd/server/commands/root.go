@@ -159,6 +159,12 @@ func start() error {
 			// clear boot nodes
 			cfg.P2P.BootNodes = cfg.P2P.BootNodes[:0]
 			log.Root.Debug("clear all boot nodes...")
+			//enable RPC
+			cfg.RPC.Enable = true
+			// run genesisSeed account
+			if seedP == "" && genesisSeedP != "" {
+				seedP = genesisSeedP
+			}
 		}
 
 		return nil
