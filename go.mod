@@ -12,7 +12,7 @@ require (
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/dchest/siphash v1.2.2
-	github.com/dgraph-io/badger v1.6.1
+	github.com/dgraph-io/badger v1.6.2
 	github.com/dgraph-io/badger/v2 v2.0.0-20200630163423-09dfa663bbc3
 	github.com/fatih/color v1.10.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
