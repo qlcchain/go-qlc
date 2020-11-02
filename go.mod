@@ -14,7 +14,7 @@ require (
 	github.com/dchest/siphash v1.2.2
 	github.com/dgraph-io/badger v1.6.1
 	github.com/dgraph-io/badger/v2 v2.0.0-20200630163423-09dfa663bbc3
-	github.com/fatih/color v1.9.0
+	github.com/fatih/color v1.10.0
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -38,7 +38,6 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.8.1
 	github.com/libp2p/go-libp2p-pubsub v0.3.6
 	github.com/libp2p/go-libp2p-swarm v0.2.8
-	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
 	github.com/multiformats/go-multiaddr v0.3.1
