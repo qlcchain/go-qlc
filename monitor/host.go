@@ -7,7 +7,7 @@
 
 package monitor
 
-import "github.com/shirou/gopsutil/host"
+import "github.com/shirou/gopsutil/v3/host"
 
 func Host() (*host.InfoStat, error) {
 	return host.Info()

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/rcrowley/go-metrics"
-	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/v3/net"
 )
 
 var (
