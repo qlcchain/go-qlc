@@ -12,7 +12,6 @@ import (
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/storage/db"
 	"github.com/qlcchain/go-qlc/common/types"
-	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/mock"
 )
@@ -40,7 +39,7 @@ func TestMigration_Migrate(t *testing.T) {
 	if err := store.Put(k, v); err != nil {
 		t.Fatal(err)
 	}
-	m1 := MigrationV1ToV14{}
+	m1 := MigrationV1ToV15{}
 	if err := m1.Migrate(store); err != nil {
 		t.Fatal(err)
 	}
@@ -73,52 +72,10 @@ func TestMigration_Migrate(t *testing.T) {
 	if err := store.Put(frontierK, frontierV); err != nil {
 		t.Fatal(err)
 	}
-	migrations := []Migration{MigrationV14ToV15{}, MigrationV15ToV16{}}
+	migrations := []Migration{MigrationV15ToV16{}}
 	if err := Upgrade(migrations, store); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func TestMigration_MigrateV14ToV15(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), "store", uuid.New().String())
-	store, err := db.NewBadgerStore(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		os.Remove(dir)
-	}()
-
-	key := []byte{byte(storage.KeyPrefixVersion)}
-	buf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutVarint(buf, 14)
-	if err := store.Put(key, buf[:n]); err != nil {
-		t.Fatal(err)
-	}
-
-	c0 := make([]byte, 0)
-	c0 = append(c0, storage.KeyPrefixTrieVMStorage)
-	c0 = append(c0, contractaddress.SettlementAddress.Bytes()...)
-	c0 = append(c0, []byte{10, 20, 30, 40}...)
-	v0 := []byte{11, 12, 13, 14}
-	if err := store.Put(c0, v0); err != nil {
-		t.Fatal(err)
-	}
-
-	c1 := make([]byte, 0)
-	c1 = append(c1, storage.KeyPrefixTrieVMStorage)
-	c1 = append(c1, contractaddress.NEP5PledgeAddress.Bytes()...)
-	c1 = append(c1, []byte{10, 20, 30, 40}...)
-	v1 := []byte{11, 12, 13, 14}
-	if err := store.Put(c1, v1); err != nil {
-		t.Fatal(err)
-	}
-
-	migrations := []Migration{MigrationV14ToV15{}}
-	if err := Upgrade(migrations, store); err != nil {
-		t.Fatal(err)
-	}
-
 }
 
 func TestMigration_MigrateV15ToV16(t *testing.T) {

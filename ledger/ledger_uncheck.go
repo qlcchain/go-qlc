@@ -17,6 +17,7 @@ type UncheckedBlockStore interface {
 	GetUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error
 	HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (bool, error)
 	CountUncheckedBlocks() (uint64, error)
+	CountUncheckedBlocksStore() (uint64, error)
 
 	AddGapPovBlock(height uint64, block *types.StateBlock, sync types.SynchronizedKind) error
 	//GetGapPovBlock(height uint64) (types.StateBlockList, []types.SynchronizedKind, error)
@@ -27,7 +28,7 @@ type UncheckedBlockStore interface {
 
 	AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error
 	DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error
-	GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error
+	GetGapPublishBlocks(key types.Hash, visit types.GapPublishBlockWalkFunc) error
 
 	AddGapDoDSettleStateBlock(key types.Hash, block *types.StateBlock, sync types.SynchronizedKind) error
 	GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error
@@ -58,18 +59,14 @@ func (l *Ledger) AddUncheckedBlock(key types.Hash, blk *types.StateBlock, kind t
 	if err != nil {
 		return err
 	}
-	value := types.Unchecked{
+	value := &types.Unchecked{
 		Block: blk,
 		Kind:  sync,
 	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-	if b, _ := l.store.Has(k); b {
+	if b, _ := l.hasUnchecked(k); b {
 		return ErrUncheckedBlockExists
 	}
-	return l.store.Put(k, v)
+	return l.setUnchecked(k, value)
 }
 
 func (l *Ledger) GetUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (*types.StateBlock, types.SynchronizedKind, error) {
@@ -78,17 +75,12 @@ func (l *Ledger) GetUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (*
 		return nil, 0, err
 	}
 
-	v, err := l.store.Get(k)
+	value, err := l.getUnchecked(k)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return nil, 0, ErrUncheckedBlockNotFound
 		}
 		return nil, 0, err
-	}
-
-	value := new(types.Unchecked)
-	if err := value.Deserialize(v); err != nil {
-		return nil, 0, fmt.Errorf("uncheck deserialize error: %s", err)
 	}
 
 	if value.Block.IsPrivate() {
@@ -106,7 +98,7 @@ func (l *Ledger) DeleteUncheckedBlock(key types.Hash, kind types.UncheckedKind) 
 	if err != nil {
 		return err
 	}
-	return l.store.Delete(k)
+	return l.deleteUnchecked(k)
 }
 
 func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (bool, error) {
@@ -115,15 +107,16 @@ func (l *Ledger) HasUncheckedBlock(hash types.Hash, kind types.UncheckedKind) (b
 		return false, err
 	}
 
-	return l.store.Has(k)
+	return l.hasUnchecked(k)
 }
 
 func (l *Ledger) getUncheckedBlocks(kind types.UncheckedKind, visit types.UncheckedBlockWalkFunc) error {
 	prefix, _ := storage.GetKeyOfParts(l.uncheckedKindToPrefix(kind))
-	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
-		u := new(types.Unchecked)
-		if err := u.Deserialize(val); err != nil {
-			return fmt.Errorf("uncheck deserialize err: %s", err)
+
+	return l.iteratorUnchecked(prefix, nil, func(key []byte, val interface{}) error {
+		u, ok := val.(*types.Unchecked)
+		if !ok {
+			return fmt.Errorf("invalid uncheck object")
 		}
 
 		h, err := types.BytesToHash(key[1:])
@@ -162,6 +155,36 @@ func (l *Ledger) GetUncheckedBlocks(visit types.UncheckedBlockWalkFunc) error {
 }
 
 func (l *Ledger) CountUncheckedBlocks() (uint64, error) {
+	var count uint64
+	count, err := l.countUnchecked([]byte{byte(storage.KeyPrefixUncheckedBlockLink)})
+	if err != nil {
+		return 0, err
+	}
+
+	count2, err := l.countUnchecked([]byte{byte(storage.KeyPrefixUncheckedBlockPrevious)})
+	if err != nil {
+		return 0, err
+	}
+
+	count3, err := l.countUnchecked([]byte{byte(storage.KeyPrefixUncheckedPovHeight)})
+	if err != nil {
+		return 0, err
+	}
+
+	count4, err := l.countUnchecked([]byte{byte(storage.KeyPrefixGapPublish)})
+	if err != nil {
+		return 0, err
+	}
+
+	count5, err := l.countUnchecked([]byte{byte(storage.KeyPrefixGapDoDSettleState)})
+	if err != nil {
+		return 0, err
+	}
+
+	return count + count2 + count3 + count4 + count5, nil
+}
+
+func (l *Ledger) CountUncheckedBlocksStore() (uint64, error) {
 	var count uint64
 	count, err := l.store.Count([]byte{byte(storage.KeyPrefixUncheckedBlockLink)})
 	if err != nil {
@@ -224,16 +247,11 @@ func (l *Ledger) AddGapPovBlock(height uint64, blk *types.StateBlock, sync types
 		return err
 	}
 
-	value := types.Unchecked{
+	value := &types.Unchecked{
 		Block: blk,
 		Kind:  sync,
 	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-
-	return l.store.Put(k, v)
+	return l.setUnchecked(k, value)
 }
 
 func (l *Ledger) DeleteGapPovBlock(height uint64, hash types.Hash) error {
@@ -241,17 +259,18 @@ func (l *Ledger) DeleteGapPovBlock(height uint64, hash types.Hash) error {
 	if err != nil {
 		return err
 	}
-	return l.store.Delete(k)
+	return l.deleteUnchecked(k)
 }
 
 func (l *Ledger) WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlockWalkFunc) error {
 	var itKey []byte
 	itKey = append(itKey, byte(storage.KeyPrefixUncheckedPovHeight))
 	itKey = append(itKey, util.BE_Uint64ToBytes(height)...)
-	return l.store.Iterator(itKey, nil, func(key []byte, val []byte) error {
-		u := new(types.Unchecked)
-		if err := u.Deserialize(val); err != nil {
-			return fmt.Errorf("uncheck deserialize err: %s", err)
+
+	return l.iteratorUnchecked(itKey, nil, func(key []byte, val interface{}) error {
+		u, ok := val.(*types.Unchecked)
+		if !ok {
+			return fmt.Errorf("invalid uncheck PovHeight object")
 		}
 
 		if u.Block.IsPrivate() {
@@ -268,10 +287,10 @@ func (l *Ledger) WalkGapPovBlocksWithHeight(height uint64, visit types.GapPovBlo
 func (l *Ledger) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error {
 	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixUncheckedPovHeight)
 
-	return l.store.Iterator(prefix, nil, func(key []byte, val []byte) error {
-		u := new(types.Unchecked)
-		if err := u.Deserialize(val); err != nil {
-			return fmt.Errorf("uncheck deserialize err: %s", err)
+	return l.iteratorUnchecked(prefix, nil, func(key []byte, val interface{}) error {
+		u, ok := val.(*types.Unchecked)
+		if !ok {
+			return fmt.Errorf("invalid uncheck object")
 		}
 
 		if u.Block.IsPrivate() {
@@ -292,19 +311,14 @@ func (l *Ledger) AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync 
 		return err
 	}
 
-	if b, _ := l.store.Has(k); b {
+	if b, _ := l.hasUnchecked(k); b {
 		return ErrUncheckedBlockExists
 	}
-	value := types.Unchecked{
+	value := &types.Unchecked{
 		Block: blk,
 		Kind:  sync,
 	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-	return l.store.Put(k, v)
-
+	return l.setUnchecked(k, value)
 }
 
 func (l *Ledger) DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error {
@@ -313,20 +327,20 @@ func (l *Ledger) DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error
 		return err
 	}
 
-	return l.store.Delete(k)
+	return l.deleteUnchecked(k)
 }
 
-func (l *Ledger) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error {
+func (l *Ledger) GetGapPublishBlocks(key types.Hash, visit types.GapPublishBlockWalkFunc) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapPublish, key)
 	if err != nil {
 		return err
 	}
 
 	errStr := make([]string, 0)
-	err = l.store.Iterator(k, nil, func(key []byte, val []byte) error {
-		u := new(types.Unchecked)
-		if err := u.Deserialize(val); err != nil {
-			return fmt.Errorf("uncheck deserialize err: %s", err)
+	err = l.iteratorUnchecked(k, nil, func(key []byte, val interface{}) error {
+		u, ok := val.(*types.Unchecked)
+		if !ok {
+			return fmt.Errorf("invalid uncheck object")
 		}
 
 		if u.Block.IsPrivate() {
@@ -344,6 +358,7 @@ func (l *Ledger) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockW
 
 		return nil
 	})
+
 	if err != nil {
 		return err
 	}
@@ -359,18 +374,14 @@ func (l *Ledger) AddGapDoDSettleStateBlock(key types.Hash, blk *types.StateBlock
 		return err
 	}
 
-	if b, _ := l.store.Has(k); b {
+	if b, _ := l.hasUnchecked(k); b {
 		return ErrUncheckedBlockExists
 	}
-	value := types.Unchecked{
+	value := &types.Unchecked{
 		Block: blk,
 		Kind:  sync,
 	}
-	v, err := value.Serialize()
-	if err != nil {
-		return err
-	}
-	return l.store.Put(k, v)
+	return l.setUnchecked(k, value)
 }
 
 func (l *Ledger) GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error {
@@ -380,10 +391,11 @@ func (l *Ledger) GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSet
 	}
 
 	errStr := make([]string, 0)
-	err = l.store.Iterator(k, nil, func(key []byte, val []byte) error {
-		u := new(types.Unchecked)
-		if err := u.Deserialize(val); err != nil {
-			return fmt.Errorf("uncheck deserialize err: %s", err)
+
+	err = l.iteratorUnchecked(k, nil, func(key []byte, val interface{}) error {
+		u, ok := val.(*types.Unchecked)
+		if !ok {
+			return fmt.Errorf("invalid uncheck object")
 		}
 
 		if u.Block.IsPrivate() {
@@ -401,6 +413,7 @@ func (l *Ledger) GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSet
 
 		return nil
 	})
+
 	if err != nil {
 		return err
 	}
@@ -417,5 +430,77 @@ func (l *Ledger) DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error {
 		return err
 	}
 
-	return l.store.Delete(k)
+	return l.deleteUnchecked(k)
+}
+
+func (l *Ledger) setUnchecked(key []byte, unchecked *types.Unchecked) error {
+	return l.unCheckCache.Put(key, unchecked)
+}
+
+func (l *Ledger) deleteUnchecked(key []byte) error {
+	return l.unCheckCache.Delete(key)
+}
+
+func (l *Ledger) getUnchecked(key []byte) (*types.Unchecked, error) {
+	if r, err := l.unCheckCache.Get(key); r != nil {
+		return r.(*types.Unchecked), nil
+	} else {
+		if err == ErrKeyDeleted {
+			return nil, storage.KeyNotFound
+		}
+	}
+
+	v, err := l.store.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	value := new(types.Unchecked)
+	if err := value.Deserialize(v); err != nil {
+		return nil, fmt.Errorf("uncheck deserialize error: %s", err)
+	}
+	return value, nil
+}
+
+func (l *Ledger) hasUnchecked(key []byte) (bool, error) {
+	_, err := l.getUnchecked(key)
+	if err != nil {
+		if err == storage.KeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (l *Ledger) iteratorUnchecked(prefix []byte, end []byte, fn func(k []byte, v interface{}) error) error {
+	keys, err := l.unCheckCache.prefixIteratorObject(prefix, fn)
+	if err != nil {
+		return fmt.Errorf("cache iterator : %s", err)
+	}
+	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
+		if !contain(keys, k) {
+			u := new(types.Unchecked)
+			if err := u.Deserialize(v); err != nil {
+				return fmt.Errorf("uncheck deserialize err: %s", err)
+			}
+			if err := fn(k, u); err != nil {
+				return fmt.Errorf("ledger iterator: %s", err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("ledger store iterator: %s", err)
+	}
+	return nil
+}
+
+func (l *Ledger) countUnchecked(prefix []byte) (uint64, error) {
+	var count uint64
+	if err := l.iteratorUnchecked(prefix, nil, func(k []byte, v interface{}) error {
+		count++
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+	return count, nil
 }

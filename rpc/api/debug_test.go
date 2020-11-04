@@ -387,6 +387,11 @@ func TestDebugApi_UncheckBlocks(t *testing.T) {
 	if r, err := debugApi.UncheckBlocksCount(); err != nil || r["Total"] != 3 {
 		t.Fatal(err)
 	}
+
+	if _, err := debugApi.UncheckBlocksCountStore(); err != nil {
+		t.Fatal(err)
+	}
+
 	if r, err := debugApi.UncheckBlocks(); err != nil || len(r) != 3 {
 		t.Fatal(err)
 	}

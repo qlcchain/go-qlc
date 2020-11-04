@@ -10,10 +10,10 @@ import (
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 )
 
-type MigrationV1ToV14 struct {
+type MigrationV1ToV15 struct {
 }
 
-func (m MigrationV1ToV14) Migrate(store storage.Store) error {
+func (m MigrationV1ToV15) Migrate(store storage.Store) error {
 	return store.BatchWrite(true, func(batch storage.Batch) error {
 		if b, err := checkVersion(m, store); err == nil && b {
 			fmt.Println("migrate ledger to v11")
@@ -28,84 +28,17 @@ func (m MigrationV1ToV14) Migrate(store storage.Store) error {
 	})
 }
 
-func (m MigrationV1ToV14) StartVersion() int {
+func (m MigrationV1ToV15) StartVersion() int {
 	return 1
 }
 
-func (m MigrationV1ToV14) EndVersion() int {
+func (m MigrationV1ToV15) EndVersion() int {
 	return 11
 }
 
 type bytesKV struct {
 	key   []byte
 	value []byte
-}
-
-type MigrationV14ToV15 struct {
-}
-
-func (m MigrationV14ToV15) Migrate(store storage.Store) error {
-	return store.BatchWrite(false, func(batch storage.Batch) error {
-		b, err := checkVersion(m, store)
-		if err != nil {
-			return err
-		}
-		if b {
-			fmt.Println("migrate ledger v14 to v15 ")
-			cs := make([]bytesKV, 0)
-			prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixTrieVMStorage)
-			if err := store.Iterator(prefix, nil, func(k, v []byte) error {
-				//fmt.Println("==key ", k)
-				key := make([]byte, len(k))
-				copy(key, k)
-				value := make([]byte, len(v))
-				copy(value, v)
-				c := bytesKV{
-					key:   key,
-					value: value,
-				}
-				cs = append(cs, c)
-				return nil
-			}); err != nil {
-				return err
-			}
-
-			for _, c := range cs {
-				contractAddrByte := c.key[1 : 1+types.AddressSize]
-				contractAddr, err := types.BytesToAddress(contractAddrByte)
-				if err != nil {
-					return fmt.Errorf("%s is not address ", contractAddrByte)
-				}
-
-				newKey := make([]byte, 0)
-				newKey = append(newKey, byte(storage.KeyPrefixVMStorage))
-				if !contractaddress.IsContractAddress(contractAddr) {
-					newKey = append(newKey, contractaddress.SettlementAddress.Bytes()...)
-					newKey = append(newKey, c.key[1:]...)
-					if err := batch.Put(newKey, c.value); err != nil {
-						return err
-					}
-					fmt.Printf("%s is not contract address \n", contractAddr.String())
-				} else {
-					newKey = append(newKey, contractAddr.Bytes()...)
-					newKey = append(newKey, c.key[1:]...)
-					if err := batch.Put(newKey, c.value); err != nil {
-						return err
-					}
-				}
-			}
-			return updateVersion(m, batch)
-		}
-		return nil
-	})
-}
-
-func (m MigrationV14ToV15) StartVersion() int {
-	return 14
-}
-
-func (m MigrationV14ToV15) EndVersion() int {
-	return 15
 }
 
 type pendingKV struct {

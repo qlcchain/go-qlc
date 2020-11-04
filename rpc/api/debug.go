@@ -444,11 +444,12 @@ func (l *DebugApi) GetConsPerf() (map[string]interface{}, error) {
 }
 
 type CacheStat struct {
-	Index int    `json:"index"`
-	Key   int    `json:"key"`
-	Block int    `json:"block"`
-	Start string `json:"start"`
-	Span  string `json:"span"`
+	Index  int    `json:"index"`
+	Key    int    `json:"key"`
+	Block  int    `json:"block"`
+	Delete int    `json:"delete"`
+	Start  string `json:"start"`
+	Span   string `json:"span"`
 }
 
 func (l *DebugApi) GetCache() error {
@@ -479,6 +480,37 @@ func (l *DebugApi) GetCacheStat() []*CacheStat {
 
 func (l *DebugApi) GetCacheStatus() map[string]string {
 	return l.ledger.GetCacheStatue()
+}
+
+func (l *DebugApi) GetUCache() error {
+	l.ledger.UCache().GetCache()
+	return nil
+}
+
+func (l *DebugApi) GetUCacheStat() []*CacheStat {
+	cs := l.ledger.GetUCacheStat()
+	cas := make([]*CacheStat, 0)
+	for i := len(cs) - 1; i >= 0; i-- {
+		c := cs[i]
+		ca := new(CacheStat)
+		ca.Index = c.Index
+		ca.Key = c.Key
+		ca.Block = c.Block
+		ca.Delete = c.Delete
+		ca.Start = time.Unix(c.Start/1000000000, 0).Format("2006-01-02 15:04:05")
+		if c.End == 0 {
+			ca.Span = "ms"
+		} else {
+			ca.Span = strconv.FormatInt((c.End-c.Start)/1000000, 10) + "ms"
+		}
+		cas = append(cas, ca)
+	}
+
+	return cas
+}
+
+func (l *DebugApi) GetUCacheStatus() map[string]string {
+	return l.ledger.GetUCacheStatue()
 }
 
 //func (l *DebugApi) Rollback(hash types.Hash) error {
@@ -697,6 +729,21 @@ func (l *DebugApi) UncheckBlocksCount() (map[string]int, error) {
 		return nil, err
 	}
 
+	return unchecks, nil
+}
+
+func (l *DebugApi) UncheckBlocksCountStore() (map[string]uint64, error) {
+	count1, err := l.ledger.CountUncheckedBlocks()
+	if err != nil {
+		return nil, err
+	}
+	count2, err := l.ledger.CountUncheckedBlocksStore()
+	if err != nil {
+		return nil, err
+	}
+	unchecks := make(map[string]uint64)
+	unchecks["cache"] = count1
+	unchecks["store"] = count2
 	return unchecks, nil
 }
 
