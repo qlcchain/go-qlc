@@ -260,10 +260,7 @@ func (l *Ledger) upgrade() error {
 			return nil
 		}
 		ms := []migration.Migration{
-			new(migration.MigrationV1ToV11),
-			new(migration.MigrationV11ToV12),
-			new(migration.MigrationV12ToV13),
-			new(migration.MigrationV13ToV14),
+			new(migration.MigrationV1ToV14),
 			new(migration.MigrationV14ToV15),
 			new(migration.MigrationV15ToV16),
 		}

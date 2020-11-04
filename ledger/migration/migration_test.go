@@ -40,7 +40,7 @@ func TestMigration_Migrate(t *testing.T) {
 	if err := store.Put(k, v); err != nil {
 		t.Fatal(err)
 	}
-	m1 := MigrationV1ToV11{}
+	m1 := MigrationV1ToV14{}
 	if err := m1.Migrate(store); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestMigration_Migrate(t *testing.T) {
 	if err := store.Put(frontierK, frontierV); err != nil {
 		t.Fatal(err)
 	}
-	migrations := []Migration{MigrationV11ToV12{}, MigrationV12ToV13{}, MigrationV13ToV14{}, MigrationV14ToV15{}, MigrationV15ToV16{}}
+	migrations := []Migration{MigrationV14ToV15{}, MigrationV15ToV16{}}
 	if err := Upgrade(migrations, store); err != nil {
 		t.Fatal(err)
 	}

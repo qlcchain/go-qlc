@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/dgraph-io/badger/v2"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/storage"
-	"github.com/qlcchain/go-qlc/common/storage/db/migration"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/util"
 )
@@ -31,7 +31,8 @@ func NewBadgerStore(dir string) (storage.Store, error) {
 	db, err := badger.Open(opts)
 	if err != nil {
 		if strings.Contains(err.Error(), "unsupported version") {
-			if err := migration.MigrationTo20(dir); err != nil {
+			fmt.Println("badger version is low, resynchronize data...")
+			if err := os.RemoveAll(dir); err != nil {
 				return nil, err
 			}
 			db, err = badger.Open(opts)
