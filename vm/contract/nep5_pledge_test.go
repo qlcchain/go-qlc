@@ -45,10 +45,10 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 		Token:          tm.Type,
 		Address:        addr1,
 		Balance:        tm.Balance.Sub(types.Balance{Int: big.NewInt(1e8)}),
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
+		Vote:           types.ToBalance(am.CoinVote),
+		Network:        types.ToBalance(am.CoinNetwork),
+		Oracle:         types.ToBalance(am.CoinOracle),
+		Storage:        types.ToBalance(am.CoinStorage),
 		Previous:       tm.Header,
 		Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 		Representative: tm.Representative,
@@ -160,10 +160,10 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 				Token:          tm.Type,
 				Address:        wp.Beneficial,
 				Balance:        am.CoinBalance,
-				Vote:           am.CoinVote,
-				Network:        am.CoinNetwork,
-				Oracle:         am.CoinOracle,
-				Storage:        am.CoinStorage,
+				Vote:           types.ToBalance(am.CoinVote),
+				Network:        types.ToBalance(am.CoinNetwork),
+				Oracle:         types.ToBalance(am.CoinOracle),
+				Storage:        types.ToBalance(am.CoinStorage),
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 				Representative: tm.Representative,
@@ -171,7 +171,7 @@ func TestNep5Pledge_And_Withdraw(t *testing.T) {
 				PoVHeight:      0,
 				Timestamp:      common.TimeNow().Unix(),
 			}
-			send2.Vote = send.Vote.Sub(types.Balance{Int: wp.Amount})
+			send2.Vote = types.ToBalance(send.GetVote().Sub(types.Balance{Int: wp.Amount}))
 
 			if err := withdrawNep5Pledge.DoSend(ctx, send2); err != nil {
 				t.Fatal(err)
@@ -233,10 +233,10 @@ func TestNep5Pledge_DoSend(t *testing.T) {
 		Token:          tm.Type,
 		Address:        addr1,
 		Balance:        tm.Balance.Sub(types.Balance{Int: big.NewInt(2000 * 1e8)}),
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
+		Vote:           types.ToBalance(am.CoinVote),
+		Network:        types.ToBalance(am.CoinNetwork),
+		Oracle:         types.ToBalance(am.CoinOracle),
+		Storage:        types.ToBalance(am.CoinStorage),
 		Previous:       tm.Header,
 		Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 		Representative: tm.Representative,

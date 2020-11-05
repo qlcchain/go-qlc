@@ -347,14 +347,14 @@ func (n *Node) GenerateContractSendBlock(from, to *types.Account, ca types.Addre
 			}
 
 			send := &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        from.Address(),
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Storage:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: from.Address(),
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.MintageAddress),
 				Representative: tm.Representative,
@@ -393,7 +393,7 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 			if len(blocks) > 0 {
 				recv.Timestamp = common.TimeNow().Unix()
 				h := vmstore.TrieHash(blocks[0].VMContext)
-				recv.Extra = *h
+				recv.Extra = h
 			}
 
 			recv.Signature = to.Sign(recv.GetHash())
@@ -412,7 +412,7 @@ func (n *Node) GenerateContractReceiveBlock(to *types.Account, ca types.Address,
 			if len(blocks) > 0 {
 				recv.Timestamp = common.TimeNow().Unix()
 				h := vmstore.TrieHash(blocks[0].VMContext)
-				recv.Extra = *h
+				recv.Extra = h
 			}
 
 			recv.Signature = to.Sign(recv.GetHash())

@@ -19,19 +19,19 @@ type StateBlock struct {
 	Token          Hash      `msg:"token,extension" json:"token"`
 	Address        Address   `msg:"address,extension" json:"address"`
 	Balance        Balance   `msg:"balance,extension" json:"balance"`
-	Vote           Balance   `msg:"vote,extension" json:"vote"`
-	Network        Balance   `msg:"network,extension" json:"network"`
-	Storage        Balance   `msg:"storage,extension" json:"storage"`
-	Oracle         Balance   `msg:"oracle,extension" json:"oracle"`
+	Vote           *Balance  `msg:"vote,extension" json:"vote,omitempty"`
+	Network        *Balance  `msg:"network,extension" json:"network,omitempty"`
+	Storage        *Balance  `msg:"storage,extension" json:"storage,omitempty"`
+	Oracle         *Balance  `msg:"oracle,extension" json:"oracle,omitempty"`
 	Previous       Hash      `msg:"previous,extension" json:"previous"`
 	Link           Hash      `msg:"link,extension" json:"link"`
 	Sender         []byte    `msg:"sender" json:"sender,omitempty"`
 	Receiver       []byte    `msg:"receiver" json:"receiver,omitempty"`
-	Message        Hash      `msg:"message,extension" json:"message,omitempty"`
+	Message        *Hash     `msg:"message,extension" json:"message,omitempty"`
 	Data           []byte    `msg:"data" json:"data,omitempty"`
 	PoVHeight      uint64    `msg:"povHeight" json:"povHeight"`
 	Timestamp      int64     `msg:"timestamp" json:"timestamp"`
-	Extra          Hash      `msg:"extra,extension" json:"extra,omitempty"`
+	Extra          *Hash     `msg:"extra,extension" json:"extra,omitempty,omitempty"`
 	Representative Address   `msg:"representative,extension" json:"representative"`
 
 	PrivateFrom    string   `msg:"priFrom,omitempty" json:"privateFrom,omitempty"`
@@ -56,19 +56,21 @@ func (b *StateBlock) BuildHashData() []byte {
 	buf.Write(b.Token[:])
 	buf.Write(b.Address[:])
 	buf.Write(b.Balance.Bytes())
-	buf.Write(b.Vote.Bytes())
-	buf.Write(b.Network.Bytes())
-	buf.Write(b.Storage.Bytes())
-	buf.Write(b.Oracle.Bytes())
+	buf.Write(b.GetVote().Bytes())
+	buf.Write(b.GetNetwork().Bytes())
+	buf.Write(b.GetStorage().Bytes())
+	buf.Write(b.GetOracle().Bytes())
 	buf.Write(b.Previous[:])
 	buf.Write(b.Link[:])
 	buf.Write(b.Sender)
 	buf.Write(b.Receiver)
-	buf.Write(b.Message[:])
+	message := b.GetMessage()
+	buf.Write(message[:])
 	buf.Write(b.Data)
 	buf.Write(util.BE_Int2Bytes(b.Timestamp))
 	buf.Write(util.BE_Uint64ToBytes(b.PoVHeight))
-	buf.Write(b.Extra[:])
+	extra := b.GetExtra()
+	buf.Write(extra[:])
 	buf.Write(b.Representative[:])
 
 	// additional fields for private txs
@@ -97,10 +99,12 @@ func (b *StateBlock) GetHash() Hash {
 
 func (b *StateBlock) GetHashWithoutPrivacy() Hash {
 	t := []byte{byte(b.Type)}
-	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.Vote.Bytes(), b.Network.Bytes(),
-		b.Storage.Bytes(), b.Oracle.Bytes(), b.Previous[:], b.Link[:], b.Sender, b.Receiver, b.Message[:], b.Data,
+	extra := b.GetExtra()
+	message := b.GetMessage()
+	hash, _ := HashBytes(t, b.Token[:], b.Address[:], b.Balance.Bytes(), b.GetVote().Bytes(), b.GetNetwork().Bytes(),
+		b.GetStorage().Bytes(), b.GetOracle().Bytes(), b.Previous[:], b.Link[:], b.Sender, b.Receiver, message[:], b.Data,
 		util.BE_Int2Bytes(b.Timestamp), util.BE_Uint64ToBytes(b.PoVHeight),
-		b.Extra[:], b.Representative[:])
+		extra[:], b.Representative[:])
 	return hash
 }
 
@@ -125,31 +129,31 @@ func (b *StateBlock) GetBalance() Balance {
 }
 
 func (b *StateBlock) GetVote() Balance {
-	if b.Vote.Int == nil {
+	if b.Vote == nil || b.Vote.Int == nil {
 		return ZeroBalance
 	}
-	return b.Vote
+	return *b.Vote
 }
 
 func (b *StateBlock) GetOracle() Balance {
-	if b.Oracle.Int == nil {
+	if b.Oracle == nil || b.Oracle.Int == nil {
 		return ZeroBalance
 	}
-	return b.Oracle
+	return *b.Oracle
 }
 
 func (b *StateBlock) GetNetwork() Balance {
-	if b.Network.Int == nil {
+	if b.Network == nil || b.Network.Int == nil {
 		return ZeroBalance
 	}
-	return b.Network
+	return *b.Network
 }
 
 func (b *StateBlock) GetStorage() Balance {
-	if b.Storage.Int == nil {
+	if b.Storage == nil || b.Storage.Int == nil {
 		return ZeroBalance
 	}
-	return b.Storage
+	return *b.Storage
 }
 
 func (b *StateBlock) GetData() []byte {
@@ -176,7 +180,10 @@ func (b *StateBlock) GetWork() Work {
 }
 
 func (b *StateBlock) GetExtra() Hash {
-	return b.Extra
+	if b.Extra != nil {
+		return *b.Extra
+	}
+	return ZeroHash
 }
 
 func (b *StateBlock) GetRepresentative() Address {
@@ -192,7 +199,10 @@ func (b *StateBlock) GetSender() []byte {
 }
 
 func (b *StateBlock) GetMessage() Hash {
-	return b.Message
+	if b.Message != nil {
+		return *b.Message
+	}
+	return ZeroHash
 }
 
 func (b *StateBlock) GetTimestamp() int64 {
@@ -201,18 +211,7 @@ func (b *StateBlock) GetTimestamp() int64 {
 
 func (b *StateBlock) TotalBalance() Balance {
 	balance := b.Balance
-	if b.Vote.Int != nil {
-		balance = balance.Add(b.Vote)
-	}
-	if b.Network.Int != nil {
-		balance = balance.Add(b.Network)
-	}
-	if b.Oracle.Int != nil {
-		balance = balance.Add(b.Oracle)
-	}
-	if b.Storage.Int != nil {
-		balance = balance.Add(b.Storage)
-	}
+	balance = balance.Add(b.GetVote()).Add(b.GetNetwork()).Add(b.GetOracle()).Add(b.GetStorage())
 	return balance
 }
 

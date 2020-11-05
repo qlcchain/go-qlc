@@ -124,6 +124,8 @@ func (l *Ledger) AddStateBlock(block *types.StateBlock) error {
 }
 
 func (l *Ledger) UpdateStateBlock(block *types.StateBlock, c storage.Cache) error {
+	val, _ := block.Serialize()
+	l.logger.Warnf("block length: %d [%s]", len(val), block.Type.String())
 	if err := l.setStateBlock(block, c); err != nil {
 		return err
 	}

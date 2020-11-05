@@ -7,142 +7,368 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
-func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
+func (z *BlockHash) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
-			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Id":
+			z.Id, err = dc.ReadInt64()
+			if err != nil {
+				return
+			}
+		case "Hash":
+			z.Hash, err = dc.ReadString()
+			if err != nil {
+				return
+			}
+		case "Type":
+			z.Type, err = dc.ReadString()
+			if err != nil {
+				return
+			}
+		case "Address":
+			z.Address, err = dc.ReadString()
+			if err != nil {
+				return
+			}
+		case "Timestamp":
+			z.Timestamp, err = dc.ReadInt64()
+			if err != nil {
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *BlockHash) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 5
+	// write "Id"
+	err = en.Append(0x85, 0xa2, 0x49, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Id)
+	if err != nil {
+		return
+	}
+	// write "Hash"
+	err = en.Append(0xa4, 0x48, 0x61, 0x73, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Hash)
+	if err != nil {
+		return
+	}
+	// write "Type"
+	err = en.Append(0xa4, 0x54, 0x79, 0x70, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Type)
+	if err != nil {
+		return
+	}
+	// write "Address"
+	err = en.Append(0xa7, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Address)
+	if err != nil {
+		return
+	}
+	// write "Timestamp"
+	err = en.Append(0xa9, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Timestamp)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *BlockHash) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 5
+	// string "Id"
+	o = append(o, 0x85, 0xa2, 0x49, 0x64)
+	o = msgp.AppendInt64(o, z.Id)
+	// string "Hash"
+	o = append(o, 0xa4, 0x48, 0x61, 0x73, 0x68)
+	o = msgp.AppendString(o, z.Hash)
+	// string "Type"
+	o = append(o, 0xa4, 0x54, 0x79, 0x70, 0x65)
+	o = msgp.AppendString(o, z.Type)
+	// string "Address"
+	o = append(o, 0xa7, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
+	o = msgp.AppendString(o, z.Address)
+	// string "Timestamp"
+	o = append(o, 0xa9, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70)
+	o = msgp.AppendInt64(o, z.Timestamp)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *BlockHash) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Id":
+			z.Id, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				return
+			}
+		case "Hash":
+			z.Hash, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				return
+			}
+		case "Type":
+			z.Type, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				return
+			}
+		case "Address":
+			z.Address, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				return
+			}
+		case "Timestamp":
+			z.Timestamp, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *BlockHash) Msgsize() (s int) {
+	s = 1 + 3 + msgp.Int64Size + 5 + msgp.StringPrefixSize + len(z.Hash) + 5 + msgp.StringPrefixSize + len(z.Type) + 8 + msgp.StringPrefixSize + len(z.Address) + 10 + msgp.Int64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "type":
 			err = z.Type.DecodeMsg(dc)
 			if err != nil {
-				err = msgp.WrapError(err, "Type")
 				return
 			}
 		case "token":
 			err = dc.ReadExtension(&z.Token)
 			if err != nil {
-				err = msgp.WrapError(err, "Token")
 				return
 			}
 		case "address":
 			err = dc.ReadExtension(&z.Address)
 			if err != nil {
-				err = msgp.WrapError(err, "Address")
 				return
 			}
 		case "balance":
 			err = dc.ReadExtension(&z.Balance)
 			if err != nil {
-				err = msgp.WrapError(err, "Balance")
 				return
 			}
 		case "vote":
-			err = dc.ReadExtension(&z.Vote)
-			if err != nil {
-				err = msgp.WrapError(err, "Vote")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.Vote = nil
+			} else {
+				if z.Vote == nil {
+					z.Vote = new(Balance)
+				}
+				err = dc.ReadExtension(z.Vote)
+				if err != nil {
+					return
+				}
 			}
 		case "network":
-			err = dc.ReadExtension(&z.Network)
-			if err != nil {
-				err = msgp.WrapError(err, "Network")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.Network = nil
+			} else {
+				if z.Network == nil {
+					z.Network = new(Balance)
+				}
+				err = dc.ReadExtension(z.Network)
+				if err != nil {
+					return
+				}
 			}
 		case "storage":
-			err = dc.ReadExtension(&z.Storage)
-			if err != nil {
-				err = msgp.WrapError(err, "Storage")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.Storage = nil
+			} else {
+				if z.Storage == nil {
+					z.Storage = new(Balance)
+				}
+				err = dc.ReadExtension(z.Storage)
+				if err != nil {
+					return
+				}
 			}
 		case "oracle":
-			err = dc.ReadExtension(&z.Oracle)
-			if err != nil {
-				err = msgp.WrapError(err, "Oracle")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.Oracle = nil
+			} else {
+				if z.Oracle == nil {
+					z.Oracle = new(Balance)
+				}
+				err = dc.ReadExtension(z.Oracle)
+				if err != nil {
+					return
+				}
 			}
 		case "previous":
 			err = dc.ReadExtension(&z.Previous)
 			if err != nil {
-				err = msgp.WrapError(err, "Previous")
 				return
 			}
 		case "link":
 			err = dc.ReadExtension(&z.Link)
 			if err != nil {
-				err = msgp.WrapError(err, "Link")
 				return
 			}
 		case "sender":
 			z.Sender, err = dc.ReadBytes(z.Sender)
 			if err != nil {
-				err = msgp.WrapError(err, "Sender")
 				return
 			}
 		case "receiver":
 			z.Receiver, err = dc.ReadBytes(z.Receiver)
 			if err != nil {
-				err = msgp.WrapError(err, "Receiver")
 				return
 			}
 		case "message":
-			err = dc.ReadExtension(&z.Message)
-			if err != nil {
-				err = msgp.WrapError(err, "Message")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.Message = nil
+			} else {
+				if z.Message == nil {
+					z.Message = new(Hash)
+				}
+				err = dc.ReadExtension(z.Message)
+				if err != nil {
+					return
+				}
 			}
 		case "data":
 			z.Data, err = dc.ReadBytes(z.Data)
 			if err != nil {
-				err = msgp.WrapError(err, "Data")
 				return
 			}
 		case "povHeight":
 			z.PoVHeight, err = dc.ReadUint64()
 			if err != nil {
-				err = msgp.WrapError(err, "PoVHeight")
 				return
 			}
 		case "timestamp":
 			z.Timestamp, err = dc.ReadInt64()
 			if err != nil {
-				err = msgp.WrapError(err, "Timestamp")
 				return
 			}
 		case "extra":
-			err = dc.ReadExtension(&z.Extra)
-			if err != nil {
-				err = msgp.WrapError(err, "Extra")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					return
+				}
+				z.Extra = nil
+			} else {
+				if z.Extra == nil {
+					z.Extra = new(Hash)
+				}
+				err = dc.ReadExtension(z.Extra)
+				if err != nil {
+					return
+				}
 			}
 		case "representative":
 			err = dc.ReadExtension(&z.Representative)
 			if err != nil {
-				err = msgp.WrapError(err, "Representative")
 				return
 			}
 		case "priFrom":
 			z.PrivateFrom, err = dc.ReadString()
 			if err != nil {
-				err = msgp.WrapError(err, "PrivateFrom")
 				return
 			}
 		case "priFor":
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
 			if err != nil {
-				err = msgp.WrapError(err, "PrivateFor")
 				return
 			}
 			if cap(z.PrivateFor) >= int(zb0002) {
@@ -153,32 +379,27 @@ func (z *StateBlock) DecodeMsg(dc *msgp.Reader) (err error) {
 			for za0001 := range z.PrivateFor {
 				z.PrivateFor[za0001], err = dc.ReadString()
 				if err != nil {
-					err = msgp.WrapError(err, "PrivateFor", za0001)
 					return
 				}
 			}
 		case "priGid":
 			z.PrivateGroupID, err = dc.ReadString()
 			if err != nil {
-				err = msgp.WrapError(err, "PrivateGroupID")
 				return
 			}
 		case "work":
 			err = dc.ReadExtension(&z.Work)
 			if err != nil {
-				err = msgp.WrapError(err, "Work")
 				return
 			}
 		case "signature":
 			err = dc.ReadExtension(&z.Signature)
 			if err != nil {
-				err = msgp.WrapError(err, "Signature")
 				return
 			}
 		default:
 			err = dc.Skip()
 			if err != nil {
-				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -196,7 +417,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = z.Type.EncodeMsg(en)
 	if err != nil {
-		err = msgp.WrapError(err, "Type")
 		return
 	}
 	// write "token"
@@ -206,7 +426,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Token)
 	if err != nil {
-		err = msgp.WrapError(err, "Token")
 		return
 	}
 	// write "address"
@@ -216,7 +435,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Address)
 	if err != nil {
-		err = msgp.WrapError(err, "Address")
 		return
 	}
 	// write "balance"
@@ -226,7 +444,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Balance)
 	if err != nil {
-		err = msgp.WrapError(err, "Balance")
 		return
 	}
 	// write "vote"
@@ -234,40 +451,64 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Vote)
-	if err != nil {
-		err = msgp.WrapError(err, "Vote")
-		return
+	if z.Vote == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteExtension(z.Vote)
+		if err != nil {
+			return
+		}
 	}
 	// write "network"
 	err = en.Append(0xa7, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Network)
-	if err != nil {
-		err = msgp.WrapError(err, "Network")
-		return
+	if z.Network == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteExtension(z.Network)
+		if err != nil {
+			return
+		}
 	}
 	// write "storage"
 	err = en.Append(0xa7, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Storage)
-	if err != nil {
-		err = msgp.WrapError(err, "Storage")
-		return
+	if z.Storage == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteExtension(z.Storage)
+		if err != nil {
+			return
+		}
 	}
 	// write "oracle"
 	err = en.Append(0xa6, 0x6f, 0x72, 0x61, 0x63, 0x6c, 0x65)
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Oracle)
-	if err != nil {
-		err = msgp.WrapError(err, "Oracle")
-		return
+	if z.Oracle == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteExtension(z.Oracle)
+		if err != nil {
+			return
+		}
 	}
 	// write "previous"
 	err = en.Append(0xa8, 0x70, 0x72, 0x65, 0x76, 0x69, 0x6f, 0x75, 0x73)
@@ -276,7 +517,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Previous)
 	if err != nil {
-		err = msgp.WrapError(err, "Previous")
 		return
 	}
 	// write "link"
@@ -286,7 +526,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Link)
 	if err != nil {
-		err = msgp.WrapError(err, "Link")
 		return
 	}
 	// write "sender"
@@ -296,7 +535,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteBytes(z.Sender)
 	if err != nil {
-		err = msgp.WrapError(err, "Sender")
 		return
 	}
 	// write "receiver"
@@ -306,7 +544,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteBytes(z.Receiver)
 	if err != nil {
-		err = msgp.WrapError(err, "Receiver")
 		return
 	}
 	// write "message"
@@ -314,10 +551,16 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Message)
-	if err != nil {
-		err = msgp.WrapError(err, "Message")
-		return
+	if z.Message == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteExtension(z.Message)
+		if err != nil {
+			return
+		}
 	}
 	// write "data"
 	err = en.Append(0xa4, 0x64, 0x61, 0x74, 0x61)
@@ -326,7 +569,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteBytes(z.Data)
 	if err != nil {
-		err = msgp.WrapError(err, "Data")
 		return
 	}
 	// write "povHeight"
@@ -336,7 +578,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteUint64(z.PoVHeight)
 	if err != nil {
-		err = msgp.WrapError(err, "PoVHeight")
 		return
 	}
 	// write "timestamp"
@@ -346,7 +587,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteInt64(z.Timestamp)
 	if err != nil {
-		err = msgp.WrapError(err, "Timestamp")
 		return
 	}
 	// write "extra"
@@ -354,10 +594,16 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteExtension(&z.Extra)
-	if err != nil {
-		err = msgp.WrapError(err, "Extra")
-		return
+	if z.Extra == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteExtension(z.Extra)
+		if err != nil {
+			return
+		}
 	}
 	// write "representative"
 	err = en.Append(0xae, 0x72, 0x65, 0x70, 0x72, 0x65, 0x73, 0x65, 0x6e, 0x74, 0x61, 0x74, 0x69, 0x76, 0x65)
@@ -366,7 +612,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Representative)
 	if err != nil {
-		err = msgp.WrapError(err, "Representative")
 		return
 	}
 	// write "priFrom"
@@ -376,7 +621,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteString(z.PrivateFrom)
 	if err != nil {
-		err = msgp.WrapError(err, "PrivateFrom")
 		return
 	}
 	// write "priFor"
@@ -386,13 +630,11 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteArrayHeader(uint32(len(z.PrivateFor)))
 	if err != nil {
-		err = msgp.WrapError(err, "PrivateFor")
 		return
 	}
 	for za0001 := range z.PrivateFor {
 		err = en.WriteString(z.PrivateFor[za0001])
 		if err != nil {
-			err = msgp.WrapError(err, "PrivateFor", za0001)
 			return
 		}
 	}
@@ -403,7 +645,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteString(z.PrivateGroupID)
 	if err != nil {
-		err = msgp.WrapError(err, "PrivateGroupID")
 		return
 	}
 	// write "work"
@@ -413,7 +654,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Work)
 	if err != nil {
-		err = msgp.WrapError(err, "Work")
 		return
 	}
 	// write "signature"
@@ -423,7 +663,6 @@ func (z *StateBlock) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	err = en.WriteExtension(&z.Signature)
 	if err != nil {
-		err = msgp.WrapError(err, "Signature")
 		return
 	}
 	return
@@ -437,70 +676,76 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0xde, 0x0, 0x17, 0xa4, 0x74, 0x79, 0x70, 0x65)
 	o, err = z.Type.MarshalMsg(o)
 	if err != nil {
-		err = msgp.WrapError(err, "Type")
 		return
 	}
 	// string "token"
 	o = append(o, 0xa5, 0x74, 0x6f, 0x6b, 0x65, 0x6e)
 	o, err = msgp.AppendExtension(o, &z.Token)
 	if err != nil {
-		err = msgp.WrapError(err, "Token")
 		return
 	}
 	// string "address"
 	o = append(o, 0xa7, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73)
 	o, err = msgp.AppendExtension(o, &z.Address)
 	if err != nil {
-		err = msgp.WrapError(err, "Address")
 		return
 	}
 	// string "balance"
 	o = append(o, 0xa7, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Balance)
 	if err != nil {
-		err = msgp.WrapError(err, "Balance")
 		return
 	}
 	// string "vote"
 	o = append(o, 0xa4, 0x76, 0x6f, 0x74, 0x65)
-	o, err = msgp.AppendExtension(o, &z.Vote)
-	if err != nil {
-		err = msgp.WrapError(err, "Vote")
-		return
+	if z.Vote == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = msgp.AppendExtension(o, z.Vote)
+		if err != nil {
+			return
+		}
 	}
 	// string "network"
 	o = append(o, 0xa7, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b)
-	o, err = msgp.AppendExtension(o, &z.Network)
-	if err != nil {
-		err = msgp.WrapError(err, "Network")
-		return
+	if z.Network == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = msgp.AppendExtension(o, z.Network)
+		if err != nil {
+			return
+		}
 	}
 	// string "storage"
 	o = append(o, 0xa7, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65)
-	o, err = msgp.AppendExtension(o, &z.Storage)
-	if err != nil {
-		err = msgp.WrapError(err, "Storage")
-		return
+	if z.Storage == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = msgp.AppendExtension(o, z.Storage)
+		if err != nil {
+			return
+		}
 	}
 	// string "oracle"
 	o = append(o, 0xa6, 0x6f, 0x72, 0x61, 0x63, 0x6c, 0x65)
-	o, err = msgp.AppendExtension(o, &z.Oracle)
-	if err != nil {
-		err = msgp.WrapError(err, "Oracle")
-		return
+	if z.Oracle == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = msgp.AppendExtension(o, z.Oracle)
+		if err != nil {
+			return
+		}
 	}
 	// string "previous"
 	o = append(o, 0xa8, 0x70, 0x72, 0x65, 0x76, 0x69, 0x6f, 0x75, 0x73)
 	o, err = msgp.AppendExtension(o, &z.Previous)
 	if err != nil {
-		err = msgp.WrapError(err, "Previous")
 		return
 	}
 	// string "link"
 	o = append(o, 0xa4, 0x6c, 0x69, 0x6e, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.Link)
 	if err != nil {
-		err = msgp.WrapError(err, "Link")
 		return
 	}
 	// string "sender"
@@ -511,10 +756,13 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendBytes(o, z.Receiver)
 	// string "message"
 	o = append(o, 0xa7, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65)
-	o, err = msgp.AppendExtension(o, &z.Message)
-	if err != nil {
-		err = msgp.WrapError(err, "Message")
-		return
+	if z.Message == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = msgp.AppendExtension(o, z.Message)
+		if err != nil {
+			return
+		}
 	}
 	// string "data"
 	o = append(o, 0xa4, 0x64, 0x61, 0x74, 0x61)
@@ -527,16 +775,18 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendInt64(o, z.Timestamp)
 	// string "extra"
 	o = append(o, 0xa5, 0x65, 0x78, 0x74, 0x72, 0x61)
-	o, err = msgp.AppendExtension(o, &z.Extra)
-	if err != nil {
-		err = msgp.WrapError(err, "Extra")
-		return
+	if z.Extra == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = msgp.AppendExtension(o, z.Extra)
+		if err != nil {
+			return
+		}
 	}
 	// string "representative"
 	o = append(o, 0xae, 0x72, 0x65, 0x70, 0x72, 0x65, 0x73, 0x65, 0x6e, 0x74, 0x61, 0x74, 0x69, 0x76, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Representative)
 	if err != nil {
-		err = msgp.WrapError(err, "Representative")
 		return
 	}
 	// string "priFrom"
@@ -555,14 +805,12 @@ func (z *StateBlock) MarshalMsg(b []byte) (o []byte, err error) {
 	o = append(o, 0xa4, 0x77, 0x6f, 0x72, 0x6b)
 	o, err = msgp.AppendExtension(o, &z.Work)
 	if err != nil {
-		err = msgp.WrapError(err, "Work")
 		return
 	}
 	// string "signature"
 	o = append(o, 0xa9, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65)
 	o, err = msgp.AppendExtension(o, &z.Signature)
 	if err != nil {
-		err = msgp.WrapError(err, "Signature")
 		return
 	}
 	return
@@ -575,136 +823,180 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0001 uint32
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
-			err = msgp.WrapError(err)
 			return
 		}
 		switch msgp.UnsafeString(field) {
 		case "type":
 			bts, err = z.Type.UnmarshalMsg(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Type")
 				return
 			}
 		case "token":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Token)
 			if err != nil {
-				err = msgp.WrapError(err, "Token")
 				return
 			}
 		case "address":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Address)
 			if err != nil {
-				err = msgp.WrapError(err, "Address")
 				return
 			}
 		case "balance":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Balance)
 			if err != nil {
-				err = msgp.WrapError(err, "Balance")
 				return
 			}
 		case "vote":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Vote)
-			if err != nil {
-				err = msgp.WrapError(err, "Vote")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Vote = nil
+			} else {
+				if z.Vote == nil {
+					z.Vote = new(Balance)
+				}
+				bts, err = msgp.ReadExtensionBytes(bts, z.Vote)
+				if err != nil {
+					return
+				}
 			}
 		case "network":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Network)
-			if err != nil {
-				err = msgp.WrapError(err, "Network")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Network = nil
+			} else {
+				if z.Network == nil {
+					z.Network = new(Balance)
+				}
+				bts, err = msgp.ReadExtensionBytes(bts, z.Network)
+				if err != nil {
+					return
+				}
 			}
 		case "storage":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Storage)
-			if err != nil {
-				err = msgp.WrapError(err, "Storage")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Storage = nil
+			} else {
+				if z.Storage == nil {
+					z.Storage = new(Balance)
+				}
+				bts, err = msgp.ReadExtensionBytes(bts, z.Storage)
+				if err != nil {
+					return
+				}
 			}
 		case "oracle":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Oracle)
-			if err != nil {
-				err = msgp.WrapError(err, "Oracle")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Oracle = nil
+			} else {
+				if z.Oracle == nil {
+					z.Oracle = new(Balance)
+				}
+				bts, err = msgp.ReadExtensionBytes(bts, z.Oracle)
+				if err != nil {
+					return
+				}
 			}
 		case "previous":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Previous)
 			if err != nil {
-				err = msgp.WrapError(err, "Previous")
 				return
 			}
 		case "link":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Link)
 			if err != nil {
-				err = msgp.WrapError(err, "Link")
 				return
 			}
 		case "sender":
 			z.Sender, bts, err = msgp.ReadBytesBytes(bts, z.Sender)
 			if err != nil {
-				err = msgp.WrapError(err, "Sender")
 				return
 			}
 		case "receiver":
 			z.Receiver, bts, err = msgp.ReadBytesBytes(bts, z.Receiver)
 			if err != nil {
-				err = msgp.WrapError(err, "Receiver")
 				return
 			}
 		case "message":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Message)
-			if err != nil {
-				err = msgp.WrapError(err, "Message")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Message = nil
+			} else {
+				if z.Message == nil {
+					z.Message = new(Hash)
+				}
+				bts, err = msgp.ReadExtensionBytes(bts, z.Message)
+				if err != nil {
+					return
+				}
 			}
 		case "data":
 			z.Data, bts, err = msgp.ReadBytesBytes(bts, z.Data)
 			if err != nil {
-				err = msgp.WrapError(err, "Data")
 				return
 			}
 		case "povHeight":
 			z.PoVHeight, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "PoVHeight")
 				return
 			}
 		case "timestamp":
 			z.Timestamp, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Timestamp")
 				return
 			}
 		case "extra":
-			bts, err = msgp.ReadExtensionBytes(bts, &z.Extra)
-			if err != nil {
-				err = msgp.WrapError(err, "Extra")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Extra = nil
+			} else {
+				if z.Extra == nil {
+					z.Extra = new(Hash)
+				}
+				bts, err = msgp.ReadExtensionBytes(bts, z.Extra)
+				if err != nil {
+					return
+				}
 			}
 		case "representative":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Representative)
 			if err != nil {
-				err = msgp.WrapError(err, "Representative")
 				return
 			}
 		case "priFrom":
 			z.PrivateFrom, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "PrivateFrom")
 				return
 			}
 		case "priFor":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "PrivateFor")
 				return
 			}
 			if cap(z.PrivateFor) >= int(zb0002) {
@@ -715,32 +1007,27 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			for za0001 := range z.PrivateFor {
 				z.PrivateFor[za0001], bts, err = msgp.ReadStringBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "PrivateFor", za0001)
 					return
 				}
 			}
 		case "priGid":
 			z.PrivateGroupID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "PrivateGroupID")
 				return
 			}
 		case "work":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Work)
 			if err != nil {
-				err = msgp.WrapError(err, "Work")
 				return
 			}
 		case "signature":
 			bts, err = msgp.ReadExtensionBytes(bts, &z.Signature)
 			if err != nil {
-				err = msgp.WrapError(err, "Signature")
 				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
-				err = msgp.WrapError(err)
 				return
 			}
 		}
@@ -751,7 +1038,43 @@ func (z *StateBlock) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *StateBlock) Msgsize() (s int) {
-	s = 3 + 5 + z.Type.Msgsize() + 6 + msgp.ExtensionPrefixSize + z.Token.Len() + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5 + msgp.ExtensionPrefixSize + z.Vote.Len() + 8 + msgp.ExtensionPrefixSize + z.Network.Len() + 8 + msgp.ExtensionPrefixSize + z.Storage.Len() + 7 + msgp.ExtensionPrefixSize + z.Oracle.Len() + 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 7 + msgp.BytesPrefixSize + len(z.Sender) + 9 + msgp.BytesPrefixSize + len(z.Receiver) + 8 + msgp.ExtensionPrefixSize + z.Message.Len() + 5 + msgp.BytesPrefixSize + len(z.Data) + 10 + msgp.Uint64Size + 10 + msgp.Int64Size + 6 + msgp.ExtensionPrefixSize + z.Extra.Len() + 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 8 + msgp.StringPrefixSize + len(z.PrivateFrom) + 7 + msgp.ArrayHeaderSize
+	s = 3 + 5 + z.Type.Msgsize() + 6 + msgp.ExtensionPrefixSize + z.Token.Len() + 8 + msgp.ExtensionPrefixSize + z.Address.Len() + 8 + msgp.ExtensionPrefixSize + z.Balance.Len() + 5
+	if z.Vote == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.ExtensionPrefixSize + z.Vote.Len()
+	}
+	s += 8
+	if z.Network == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.ExtensionPrefixSize + z.Network.Len()
+	}
+	s += 8
+	if z.Storage == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.ExtensionPrefixSize + z.Storage.Len()
+	}
+	s += 7
+	if z.Oracle == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.ExtensionPrefixSize + z.Oracle.Len()
+	}
+	s += 9 + msgp.ExtensionPrefixSize + z.Previous.Len() + 5 + msgp.ExtensionPrefixSize + z.Link.Len() + 7 + msgp.BytesPrefixSize + len(z.Sender) + 9 + msgp.BytesPrefixSize + len(z.Receiver) + 8
+	if z.Message == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.ExtensionPrefixSize + z.Message.Len()
+	}
+	s += 5 + msgp.BytesPrefixSize + len(z.Data) + 10 + msgp.Uint64Size + 10 + msgp.Int64Size + 6
+	if z.Extra == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.ExtensionPrefixSize + z.Extra.Len()
+	}
+	s += 15 + msgp.ExtensionPrefixSize + z.Representative.Len() + 8 + msgp.StringPrefixSize + len(z.PrivateFrom) + 7 + msgp.ArrayHeaderSize
 	for za0001 := range z.PrivateFor {
 		s += msgp.StringPrefixSize + len(z.PrivateFor[za0001])
 	}
@@ -764,7 +1087,6 @@ func (z *StateBlockList) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0002 uint32
 	zb0002, err = dc.ReadArrayHeader()
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	if cap((*z)) >= int(zb0002) {
@@ -776,7 +1098,6 @@ func (z *StateBlockList) DecodeMsg(dc *msgp.Reader) (err error) {
 		if dc.IsNil() {
 			err = dc.ReadNil()
 			if err != nil {
-				err = msgp.WrapError(err, zb0001)
 				return
 			}
 			(*z)[zb0001] = nil
@@ -786,7 +1107,6 @@ func (z *StateBlockList) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			err = (*z)[zb0001].DecodeMsg(dc)
 			if err != nil {
-				err = msgp.WrapError(err, zb0001)
 				return
 			}
 		}
@@ -798,7 +1118,6 @@ func (z *StateBlockList) DecodeMsg(dc *msgp.Reader) (err error) {
 func (z StateBlockList) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteArrayHeader(uint32(len(z)))
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	for zb0003 := range z {
@@ -810,7 +1129,6 @@ func (z StateBlockList) EncodeMsg(en *msgp.Writer) (err error) {
 		} else {
 			err = z[zb0003].EncodeMsg(en)
 			if err != nil {
-				err = msgp.WrapError(err, zb0003)
 				return
 			}
 		}
@@ -828,7 +1146,6 @@ func (z StateBlockList) MarshalMsg(b []byte) (o []byte, err error) {
 		} else {
 			o, err = z[zb0003].MarshalMsg(o)
 			if err != nil {
-				err = msgp.WrapError(err, zb0003)
 				return
 			}
 		}
@@ -841,7 +1158,6 @@ func (z *StateBlockList) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var zb0002 uint32
 	zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
 	if err != nil {
-		err = msgp.WrapError(err)
 		return
 	}
 	if cap((*z)) >= int(zb0002) {
@@ -862,7 +1178,6 @@ func (z *StateBlockList) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			bts, err = (*z)[zb0001].UnmarshalMsg(bts)
 			if err != nil {
-				err = msgp.WrapError(err, zb0001)
 				return
 			}
 		}

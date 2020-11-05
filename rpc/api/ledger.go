@@ -599,7 +599,7 @@ func (l *LedgerAPI) GenerateSendBlock(para *APISendBlockPara, prkStr *string) (*
 		Address: para.From,
 		Token:   info.TokenId,
 		Link:    para.To.ToHash(),
-		Message: para.Message,
+		Message: types.ToHash(para.Message),
 	}
 	block, err := l.ledger.GenerateSendBlock(&sb, para.Amount, prk)
 	if err != nil {

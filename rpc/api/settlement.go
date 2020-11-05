@@ -190,14 +190,14 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 				return nil, fmt.Errorf("get pov header error: %s", err)
 			}
 			sb := &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        addr,
-				Balance:        tm.Balance.Sub(balance),
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: addr,
+				Balance: tm.Balance.Sub(balance),
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       createParam.Previous,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -211,7 +211,7 @@ func (s *SettlementAPI) GetCreateContractBlock(param *CreateContractParam) (*typ
 			}
 			h := vmstore.TrieHash(ctx)
 			if h != nil {
-				sb.Extra = *h
+				sb.Extra = h
 			}
 			return sb, nil
 		} else {
@@ -254,14 +254,14 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 				return nil, fmt.Errorf("get pov header error: %s", err)
 			}
 			sb := &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        param.Address,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: param.Address,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -275,7 +275,7 @@ func (s *SettlementAPI) GetSignContractBlock(param *SignContractParam) (*types.S
 
 			h := vmstore.TrieHash(ctx)
 			if h != nil {
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			return sb, nil
@@ -319,14 +319,14 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 				return nil, fmt.Errorf("get pov header error: %s", err)
 			}
 			sb := &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        addr,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: addr,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -341,7 +341,7 @@ func (s *SettlementAPI) handleStopAction(addr types.Address, verifier func() err
 
 			h := vmstore.TrieHash(ctx)
 			if h != nil {
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			return sb, nil
@@ -584,14 +584,14 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, params []*cabi.C
 					return nil, fmt.Errorf("get pov header error: %s", err)
 				}
 				sb := &types.StateBlock{
-					Type:           types.ContractSend,
-					Token:          tm.Type,
-					Address:        *addr,
-					Balance:        tm.Balance,
-					Vote:           types.ZeroBalance,
-					Network:        types.ZeroBalance,
-					Oracle:         types.ZeroBalance,
-					Storage:        types.ZeroBalance,
+					Type:    types.ContractSend,
+					Token:   tm.Type,
+					Address: *addr,
+					Balance: tm.Balance,
+					//Vote:           types.ZeroBalance,
+					//Network:        types.ZeroBalance,
+					//Oracle:         types.ZeroBalance,
+					//Storage:        types.ZeroBalance,
 					Previous:       tm.Header,
 					Link:           types.Hash(contractaddress.SettlementAddress),
 					Representative: tm.Representative,
@@ -606,7 +606,7 @@ func (s *SettlementAPI) GetProcessCDRBlock(addr *types.Address, params []*cabi.C
 
 				h := vmstore.TrieHash(ctx)
 				if h != nil {
-					sb.Extra = *h
+					sb.Extra = h
 				}
 				return sb, nil
 			} else {
@@ -649,14 +649,14 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 			}
 
 			sb := &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        param.Address,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: param.Address,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -671,7 +671,7 @@ func (s *SettlementAPI) GetTerminateContractBlock(param *TerminateParam) (*types
 
 			h := vmstore.TrieHash(ctx)
 			if h != nil {
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			return sb, nil
@@ -992,14 +992,14 @@ func (s *SettlementAPI) GetRegisterAssetBlock(param *RegisterAssetParam) (*types
 		}
 
 		sb := &types.StateBlock{
-			Type:           types.ContractSend,
-			Token:          tm.Type,
-			Address:        param.Owner.Address,
-			Balance:        tm.Balance,
-			Vote:           types.ZeroBalance,
-			Network:        types.ZeroBalance,
-			Oracle:         types.ZeroBalance,
-			Storage:        types.ZeroBalance,
+			Type:    types.ContractSend,
+			Token:   tm.Type,
+			Address: param.Owner.Address,
+			Balance: tm.Balance,
+			//Vote:           types.ZeroBalance,
+			//Network:        types.ZeroBalance,
+			//Oracle:         types.ZeroBalance,
+			//Storage:        types.ZeroBalance,
 			Previous:       tm.Header,
 			Link:           types.Hash(contractaddress.SettlementAddress),
 			Representative: tm.Representative,
@@ -1014,7 +1014,7 @@ func (s *SettlementAPI) GetRegisterAssetBlock(param *RegisterAssetParam) (*types
 
 		h := vmstore.TrieHash(ctx)
 		if h != nil {
-			sb.Extra = *h
+			sb.Extra = h
 		}
 
 		return sb, nil

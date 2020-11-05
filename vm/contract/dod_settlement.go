@@ -252,10 +252,10 @@ func (co *DoDSettleCreateOrder) DoReceive(ctx *vmstore.VMContext, block *types.S
 	block.Timestamp = common.TimeNow().Unix()
 
 	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+	//block.Vote = types.NewBalance(0)
+	//block.Oracle = types.NewBalance(0)
+	//block.Storage = types.NewBalance(0)
+	//block.Network = types.NewBalance(0)
 
 	am, _ := ctx.GetAccountMeta(block.Address)
 	if am != nil {
@@ -597,10 +597,10 @@ func (uo *DoDSettleUpdateOrderInfo) DoReceive(ctx *vmstore.VMContext, block *typ
 	block.Timestamp = common.TimeNow().Unix()
 
 	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+	//block.Vote = types.NewBalance(0)
+	//block.Oracle = types.NewBalance(0)
+	//block.Storage = types.NewBalance(0)
+	//block.Network = types.NewBalance(0)
 
 	am, _ := ctx.GetAccountMeta(block.Address)
 	if am != nil {
@@ -930,10 +930,10 @@ func (co *DoDSettleChangeOrder) DoReceive(ctx *vmstore.VMContext, block *types.S
 	block.Timestamp = common.TimeNow().Unix()
 
 	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+	//block.Vote = types.NewBalance(0)
+	//block.Oracle = types.NewBalance(0)
+	//block.Storage = types.NewBalance(0)
+	//block.Network = types.NewBalance(0)
 
 	am, _ := ctx.GetAccountMeta(block.Address)
 	if am != nil {
@@ -1177,10 +1177,10 @@ func (to *DoDSettleTerminateOrder) DoReceive(ctx *vmstore.VMContext, block *type
 	block.Timestamp = common.TimeNow().Unix()
 
 	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+	//block.Vote = types.NewBalance(0)
+	//block.Oracle = types.NewBalance(0)
+	//block.Storage = types.NewBalance(0)
+	//block.Network = types.NewBalance(0)
 
 	am, _ := ctx.GetAccountMeta(block.Address)
 	if am != nil {

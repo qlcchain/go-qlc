@@ -119,6 +119,9 @@ func TestStateBlock_Clone(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	val, _ := b.Serialize()
+	fmt.Println("length val ", len(val))
+
 	t.Log(b.Balance)
 	b.Flag |= BlockFlagSync
 	b1 := b.Clone()
@@ -262,7 +265,7 @@ func TestStateBlockList_Serialize(t *testing.T) {
 func TestStateBlock_PrivateHash(t *testing.T) {
 	blk := StateBlock{}
 	blk.Balance = NewBalance(rand.Int63())
-	blk.Vote = NewBalance(rand.Int63())
+	blk.Vote = ToBalance(NewBalance(rand.Int63()))
 
 	h1 := blk.GetHashWithoutPrivacy()
 

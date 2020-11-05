@@ -191,11 +191,11 @@ func generate(ctx *vmstore.VMContext, signed, unsigned string, block *types.Stat
 		block.Address = rxAddress
 		block.Link = txHash
 		block.Token = input.Token
-		block.Extra = types.ZeroHash
-		block.Vote = types.ZeroBalance
-		block.Network = types.ZeroBalance
-		block.Oracle = types.ZeroBalance
-		block.Storage = types.ZeroBalance
+		//block.Extra = types.ZeroHash
+		//block.Vote = types.ZeroBalance
+		//block.Network = types.ZeroBalance
+		//block.Oracle = types.ZeroBalance
+		//block.Storage = types.ZeroBalance
 		//block.Timestamp = common.TimeNow().UTC().Unix()
 
 		// already have account

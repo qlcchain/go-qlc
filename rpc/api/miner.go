@@ -184,10 +184,10 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 		Previous:       tmCb.Header,
 		Representative: tmCb.Representative,
 
-		Vote:    amCb.CoinVote,
-		Network: amCb.CoinNetwork,
-		Oracle:  amCb.CoinOracle,
-		Storage: amCb.CoinStorage,
+		Vote:    types.ToBalance(amCb.CoinVote),
+		Network: types.ToBalance(amCb.CoinNetwork),
+		Oracle:  types.ToBalance(amCb.CoinOracle),
+		Storage: types.ToBalance(amCb.CoinStorage),
 
 		Link:      types.Hash(contractaddress.MinerAddress),
 		Data:      data,
@@ -204,7 +204,7 @@ func (m *MinerApi) GetRewardSendBlock(param *RewardParam) (*types.StateBlock, er
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 
 	return send, nil

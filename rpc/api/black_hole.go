@@ -62,7 +62,7 @@ func (b *BlackHoleAPI) GetSendBlock(param *cabi.DestroyParam) (*types.StateBlock
 
 	h := vmstore.TrieHash(vmCtx)
 	if h != nil {
-		sb.Extra = *h
+		sb.Extra = h
 	}
 	return sb, nil
 }

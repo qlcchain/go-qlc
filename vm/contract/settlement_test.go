@@ -104,14 +104,14 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 	var abi []byte
 	if abi, err = param.ToABI(); err == nil {
 		sb := &types.StateBlock{
-			Type:           types.ContractSend,
-			Token:          tm.Type,
-			Address:        param.PartyA.Address,
-			Balance:        tm.Balance.Sub(balance),
-			Vote:           types.ZeroBalance,
-			Network:        types.ZeroBalance,
-			Oracle:         types.ZeroBalance,
-			Storage:        types.ZeroBalance,
+			Type:    types.ContractSend,
+			Token:   tm.Type,
+			Address: param.PartyA.Address,
+			Balance: tm.Balance.Sub(balance),
+			//Vote:           types.ZeroBalance,
+			//Network:        types.ZeroBalance,
+			//Oracle:         types.ZeroBalance,
+			//Storage:        types.ZeroBalance,
 			Previous:       param.Previous,
 			Link:           types.Hash(contractaddress.SettlementAddress),
 			Representative: tm.Representative,
@@ -129,7 +129,7 @@ func buildContract(l *ledger.Ledger) (contractAddress, a1, a2 types.Address, err
 				return
 			}
 			sb.PoVHeight = povHeader.GetHeight()
-			sb.Extra = *h
+			sb.Extra = h
 		}
 		//verifier := process.NewLedgerVerifier(l)
 		//if err = verifier.BlockProcess(sb); err != nil {
@@ -187,14 +187,14 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 				param := cabi.TerminateParam{ContractAddress: address, Request: true}
 				if abi, err := param.ToABI(); err == nil {
 					sb := &types.StateBlock{
-						Type:           types.ContractSend,
-						Token:          tm.Type,
-						Address:        a2,
-						Balance:        tm.Balance,
-						Vote:           types.ZeroBalance,
-						Network:        types.ZeroBalance,
-						Oracle:         types.ZeroBalance,
-						Storage:        types.ZeroBalance,
+						Type:    types.ContractSend,
+						Token:   tm.Type,
+						Address: a2,
+						Balance: tm.Balance,
+						//Vote:           types.ZeroBalance,
+						//Network:        types.ZeroBalance,
+						//Oracle:         types.ZeroBalance,
+						//Storage:        types.ZeroBalance,
 						Previous:       tm.Header,
 						Link:           types.Hash(contractaddress.SettlementAddress),
 						Representative: tm.Representative,
@@ -211,7 +211,7 @@ func TestCreate_And_Terminate_Contract(t *testing.T) {
 							t.Fatalf("get pov header error: %s", err)
 						}
 						sb.PoVHeight = povHeader.GetHeight()
-						sb.Extra = *h
+						sb.Extra = h
 					}
 
 					//if err := verifier.BlockProcess(sb); err != nil {
@@ -296,14 +296,14 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				t.Fatal(err)
 			}
 			sb := &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        a1,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: a1,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -316,7 +316,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			h := vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			if err := updateBlock(l, sb); err != nil {
@@ -359,14 +359,14 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				t.Fatal(err)
 			}
 			sb = &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        a1,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: a1,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -379,7 +379,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			if err := updateBlock(l, sb); err != nil {
@@ -425,14 +425,14 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				t.Fatal(err)
 			}
 			sb = &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        a1,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: a1,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -445,7 +445,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			if err := updateBlock(l, sb); err != nil {
@@ -483,14 +483,14 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				t.Fatal(err)
 			}
 			sb = &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        a2,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: a2,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -503,7 +503,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			if err := updateBlock(l, sb); err != nil {
@@ -549,14 +549,14 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				t.Fatal(err)
 			}
 			sb = &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        a2,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: a2,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -569,7 +569,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			if err := updateBlock(l, sb); err != nil {
@@ -614,14 +614,14 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 				t.Fatal(err)
 			}
 			sb = &types.StateBlock{
-				Type:           types.ContractSend,
-				Token:          tm.Type,
-				Address:        a2,
-				Balance:        tm.Balance,
-				Vote:           types.ZeroBalance,
-				Network:        types.ZeroBalance,
-				Oracle:         types.ZeroBalance,
-				Storage:        types.ZeroBalance,
+				Type:    types.ContractSend,
+				Token:   tm.Type,
+				Address: a2,
+				Balance: tm.Balance,
+				//Vote:           types.ZeroBalance,
+				//Network:        types.ZeroBalance,
+				//Oracle:         types.ZeroBalance,
+				//Storage:        types.ZeroBalance,
 				Previous:       tm.Header,
 				Link:           types.Hash(contractaddress.SettlementAddress),
 				Representative: tm.Representative,
@@ -634,7 +634,7 @@ func TestEdit_Pre_Next_Stops(t *testing.T) {
 			h = vmstore.TrieHash(ctx)
 			if h != nil {
 				sb.PoVHeight = 0
-				sb.Extra = *h
+				sb.Extra = h
 			}
 
 			if err := updateBlock(l, sb); err != nil {
@@ -705,14 +705,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 	if abi, err := param.ToABI(); err == nil {
 		sb := &types.StateBlock{
-			Type:           types.ContractSend,
-			Token:          tm.Type,
-			Address:        param.PartyA.Address,
-			Balance:        tm.Balance.Sub(balance),
-			Vote:           types.ZeroBalance,
-			Network:        types.ZeroBalance,
-			Oracle:         types.ZeroBalance,
-			Storage:        types.ZeroBalance,
+			Type:    types.ContractSend,
+			Token:   tm.Type,
+			Address: param.PartyA.Address,
+			Balance: tm.Balance.Sub(balance),
+			//Vote:           types.ZeroBalance,
+			//Network:        types.ZeroBalance,
+			//Oracle:         types.ZeroBalance,
+			//Storage:        types.ZeroBalance,
 			Previous:       param.Previous,
 			Link:           types.Hash(contractaddress.SettlementAddress),
 			Representative: tm.Representative,
@@ -729,7 +729,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 				t.Fatalf("get pov header error: %s", err)
 			}
 			sb.PoVHeight = povHeader.GetHeight()
-			sb.Extra = *h
+			sb.Extra = h
 		}
 
 		if err := updateBlock(l, sb); err != nil {
@@ -801,14 +801,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 
 					if singedData, err := sc.ToABI(); err == nil {
 						sb2 := &types.StateBlock{
-							Type:           types.ContractSend,
-							Token:          tm2.Type,
-							Address:        a2,
-							Balance:        tm2.Balance,
-							Vote:           types.ZeroBalance,
-							Network:        types.ZeroBalance,
-							Oracle:         types.ZeroBalance,
-							Storage:        types.ZeroBalance,
+							Type:    types.ContractSend,
+							Token:   tm2.Type,
+							Address: a2,
+							Balance: tm2.Balance,
+							//Vote:           types.ZeroBalance,
+							//Network:        types.ZeroBalance,
+							//Oracle:         types.ZeroBalance,
+							//Storage:        types.ZeroBalance,
 							Previous:       tm2.Header,
 							Link:           types.Hash(contractaddress.SettlementAddress),
 							Representative: tm.Representative,
@@ -854,14 +854,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										}
 										sb := &types.StateBlock{
-											Type:           types.ContractSend,
-											Token:          tm.Type,
-											Address:        a1,
-											Balance:        tm.Balance,
-											Vote:           types.ZeroBalance,
-											Network:        types.ZeroBalance,
-											Oracle:         types.ZeroBalance,
-											Storage:        types.ZeroBalance,
+											Type:    types.ContractSend,
+											Token:   tm.Type,
+											Address: a1,
+											Balance: tm.Balance,
+											//Vote:           types.ZeroBalance,
+											//Network:        types.ZeroBalance,
+											//Oracle:         types.ZeroBalance,
+											//Storage:        types.ZeroBalance,
 											Previous:       tm.Header,
 											Link:           types.Hash(contractaddress.SettlementAddress),
 											Representative: tm.Representative,
@@ -874,7 +874,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										h := vmstore.TrieHash(ctx)
 										if h != nil {
 											sb.PoVHeight = 0
-											sb.Extra = *h
+											sb.Extra = h
 										}
 
 										if err := updateBlock(l, sb); err != nil {
@@ -917,14 +917,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										}
 										sb2 = &types.StateBlock{
-											Type:           types.ContractSend,
-											Token:          tm2.Type,
-											Address:        a2,
-											Balance:        tm.Balance,
-											Vote:           types.ZeroBalance,
-											Network:        types.ZeroBalance,
-											Oracle:         types.ZeroBalance,
-											Storage:        types.ZeroBalance,
+											Type:    types.ContractSend,
+											Token:   tm2.Type,
+											Address: a2,
+											Balance: tm.Balance,
+											//Vote:           types.ZeroBalance,
+											//Network:        types.ZeroBalance,
+											//Oracle:         types.ZeroBalance,
+											//Storage:        types.ZeroBalance,
 											Previous:       tm2.Header,
 											Link:           types.Hash(contractaddress.SettlementAddress),
 											Representative: tm2.Representative,
@@ -937,7 +937,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										h = vmstore.TrieHash(ctx)
 										if h != nil {
 											sb2.PoVHeight = 0
-											sb2.Extra = *h
+											sb2.Extra = h
 										}
 
 										if err := updateBlock(l, sb2); err != nil {
@@ -994,14 +994,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										}
 										sb = &types.StateBlock{
-											Type:           types.ContractSend,
-											Token:          tm.Type,
-											Address:        a1,
-											Balance:        tm.Balance,
-											Vote:           types.ZeroBalance,
-											Network:        types.ZeroBalance,
-											Oracle:         types.ZeroBalance,
-											Storage:        types.ZeroBalance,
+											Type:    types.ContractSend,
+											Token:   tm.Type,
+											Address: a1,
+											Balance: tm.Balance,
+											//Vote:           types.ZeroBalance,
+											//Network:        types.ZeroBalance,
+											//Oracle:         types.ZeroBalance,
+											//Storage:        types.ZeroBalance,
 											Previous:       tm.Header,
 											Link:           types.Hash(contractaddress.SettlementAddress),
 											Representative: tm.Representative,
@@ -1014,7 +1014,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										h = vmstore.TrieHash(ctx)
 										if h != nil {
 											sb.PoVHeight = 0
-											sb.Extra = *h
+											sb.Extra = h
 										}
 
 										if err := updateBlock(l, sb); err != nil {
@@ -1051,14 +1051,14 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 											t.Fatal(err)
 										}
 										sb = &types.StateBlock{
-											Type:           types.ContractSend,
-											Token:          tm2.Type,
-											Address:        a2,
-											Balance:        tm2.Balance,
-											Vote:           types.ZeroBalance,
-											Network:        types.ZeroBalance,
-											Oracle:         types.ZeroBalance,
-											Storage:        types.ZeroBalance,
+											Type:    types.ContractSend,
+											Token:   tm2.Type,
+											Address: a2,
+											Balance: tm2.Balance,
+											//Vote:           types.ZeroBalance,
+											//Network:        types.ZeroBalance,
+											//Oracle:         types.ZeroBalance,
+											//Storage:        types.ZeroBalance,
 											Previous:       tm2.Header,
 											Link:           types.Hash(contractaddress.SettlementAddress),
 											Representative: tm2.Representative,
@@ -1071,7 +1071,7 @@ func TestCreate_And_Sign_Contract(t *testing.T) {
 										h = vmstore.TrieHash(ctx)
 										if h != nil {
 											sb.PoVHeight = 0
-											sb.Extra = *h
+											sb.Extra = h
 										}
 
 										if err := updateBlock(l, sb); err != nil {
@@ -1642,14 +1642,14 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 
 	if abi, err := assetParam.ToABI(); err == nil {
 		sb := &types.StateBlock{
-			Type:           types.ContractSend,
-			Token:          tm.Type,
-			Address:        a1,
-			Balance:        tm.Balance,
-			Vote:           types.ZeroBalance,
-			Network:        types.ZeroBalance,
-			Oracle:         types.ZeroBalance,
-			Storage:        types.ZeroBalance,
+			Type:    types.ContractSend,
+			Token:   tm.Type,
+			Address: a1,
+			Balance: tm.Balance,
+			//Vote:           types.ZeroBalance,
+			//Network:        types.ZeroBalance,
+			//Oracle:         types.ZeroBalance,
+			//Storage:        types.ZeroBalance,
 			Previous:       tm.Header,
 			Link:           types.Hash(contractaddress.SettlementAddress),
 			Representative: tm.Representative,
@@ -1666,7 +1666,7 @@ func TestRegisterAsset_ProcessSend(t *testing.T) {
 				t.Fatalf("get pov header error: %s", err)
 			}
 			sb.PoVHeight = povHeader.GetHeight()
-			sb.Extra = *h
+			sb.Extra = h
 		}
 
 		if err := updateBlock(l, sb); err != nil {
