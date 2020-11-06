@@ -72,7 +72,7 @@ func TestLedger_GetUncheckedBlock(t *testing.T) {
 	if err := l.store.Put(k2, d2); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.GetGapPublishBlocks(key2, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	if err := l.GetGapPublishBlock(key2, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		return nil
 	}); err == nil {
 		t.Fatal(err)
@@ -149,7 +149,7 @@ func TestLedger_AddGapPovBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := l.Flush(); err != nil {
+	if err := l.FlushU(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -239,7 +239,7 @@ func TestLedger_WalkGapPovBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := l.Flush(); err != nil {
+	if err := l.FlushU(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -287,13 +287,13 @@ func TestLedger_AddGapPublishBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := l.Flush(); err != nil {
+	if err := l.FlushU(); err != nil {
 		t.Fatal(err)
 	}
 
 	b1Match := false
 	b2Match := false
-	err = l.GetGapPublishBlocks(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		bHash := block.GetHash()
 		if bHash == blk1.GetHash() {
 			b1Match = true
@@ -326,13 +326,13 @@ func TestLedger_DeleteGapPublishBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := l.Flush(); err != nil {
+	if err := l.FlushU(); err != nil {
 		t.Fatal(err)
 	}
 
 	b1Match := false
 	b2Match := false
-	err = l.GetGapPublishBlocks(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		bHash := block.GetHash()
 		if bHash == blk1.GetHash() {
 			b1Match = true
@@ -347,20 +347,20 @@ func TestLedger_DeleteGapPublishBlock(t *testing.T) {
 		t.Fatal()
 	}
 
-	err = l.GetGapPublishBlocks(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		err := l.DeleteGapPublishBlock(hash, block.GetHash())
 		if err != nil {
 			t.Fatal(err)
 		}
 		return nil
 	})
-	if err := l.Flush(); err != nil {
+	if err := l.FlushU(); err != nil {
 		t.Fatal(err)
 	}
 
 	b1Match = false
 	b2Match = false
-	err = l.GetGapPublishBlocks(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		bHash := block.GetHash()
 		if bHash == blk1.GetHash() {
 			b1Match = true
@@ -387,12 +387,12 @@ func TestLedger_GetGapPublishBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := l.Flush(); err != nil {
+	if err := l.FlushU(); err != nil {
 		t.Fatal(err)
 	}
 
 	get := false
-	err = l.GetGapPublishBlocks(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	err = l.GetGapPublishBlock(hash, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		if blk.GetHash() == block.GetHash() {
 			get = true
 		}

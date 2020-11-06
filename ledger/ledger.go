@@ -47,6 +47,7 @@ type LedgerStore interface {
 	GetRelation(dest interface{}, query string) error
 	SelectRelation(dest interface{}, query string) error
 	Flush() error
+	FlushU() error
 	BlockConfirmed(blk *types.StateBlock)
 }
 
@@ -132,10 +133,11 @@ func NewLedger(cfgFile string) *Ledger {
 			l.logger.Fatal(err.Error())
 		}
 		l.relation = r
-		l.cache = NewMemoryCache(l, defaultFlushSecs, defaultCapacity, block)
-		l.unCheckCache = NewMemoryCache(l, defaultUncheckFlushSecs, defaultUncheckCapacity, unchecked)
+		l.cache = NewMemoryCache(l, defaultBlockFlushSecs, 2000, block)
+		l.unCheckCache = NewMemoryCache(l, defaultUncheckFlushSecs, 50, unchecked)
 		l.rcache = NewrCache()
 		l.cacheStats = make([]*CacheStat, 0)
+		l.uCacheStats = make([]*CacheStat, 0)
 		if err := l.init(); err != nil {
 			l.logger.Fatal(err)
 		}
@@ -178,6 +180,15 @@ func (l *Ledger) init() error {
 		return fmt.Errorf("update representation: %s ", err)
 	}
 
+	return nil
+}
+
+func (l *Ledger) SetCacheCapacity() error {
+	if err := l.Flush(); err != nil {
+		return err
+	}
+	l.cache.ResetCapacity(defaultBlockCapacity)
+	l.unCheckCache.ResetCapacity(defaultUncheckCapacity)
 	return nil
 }
 
@@ -778,10 +789,13 @@ func (l *Ledger) updateCacheStat(c *CacheStat, typ cacheType) {
 func (l *Ledger) Flush() error {
 	lock.Lock()
 	defer lock.Unlock()
-	if err := l.unCheckCache.rebuild(); err != nil {
-		return err
-	}
 	return l.cache.rebuild()
+}
+
+func (l *Ledger) FlushU() error {
+	lock.Lock()
+	defer lock.Unlock()
+	return l.unCheckCache.rebuild()
 }
 
 func (l *Ledger) BlockConfirmed(blk *types.StateBlock) {

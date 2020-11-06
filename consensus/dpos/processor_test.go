@@ -202,7 +202,7 @@ func TestProcessor_dequeueGapPublish(t *testing.T) {
 	index := dps.getProcessorIndex(blk2.Address)
 	processor := dps.processors[index]
 	processor.dequeueGapPublish(blk1.GetHash())
-	dps.ledger.GetGapPublishBlocks(blk1.Previous, func(block *types.StateBlock, sync types.SynchronizedKind) error {
+	dps.ledger.GetGapPublishBlock(blk1.Previous, func(block *types.StateBlock, sync types.SynchronizedKind) error {
 		t.Fatal()
 		return nil
 	})

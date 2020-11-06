@@ -17,10 +17,10 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 )
 
-const defaultFlushSecs = 1 * time.Second
-const defaultCapacity = 100000
-const defaultUncheckFlushSecs = 3 * time.Minute
-const defaultUncheckCapacity = 1000000
+const defaultBlockFlushSecs = 1 * time.Second
+const defaultBlockCapacity = 100000
+const defaultUncheckFlushSecs = 2 * time.Minute
+const defaultUncheckCapacity = 500000
 
 type cacheType byte
 
@@ -75,6 +75,12 @@ func NewMemoryCache(ledger *Ledger, flushSecs time.Duration, size int, typ cache
 	}
 	go lc.flushCache()
 	return lc
+}
+
+func (lc *MemoryCache) ResetCapacity(size int) {
+	for _, m := range lc.caches {
+		m.cache = gcache.New(size).Build()
+	}
 }
 
 // get write cache index

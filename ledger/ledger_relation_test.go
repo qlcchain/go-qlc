@@ -73,8 +73,9 @@ func TestLedger_Relation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l.Flush() // dump StructA to badger and StructB to relation
-
+	if err := l.Flush(); err != nil { // dump StructA to badger and StructB to relation
+		t.Fatal(err)
+	}
 	var s []StructB
 	sql := fmt.Sprintf("select * from StructB")
 	err := l.SelectRelation(&s, sql)
@@ -82,7 +83,7 @@ func TestLedger_Relation(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(s) != 1 {
-		t.Fatal()
+		t.Fatal(len(s))
 	}
 	if s[0].Hash != sa.Hash.String() {
 		t.Fatal()

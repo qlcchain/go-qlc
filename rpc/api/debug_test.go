@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,6 +23,7 @@ func setupDefaultDebugAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *De
 
 	dir := filepath.Join(config.QlcTestDataDir(), "debug", uuid.New().String())
 	_ = os.RemoveAll(dir)
+	fmt.Println("start: ", t.Name())
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 
@@ -39,6 +41,7 @@ func setupDefaultDebugAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *De
 		if err != nil {
 			t.Fatal(err)
 		}
+		fmt.Println("end: ", t.Name())
 	}, l, debugApi
 }
 
@@ -47,6 +50,7 @@ func setupMockDebugAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *DebugAp
 
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
+	fmt.Println("start: ", t.Name())
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
@@ -58,6 +62,7 @@ func setupMockDebugAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *DebugAp
 		if err := os.RemoveAll(dir); err != nil {
 			t.Fatal(err)
 		}
+		fmt.Println("end: ", t.Name())
 	}, l, debugApi
 }
 
@@ -387,11 +392,6 @@ func TestDebugApi_UncheckBlocks(t *testing.T) {
 	if r, err := debugApi.UncheckBlocksCount(); err != nil || r["Total"] != 3 {
 		t.Fatal(err)
 	}
-
-	if _, err := debugApi.UncheckBlocksCountStore(); err != nil {
-		t.Fatal(err)
-	}
-
 	if r, err := debugApi.UncheckBlocks(); err != nil || len(r) != 3 {
 		t.Fatal(err)
 	}

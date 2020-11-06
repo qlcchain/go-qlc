@@ -240,6 +240,9 @@ func setupTestCase2(t *testing.T) (func(t *testing.T), *Ledger) {
 func TestCache_Get(t *testing.T) {
 	teardownTestCase, l := setupTestCase2(t)
 	defer teardownTestCase(t)
+	if err := l.SetCacheCapacity(); err != nil {
+		t.Fatal(err)
+	}
 
 	c := time.NewTicker(5 * time.Second)
 	defer c.Stop()

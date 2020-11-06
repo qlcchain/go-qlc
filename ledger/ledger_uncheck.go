@@ -28,7 +28,7 @@ type UncheckedBlockStore interface {
 
 	AddGapPublishBlock(key types.Hash, blk *types.StateBlock, sync types.SynchronizedKind) error
 	DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error
-	GetGapPublishBlocks(key types.Hash, visit types.GapPublishBlockWalkFunc) error
+	GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error
 
 	AddGapDoDSettleStateBlock(key types.Hash, block *types.StateBlock, sync types.SynchronizedKind) error
 	GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error
@@ -330,7 +330,7 @@ func (l *Ledger) DeleteGapPublishBlock(key types.Hash, blkHash types.Hash) error
 	return l.deleteUnchecked(k)
 }
 
-func (l *Ledger) GetGapPublishBlocks(key types.Hash, visit types.GapPublishBlockWalkFunc) error {
+func (l *Ledger) GetGapPublishBlock(key types.Hash, visit types.GapPublishBlockWalkFunc) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixGapPublish, key)
 	if err != nil {
 		return err
