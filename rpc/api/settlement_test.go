@@ -11,7 +11,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -76,7 +75,6 @@ func setupSettlementAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifi
 	//t.Parallel()
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	fmt.Println("start: ", t.Name())
 	cm := config.NewCfgManager(dir)
 	cm.Load()
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
@@ -109,7 +107,6 @@ func setupSettlementAPI(t *testing.T) (func(t *testing.T), *process.LedgerVerifi
 			t.Fatal(err)
 		}
 		_ = cc.Stop()
-		fmt.Println("end: ", t.Name())
 	}, verifier, api
 }
 

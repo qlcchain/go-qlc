@@ -299,6 +299,26 @@ func TestDebugApi_GetCache(t *testing.T) {
 	t.Log(s)
 }
 
+func TestDebugApi_GetUCache(t *testing.T) {
+	teardownTestCase, l, debugApi := setupDefaultDebugAPI(t)
+	defer teardownTestCase(t)
+
+	c := l.UCache().GetCache()
+	if err := c.Put([]byte{1, 2, 3}, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Put([]byte{1, 2, 4}, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	if err := debugApi.GetUCache(); err != nil {
+		t.Fatal(err)
+	}
+	r := debugApi.GetUCacheStat()
+	t.Log(r)
+	s := debugApi.GetUCacheStatus()
+	t.Log(s)
+}
+
 func TestDebugApi_UncheckBlock(t *testing.T) {
 	teardownTestCase, l, debugApi := setupDefaultDebugAPI(t)
 	defer teardownTestCase(t)
@@ -390,7 +410,10 @@ func TestDebugApi_UncheckBlocks(t *testing.T) {
 	}
 
 	if r, err := debugApi.UncheckBlocksCount(); err != nil || r["Total"] != 3 {
-		t.Fatal(err)
+		t.Fatal(err, r["Total"])
+	}
+	if r, err := debugApi.UncheckBlocksCountStore(); err != nil || r["Total"] != 0 {
+		t.Fatal(err, r["Total"])
 	}
 	if r, err := debugApi.UncheckBlocks(); err != nil || len(r) != 3 {
 		t.Fatal(err)

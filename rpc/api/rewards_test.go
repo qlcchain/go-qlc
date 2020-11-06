@@ -9,7 +9,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -32,7 +31,6 @@ func setupRewardsTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVeri
 
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
-	fmt.Println("start: ", t.Name())
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 	cc := chainctx.NewChainContext(cm.ConfigFile)
@@ -66,7 +64,6 @@ func setupRewardsTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVeri
 			t.Fatal(err)
 		}
 		_ = cc.Stop()
-		fmt.Println("end: ", t.Name())
 	}, verifier, api
 }
 

@@ -35,7 +35,7 @@ func NewLedgerService(cfgFile string) *LedgerService {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
 	l := ledger.NewLedger(cfgFile)
-	l.SetCacheCapacity()
+	_ = l.SetCacheCapacity()
 	return &LedgerService{
 		Ledger: l,
 		logger: log.NewLogger("ledger_service"),

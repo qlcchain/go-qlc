@@ -90,6 +90,11 @@ func TestLedger_CountUncheckedBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("unchecked count,", c)
+	c, err = l.CountUncheckedBlocksStore()
+	if err != nil || c != 0 {
+		t.Fatal(err)
+	}
+	t.Log("unchecked count,", c)
 }
 
 func TestLedger_HasUncheckedBlock(t *testing.T) {

@@ -50,7 +50,7 @@ type MemoryCache struct {
 	logger *zap.SugaredLogger
 }
 
-func NewMemoryCache(ledger *Ledger, flushSecs time.Duration, size int, typ cacheType) *MemoryCache {
+func NewMemoryCache(ledger *Ledger, flushInterval time.Duration, size int, typ cacheType) *MemoryCache {
 	lc := &MemoryCache{
 		l:             ledger,
 		cacheCount:    6,
@@ -58,7 +58,7 @@ func NewMemoryCache(ledger *Ledger, flushSecs time.Duration, size int, typ cache
 		readIndex:     0,
 		caches:        make([]*Cache, 0),
 		lastFlush:     time.Now(),
-		flushInterval: flushSecs,
+		flushInterval: flushInterval,
 		flushStatue:   false,
 		flushChan:     make(chan bool, 10),
 		closedChan:    make(chan bool),
