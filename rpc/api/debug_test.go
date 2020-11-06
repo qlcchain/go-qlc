@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,6 +23,7 @@ func setupDefaultDebugAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *De
 
 	dir := filepath.Join(config.QlcTestDataDir(), "debug", uuid.New().String())
 	_ = os.RemoveAll(dir)
+	fmt.Println("start: ", t.Name())
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 
@@ -39,6 +41,7 @@ func setupDefaultDebugAPI(t *testing.T) (func(t *testing.T), *ledger.Ledger, *De
 		if err != nil {
 			t.Fatal(err)
 		}
+		fmt.Println("end: ", t.Name())
 	}, l, debugApi
 }
 
@@ -47,6 +50,7 @@ func setupMockDebugAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *DebugAp
 
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
+	fmt.Println("start: ", t.Name())
 	cm := config.NewCfgManager(dir)
 	_, _ = cm.Load()
 	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
@@ -58,6 +62,7 @@ func setupMockDebugAPI(t *testing.T) (func(t *testing.T), *mocks.Store, *DebugAp
 		if err := os.RemoveAll(dir); err != nil {
 			t.Fatal(err)
 		}
+		fmt.Println("end: ", t.Name())
 	}, l, debugApi
 }
 
@@ -294,6 +299,26 @@ func TestDebugApi_GetCache(t *testing.T) {
 	t.Log(s)
 }
 
+func TestDebugApi_GetUCache(t *testing.T) {
+	teardownTestCase, l, debugApi := setupDefaultDebugAPI(t)
+	defer teardownTestCase(t)
+
+	c := l.UCache().GetCache()
+	if err := c.Put([]byte{1, 2, 3}, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Put([]byte{1, 2, 4}, []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	if err := debugApi.GetUCache(); err != nil {
+		t.Fatal(err)
+	}
+	r := debugApi.GetUCacheStat()
+	t.Log(r)
+	s := debugApi.GetUCacheStatus()
+	t.Log(s)
+}
+
 func TestDebugApi_UncheckBlock(t *testing.T) {
 	teardownTestCase, l, debugApi := setupDefaultDebugAPI(t)
 	defer teardownTestCase(t)
@@ -385,7 +410,10 @@ func TestDebugApi_UncheckBlocks(t *testing.T) {
 	}
 
 	if r, err := debugApi.UncheckBlocksCount(); err != nil || r["Total"] != 3 {
-		t.Fatal(err)
+		t.Fatal(err, r["Total"])
+	}
+	if r, err := debugApi.UncheckBlocksCountStore(); err != nil || r["Total"] != 0 {
+		t.Fatal(err, r["Total"])
 	}
 	if r, err := debugApi.UncheckBlocks(); err != nil || len(r) != 3 {
 		t.Fatal(err)

@@ -17,6 +17,18 @@ import (
 	"github.com/qlcchain/go-qlc/log"
 )
 
+const defaultBlockFlushSecs = 1 * time.Second
+const defaultBlockCapacity = 100000
+const defaultUncheckFlushSecs = 2 * time.Minute
+const defaultUncheckCapacity = 500000
+
+type cacheType byte
+
+const (
+	block cacheType = iota
+	unchecked
+)
+
 type MemoryCache struct {
 	l          *Ledger
 	caches     []*Cache
@@ -30,6 +42,7 @@ type MemoryCache struct {
 	flushChan     chan bool
 	closedChan    chan bool
 	lock          sync.Mutex
+	typ           cacheType
 
 	tempCaches []*Cache
 	tempLock   sync.Mutex
@@ -37,7 +50,7 @@ type MemoryCache struct {
 	logger *zap.SugaredLogger
 }
 
-func NewMemoryCache(ledger *Ledger) *MemoryCache {
+func NewMemoryCache(ledger *Ledger, flushInterval time.Duration, size int, typ cacheType) *MemoryCache {
 	lc := &MemoryCache{
 		l:             ledger,
 		cacheCount:    6,
@@ -45,22 +58,29 @@ func NewMemoryCache(ledger *Ledger) *MemoryCache {
 		readIndex:     0,
 		caches:        make([]*Cache, 0),
 		lastFlush:     time.Now(),
-		flushInterval: defaultFlushSecs,
+		flushInterval: flushInterval,
 		flushStatue:   false,
 		flushChan:     make(chan bool, 10),
 		closedChan:    make(chan bool),
 		lock:          sync.Mutex{},
 		tempLock:      sync.Mutex{},
-		logger:        log.NewLogger("ledger/dbcache"),
+		typ:           typ,
+		logger:        log.NewLogger("ledger/cache"),
 	}
 	for i := 0; i < lc.cacheCount; i++ {
-		lc.caches = append(lc.caches, newCache(i))
+		lc.caches = append(lc.caches, newCache(i, size, typ))
 	}
 	for i := 0; i < 30; i++ {
 		lc.tempCaches = append(lc.tempCaches, newTempCache())
 	}
 	go lc.flushCache()
 	return lc
+}
+
+func (lc *MemoryCache) ResetCapacity(size int) {
+	for _, m := range lc.caches {
+		m.cache = gcache.New(size).Build()
+	}
 }
 
 // get write cache index
@@ -108,7 +128,7 @@ func (lc *MemoryCache) needsFlush() bool {
 }
 
 func (lc *MemoryCache) flushCache() {
-	ticker := time.NewTicker(defaultFlushSecs)
+	ticker := time.NewTicker(lc.flushInterval)
 	for {
 		select {
 		case <-ticker.C:
@@ -233,6 +253,11 @@ func (lc *MemoryCache) Put(key []byte, value interface{}) error {
 	return c.Put(key, value)
 }
 
+func (lc *MemoryCache) Delete(key []byte) error {
+	c := lc.GetCache()
+	return c.Delete(key)
+}
+
 func (lc *MemoryCache) Has(key []byte) (bool, error) {
 	_, err := lc.Get(key)
 	if err != nil {
@@ -328,24 +353,23 @@ func (lc *MemoryCache) BatchUpdate(fn func(c *Cache) error) error {
 	//return nil
 }
 
-const defaultFlushSecs = 1 * time.Second
-const defaultCapacity = 100000
-
 type Cache struct {
 	//used is true
 	index       int
 	quote       int32
 	flushLock   sync.Mutex
 	flushStatue bool
+	typ         cacheType
 
 	cache  gcache.Cache
 	logger *zap.SugaredLogger
 }
 
-func newCache(index int) *Cache {
+func newCache(index int, size int, typ cacheType) *Cache {
 	return &Cache{
 		index:  index,
-		cache:  gcache.New(defaultCapacity).Build(),
+		cache:  gcache.New(size).Build(),
+		typ:    typ,
 		logger: log.NewLogger("ledger/cache"),
 	}
 }
@@ -365,7 +389,7 @@ func (c *Cache) flush(l *Ledger) error {
 	defer func() {
 		cs.End = time.Now().UnixNano()
 	}()
-	l.updateCacheStat(cs)
+	l.updateCacheStat(cs, c.typ)
 
 	c.flushLock.Lock()
 	defer func() {
@@ -394,6 +418,9 @@ func (c *Cache) flush(l *Ledger) error {
 		key := originalKey(k.(string))
 		if bytes.EqualFold(key[:1], []byte{byte(storage.KeyPrefixBlock)}) {
 			cs.Block = cs.Block + 1
+		}
+		if isDeleteKey(v) {
+			cs.Delete = cs.Delete + 1
 		}
 		if err := c.dumpToLevelDb(key, v, batch); err != nil {
 			return fmt.Errorf("dump to store: %s ", err)
@@ -550,6 +577,9 @@ type CacheStore interface {
 	Cache() *MemoryCache
 	GetCacheStat() []*CacheStat
 	GetCacheStatue() map[string]string
+	UCache() *MemoryCache
+	GetUCacheStat() []*CacheStat
+	GetUCacheStatue() map[string]string
 }
 
 func (l *Ledger) Cache() *MemoryCache {
@@ -570,5 +600,26 @@ func (l *Ledger) GetCacheStatue() map[string]string {
 	r["lastflush"] = l.cache.lastFlush.Format("2006-01-02 15:04:05")
 	r["flushStatue"] = strconv.FormatBool(l.cache.flushStatue)
 	r["flushChan"] = strconv.Itoa(len(l.cache.flushChan))
+	return r
+}
+
+func (l *Ledger) UCache() *MemoryCache {
+	return l.unCheckCache
+}
+
+func (l *Ledger) GetUCacheStat() []*CacheStat {
+	return l.uCacheStats
+}
+
+func (l *Ledger) GetUCacheStatue() map[string]string {
+	r := make(map[string]string)
+	for i, c := range l.unCheckCache.caches {
+		r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
+	}
+	r["read"] = strconv.Itoa(l.unCheckCache.readIndex)
+	r["write"] = strconv.Itoa(l.unCheckCache.writeIndex)
+	r["lastflush"] = l.unCheckCache.lastFlush.Format("2006-01-02 15:04:05")
+	r["flushStatue"] = strconv.FormatBool(l.unCheckCache.flushStatue)
+	r["flushChan"] = strconv.Itoa(len(l.unCheckCache.flushChan))
 	return r
 }

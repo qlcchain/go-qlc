@@ -47,6 +47,7 @@ type LedgerStore interface {
 	GetRelation(dest interface{}, query string) error
 	SelectRelation(dest interface{}, query string) error
 	Flush() error
+	FlushU() error
 	BlockConfirmed(blk *types.StateBlock)
 }
 
@@ -55,8 +56,10 @@ type Ledger struct {
 	dir            string
 	store          storage.Store
 	cache          *MemoryCache
+	unCheckCache   *MemoryCache
 	rcache         *rCache
 	cacheStats     []*CacheStat
+	uCacheStats    []*CacheStat
 	relation       *relation.Relation
 	EB             event.EventBus
 	blockConfirmed chan *types.StateBlock
@@ -130,9 +133,11 @@ func NewLedger(cfgFile string) *Ledger {
 			l.logger.Fatal(err.Error())
 		}
 		l.relation = r
-		l.cache = NewMemoryCache(l)
+		l.cache = NewMemoryCache(l, defaultBlockFlushSecs, 2000, block)
+		l.unCheckCache = NewMemoryCache(l, defaultUncheckFlushSecs, 50, unchecked)
 		l.rcache = NewrCache()
 		l.cacheStats = make([]*CacheStat, 0)
+		l.uCacheStats = make([]*CacheStat, 0)
 		if err := l.init(); err != nil {
 			l.logger.Fatal(err)
 		}
@@ -175,6 +180,15 @@ func (l *Ledger) init() error {
 		return fmt.Errorf("update representation: %s ", err)
 	}
 
+	return nil
+}
+
+func (l *Ledger) SetCacheCapacity() error {
+	if err := l.Flush(); err != nil {
+		return err
+	}
+	l.cache.ResetCapacity(defaultBlockCapacity)
+	l.unCheckCache.ResetCapacity(defaultUncheckCapacity)
 	return nil
 }
 
@@ -260,11 +274,7 @@ func (l *Ledger) upgrade() error {
 			return nil
 		}
 		ms := []migration.Migration{
-			new(migration.MigrationV1ToV11),
-			new(migration.MigrationV11ToV12),
-			new(migration.MigrationV12ToV13),
-			new(migration.MigrationV13ToV14),
-			new(migration.MigrationV14ToV15),
+			new(migration.MigrationV1ToV15),
 			new(migration.MigrationV15ToV16),
 		}
 
@@ -322,6 +332,7 @@ func (l *Ledger) Close() error {
 	if _, ok := lcache[l.dir]; ok {
 		l.cancel()
 		l.cache.closed()
+		l.unCheckCache.closed()
 		if err := l.relation.Close(); err != nil {
 			l.logger.Error(err)
 		}
@@ -714,12 +725,12 @@ func (l *Ledger) IteratorObject(prefix []byte, end []byte, fn func(k []byte, v i
 	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
 		if !contain(keys, k) {
 			if err := fn(k, v); err != nil {
-				return fmt.Errorf("ledger iterator: %s", err)
+				return fmt.Errorf("unchecked iterator: %s", err)
 			}
 		}
 		return nil
 	}); err != nil {
-		return fmt.Errorf("ledger store iterator: %s", err)
+		return fmt.Errorf("unchecked store iterator: %s", err)
 	}
 
 	return nil
@@ -752,17 +763,26 @@ func (l *Ledger) Action(at storage.ActionType, t int) (interface{}, error) {
 }
 
 type CacheStat struct {
-	Index int
-	Key   int
-	Block int
-	Start int64
-	End   int64
+	Index  int
+	Key    int
+	Block  int
+	Delete int
+	Start  int64
+	End    int64
 }
 
-func (l *Ledger) updateCacheStat(c *CacheStat) {
-	l.cacheStats = append(l.cacheStats, c)
-	if len(l.cacheStats) > 200 {
-		l.cacheStats = l.cacheStats[:100]
+func (l *Ledger) updateCacheStat(c *CacheStat, typ cacheType) {
+	switch typ {
+	case block:
+		l.cacheStats = append(l.cacheStats, c)
+		if len(l.cacheStats) > 200 {
+			l.cacheStats = l.cacheStats[:100]
+		}
+	case unchecked:
+		l.uCacheStats = append(l.uCacheStats, c)
+		if len(l.uCacheStats) > 200 {
+			l.uCacheStats = l.uCacheStats[:100]
+		}
 	}
 }
 
@@ -770,6 +790,12 @@ func (l *Ledger) Flush() error {
 	lock.Lock()
 	defer lock.Unlock()
 	return l.cache.rebuild()
+}
+
+func (l *Ledger) FlushU() error {
+	lock.Lock()
+	defer lock.Unlock()
+	return l.unCheckCache.rebuild()
 }
 
 func (l *Ledger) BlockConfirmed(blk *types.StateBlock) {

@@ -34,8 +34,10 @@ type LedgerService struct {
 func NewLedgerService(cfgFile string) *LedgerService {
 	cc := context.NewChainContext(cfgFile)
 	cfg, _ := cc.Config()
+	l := ledger.NewLedger(cfgFile)
+	_ = l.SetCacheCapacity()
 	return &LedgerService{
-		Ledger: ledger.NewLedger(cfgFile),
+		Ledger: l,
 		logger: log.NewLogger("ledger_service"),
 		cfg:    cfg,
 	}

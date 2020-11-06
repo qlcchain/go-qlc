@@ -90,6 +90,11 @@ func TestLedger_CountUncheckedBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("unchecked count,", c)
+	c, err = l.CountUncheckedBlocksStore()
+	if err != nil || c != 0 {
+		t.Fatal(err)
+	}
+	t.Log("unchecked count,", c)
 }
 
 func TestLedger_HasUncheckedBlock(t *testing.T) {
@@ -146,6 +151,10 @@ func TestLedger_AddGapPovBlock(t *testing.T) {
 
 	err = l.AddGapPovBlock(10, blk2, types.UnSynchronized)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := l.FlushU(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -235,6 +244,9 @@ func TestLedger_WalkGapPovBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := l.FlushU(); err != nil {
+		t.Fatal(err)
+	}
 
 	b1m := false
 	b2m := false
@@ -280,6 +292,9 @@ func TestLedger_AddGapPublishBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := l.FlushU(); err != nil {
+		t.Fatal(err)
+	}
 
 	b1Match := false
 	b2Match := false
@@ -316,6 +331,9 @@ func TestLedger_DeleteGapPublishBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := l.FlushU(); err != nil {
+		t.Fatal(err)
+	}
 
 	b1Match := false
 	b2Match := false
@@ -341,6 +359,9 @@ func TestLedger_DeleteGapPublishBlock(t *testing.T) {
 		}
 		return nil
 	})
+	if err := l.FlushU(); err != nil {
+		t.Fatal(err)
+	}
 
 	b1Match = false
 	b2Match = false
@@ -369,6 +390,9 @@ func TestLedger_GetGapPublishBlock(t *testing.T) {
 
 	err := l.AddGapPublishBlock(hash, blk, types.Synchronized)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.FlushU(); err != nil {
 		t.Fatal(err)
 	}
 

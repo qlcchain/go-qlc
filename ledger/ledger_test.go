@@ -465,6 +465,34 @@ func TestLedger_Cache(t *testing.T) {
 	t.Log(l.GetCacheStat())
 }
 
+func TestLedger_UCache(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	// get from a specific
+	c := l.unCheckCache.GetCache()
+	key := []byte{1, 2, 3}
+	if err := c.Put(key, []byte{4, 5, 6}); err != nil {
+		t.Fatal(err)
+	}
+	if i, r, err := l.GetObject(key, c); err != nil || i == nil || r != nil {
+		t.Fatal(err, i, r)
+	}
+	if err := c.Delete(key); err != nil {
+		t.Fatal(err)
+	}
+	if i, r, err := l.GetObject(key, c); err != storage.KeyNotFound || i != nil || r != nil {
+		t.Fatal(err, i, r)
+	}
+	if i, r, err := l.GetObject(key); err != storage.KeyNotFound || i != nil || r != nil {
+		t.Fatal(err, i, r)
+	}
+
+	t.Log(l.GetUCacheStatue())
+	t.Log(l.GetUCacheStat())
+	t.Log(l.UCache())
+}
+
 func TestLedger_Iterator(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
