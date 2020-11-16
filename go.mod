@@ -40,7 +40,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/sahilm/fuzzy v0.1.0
 	github.com/shirou/gopsutil/v3 v3.20.10
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.2
