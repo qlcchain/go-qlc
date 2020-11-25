@@ -21,6 +21,7 @@ func addLedgerCmd() {
 		addLedgerBlockCountByIshell(ledgerCmd)
 		addLedgerTokensByIshell(ledgerCmd)
 		addLedgerBalanceByIshell(ledgerCmd)
+		addLedgerInitLedgerByIshell(ledgerCmd)
 	} else {
 		var ledgerCmd = &cobra.Command{
 			Use:   "ledger",
@@ -34,5 +35,6 @@ func addLedgerCmd() {
 		addLedgerGenerateTestLedgerByCobra(ledgerCmd)
 		addLedgerBlockCountByCobra(ledgerCmd)
 		addLedgerBalanceByCobra(ledgerCmd)
+		addLedgerInityCobra(ledgerCmd)
 	}
 }
