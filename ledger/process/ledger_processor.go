@@ -546,7 +546,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 					if err != nil {
 						return fmt.Errorf("reward block save storage error: %s", err)
 					}
-					err = lv.saveTrie(vmstore.Trie(ctx), cache)
+					err = lv.saveTrie(block.PoVHeight, vmstore.Trie(ctx), cache)
 					if err != nil {
 						return fmt.Errorf("reward block save trie error: %s", err)
 					}
@@ -573,7 +573,7 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 						if err := lv.l.SaveStorage(vmstore.ToCache(vmCtx), cache); err != nil {
 							return fmt.Errorf("send block save storage error: %s", err)
 						}
-						err = lv.saveTrie(vmstore.Trie(vmCtx), cache)
+						err = lv.saveTrie(block.PoVHeight, vmstore.Trie(vmCtx), cache)
 						if err != nil {
 							return fmt.Errorf("send block save trie error: %s", err)
 						}
@@ -587,11 +587,13 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 	return nil
 }
 
-func (lv *LedgerVerifier) saveTrie(t *trie.Trie, cache *ledger.Cache) error {
-	fn, err := t.Save(cache)
-	if err != nil {
-		return err
+func (lv *LedgerVerifier) saveTrie(height uint64, t *trie.Trie, cache *ledger.Cache) error {
+	if lv.l.NeedToWriteTrie(height) {
+		fn, err := t.Save(cache)
+		if err != nil {
+			return err
+		}
+		fn()
 	}
-	fn()
 	return nil
 }

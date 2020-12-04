@@ -11,7 +11,7 @@ package config
 
 const (
 	QlcConfigFile      = "qlc.json"
-	configVersion      = 9
+	configVersion      = 10
 	cfgDir             = "GQlcchain_test"
 	nixCfgDir          = ".gqlcchain_test"
 	ipcName            = "gqlc-test.ipc"

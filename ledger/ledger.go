@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/util"
 	"io"
 	"os"
 	"path/filepath"
@@ -49,11 +50,15 @@ type LedgerStore interface {
 	Flush() error
 	FlushU() error
 	BlockConfirmed(blk *types.StateBlock)
+	AddTrieCleanHeight(height uint64) error
+	GetTrieCleanHeight() (uint64, error)
+	NeedToWriteTrie(height uint64) bool
 }
 
 type Ledger struct {
 	io.Closer
 	dir            string
+	cfg            *config.Config
 	store          storage.Store
 	cache          *MemoryCache
 	unCheckCache   *MemoryCache
@@ -122,6 +127,7 @@ func NewLedger(cfgFile string) *Ledger {
 			deletedSchema:  make([]types.Schema, 0),
 			logger:         log.NewLogger("ledger"),
 			tokenCache:     sync.Map{},
+			cfg:            cfg,
 		}
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
@@ -816,4 +822,32 @@ func (l *Ledger) RegisterInterface(con types.Convert, objs []types.Schema) error
 		return err
 	}
 	return l.RegisterRelation(objs)
+}
+
+func (l *Ledger) AddTrieCleanHeight(height uint64) error {
+	key, err := storage.GetKeyOfParts(storage.KeyPrefixTrieClean)
+	if err != nil {
+		return err
+	}
+	value := util.BE_Uint64ToBytes(height)
+	return l.store.Put(key, value)
+}
+
+func (l *Ledger) GetTrieCleanHeight() (uint64, error) {
+	key, err := storage.GetKeyOfParts(storage.KeyPrefixTrieClean)
+	if err != nil {
+		return 0, err
+	}
+	v, err := l.store.Get(key)
+	if err != nil {
+		return 0, err
+	}
+	return util.BE_BytesToUint64(v), nil
+}
+
+func (l *Ledger) NeedToWriteTrie(height uint64) bool {
+	if !l.cfg.TrieClean.Enable {
+		return true
+	}
+	return l.cfg.TrieClean.SyncWriteHeight < height
 }

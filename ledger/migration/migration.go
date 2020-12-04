@@ -33,7 +33,7 @@ func (m MigrationV1ToV15) StartVersion() int {
 }
 
 func (m MigrationV1ToV15) EndVersion() int {
-	return 11
+	return 15
 }
 
 type bytesKV struct {

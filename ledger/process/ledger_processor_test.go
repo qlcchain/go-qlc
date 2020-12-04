@@ -32,7 +32,10 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
-	_, _ = cm.Load()
+	cfg, _ := cm.Load()
+	cfg.TrieClean.Enable = false
+	cm.Save()
+
 	l := ledger.NewLedger(cm.ConfigFile)
 	bc, _ = mock.BlockChain(false)
 	fmt.Println(t.Name())

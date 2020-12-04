@@ -472,6 +472,20 @@ func (_m *Store) AddTokenMetaConfirmed(address types.Address, meta *types.TokenM
 	return r0
 }
 
+// AddTrieCleanHeight provides a mock function with given fields: height
+func (_m *Store) AddTrieCleanHeight(height uint64) error {
+	ret := _m.Called(height)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(uint64) error); ok {
+		r0 = rf(height)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // AddUncheckedBlock provides a mock function with given fields: key, value, kind, sync
 func (_m *Store) AddUncheckedBlock(key types.Hash, value *types.StateBlock, kind types.UncheckedKind, sync types.SynchronizedKind) error {
 	ret := _m.Called(key, value, kind, sync)
@@ -3187,6 +3201,27 @@ func (_m *Store) GetTokenMetaConfirmed(address types.Address, tokenType types.Ha
 	return r0, r1
 }
 
+// GetTrieCleanHeight provides a mock function with given fields:
+func (_m *Store) GetTrieCleanHeight() (uint64, error) {
+	ret := _m.Called()
+
+	var r0 uint64
+	if rf, ok := ret.Get(0).(func() uint64); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetUCacheStat provides a mock function with given fields:
 func (_m *Store) GetUCacheStat() []*ledger.CacheStat {
 	ret := _m.Called()
@@ -3761,6 +3796,20 @@ func (_m *Store) ListTokens() ([]*types.TokenInfo, error) {
 	}
 
 	return r0, r1
+}
+
+// NeedToWriteTrie provides a mock function with given fields: height
+func (_m *Store) NeedToWriteTrie(height uint64) bool {
+	ret := _m.Called(height)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(uint64) bool); ok {
+		r0 = rf(height)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
 }
 
 // NewVMIterator provides a mock function with given fields: address
