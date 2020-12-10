@@ -81,6 +81,10 @@ func TestLedgerService_RemoveUselessTrie(t *testing.T) {
 		_ = os.RemoveAll(dir)
 	}()
 
+	if err := ls.removeUselessTrie(); err != nil {
+		t.Fatal()
+	}
+
 	for i := 0; i < 4; i++ {
 		blk := mock.StateBlock()
 		blk.Type = types.Send
@@ -116,6 +120,9 @@ func TestLedgerService_RemoveUselessTrie(t *testing.T) {
 	fn2()
 	root2 := tr2.Hash()
 
+	if err := ls.backupPovTrieData(); err == nil {
+		t.Fatal()
+	}
 	block, td := mock.GeneratePovBlock(nil, 0)
 	block.Header.CbTx.StateHash = *root2
 	if err := l.AddPovBlock(block, td); err != nil {

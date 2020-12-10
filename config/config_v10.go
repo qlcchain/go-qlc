@@ -26,7 +26,7 @@ func DefaultConfigV10(dir string) (*ConfigV10, error) {
 func defaultTrieClean() *TrieClean {
 	return &TrieClean{
 		Enable:          true,
-		PeriodDay:       5,
+		PeriodDay:       7,
 		HeightInterval:  1000,
 		SyncWriteHeight: 400000,
 	}

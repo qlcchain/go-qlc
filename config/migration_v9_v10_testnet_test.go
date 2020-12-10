@@ -32,10 +32,10 @@ func TestMigrationV9ToV10_Migration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if m.startVersion != 9 {
+	if m.StartVersion() != 9 {
 		t.Fatal("start version error")
 	}
-	if m.endVersion != 10 {
+	if m.EndVersion() != 10 {
 		t.Fatal("end version error")
 	}
 

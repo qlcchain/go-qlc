@@ -118,6 +118,8 @@ func (ls *LedgerService) Init() error {
 				_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.TrieClean.SyncWriteHeight)
 			}
 		}
+		duration := time.Duration(ls.cfg.TrieClean.PeriodDay*24) * time.Hour
+		go ls.clean(duration, ls.cfg.TrieClean.HeightInterval)
 	}
 	return nil
 }
@@ -129,11 +131,6 @@ func (ls *LedgerService) Start() error {
 	defer ls.PostStart()
 	if err := ls.registerRelation(); err != nil {
 		return fmt.Errorf("ledger start: %s", err)
-	}
-
-	if ls.cfg.TrieClean.Enable {
-		duration := time.Duration(ls.cfg.TrieClean.PeriodDay*24) * time.Hour
-		go ls.clean(duration, ls.cfg.TrieClean.HeightInterval)
 	}
 	return nil
 }

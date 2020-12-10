@@ -561,3 +561,34 @@ func TestLedger_init(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLedger_TrieClean(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	if _, err := l.GetTrieCleanHeight(); err == nil {
+		t.Fatal()
+	}
+
+	var height uint64 = 100
+	if err := l.AddTrieCleanHeight(height); err != nil {
+		t.Fatal(err)
+	}
+	h, err := l.GetTrieCleanHeight()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if height != h {
+		t.Fatal(height, h)
+	}
+
+	l.cfg.TrieClean.Enable = false
+	if !l.NeedToWriteTrie(height) {
+		t.Fatal()
+	}
+	l.cfg.TrieClean.Enable = true
+	l.cfg.TrieClean.SyncWriteHeight = height - 1
+	if !l.NeedToWriteTrie(height) {
+		t.Fatal()
+	}
+}
