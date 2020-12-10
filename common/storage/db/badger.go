@@ -221,22 +221,7 @@ func (b *BadgerStore) Drop(prefix []byte) error {
 	if prefix == nil {
 		return b.db.DropAll()
 	} else {
-		txn := b.db.NewTransaction(true)
-		defer txn.Commit()
-
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			key := item.Key()
-			k := make([]byte, len(key))
-			copy(k, key)
-			if err := txn.Delete(k); err != nil {
-				return err
-			}
-		}
-		return nil
+		return b.db.DropPrefix(prefix)
 	}
 }
 
@@ -247,7 +232,7 @@ func (b *BadgerStore) Close() error {
 func (b *BadgerStore) Action(at storage.ActionType) (interface{}, error) {
 	switch at {
 	case storage.GC:
-		err := b.db.RunValueLogGC(0.5)
+		err := b.db.RunValueLogGC(0.4)
 		if err != nil {
 			return nil, err
 		}

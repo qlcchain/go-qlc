@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/common/statedb"
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/trie"
 	"time"
@@ -105,7 +106,20 @@ func (ls *LedgerService) Init() error {
 			}
 		}
 	}
-	return l.SetStorage(vmstore.ToCache(ctx))
+	if err := l.SetStorage(vmstore.ToCache(ctx)); err != nil {
+		return err
+	}
+
+	if ls.cfg.TrieClean.Enable == true {
+		if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
+			if err := ls.removeUselessTrie(); err != nil {
+				ls.logger.Error(err)
+			} else {
+				_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.TrieClean.SyncWriteHeight)
+			}
+		}
+	}
+	return nil
 }
 
 func (ls *LedgerService) Start() error {
@@ -153,15 +167,12 @@ func (ls *LedgerService) clean(duration time.Duration, minHeightInterval uint64)
 	for {
 		select {
 		case <-cTicker.C:
-			lastCleanHeight, err := ls.Ledger.GetTrieCleanHeight()
-			if err != nil {
-				break
-			}
+			lastCleanHeight, _ := ls.Ledger.GetTrieCleanHeight()
 			bestPovHeight, err := ls.Ledger.GetPovLatestHeight()
 			if err != nil {
 				break
 			}
-			if bestPovHeight-lastCleanHeight > minHeightInterval {
+			if bestPovHeight-lastCleanHeight >= minHeightInterval {
 				if err := ls.cleanTrie(lastCleanHeight, bestPovHeight-minHeightInterval); err != nil {
 					ls.logger.Error(err)
 					break
@@ -178,27 +189,42 @@ func (ls *LedgerService) clean(duration time.Duration, minHeightInterval uint64)
 
 func (ls *LedgerService) cleanTrie(startHeight, endHeight uint64) error {
 	l := ls.Ledger
+	hashes := make([]*types.Hash, 0)
 	if err := l.GetAccountMetas(func(am *types.AccountMeta) error {
 		for _, token := range am.Tokens {
-			startHash := token.Header
-			endLoop := false
-			for endLoop {
-				blk, err := l.GetStateBlockConfirmed(startHash)
+			blockHash := token.Header
+			for {
+				block, err := l.GetStateBlock(blockHash)
 				if err != nil {
-					ls.logger.Errorf("%s: %s", err, startHash.String())
-					endLoop = true
+					return fmt.Errorf("%s: %s", err, blockHash.String())
 				}
-				if blk.IsContractBlock() && !config.IsGenesisBlock(blk) &&
-					blk.PoVHeight >= startHeight && blk.PoVHeight < endHeight {
-					extra := blk.GetExtra()
+				if block.IsContractBlock() && !config.IsGenesisBlock(block) &&
+					block.PoVHeight >= startHeight && block.PoVHeight < endHeight {
+					extra := block.GetExtra()
 					if !extra.IsZero() {
 						t := trie.NewTrie(ls.Ledger.DBStore(), &extra, trie.NewSimpleTrieNodePool())
-						_ = t.Remove()
+						//_ = t.Remove()
+						nodes := t.NewNodeIterator(func(node *trie.TrieNode) bool {
+							return true
+						})
+						for node := range nodes {
+							if node != nil {
+								nodeHash := node.Hash()
+								hashes = append(hashes, nodeHash)
+								if node.NodeType() == trie.HashNode {
+									refKey := node.Value()
+									refHash, err := types.BytesToHash(refKey)
+									if err == nil {
+										hashes = append(hashes, &refHash)
+									}
+								}
+							}
+						}
 					}
 				}
-				startHash = blk.GetPrevious()
-				if startHash == types.ZeroHash {
-					endLoop = true
+				blockHash = block.GetPrevious()
+				if blockHash == types.ZeroHash {
+					break
 				}
 			}
 		}
@@ -206,6 +232,200 @@ func (ls *LedgerService) cleanTrie(startHeight, endHeight uint64) error {
 	}); err != nil {
 		return fmt.Errorf("clean trie: %s", err)
 	}
+
+	batch := l.DBStore().Batch(false)
+	for _, hash := range hashes {
+		if err := batch.Delete(encodeTrieKey(hash.Bytes(), true)); err != nil {
+			return fmt.Errorf("batch put: %s", err)
+		}
+	}
+	if err := l.DBStore().PutBatch(batch); err != nil {
+		return fmt.Errorf("put batch: %s", err)
+	}
 	_, _ = ls.Ledger.Action(storage.GC, 0)
 	return nil
+}
+
+func (ls *LedgerService) removeUselessTrie() error {
+	if count, err := ls.Ledger.BlocksCount(); err != nil || int(count) <= len(config.AllGenesisBlocks()) {
+		return nil
+	}
+	if _, err := ls.Ledger.GetLatestPovBlock(); err != nil {
+		return nil
+	}
+	if err := ls.backupAccountTrieData(); err != nil {
+		return fmt.Errorf("account trie: %s", err)
+	}
+	if err := ls.backupPovTrieData(); err != nil {
+		return fmt.Errorf("pov trie: %s", err)
+	}
+	if err := ls.resetTrie(); err != nil {
+		return fmt.Errorf("reset trie: %s", err)
+	}
+	ls.Ledger.Action(storage.GC, 0)
+	return nil
+}
+
+func (ls *LedgerService) backupPovTrieData() error {
+	l := ls.Ledger
+	hashes := make([]*types.Hash, 0)
+
+	latestBlk, err := ls.Ledger.GetLatestPovBlock()
+	if err != nil {
+		return err
+	}
+	latestTrieRoot := latestBlk.GetStateHash()
+
+	globalHashes, err := trieHashesByRoot(l.DBStore(), latestTrieRoot)
+	if err != nil {
+		return fmt.Errorf("pov global trie: %s", err)
+	}
+	hashes = append(hashes, globalHashes...)
+
+	statedb := statedb.NewPovGlobalStateDB(l.DBStore(), latestTrieRoot)
+	for _, addr := range contractaddress.PovContractStateAddressList {
+		contractState, err := statedb.LookupContractStateDB(addr)
+		if err != nil {
+			return err
+		} else {
+			curTrie := contractState.GetCurTrie()
+			if curTrie.Root != nil {
+				root := *curTrie.Root.Hash()
+				contractHashes, err := trieHashesByRoot(l.DBStore(), root)
+				if err != nil {
+					return fmt.Errorf("pov global trie: %s", err)
+				}
+				hashes = append(hashes, contractHashes...)
+			}
+		}
+	}
+
+	b := l.DBStore().Batch(false)
+	for _, h := range hashes {
+		v, err := l.DBStore().Get(encodeTrieKey(h.Bytes(), true))
+		if err == nil {
+			if err := b.Put(encodeTrieKey(h.Bytes(), false), v); err != nil {
+				return fmt.Errorf("put: %s", err)
+			}
+		} else {
+			ls.logger.Error(err)
+		}
+	}
+	return l.DBStore().PutBatch(b)
+}
+
+func (ls *LedgerService) backupAccountTrieData() error {
+	l := ls.Ledger
+	hashes := make([]*types.Hash, 0)
+
+	if err := ls.Ledger.GetAccountMetas(func(am *types.AccountMeta) error {
+		for _, token := range am.Tokens {
+			blkHash := token.Header
+			for {
+				blk, err := l.GetStateBlock(blkHash)
+				if err != nil {
+					return fmt.Errorf("get block: %s", err)
+				}
+				if blk.PoVHeight < ls.cfg.TrieClean.SyncWriteHeight {
+					break
+				}
+				if blk.IsContractBlock() && !config.IsGenesisBlock(blk) {
+					rootHash := blk.GetExtra()
+					if !rootHash.IsZero() {
+						hs, err := trieHashesByRoot(l.DBStore(), rootHash)
+						if err != nil {
+							return fmt.Errorf("pov account trie: %s, address: %s", err, am.Address.String())
+						}
+						hashes = append(hashes, hs...)
+					}
+				}
+				blkHash = blk.GetPrevious()
+				if blkHash == types.ZeroHash {
+					break
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("clean trie: %s", err)
+	}
+
+	batch := l.DBStore().Batch(false)
+	for _, hash := range hashes {
+		value, err := l.DBStore().Get(encodeTrieKey(hash.Bytes(), true))
+		if err == nil {
+			if err := batch.Put(encodeTrieKey(hash.Bytes(), false), value); err != nil {
+				return fmt.Errorf("batch put: %s", err)
+			}
+		} else {
+			ls.logger.Error(err)
+		}
+	}
+	return l.DBStore().PutBatch(batch)
+}
+
+func trieHashesByRoot(db storage.Store, rootHash types.Hash) ([]*types.Hash, error) {
+	hashes := make([]*types.Hash, 0)
+
+	t := trie.NewTrie(db, &rootHash, trie.GetGlobalTriePool())
+	nodes := t.NewNodeIterator(func(node *trie.TrieNode) bool {
+		return true
+	})
+	for node := range nodes {
+		if node != nil {
+			nodeHash := node.Hash()
+			hashes = append(hashes, nodeHash)
+			if node.NodeType() == trie.HashNode {
+				refKey := node.Value()
+				refHash, err := types.BytesToHash(refKey)
+				if err != nil {
+					return nil, err
+				}
+				hashes = append(hashes, &refHash)
+			}
+		}
+	}
+	return hashes, nil
+}
+
+func (ls *LedgerService) resetTrie() error {
+	l := ls.Ledger
+	var hashes []types.Hash
+	err := l.DBStore().Iterator([]byte{byte(storage.KeyPrefixTrie)}, nil, func(k, v []byte) error {
+		if _, err := l.Get(encodeTrieKey(k[1:], false)); err != nil {
+			if h, err := types.BytesToHash(k[1:]); err == nil {
+				hashes = append(hashes, h)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("reset key: %s", err)
+	}
+	if len(hashes) > 0 {
+		batch := l.DBStore().Batch(false)
+		for _, hash := range hashes {
+			if err := batch.Delete(encodeTrieKey(hash.Bytes(), true)); err != nil {
+				return fmt.Errorf("batch delete: %s", err)
+			}
+		}
+		if err := l.DBStore().PutBatch(batch); err != nil {
+			return fmt.Errorf("put batch: %s", err)
+		}
+	}
+
+	l.DBStore().Drop([]byte{byte(storage.KeyPrefixTrieTemp)})
+	l.Action(storage.GC, 0)
+	return nil
+}
+
+func encodeTrieKey(key []byte, original bool) []byte {
+	result := make([]byte, len(key)+1)
+	if original == true {
+		result[0] = byte(storage.KeyPrefixTrie)
+	} else {
+		result[0] = byte(storage.KeyPrefixTrieTemp)
+	}
+	copy(result[1:], key)
+	return result
 }

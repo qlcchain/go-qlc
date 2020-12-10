@@ -23,7 +23,8 @@ var (
 		BlackHoleAddress, RepAddress, PubKeyDistributionAddress, SettlementAddress, PermissionAddress,
 		PrivacyDemoKVAddress, PtmKeyKVAddress, DoDSettlementAddress, KYCAddress,
 	}
-	RewardContractAddressList = []types.Address{MinerAddress, RepAddress}
+	RewardContractAddressList   = []types.Address{MinerAddress, RepAddress}
+	PovContractStateAddressList = []types.Address{KYCAddress, PermissionAddress, PubKeyDistributionAddress}
 )
 
 func GenerateBuiltinContractAddress(suffix byte) (types.Address, error) {

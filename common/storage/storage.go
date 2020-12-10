@@ -94,6 +94,7 @@ const (
 	KeyPrefixVmLogs        = 104 // vm_store.go
 	KeyPrefixVMStorage     = 105 // vm_store.go
 	KeyPrefixTrieClean     = 106
+	KeyPrefixTrieTemp      = 107
 	KeyPrefixPendingBackup = 253
 	KeyPrefixGenericType   = 254
 	KeyPrefixGenericTypeC  = 255
