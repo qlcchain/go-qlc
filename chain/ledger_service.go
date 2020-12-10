@@ -11,21 +11,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/common/statedb"
-	"github.com/qlcchain/go-qlc/common/storage"
-	"github.com/qlcchain/go-qlc/trie"
 	"time"
 
 	"go.uber.org/zap"
 
 	chainCtx "github.com/qlcchain/go-qlc/chain/context"
 	"github.com/qlcchain/go-qlc/common"
+	"github.com/qlcchain/go-qlc/common/statedb"
+	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
 	"github.com/qlcchain/go-qlc/common/vmcontract/contractaddress"
 	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/trie"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
 
@@ -110,7 +110,7 @@ func (ls *LedgerService) Init() error {
 		return err
 	}
 
-	if ls.cfg.TrieClean.Enable == true {
+	if ls.cfg.TrieClean.Enable {
 		if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
 			if err := ls.removeUselessTrie(); err != nil {
 				ls.logger.Error(err)
@@ -262,7 +262,7 @@ func (ls *LedgerService) removeUselessTrie() error {
 	if err := ls.resetTrie(); err != nil {
 		return fmt.Errorf("reset trie: %s", err)
 	}
-	ls.Ledger.Action(storage.GC, 0)
+	_, _ = ls.Ledger.Action(storage.GC, 0)
 	return nil
 }
 
@@ -414,14 +414,14 @@ func (ls *LedgerService) resetTrie() error {
 		}
 	}
 
-	l.DBStore().Drop([]byte{byte(storage.KeyPrefixTrieTemp)})
-	l.Action(storage.GC, 0)
+	_ = l.DBStore().Drop([]byte{byte(storage.KeyPrefixTrieTemp)})
+	_, _ = l.Action(storage.GC, 0)
 	return nil
 }
 
 func encodeTrieKey(key []byte, original bool) []byte {
 	result := make([]byte, len(key)+1)
-	if original == true {
+	if original {
 		result[0] = byte(storage.KeyPrefixTrie)
 	} else {
 		result[0] = byte(storage.KeyPrefixTrieTemp)
