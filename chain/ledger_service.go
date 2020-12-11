@@ -275,10 +275,7 @@ func (ls *LedgerService) backupPovTrieData() error {
 	}
 	latestTrieRoot := latestBlk.GetStateHash()
 
-	globalHashes, err := trieHashesByRoot(l.DBStore(), latestTrieRoot)
-	if err != nil {
-		return fmt.Errorf("pov global trie: %s", err)
-	}
+	globalHashes := trieHashesByRoot(l.DBStore(), latestTrieRoot)
 	hashes = append(hashes, globalHashes...)
 
 	statedb := statedb.NewPovGlobalStateDB(l.DBStore(), latestTrieRoot)
@@ -290,10 +287,7 @@ func (ls *LedgerService) backupPovTrieData() error {
 			curTrie := contractState.GetCurTrie()
 			if curTrie.Root != nil {
 				root := *curTrie.Root.Hash()
-				contractHashes, err := trieHashesByRoot(l.DBStore(), root)
-				if err != nil {
-					return fmt.Errorf("pov global trie: %s", err)
-				}
+				contractHashes := trieHashesByRoot(l.DBStore(), root)
 				hashes = append(hashes, contractHashes...)
 			}
 		}
@@ -329,10 +323,7 @@ func (ls *LedgerService) backupAccountTrieData() error {
 				if blk.IsContractBlock() && !config.IsGenesisBlock(blk) {
 					rootHash := blk.GetExtra()
 					if !rootHash.IsZero() {
-						hs, err := trieHashesByRoot(l.DBStore(), rootHash)
-						if err != nil {
-							return fmt.Errorf("pov account trie: %s, address: %s", err, am.Address.String())
-						}
+						hs := trieHashesByRoot(l.DBStore(), rootHash)
 						hashes = append(hashes, hs...)
 					}
 				}
@@ -359,7 +350,7 @@ func (ls *LedgerService) backupAccountTrieData() error {
 	return l.DBStore().PutBatch(batch)
 }
 
-func trieHashesByRoot(db storage.Store, rootHash types.Hash) ([]*types.Hash, error) {
+func trieHashesByRoot(db storage.Store, rootHash types.Hash) []*types.Hash {
 	hashes := make([]*types.Hash, 0)
 
 	t := trie.NewTrie(db, &rootHash, trie.GetGlobalTriePool())
@@ -379,7 +370,7 @@ func trieHashesByRoot(db storage.Store, rootHash types.Hash) ([]*types.Hash, err
 			}
 		}
 	}
-	return hashes, nil
+	return hashes
 }
 
 func (ls *LedgerService) resetTrie() error {
