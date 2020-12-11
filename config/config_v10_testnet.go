@@ -3,15 +3,16 @@
 package config
 
 type ConfigV10 struct {
-	ConfigV9  `mapstructure:",squash"`
-	TrieClean *TrieClean `json:"trieClean"`
+	ConfigV9   `mapstructure:",squash"`
+	DBOptimize *DBOptimize `json:"dbOptimize"`
 }
 
-type TrieClean struct {
+type DBOptimize struct {
 	Enable          bool   `json:"enable"`
 	PeriodDay       int    `json:"periodDay"`
 	HeightInterval  uint64 `json:"heightInterval"`  //  pov height interval to delete data
-	SyncWriteHeight uint64 `json:"syncWriteHeight"` //  pov height to write trie data when sync
+	SyncWriteHeight uint64 `json:"syncWriteHeight"` //  min pov height to write trie data when sync
+	MaxUsage        int    `json:"maxUsage"`
 }
 
 func DefaultConfigV10(dir string) (*ConfigV10, error) {
@@ -19,15 +20,16 @@ func DefaultConfigV10(dir string) (*ConfigV10, error) {
 	cfg9, _ := DefaultConfigV9(dir)
 	cfg.ConfigV9 = *cfg9
 	cfg.Version = configVersion
-	cfg.TrieClean = defaultTrieClean()
+	cfg.DBOptimize = defaultOptimize()
 	return &cfg, nil
 }
 
-func defaultTrieClean() *TrieClean {
-	return &TrieClean{
+func defaultOptimize() *DBOptimize {
+	return &DBOptimize{
 		Enable:          true,
 		PeriodDay:       7,
 		HeightInterval:  1000,
 		SyncWriteHeight: 0,
+		MaxUsage:        90,
 	}
 }

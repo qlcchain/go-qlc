@@ -33,7 +33,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), *ledger.Ledger, *LedgerVer
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
 	cfg, _ := cm.Load()
-	cfg.TrieClean.Enable = false
+	cfg.DBOptimize.Enable = false
 	cm.Save()
 
 	l := ledger.NewLedger(cm.ConfigFile)

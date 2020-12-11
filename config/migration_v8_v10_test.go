@@ -39,7 +39,7 @@ func TestMigrationV8ToV10_Migration(t *testing.T) {
 		t.Fatal("end version error")
 	}
 
-	if cfg10.TrieClean == nil {
+	if cfg10.DBOptimize == nil {
 		t.Fatal("trie clean config is nil")
 	}
 }

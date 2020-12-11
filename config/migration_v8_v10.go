@@ -26,7 +26,7 @@ func (m *MigrationV8ToV10) Migration(data []byte, version int) ([]byte, int, err
 	}
 	cfg10.ConfigV8 = cfg8
 	cfg10.Version = configVersion
-	cfg10.TrieClean = defaultTrieClean()
+	cfg10.DBOptimize = defaultOptimize()
 
 	bytes, _ := json.Marshal(cfg10)
 	return bytes, m.endVersion, err

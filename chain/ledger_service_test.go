@@ -24,7 +24,7 @@ import (
 )
 
 func TestNewLedgerService(t *testing.T) {
-	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
 	cm := config.NewCfgManager(dir)
 	_, err := cm.Load()
 	if err != nil {
@@ -68,8 +68,8 @@ func TestLedgerService_RemoveUselessTrie(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	cm := config.NewCfgManager(dir)
 	cfg, err := cm.Load()
-	cfg.TrieClean.SyncWriteHeight = 0
-	cfg.TrieClean.Enable = true
+	cfg.DBOptimize.SyncWriteHeight = 0
+	cfg.DBOptimize.Enable = true
 	cm.Save()
 	if err != nil {
 		t.Fatal(err)
@@ -146,6 +146,18 @@ func TestLedgerService_RemoveUselessTrie(t *testing.T) {
 	}
 	t.Log(trCount)
 
+	tr3 := trie.NewTrie(ls.Ledger.DBStore(), nil, trie.NewSimpleTrieNodePool()) // add redundant data
+	key1 = []byte("RIamGood")
+	value1 = []byte("Rvalue.555val")
+
+	tr3.SetValue(key1, value1)
+	tr2.SetValue(key2, value2)
+	fn3, err := tr3.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fn3()
+
 	if err := ls.removeUselessTrie(); err != nil {
 		t.Fatal(err)
 	}
@@ -158,8 +170,8 @@ func TestLedgerService_CleanTrie(t *testing.T) {
 	dir := filepath.Join(config.QlcTestDataDir(), uuid.New().String())
 	cm := config.NewCfgManager(dir)
 	cfg, err := cm.Load()
-	cfg.TrieClean.SyncWriteHeight = 0
-	cfg.TrieClean.Enable = true
+	cfg.DBOptimize.SyncWriteHeight = 0
+	cfg.DBOptimize.Enable = true
 	cm.Save()
 	if err != nil {
 		t.Fatal(err)
@@ -195,6 +207,7 @@ func TestLedgerService_CleanTrie(t *testing.T) {
 		t.Fatal(trCount)
 	}
 	ls.cancel()
+	time.Sleep(200 * time.Millisecond)
 }
 
 func mockAccountTrie(l *ledger.Ledger, t *testing.T) {
@@ -237,5 +250,19 @@ func mockAccountTrie(l *ledger.Ledger, t *testing.T) {
 	if err := l.Flush(); err != nil {
 		t.Fatal(err)
 	}
+}
 
+func TestLedgerService_Monitor(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	cm := config.NewCfgManager(dir)
+	_, _ = cm.Load()
+	defer func() {
+		_ = os.RemoveAll(dir)
+	}()
+	ls := NewLedgerService(cm.ConfigFile)
+	duration := time.Duration(1) * time.Second
+	go ls.ledgerMonitor(duration)
+	time.Sleep(2 * time.Second)
+	ls.cancel()
+	time.Sleep(200 * time.Millisecond)
 }

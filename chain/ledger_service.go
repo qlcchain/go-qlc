@@ -25,6 +25,7 @@ import (
 	"github.com/qlcchain/go-qlc/ledger"
 	"github.com/qlcchain/go-qlc/ledger/process"
 	"github.com/qlcchain/go-qlc/log"
+	"github.com/qlcchain/go-qlc/monitor"
 	"github.com/qlcchain/go-qlc/trie"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
 )
@@ -110,17 +111,18 @@ func (ls *LedgerService) Init() error {
 		return err
 	}
 
-	if ls.cfg.TrieClean.Enable {
+	if ls.cfg.DBOptimize.Enable {
 		if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
 			if err := ls.removeUselessTrie(); err != nil {
 				ls.logger.Error(err)
 			} else {
-				_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.TrieClean.SyncWriteHeight)
+				_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.DBOptimize.SyncWriteHeight)
 			}
 		}
-		duration := time.Duration(ls.cfg.TrieClean.PeriodDay*24) * time.Hour
-		go ls.clean(duration, ls.cfg.TrieClean.HeightInterval)
+		duration := time.Duration(ls.cfg.DBOptimize.PeriodDay*24) * time.Hour
+		go ls.clean(duration, ls.cfg.DBOptimize.HeightInterval)
 	}
+	go ls.ledgerMonitor(time.Duration(24) * time.Hour)
 	return nil
 }
 
@@ -304,8 +306,6 @@ func (ls *LedgerService) backupPovTrieData() error {
 			if err := b.Put(encodeTrieKey(h.Bytes(), false), v); err != nil {
 				return fmt.Errorf("put: %s", err)
 			}
-		} else {
-			ls.logger.Error(err)
 		}
 	}
 	return l.DBStore().PutBatch(b)
@@ -323,7 +323,7 @@ func (ls *LedgerService) backupAccountTrieData() error {
 				if err != nil {
 					return fmt.Errorf("get block: %s", err)
 				}
-				if blk.PoVHeight < ls.cfg.TrieClean.SyncWriteHeight {
+				if blk.PoVHeight < ls.cfg.DBOptimize.SyncWriteHeight {
 					break
 				}
 				if blk.IsContractBlock() && !config.IsGenesisBlock(blk) {
@@ -354,8 +354,6 @@ func (ls *LedgerService) backupAccountTrieData() error {
 			if err := batch.Put(encodeTrieKey(hash.Bytes(), false), value); err != nil {
 				return fmt.Errorf("batch put: %s", err)
 			}
-		} else {
-			ls.logger.Error(err)
 		}
 	}
 	return l.DBStore().PutBatch(batch)
@@ -375,10 +373,9 @@ func trieHashesByRoot(db storage.Store, rootHash types.Hash) ([]*types.Hash, err
 			if node.NodeType() == trie.HashNode {
 				refKey := node.Value()
 				refHash, err := types.BytesToHash(refKey)
-				if err != nil {
-					return nil, err
+				if err == nil {
+					hashes = append(hashes, &refHash)
 				}
-				hashes = append(hashes, &refHash)
 			}
 		}
 	}
@@ -425,4 +422,22 @@ func encodeTrieKey(key []byte, original bool) []byte {
 	}
 	copy(result[1:], key)
 	return result
+}
+
+func (ls *LedgerService) ledgerMonitor(duration time.Duration) {
+	cTicker := time.NewTicker(duration)
+	for {
+		select {
+		case <-cTicker.C:
+			info, err := monitor.DiskInfo()
+			if err == nil && info != nil {
+				if info.UsedPercent > float64(ls.cfg.DBOptimize.MaxUsage) {
+					_ = ls.Ledger.Close()
+					ls.logger.Fatal("no enough space left on device")
+				}
+			}
+		case <-ls.ctx.Done():
+			return
+		}
+	}
 }

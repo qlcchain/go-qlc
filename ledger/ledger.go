@@ -846,8 +846,8 @@ func (l *Ledger) GetTrieCleanHeight() (uint64, error) {
 }
 
 func (l *Ledger) NeedToWriteTrie(height uint64) bool {
-	if !l.cfg.TrieClean.Enable {
+	if !l.cfg.DBOptimize.Enable {
 		return true
 	}
-	return l.cfg.TrieClean.SyncWriteHeight < height
+	return l.cfg.DBOptimize.SyncWriteHeight < height
 }

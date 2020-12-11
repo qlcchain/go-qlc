@@ -582,12 +582,12 @@ func TestLedger_TrieClean(t *testing.T) {
 		t.Fatal(height, h)
 	}
 
-	l.cfg.TrieClean.Enable = false
+	l.cfg.DBOptimize.Enable = false
 	if !l.NeedToWriteTrie(height) {
 		t.Fatal()
 	}
-	l.cfg.TrieClean.Enable = true
-	l.cfg.TrieClean.SyncWriteHeight = height - 1
+	l.cfg.DBOptimize.Enable = true
+	l.cfg.DBOptimize.SyncWriteHeight = height - 1
 	if !l.NeedToWriteTrie(height) {
 		t.Fatal()
 	}
