@@ -363,7 +363,8 @@ func (cc *ChainContext) ConfigManager(opts ...Option) (*config.CfgManager, error
 	if cc.cm == nil {
 		cc.cm = config.NewCfgManagerWithFile(cc.cfgFile)
 		_, err := cc.cm.Load(config.NewMigrationV1ToV2(), config.NewMigrationV2ToV3(), config.NewMigrationV3ToV4(),
-			config.NewMigrationV4ToV5(), config.NewMigrationV5ToV6(), config.NewMigrationV6ToV7(), config.NewMigrationV7ToV8())
+			config.NewMigrationV4ToV5(), config.NewMigrationV5ToV6(), config.NewMigrationV6ToV7(), config.NewMigrationV7ToV8(),
+			config.NewMigrationV8ToV10())
 		if err != nil {
 			return nil, err
 		}
