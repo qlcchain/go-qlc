@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/qlcchain/go-qlc/chain/version"
 	"strconv"
 	"time"
 
@@ -25,10 +26,12 @@ import (
 )
 
 type DebugApi struct {
-	ledger  ledger.Store
-	logger  *zap.SugaredLogger
-	eb      event.EventBus
-	feb     *event.FeedEventBus
+	ledger ledger.Store
+	logger *zap.SugaredLogger
+	eb     event.EventBus
+	feb    *event.FeedEventBus
+	cc     *qctx.ChainContext
+
 	cfgFile string
 }
 
@@ -40,6 +43,7 @@ func NewDebugApi(cfgFile string, eb event.EventBus) *DebugApi {
 		eb:      eb,
 		feb:     cc.FeedEventBus(),
 		cfgFile: cfgFile,
+		cc:      cc,
 	}
 }
 
@@ -805,4 +809,87 @@ func (l *DebugApi) BadgerTableSize(keyPrefixs []storage.KeyPrefix) (int64, error
 		}
 	}
 	return size, nil
+}
+
+type NodeStatus struct {
+	BuildTime    string        `json:"buildTime"`
+	GitRev       string        `json:"gitRev"`
+	Version      string        `json:"version"`
+	Mode         string        `json:"mode"`
+	LedgerStatus *LedgerStatus `json:"ledgerStatus"`
+	NetStatus    *NetStatus    `json:"netStatus"`
+	POVStatus    *POVStatus    `json:"povStatus"`
+}
+
+type LedgerStatus struct {
+	BlockCount          uint64 `json:"blockCount"`
+	UnCheckedBlockCount uint64 `json:"unCheckedBlockCount"`
+}
+
+type NetStatus struct {
+	PeerId                    string            `json:"peerId"`
+	ConnectedPeers            []*types.PeerInfo `json:"connectedPeers"`
+	OnlineRepresentatives     []types.Address   `json:"onlineRepresentatives"`
+	OnlineRepresentativeInfos *OnlineRepTotal   `json:"onlineRepresentativeInfos"`
+}
+
+type POVStatus struct {
+	PovEnabled     bool                 `json:"povEnabled"`
+	SyncState      int                  `json:"syncState"`
+	SyncStateStr   string               `json:"syncStateStr"`
+	PovLedgerStats *PovLedgerStats      `json:"povLedgerStats"`
+	PovMiningInfo  *PovApiGetMiningInfo `json:"povMiningInfo"`
+	LatestHeader   *PovApiHeader        `json:"latestHeader"`
+}
+
+func (l *DebugApi) NodeStatus() (*NodeStatus, error) {
+	nodeStatus := new(NodeStatus)
+	nodeStatus.BuildTime = version.BuildTime
+	nodeStatus.Mode = version.Mode
+	nodeStatus.GitRev = version.GitRev
+	nodeStatus.Version = version.Version
+	sbCount, err := l.ledger.CountStateBlocks()
+	if err != nil {
+		return nil, err
+	}
+	unCount, err := l.ledger.CountUncheckedBlocksStore()
+	if err != nil {
+		return nil, err
+	}
+	nodeStatus.LedgerStatus = &LedgerStatus{
+		BlockCount:          sbCount,
+		UnCheckedBlockCount: unCount,
+	}
+	nodeStatus.NetStatus = new(NetStatus)
+	cfg, _ := l.cc.Config()
+	nodeStatus.NetStatus.PeerId = cfg.P2P.ID.PeerID
+	p := l.cc.GetConnectPeersInfo()
+	nodeStatus.NetStatus.ConnectedPeers = p
+	nodeStatus.NetStatus.OnlineRepresentativeInfos = onlineRepsInfo(l.ledger)
+	as, _ := l.ledger.GetOnlineRepresentations()
+	nodeStatus.NetStatus.OnlineRepresentatives = as
+
+	nodeStatus.POVStatus = new(POVStatus)
+	povLedger, err := getLedgerStats(l.ledger)
+	if err != nil {
+		return nil, err
+	}
+	nodeStatus.POVStatus.PovLedgerStats = povLedger
+	if cfg.PoV.PovEnabled {
+		if MiningInfo, err := getMiningInfo(l.ledger, l.feb); err != nil {
+			return nil, err
+		} else {
+			nodeStatus.POVStatus.PovMiningInfo = MiningInfo
+		}
+	}
+	nodeStatus.POVStatus.PovEnabled = cfg.PoV.PovEnabled
+	ss := l.cc.PoVState()
+	nodeStatus.POVStatus.SyncState = int(ss)
+	nodeStatus.POVStatus.SyncStateStr = ss.String()
+	latestHeader, err := getLatestHeader(l.ledger)
+	if err != nil {
+		return nil, err
+	}
+	nodeStatus.POVStatus.LatestHeader = latestHeader
+	return nodeStatus, nil
 }

@@ -46,7 +46,11 @@ func (q *NetApi) OnlineRepresentatives() []types.Address {
 }
 
 func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
-	as, _ := q.ledger.GetOnlineRepresentations()
+	return onlineRepsInfo(q.ledger)
+}
+
+func onlineRepsInfo(ledger ledger.Store) *OnlineRepTotal {
+	as, _ := ledger.GetOnlineRepresentations()
 	if as == nil {
 		return &OnlineRepTotal{}
 	}
@@ -60,7 +64,7 @@ func (q *NetApi) OnlineRepsInfo() *OnlineRepTotal {
 	minWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	for _, account := range as {
-		weight := q.ledger.Weight(account)
+		weight := ledger.Weight(account)
 		oi := &OnlineRepInfo{
 			Account: account,
 			Vote:    weight,

@@ -30,6 +30,6 @@ func defaultOptimize() *DBOptimize {
 		PeriodDay:       7,
 		HeightInterval:  1000,
 		SyncWriteHeight: 400000,
-		MaxUsage:        90,
+		MaxUsage:        95,
 	}
 }

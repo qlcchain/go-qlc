@@ -122,7 +122,7 @@ func (ls *LedgerService) Init() error {
 		duration := time.Duration(ls.cfg.DBOptimize.PeriodDay*24) * time.Hour
 		go ls.clean(duration, ls.cfg.DBOptimize.HeightInterval)
 	}
-	go ls.ledgerMonitor(time.Duration(24) * time.Hour)
+	go ls.ledgerMonitor(time.Duration(1) * time.Hour)
 	return nil
 }
 

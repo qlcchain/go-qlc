@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -423,4 +424,62 @@ func TestDebugApi_UncheckBlocks(t *testing.T) {
 	if _, err = debugApi.UncheckAnalysis(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestDebugApi_BadgerTableSize(t *testing.T) {
+	teardownTestCase, _, debugApi := setupDefaultDebugAPI(t)
+	defer teardownTestCase(t)
+	prefixs := []storage.KeyPrefix{storage.KeyPrefixBlock}
+	size, err := debugApi.BadgerTableSize(prefixs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(size)
+}
+
+func TestDebugApi_NodeStatus(t *testing.T) {
+	dir := filepath.Join(config.QlcTestDataDir(), "debug", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	cfg, _ := cm.Load()
+	cfg.PoV.PovEnabled = false
+	cm.Save()
+
+	l := ledger.NewLedger(cm.ConfigFile)
+	cc := qlcchainctx.NewChainContext(cm.ConfigFile)
+	eb := cc.EventBus()
+	debugApi := NewDebugApi(cm.ConfigFile, eb)
+
+	defer func() {
+		_ = l.Close()
+		_ = os.RemoveAll(dir)
+	}()
+
+	address := mock.Address()
+	ac := mock.AccountMeta(address)
+	ac.CoinBalance = types.Balance{Int: big.NewInt(int64(20000000000000000))}
+	ac.CoinVote = types.Balance{Int: big.NewInt(int64(10000000000000000))}
+	benefit := &types.Benefit{
+		Vote:    ac.CoinVote,
+		Storage: ac.CoinStorage,
+		Network: ac.CoinNetwork,
+		Oracle:  ac.CoinOracle,
+		Balance: ac.CoinBalance,
+		Total:   ac.TotalBalance(),
+	}
+	var addrs []*types.Address
+	addrs = append(addrs, &address)
+	err := l.SetOnlineRepresentations(addrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = l.AddRepresentation(address, benefit, l.Cache().GetCache())
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, err := debugApi.NodeStatus()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(status)
 }

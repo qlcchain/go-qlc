@@ -233,7 +233,11 @@ func (api *PovApi) GetHeaderByHash(blockHash types.Hash) (*PovApiHeader, error) 
 }
 
 func (api *PovApi) GetLatestHeader() (*PovApiHeader, error) {
-	header, err := api.l.GetLatestPovHeader()
+	return getLatestHeader(api.l)
+}
+
+func getLatestHeader(l ledger.Store) (*PovApiHeader, error) {
+	header, err := l.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -651,31 +655,35 @@ func (api *PovApi) GetAllRepStatesByBlockHeight(blockHeight uint64) (*PovApiRepS
 }
 
 func (api *PovApi) GetLedgerStats() (*PovLedgerStats, error) {
+	return getLedgerStats(api.l)
+}
+
+func getLedgerStats(l ledger.Store) (*PovLedgerStats, error) {
 	stats := &PovLedgerStats{}
 
 	var err error
-	stats.PovBlockCount, err = api.l.CountPovBlocks()
+	stats.PovBlockCount, err = l.CountPovBlocks()
 	if err != nil {
 		return nil, err
 	}
 
-	stats.PovBestCount, err = api.l.CountPovBestHashs()
+	stats.PovBestCount, err = l.CountPovBestHashs()
 	if err != nil {
 		return nil, err
 	}
 
 	stats.PovCbTxCount = stats.PovBestCount
-	stats.PovAllTxCount, err = api.l.CountPovTxs()
+	stats.PovAllTxCount, err = l.CountPovTxs()
 	if err != nil {
 		return nil, err
 	}
 
-	stats.PovStateTxCount, err = api.l.CountPovAccountTxs()
+	stats.PovStateTxCount, err = l.CountPovAccountTxs()
 	if err != nil {
 		return nil, err
 	}
 
-	stats.StateBlockCount, err = api.l.CountStateBlocks()
+	stats.StateBlockCount, err = l.CountStateBlocks()
 	if err != nil {
 		return nil, err
 	}
@@ -1103,6 +1111,10 @@ type PovApiHashInfo struct {
 }
 
 func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, error) {
+	return getHashInfo(api.l, height, lookup)
+}
+
+func getHashInfo(l ledger.Store, height uint64, lookup uint64) (*PovApiHashInfo, error) {
 	if lookup > uint64(common.POVChainBlocksPerDay) {
 		return nil, fmt.Errorf("lookup must be 0 ~ %d", common.POVChainBlocksPerDay)
 	}
@@ -1111,14 +1123,14 @@ func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, e
 		return nil, fmt.Errorf("lookup must be multiplier of %d", common.POVChainBlocksPerHour)
 	}
 
-	latestHdr, err := api.l.GetLatestPovHeader()
+	latestHdr, err := l.GetLatestPovHeader()
 	if err != nil {
 		return nil, err
 	}
 
 	lastHdr := latestHdr
 	if height > 0 && height < latestHdr.GetHeight() {
-		lastHdr, err = api.l.GetPovHeaderByHeight(height)
+		lastHdr, err = l.GetPovHeaderByHeight(height)
 		if err != nil {
 			return nil, err
 		}
@@ -1140,7 +1152,7 @@ func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, e
 	minTime := firstHdr.GetTimestamp()
 	maxTime := firstHdr.GetTimestamp()
 	for i := uint64(1); i < lookup; i++ {
-		firstHdr, err = api.l.GetPovHeaderByHeight(firstHdr.GetHeight() - 1)
+		firstHdr, err = l.GetPovHeaderByHeight(firstHdr.GetHeight() - 1)
 		if err != nil {
 			return nil, err
 		}
@@ -1162,12 +1174,12 @@ func (api *PovApi) GetHashInfo(height uint64, lookup uint64) (*PovApiHashInfo, e
 
 	//api.logger.Debugf("minTime:%d, maxTime:%d, timeDiff:%s", minTime, maxTime, timeDiffInt.String())
 
-	lastTD, err := api.l.GetPovTD(lastHdr.GetHash(), lastHdr.GetHeight())
+	lastTD, err := l.GetPovTD(lastHdr.GetHash(), lastHdr.GetHeight())
 	if err != nil {
 		return nil, err
 	}
 
-	firstTD, err := api.l.GetPovTD(firstHdr.GetHash(), firstHdr.GetHeight())
+	firstTD, err := l.GetPovTD(firstHdr.GetHash(), firstHdr.GetHeight())
 	if err != nil {
 		return nil, err
 	}
@@ -1289,10 +1301,14 @@ func (api *PovApi) StopMining() error {
 }
 
 func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
+	return getMiningInfo(api.l, api.feb)
+}
+
+func getMiningInfo(l ledger.Store, feb *event.FeedEventBus) (*PovApiGetMiningInfo, error) {
 	inArgs := make(map[interface{}]interface{})
 
 	outArgs := make(map[interface{}]interface{})
-	api.feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.GetMiningInfo", In: inArgs, Out: outArgs})
+	feb.RpcSyncCall(&topic.EventRPCSyncCallMsg{Name: "Miner.GetMiningInfo", In: inArgs, Out: outArgs})
 
 	err, ok := outArgs["err"]
 	if !ok {
@@ -1303,7 +1319,7 @@ func (api *PovApi) GetMiningInfo() (*PovApiGetMiningInfo, error) {
 		return nil, err
 	}
 
-	hashInfo, err := api.GetHashInfo(0, 0)
+	hashInfo, err := getHashInfo(l, 0, 0)
 	if err != nil {
 		return nil, err.(error)
 	}
