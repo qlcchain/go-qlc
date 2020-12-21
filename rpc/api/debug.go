@@ -886,10 +886,7 @@ func (l *DebugApi) NodeStatus() (*NodeStatus, error) {
 	ss := l.cc.PoVState()
 	nodeStatus.POVStatus.SyncState = int(ss)
 	nodeStatus.POVStatus.SyncStateStr = ss.String()
-	latestHeader, err := getLatestHeader(l.ledger)
-	if err != nil {
-		return nil, err
-	}
+	latestHeader, _ := getLatestHeader(l.ledger)
 	nodeStatus.POVStatus.LatestHeader = latestHeader
 	return nodeStatus, nil
 }
