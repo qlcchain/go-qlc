@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/qlcchain/go-qlc/chain/version"
 	"strconv"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	qctx "github.com/qlcchain/go-qlc/chain/context"
+	"github.com/qlcchain/go-qlc/chain/version"
 	"github.com/qlcchain/go-qlc/common"
 	"github.com/qlcchain/go-qlc/common/event"
 	"github.com/qlcchain/go-qlc/common/storage"
