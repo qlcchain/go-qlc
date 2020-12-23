@@ -140,7 +140,7 @@ func NewLedger(cfgFile string) *Ledger {
 		}
 		l.relation = r
 		l.cache = NewMemoryCache(l, defaultBlockFlushSecs, 2000, block)
-		l.unCheckCache = NewMemoryCache(l, defaultUncheckFlushSecs, 50, unchecked)
+		l.unCheckCache = NewMemoryCache(l, time.Duration(cfg.DBOptimize.FlushInterval)*time.Second, 50, unchecked)
 		l.rcache = NewrCache()
 		l.cacheStats = make([]*CacheStat, 0)
 		l.uCacheStats = make([]*CacheStat, 0)

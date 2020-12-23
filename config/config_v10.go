@@ -13,6 +13,7 @@ type DBOptimize struct {
 	HeightInterval  uint64 `json:"heightInterval"`  //  pov height interval to delete data
 	SyncWriteHeight uint64 `json:"syncWriteHeight"` //  min pov height to write trie data when sync
 	MaxUsage        int    `json:"maxUsage"`
+	FlushInterval   int    `json:"flushInterval"`
 }
 
 func DefaultConfigV10(dir string) (*ConfigV10, error) {
@@ -31,5 +32,6 @@ func defaultOptimize() *DBOptimize {
 		HeightInterval:  1000,
 		SyncWriteHeight: 400000,
 		MaxUsage:        95,
+		FlushInterval:   30,
 	}
 }
