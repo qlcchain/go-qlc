@@ -32,6 +32,6 @@ func defaultOptimize() *DBOptimize {
 		HeightInterval:  1000,
 		SyncWriteHeight: 400000,
 		MaxUsage:        95,
-		FlushInterval:   20,
+		FlushInterval:   10,
 	}
 }

@@ -613,13 +613,15 @@ func (l *Ledger) GetUCacheStat() []*CacheStat {
 
 func (l *Ledger) GetUCacheStatue() map[string]string {
 	r := make(map[string]string)
-	for i, c := range l.unCheckCache.caches {
-		r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
+	if l.hasUncheckedCache {
+		for i, c := range l.unCheckCache.caches {
+			r["c"+strconv.Itoa(i)] = strconv.Itoa(c.capacity())
+		}
+		r["read"] = strconv.Itoa(l.unCheckCache.readIndex)
+		r["write"] = strconv.Itoa(l.unCheckCache.writeIndex)
+		r["lastflush"] = l.unCheckCache.lastFlush.Format("2006-01-02 15:04:05")
+		r["flushStatue"] = strconv.FormatBool(l.unCheckCache.flushStatue)
+		r["flushChan"] = strconv.Itoa(len(l.unCheckCache.flushChan))
 	}
-	r["read"] = strconv.Itoa(l.unCheckCache.readIndex)
-	r["write"] = strconv.Itoa(l.unCheckCache.writeIndex)
-	r["lastflush"] = l.unCheckCache.lastFlush.Format("2006-01-02 15:04:05")
-	r["flushStatue"] = strconv.FormatBool(l.unCheckCache.flushStatue)
-	r["flushChan"] = strconv.Itoa(len(l.unCheckCache.flushChan))
 	return r
 }

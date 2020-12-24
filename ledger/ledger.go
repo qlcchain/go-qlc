@@ -120,19 +120,20 @@ func NewLedger(cfgFile string) *Ledger {
 	if _, ok := lcache[dir]; !ok {
 		ctx, cancel := context.WithCancel(context.Background())
 		l := &Ledger{
-			dir:               dir,
-			EB:                cc.EventBus(),
-			ctx:               ctx,
-			cancel:            cancel,
-			blockConfirmed:    make(chan *types.StateBlock, 20480),
-			deletedSchema:     make([]types.Schema, 0),
-			logger:            log.NewLogger("ledger"),
-			tokenCache:        sync.Map{},
-			cfg:               cfg,
-			hasUncheckedCache: true,
+			dir:            dir,
+			EB:             cc.EventBus(),
+			ctx:            ctx,
+			cancel:         cancel,
+			blockConfirmed: make(chan *types.StateBlock, 20480),
+			deletedSchema:  make([]types.Schema, 0),
+			logger:         log.NewLogger("ledger"),
+			tokenCache:     sync.Map{},
+			cfg:            cfg,
 		}
 		if cfg.DBOptimize.FlushInterval == 0 {
 			l.hasUncheckedCache = false
+		} else {
+			l.hasUncheckedCache = true
 		}
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
@@ -201,7 +202,9 @@ func (l *Ledger) SetCacheCapacity() error {
 		return err
 	}
 	l.cache.ResetCapacity(defaultBlockCapacity)
-	l.unCheckCache.ResetCapacity(defaultUncheckCapacity)
+	if l.hasUncheckedCache {
+		l.unCheckCache.ResetCapacity(defaultUncheckCapacity)
+	}
 	return nil
 }
 
@@ -345,7 +348,9 @@ func (l *Ledger) Close() error {
 	if _, ok := lcache[l.dir]; ok {
 		l.cancel()
 		l.cache.closed()
-		l.unCheckCache.closed()
+		if l.hasUncheckedCache {
+			l.unCheckCache.closed()
+		}
 		if err := l.relation.Close(); err != nil {
 			l.logger.Error(err)
 		}
@@ -806,9 +811,12 @@ func (l *Ledger) Flush() error {
 }
 
 func (l *Ledger) FlushU() error {
-	lock.Lock()
-	defer lock.Unlock()
-	return l.unCheckCache.rebuild()
+	if l.hasUncheckedCache {
+		lock.Lock()
+		defer lock.Unlock()
+		return l.unCheckCache.rebuild()
+	}
+	return nil
 }
 
 func (l *Ledger) BlockConfirmed(blk *types.StateBlock) {
