@@ -494,7 +494,7 @@ func TestLedgerAPI_BlocksCount2(t *testing.T) {
 
 	l.On("CountStateBlocks").Return(uint64(10), nil)
 	l.On("CountSmartContractBlocks").Return(uint64(5), nil)
-	l.On("CountUncheckedBlocks").Return(uint64(1), nil)
+	l.On("CountUncheckedBlocksStore").Return(uint64(1), nil)
 
 	c, err := ledgerApi.BlocksCount2()
 	if err != nil {

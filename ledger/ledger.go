@@ -57,23 +57,24 @@ type LedgerStore interface {
 
 type Ledger struct {
 	io.Closer
-	dir            string
-	cfg            *config.Config
-	store          storage.Store
-	cache          *MemoryCache
-	unCheckCache   *MemoryCache
-	rcache         *rCache
-	cacheStats     []*CacheStat
-	uCacheStats    []*CacheStat
-	relation       *relation.Relation
-	EB             event.EventBus
-	blockConfirmed chan *types.StateBlock
-	ctx            context.Context
-	cancel         context.CancelFunc
-	verifiedData   map[types.Hash]int
-	deletedSchema  []types.Schema
-	logger         *zap.SugaredLogger
-	tokenCache     sync.Map
+	dir               string
+	cfg               *config.Config
+	store             storage.Store
+	cache             *MemoryCache
+	hasUncheckedCache bool
+	unCheckCache      *MemoryCache
+	rcache            *rCache
+	cacheStats        []*CacheStat
+	uCacheStats       []*CacheStat
+	relation          *relation.Relation
+	EB                event.EventBus
+	blockConfirmed    chan *types.StateBlock
+	ctx               context.Context
+	cancel            context.CancelFunc
+	verifiedData      map[types.Hash]int
+	deletedSchema     []types.Schema
+	logger            *zap.SugaredLogger
+	tokenCache        sync.Map
 }
 
 var (
@@ -119,15 +120,19 @@ func NewLedger(cfgFile string) *Ledger {
 	if _, ok := lcache[dir]; !ok {
 		ctx, cancel := context.WithCancel(context.Background())
 		l := &Ledger{
-			dir:            dir,
-			EB:             cc.EventBus(),
-			ctx:            ctx,
-			cancel:         cancel,
-			blockConfirmed: make(chan *types.StateBlock, 20480),
-			deletedSchema:  make([]types.Schema, 0),
-			logger:         log.NewLogger("ledger"),
-			tokenCache:     sync.Map{},
-			cfg:            cfg,
+			dir:               dir,
+			EB:                cc.EventBus(),
+			ctx:               ctx,
+			cancel:            cancel,
+			blockConfirmed:    make(chan *types.StateBlock, 20480),
+			deletedSchema:     make([]types.Schema, 0),
+			logger:            log.NewLogger("ledger"),
+			tokenCache:        sync.Map{},
+			cfg:               cfg,
+			hasUncheckedCache: true,
+		}
+		if cfg.DBOptimize.FlushInterval == 0 {
+			l.hasUncheckedCache = false
 		}
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
@@ -140,7 +145,9 @@ func NewLedger(cfgFile string) *Ledger {
 		}
 		l.relation = r
 		l.cache = NewMemoryCache(l, defaultBlockFlushSecs, 2000, block)
-		l.unCheckCache = NewMemoryCache(l, time.Duration(cfg.DBOptimize.FlushInterval)*time.Second, 50, unchecked)
+		if l.hasUncheckedCache {
+			l.unCheckCache = NewMemoryCache(l, time.Duration(cfg.DBOptimize.FlushInterval)*time.Second, 50, unchecked)
+		}
 		l.rcache = NewrCache()
 		l.cacheStats = make([]*CacheStat, 0)
 		l.uCacheStats = make([]*CacheStat, 0)
