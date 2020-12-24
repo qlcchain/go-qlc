@@ -434,22 +434,35 @@ func (l *Ledger) DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error {
 }
 
 func (l *Ledger) setUnchecked(key []byte, unchecked *types.Unchecked) error {
-	return l.unCheckCache.Put(key, unchecked)
+	if l.hasUncheckedCache {
+		return l.unCheckCache.Put(key, unchecked)
+	} else {
+		v, err := unchecked.Serialize()
+		if err != nil {
+			return err
+		}
+		return l.store.Put(key, v)
+	}
 }
 
 func (l *Ledger) deleteUnchecked(key []byte) error {
-	return l.unCheckCache.Delete(key)
+	if l.hasUncheckedCache {
+		return l.unCheckCache.Delete(key)
+	} else {
+		return l.store.Delete(key)
+	}
 }
 
 func (l *Ledger) getUnchecked(key []byte) (*types.Unchecked, error) {
-	if r, err := l.unCheckCache.Get(key); r != nil {
-		return r.(*types.Unchecked), nil
-	} else {
-		if err == ErrKeyDeleted {
-			return nil, storage.KeyNotFound
+	if l.hasUncheckedCache {
+		if r, err := l.unCheckCache.Get(key); r != nil {
+			return r.(*types.Unchecked), nil
+		} else {
+			if err == ErrKeyDeleted {
+				return nil, storage.KeyNotFound
+			}
 		}
 	}
-
 	v, err := l.store.Get(key)
 	if err != nil {
 		return nil, err
@@ -473,9 +486,13 @@ func (l *Ledger) hasUnchecked(key []byte) (bool, error) {
 }
 
 func (l *Ledger) iteratorUnchecked(prefix []byte, end []byte, fn func(k []byte, v interface{}) error) error {
-	keys, err := l.unCheckCache.prefixIteratorObject(prefix, fn)
-	if err != nil {
-		return fmt.Errorf("cache iterator : %s", err)
+	keys := make([][]byte, 0)
+	if l.hasUncheckedCache {
+		var err error
+		keys, err = l.unCheckCache.prefixIteratorObject(prefix, fn)
+		if err != nil {
+			return fmt.Errorf("cache iterator : %s", err)
+		}
 	}
 	if err := l.DBStore().Iterator(prefix, end, func(k, v []byte) error {
 		if !contain(keys, k) {
@@ -496,11 +513,19 @@ func (l *Ledger) iteratorUnchecked(prefix []byte, end []byte, fn func(k []byte, 
 
 func (l *Ledger) countUnchecked(prefix []byte) (uint64, error) {
 	var count uint64
-	if err := l.iteratorUnchecked(prefix, nil, func(k []byte, v interface{}) error {
-		count++
-		return nil
-	}); err != nil {
-		return 0, err
+	if l.hasUncheckedCache {
+		if err := l.iteratorUnchecked(prefix, nil, func(k []byte, v interface{}) error {
+			count++
+			return nil
+		}); err != nil {
+			return 0, err
+		}
+	} else {
+		var err error
+		count, err = l.store.Count(prefix)
+		if err != nil {
+			return 0, err
+		}
 	}
 	return count, nil
 }

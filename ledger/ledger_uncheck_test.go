@@ -2,13 +2,43 @@ package ledger
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/qlcchain/go-qlc/common/storage"
 	"github.com/qlcchain/go-qlc/common/types"
+	"github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/crypto/random"
 	"github.com/qlcchain/go-qlc/mock"
 )
+
+func setupTestCaseNonUncheckedCache(t *testing.T) (func(t *testing.T), *Ledger) {
+	//t.Parallel()
+
+	dir := filepath.Join(config.QlcTestDataDir(), "ledger", uuid.New().String())
+	_ = os.RemoveAll(dir)
+	cm := config.NewCfgManager(dir)
+	cf, _ := cm.Load()
+	cf.DBOptimize.FlushInterval = 0
+	cm.Save()
+	l := NewLedger(cm.ConfigFile)
+	fmt.Println("case: ", t.Name())
+	return func(t *testing.T) {
+		//err := l.DBStore.Erase()
+		err := l.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		//CloseLedger()
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}, l
+}
 
 func addUncheckedBlock(t *testing.T, l *Ledger) (hash types.Hash, block *types.StateBlock, kind types.UncheckedKind) {
 	block = mock.StateBlockWithoutWork()
@@ -25,6 +55,29 @@ func TestLedger_AddUncheckedBlock(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
 	addUncheckedBlock(t, l)
+}
+
+func TestLedger_AddUncheckedBlock_NonCache(t *testing.T) {
+	teardownTestCase, l := setupTestCaseNonUncheckedCache(t)
+	defer teardownTestCase(t)
+	addUncheckedBlock(t, l)
+}
+
+func TestLedger_HasUncheckedBlock_NonCache(t *testing.T) {
+	teardownTestCase, l := setupTestCaseNonUncheckedCache(t)
+	defer teardownTestCase(t)
+
+	parentHash, _, kind := addUncheckedBlock(t, l)
+	r, _ := l.HasUncheckedBlock(parentHash, kind)
+	if !r {
+		t.Fatal()
+	}
+	t.Log("has unchecked,", r)
+	c, err := l.CountUncheckedBlocksStore()
+	if err != nil || c != 1 {
+		t.Fatal(err, c)
+	}
+	t.Log("unchecked count,", c)
 }
 
 func TestLedger_GetUncheckedBlock(t *testing.T) {
@@ -92,7 +145,7 @@ func TestLedger_CountUncheckedBlocks(t *testing.T) {
 	t.Log("unchecked count,", c)
 	c, err = l.CountUncheckedBlocksStore()
 	if err != nil || c != 0 {
-		t.Fatal(err)
+		t.Fatal(err, c)
 	}
 	t.Log("unchecked count,", c)
 }

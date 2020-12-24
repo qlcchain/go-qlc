@@ -400,7 +400,7 @@ func (l *LedgerAPI) BlocksCount2() (map[string]uint64, error) {
 		return nil, err
 	}
 
-	unCount, err := l.ledger.CountUncheckedBlocks()
+	unCount, err := l.ledger.CountUncheckedBlocksStore()
 	if err != nil {
 		return nil, err
 	}

@@ -57,23 +57,24 @@ type LedgerStore interface {
 
 type Ledger struct {
 	io.Closer
-	dir            string
-	cfg            *config.Config
-	store          storage.Store
-	cache          *MemoryCache
-	unCheckCache   *MemoryCache
-	rcache         *rCache
-	cacheStats     []*CacheStat
-	uCacheStats    []*CacheStat
-	relation       *relation.Relation
-	EB             event.EventBus
-	blockConfirmed chan *types.StateBlock
-	ctx            context.Context
-	cancel         context.CancelFunc
-	verifiedData   map[types.Hash]int
-	deletedSchema  []types.Schema
-	logger         *zap.SugaredLogger
-	tokenCache     sync.Map
+	dir               string
+	cfg               *config.Config
+	store             storage.Store
+	cache             *MemoryCache
+	hasUncheckedCache bool
+	unCheckCache      *MemoryCache
+	rcache            *rCache
+	cacheStats        []*CacheStat
+	uCacheStats       []*CacheStat
+	relation          *relation.Relation
+	EB                event.EventBus
+	blockConfirmed    chan *types.StateBlock
+	ctx               context.Context
+	cancel            context.CancelFunc
+	verifiedData      map[types.Hash]int
+	deletedSchema     []types.Schema
+	logger            *zap.SugaredLogger
+	tokenCache        sync.Map
 }
 
 var (
@@ -129,6 +130,11 @@ func NewLedger(cfgFile string) *Ledger {
 			tokenCache:     sync.Map{},
 			cfg:            cfg,
 		}
+		if cfg.DBOptimize.FlushInterval == 0 {
+			l.hasUncheckedCache = false
+		} else {
+			l.hasUncheckedCache = true
+		}
 		store, err := db.NewBadgerStore(dir)
 		if err != nil {
 			l.logger.Fatal(err.Error())
@@ -140,7 +146,9 @@ func NewLedger(cfgFile string) *Ledger {
 		}
 		l.relation = r
 		l.cache = NewMemoryCache(l, defaultBlockFlushSecs, 2000, block)
-		l.unCheckCache = NewMemoryCache(l, defaultUncheckFlushSecs, 50, unchecked)
+		if l.hasUncheckedCache {
+			l.unCheckCache = NewMemoryCache(l, time.Duration(cfg.DBOptimize.FlushInterval)*time.Second, 50, unchecked)
+		}
 		l.rcache = NewrCache()
 		l.cacheStats = make([]*CacheStat, 0)
 		l.uCacheStats = make([]*CacheStat, 0)
@@ -194,7 +202,9 @@ func (l *Ledger) SetCacheCapacity() error {
 		return err
 	}
 	l.cache.ResetCapacity(defaultBlockCapacity)
-	l.unCheckCache.ResetCapacity(defaultUncheckCapacity)
+	if l.hasUncheckedCache {
+		l.unCheckCache.ResetCapacity(defaultUncheckCapacity)
+	}
 	return nil
 }
 
@@ -338,7 +348,9 @@ func (l *Ledger) Close() error {
 	if _, ok := lcache[l.dir]; ok {
 		l.cancel()
 		l.cache.closed()
-		l.unCheckCache.closed()
+		if l.hasUncheckedCache {
+			l.unCheckCache.closed()
+		}
 		if err := l.relation.Close(); err != nil {
 			l.logger.Error(err)
 		}
@@ -799,9 +811,12 @@ func (l *Ledger) Flush() error {
 }
 
 func (l *Ledger) FlushU() error {
-	lock.Lock()
-	defer lock.Unlock()
-	return l.unCheckCache.rebuild()
+	if l.hasUncheckedCache {
+		lock.Lock()
+		defer lock.Unlock()
+		return l.unCheckCache.rebuild()
+	}
+	return nil
 }
 
 func (l *Ledger) BlockConfirmed(blk *types.StateBlock) {
