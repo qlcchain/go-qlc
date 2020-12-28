@@ -32,7 +32,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1
 	github.com/libp2p/go-libp2p-pubsub v0.4.0
 	github.com/libp2p/go-libp2p-swarm v0.4.0
-	github.com/mattn/go-sqlite3 v1.14.4
+	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/philhofer/fwd v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1
