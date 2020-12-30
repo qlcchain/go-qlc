@@ -37,6 +37,7 @@ type LedgerStore interface {
 	EventBus() event.EventBus
 	Get(k []byte, c ...storage.Cache) ([]byte, error)
 	GetObject(k []byte, c ...storage.Cache) (interface{}, []byte, error)
+	Put(k []byte, v interface{}, c ...storage.Cache) error
 	Iterator([]byte, []byte, func([]byte, []byte) error) error
 	IteratorObject(prefix []byte, end []byte, fn func([]byte, interface{}) error) error
 	GenerateSendBlock(block *types.StateBlock, amount types.Balance, prk ed25519.PrivateKey) (*types.StateBlock, error)
@@ -673,14 +674,22 @@ func (l *Ledger) GetObject(k []byte, c ...storage.Cache) (interface{}, []byte, e
 	return nil, v, nil
 }
 
-func (l *Ledger) Put(key []byte, value interface{}) error {
-	c := l.cache.GetCache()
-	return c.Put(key, value)
+func (l *Ledger) Put(key []byte, value interface{}, c ...storage.Cache) error {
+	if len(c) > 0 {
+		return c[0].Put(key, value)
+	} else {
+		c := l.cache.GetCache()
+		return c.Put(key, value)
+	}
 }
 
-func (l *Ledger) Delete(k []byte) error {
-	c := l.cache.GetCache()
-	return c.Delete(k)
+func (l *Ledger) Delete(k []byte, c ...storage.Cache) error {
+	if len(c) > 0 {
+		return c[0].Delete(k)
+	} else {
+		c := l.cache.GetCache()
+		return c.Delete(k)
+	}
 }
 
 func (l *Ledger) getFromStore(key []byte, batch ...storage.Batch) ([]byte, error) {

@@ -9,12 +9,12 @@ import (
 )
 
 type PrivacyStore interface {
-	AddBlockPrivatePayload(hash types.Hash, payload []byte) error
-	DeleteBlockPrivatePayload(hash types.Hash) error
-	GetBlockPrivatePayload(hash types.Hash) ([]byte, error)
+	AddBlockPrivatePayload(hash types.Hash, payload []byte, c ...storage.Cache) error
+	DeleteBlockPrivatePayload(hash types.Hash, c ...storage.Cache) error
+	GetBlockPrivatePayload(hash types.Hash, c ...storage.Cache) ([]byte, error)
 }
 
-func (l *Ledger) AddBlockPrivatePayload(hash types.Hash, payload []byte) error {
+func (l *Ledger) AddBlockPrivatePayload(hash types.Hash, payload []byte, c ...storage.Cache) error {
 	if len(payload) == 0 {
 		payload = []byte{1}
 	}
@@ -22,24 +22,24 @@ func (l *Ledger) AddBlockPrivatePayload(hash types.Hash, payload []byte) error {
 	if err != nil {
 		return err
 	}
-	return l.store.Put(k, payload)
+	return l.Put(k, payload, c...)
 }
 
-func (l *Ledger) DeleteBlockPrivatePayload(hash types.Hash) error {
+func (l *Ledger) DeleteBlockPrivatePayload(hash types.Hash, c ...storage.Cache) error {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixPrivatePayload, hash)
 	if err != nil {
 		return err
 	}
-	return l.store.Delete(k)
+	return l.Delete(k, c...)
 }
 
-func (l *Ledger) GetBlockPrivatePayload(hash types.Hash) ([]byte, error) {
+func (l *Ledger) GetBlockPrivatePayload(hash types.Hash, c ...storage.Cache) ([]byte, error) {
 	k, err := storage.GetKeyOfParts(storage.KeyPrefixPrivatePayload, hash)
 	if err != nil {
 		return nil, err
 	}
 
-	pl, err := l.store.Get(k)
+	pl, err := l.Get(k, c...)
 	if err != nil {
 		if err == storage.KeyNotFound {
 			return nil, errors.New("block private payload not found")

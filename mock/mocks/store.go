@@ -108,13 +108,20 @@ func (_m *Store) AddBlockCache(blk *types.StateBlock, batch ...storage.Batch) er
 	return r0
 }
 
-// AddBlockPrivatePayload provides a mock function with given fields: hash, payload
-func (_m *Store) AddBlockPrivatePayload(hash types.Hash, payload []byte) error {
-	ret := _m.Called(hash, payload)
+// AddBlockPrivatePayload provides a mock function with given fields: hash, payload, c
+func (_m *Store) AddBlockPrivatePayload(hash types.Hash, payload []byte, c ...storage.Cache) error {
+	_va := make([]interface{}, len(c))
+	for _i := range c {
+		_va[_i] = c[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, hash, payload)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(types.Hash, []byte) error); ok {
-		r0 = rf(hash, payload)
+	if rf, ok := ret.Get(0).(func(types.Hash, []byte, ...storage.Cache) error); ok {
+		r0 = rf(hash, payload, c...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1203,13 +1210,20 @@ func (_m *Store) DeleteBlockCache(hash types.Hash, batch ...storage.Batch) error
 	return r0
 }
 
-// DeleteBlockPrivatePayload provides a mock function with given fields: hash
-func (_m *Store) DeleteBlockPrivatePayload(hash types.Hash) error {
-	ret := _m.Called(hash)
+// DeleteBlockPrivatePayload provides a mock function with given fields: hash, c
+func (_m *Store) DeleteBlockPrivatePayload(hash types.Hash, c ...storage.Cache) error {
+	_va := make([]interface{}, len(c))
+	for _i := range c {
+		_va[_i] = c[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, hash)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(types.Hash) error); ok {
-		r0 = rf(hash)
+	if rf, ok := ret.Get(0).(func(types.Hash, ...storage.Cache) error); ok {
+		r0 = rf(hash, c...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2076,13 +2090,20 @@ func (_m *Store) GetBlockLink(key types.Hash, c ...storage.Cache) (types.Hash, e
 	return r0, r1
 }
 
-// GetBlockPrivatePayload provides a mock function with given fields: hash
-func (_m *Store) GetBlockPrivatePayload(hash types.Hash) ([]byte, error) {
-	ret := _m.Called(hash)
+// GetBlockPrivatePayload provides a mock function with given fields: hash, c
+func (_m *Store) GetBlockPrivatePayload(hash types.Hash, c ...storage.Cache) ([]byte, error) {
+	_va := make([]interface{}, len(c))
+	for _i := range c {
+		_va[_i] = c[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, hash)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	var r0 []byte
-	if rf, ok := ret.Get(0).(func(types.Hash) []byte); ok {
-		r0 = rf(hash)
+	if rf, ok := ret.Get(0).(func(types.Hash, ...storage.Cache) []byte); ok {
+		r0 = rf(hash, c...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]byte)
@@ -2090,8 +2111,8 @@ func (_m *Store) GetBlockPrivatePayload(hash types.Hash) ([]byte, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(types.Hash) error); ok {
-		r1 = rf(hash)
+	if rf, ok := ret.Get(1).(func(types.Hash, ...storage.Cache) error); ok {
+		r1 = rf(hash, c...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -3896,6 +3917,27 @@ func (_m *Store) PovHeightHasGap(height uint64) (bool, error) {
 	}
 
 	return r0, r1
+}
+
+// Put provides a mock function with given fields: k, v, c
+func (_m *Store) Put(k []byte, v interface{}, c ...storage.Cache) error {
+	_va := make([]interface{}, len(c))
+	for _i := range c {
+		_va[_i] = c[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, k, v)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]byte, interface{}, ...storage.Cache) error); ok {
+		r0 = rf(k, v, c...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // RemoveStorage provides a mock function with given fields: key, val, c
