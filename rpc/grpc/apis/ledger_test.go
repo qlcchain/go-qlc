@@ -153,7 +153,7 @@ func TestLedgerAPI_AccountHistoryTopn(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(r.GetBlocks()) != 4 {
-		t.Fatal()
+		t.Fatal(len(r.GetBlocks()))
 	}
 }
 

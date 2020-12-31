@@ -465,6 +465,35 @@ func TestLedger_Cache(t *testing.T) {
 	t.Log(l.GetCacheStat())
 }
 
+func TestLedger_Put(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	c := l.cache.GetCache()
+	// get from ledger cache
+	key2 := []byte{1, 2, 4}
+	if err := l.Put(key2, []byte{4, 5, 6}, c); err != nil {
+		t.Fatal(err)
+	}
+	if i, r, err := l.GetObject(key2); err != nil || i == nil || r != nil {
+		t.Fatal(err, i, r)
+	} else {
+		t.Log(i)
+	}
+
+	// ledger put
+	key3 := []byte{1, 2, 5}
+	if err := l.Put(key3, []byte{4, 5, 6}, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Delete(key3, l.cache.GetCache()); err != nil {
+		t.Fatal(err)
+	}
+	if i, r, err := l.GetObject(key3); err != storage.KeyNotFound || i != nil || r != nil {
+		t.Fatal(err, i, r)
+	}
+}
+
 func TestLedger_UCache(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
