@@ -112,13 +112,13 @@ func (ls *LedgerService) Init() error {
 	}
 
 	if ls.cfg.DBOptimize.Enable {
-		if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
-			if err := ls.removeUselessTrie(); err != nil {
-				ls.logger.Error(err)
-			} else {
-				_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.DBOptimize.SyncWriteHeight)
-			}
-		}
+		//if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
+		//if err := ls.removeUselessTrie(); err != nil {
+		//	ls.logger.Error(err)
+		//} else {
+		//	_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.DBOptimize.SyncWriteHeight)
+		//}
+		//}
 		duration := time.Duration(ls.cfg.DBOptimize.PeriodDay*24) * time.Hour
 		go ls.clean(duration, ls.cfg.DBOptimize.HeightInterval)
 	}
@@ -176,73 +176,14 @@ func (ls *LedgerService) clean(duration time.Duration, minHeightInterval uint64)
 					ls.logger.Error(err)
 					break
 				}
-			}
-			if err := ls.Ledger.AddTrieCleanHeight(bestPovHeight); err != nil {
-				break
+				if err := ls.Ledger.AddTrieCleanHeight(bestPovHeight); err != nil {
+					break
+				}
 			}
 		case <-ls.ctx.Done():
 			return
 		}
 	}
-}
-
-func (ls *LedgerService) cleanTrie(startHeight, endHeight uint64) error {
-	l := ls.Ledger
-	hashes := make([]*types.Hash, 0)
-	if err := l.GetAccountMetas(func(am *types.AccountMeta) error {
-		for _, token := range am.Tokens {
-			blockHash := token.Header
-			for {
-				block, err := l.GetStateBlock(blockHash)
-				if err != nil {
-					return fmt.Errorf("%s: %s", err, blockHash.String())
-				}
-				if block.IsContractBlock() && !config.IsGenesisBlock(block) &&
-					block.PoVHeight >= startHeight && block.PoVHeight < endHeight {
-					extra := block.GetExtra()
-					if !extra.IsZero() {
-						t := trie.NewTrie(ls.Ledger.DBStore(), &extra, trie.NewSimpleTrieNodePool())
-						//_ = t.Remove()
-						nodes := t.NewNodeIterator(func(node *trie.TrieNode) bool {
-							return true
-						})
-						for node := range nodes {
-							if node != nil {
-								nodeHash := node.Hash()
-								hashes = append(hashes, nodeHash)
-								if node.NodeType() == trie.HashNode {
-									refKey := node.Value()
-									refHash, err := types.BytesToHash(refKey)
-									if err == nil {
-										hashes = append(hashes, &refHash)
-									}
-								}
-							}
-						}
-					}
-				}
-				blockHash = block.GetPrevious()
-				if blockHash == types.ZeroHash {
-					break
-				}
-			}
-		}
-		return nil
-	}); err != nil {
-		return fmt.Errorf("clean trie: %s", err)
-	}
-
-	batch := l.DBStore().Batch(false)
-	for _, hash := range hashes {
-		if err := batch.Delete(encodeTrieKey(hash.Bytes(), true)); err != nil {
-			return fmt.Errorf("batch put: %s", err)
-		}
-	}
-	if err := l.DBStore().PutBatch(batch); err != nil {
-		return fmt.Errorf("put batch: %s", err)
-	}
-	_, _ = ls.Ledger.Action(storage.GC, 0)
-	return nil
 }
 
 func (ls *LedgerService) removeUselessTrie() error {
@@ -413,6 +354,91 @@ func encodeTrieKey(key []byte, original bool) []byte {
 	}
 	copy(result[1:], key)
 	return result
+}
+
+func (ls *LedgerService) cleanTrie(startHeight, endHeight uint64) error {
+	l := ls.Ledger
+	hashes := make([]*types.Hash, 0)
+	if err := l.GetAccountMetas(func(am *types.AccountMeta) error {
+		for _, token := range am.Tokens {
+			blockHash := token.Header
+			for {
+				block, err := l.GetStateBlock(blockHash)
+				if err != nil {
+					return fmt.Errorf("%s: %s", err, blockHash.String())
+				}
+				if block.PoVHeight < startHeight {
+					break
+				}
+				if ls.blockCheck(block, startHeight, endHeight) {
+					extra := block.GetExtra()
+					if !extra.IsZero() {
+						t := trie.NewTrie(ls.Ledger.DBStore(), &extra, trie.NewSimpleTrieNodePool())
+						//_ = t.Remove()
+						nodes := t.NewNodeIterator(func(node *trie.TrieNode) bool {
+							return true
+						})
+						for node := range nodes {
+							if node != nil {
+								nodeHash := node.Hash()
+								hashes = append(hashes, nodeHash)
+								if node.NodeType() == trie.HashNode {
+									refKey := node.Value()
+									refHash, err := types.BytesToHash(refKey)
+									if err == nil {
+										hashes = append(hashes, &refHash)
+									}
+								}
+							}
+						}
+					}
+				}
+				blockHash = block.GetPrevious()
+				if blockHash == types.ZeroHash {
+					break
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("clean trie: %s", err)
+	}
+
+	batch := l.DBStore().Batch(false)
+	for _, hash := range hashes {
+		if err := batch.Delete(encodeTrieKey(hash.Bytes(), true)); err != nil {
+			return fmt.Errorf("batch put: %s", err)
+		}
+	}
+	if err := l.DBStore().PutBatch(batch); err != nil {
+		return fmt.Errorf("put batch: %s", err)
+	}
+	_, _ = ls.Ledger.Action(storage.GC, 0)
+	return nil
+}
+
+func (ls *LedgerService) blockCheck(block *types.StateBlock, startHeight, endHeight uint64) bool {
+	if block.IsContractBlock() {
+		if config.IsGenesisBlock(block) {
+			return false
+		}
+		if block.PoVHeight >= startHeight && block.PoVHeight < endHeight {
+			if block.Type == types.ContractSend && contractaddress.IsRewardContractAddress(block.Address) {
+				return false
+			}
+			if block.Type == types.ContractReward {
+				link, err := ls.Ledger.GetStateBlock(block.GetLink())
+				if err != nil {
+					return false
+				}
+				if contractaddress.IsRewardContractAddress(link.Address) {
+					return false
+				}
+			}
+			return true
+		}
+	}
+	return false
 }
 
 func (ls *LedgerService) ledgerMonitor(duration time.Duration) {
