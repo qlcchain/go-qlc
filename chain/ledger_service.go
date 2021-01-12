@@ -176,7 +176,7 @@ func (ls *LedgerService) clean(duration time.Duration, minHeightInterval uint64)
 					ls.logger.Error(err)
 					break
 				}
-				if err := ls.Ledger.AddTrieCleanHeight(bestPovHeight); err != nil {
+				if err := ls.Ledger.AddTrieCleanHeight(bestPovHeight - minHeightInterval); err != nil {
 					break
 				}
 			}
@@ -197,6 +197,9 @@ func (ls *LedgerService) cleanTrie(startHeight, endHeight uint64) error {
 				block, err := l.GetStateBlock(blockHash)
 				if err != nil {
 					return fmt.Errorf("%s: %s", err, blockHash.String())
+				}
+				if block.PoVHeight < startHeight {
+					break
 				}
 				if block.IsContractBlock() && !config.IsGenesisBlock(block) &&
 					block.PoVHeight >= startHeight && block.PoVHeight < endHeight {
@@ -237,14 +240,16 @@ func (ls *LedgerService) cleanTrie(startHeight, endHeight uint64) error {
 		return fmt.Errorf("clean trie: %s", err)
 	}
 
-	batch := l.DBStore().Batch(false)
-	for _, hash := range hashes {
-		if err := batch.Delete(encodeTrieKey(hash.Bytes(), true)); err != nil {
-			return fmt.Errorf("batch put: %s", err)
+	if len(hashes) > 0 {
+		batch := l.DBStore().Batch(false)
+		for _, hash := range hashes {
+			if err := batch.Delete(encodeTrieKey(hash.Bytes(), true)); err != nil {
+				return fmt.Errorf("batch put: %s", err)
+			}
 		}
-	}
-	if err := l.DBStore().PutBatch(batch); err != nil {
-		return fmt.Errorf("put batch: %s", err)
+		if err := l.DBStore().PutBatch(batch); err != nil {
+			return fmt.Errorf("put batch: %s", err)
+		}
 	}
 	_, _ = ls.Ledger.Action(storage.GC, 0)
 	return nil
