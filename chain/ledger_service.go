@@ -112,13 +112,13 @@ func (ls *LedgerService) Init() error {
 	}
 
 	if ls.cfg.DBOptimize.Enable {
-		//if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
-		//if err := ls.removeUselessTrie(); err != nil {
-		//	ls.logger.Error(err)
-		//} else {
-		//	_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.DBOptimize.SyncWriteHeight)
-		//}
-		//}
+		if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
+			//if err := ls.removeUselessTrie(); err != nil {
+			//	ls.logger.Error(err)
+			//} else {
+			_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.DBOptimize.SyncWriteHeight)
+			//}
+		}
 		duration := time.Duration(ls.cfg.DBOptimize.PeriodDay*24) * time.Hour
 		go ls.clean(duration, ls.cfg.DBOptimize.HeightInterval)
 	}
