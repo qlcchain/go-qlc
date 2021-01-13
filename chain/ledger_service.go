@@ -112,13 +112,13 @@ func (ls *LedgerService) Init() error {
 	}
 
 	if ls.cfg.DBOptimize.Enable {
-		if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
-			if err := ls.removeUselessTrie(); err != nil {
-				ls.logger.Error(err)
-			} else {
-				_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.DBOptimize.SyncWriteHeight)
-			}
-		}
+		//if _, err := ls.Ledger.GetTrieCleanHeight(); err != nil {
+		//if err := ls.removeUselessTrie(); err != nil {
+		//	ls.logger.Error(err)
+		//} else {
+		//_ = ls.Ledger.AddTrieCleanHeight(ls.cfg.DBOptimize.SyncWriteHeight)
+		//}
+		//}
 		duration := time.Duration(ls.cfg.DBOptimize.PeriodDay*24) * time.Hour
 		go ls.clean(duration, ls.cfg.DBOptimize.HeightInterval)
 	}
@@ -176,9 +176,9 @@ func (ls *LedgerService) clean(duration time.Duration, minHeightInterval uint64)
 					ls.logger.Error(err)
 					break
 				}
-			}
-			if err := ls.Ledger.AddTrieCleanHeight(bestPovHeight); err != nil {
-				break
+				if err := ls.Ledger.AddTrieCleanHeight(bestPovHeight - minHeightInterval); err != nil {
+					break
+				}
 			}
 		case <-ls.ctx.Done():
 			return
@@ -192,13 +192,21 @@ func (ls *LedgerService) cleanTrie(startHeight, endHeight uint64) error {
 	if err := l.GetAccountMetas(func(am *types.AccountMeta) error {
 		for _, token := range am.Tokens {
 			blockHash := token.Header
+			latestRewardBlkFound := false
 			for {
 				block, err := l.GetStateBlock(blockHash)
 				if err != nil {
 					return fmt.Errorf("%s: %s", err, blockHash.String())
 				}
+				if block.PoVHeight < startHeight {
+					break
+				}
 				if block.IsContractBlock() && !config.IsGenesisBlock(block) &&
 					block.PoVHeight >= startHeight && block.PoVHeight < endHeight {
+					if !latestRewardBlkFound && ls.IsRewardBlock(block) {
+						latestRewardBlkFound = true
+						continue
+					}
 					extra := block.GetExtra()
 					if !extra.IsZero() {
 						t := trie.NewTrie(ls.Ledger.DBStore(), &extra, trie.NewSimpleTrieNodePool())
@@ -232,17 +240,38 @@ func (ls *LedgerService) cleanTrie(startHeight, endHeight uint64) error {
 		return fmt.Errorf("clean trie: %s", err)
 	}
 
-	batch := l.DBStore().Batch(false)
-	for _, hash := range hashes {
-		if err := batch.Delete(encodeTrieKey(hash.Bytes(), true)); err != nil {
-			return fmt.Errorf("batch put: %s", err)
+	if len(hashes) > 0 {
+		batch := l.DBStore().Batch(false)
+		for _, hash := range hashes {
+			if err := batch.Delete(encodeTrieKey(hash.Bytes(), true)); err != nil {
+				return fmt.Errorf("batch put: %s", err)
+			}
 		}
-	}
-	if err := l.DBStore().PutBatch(batch); err != nil {
-		return fmt.Errorf("put batch: %s", err)
+		if err := l.DBStore().PutBatch(batch); err != nil {
+			return fmt.Errorf("put batch: %s", err)
+		}
 	}
 	_, _ = ls.Ledger.Action(storage.GC, 0)
 	return nil
+}
+
+func (ls *LedgerService) IsRewardBlock(block *types.StateBlock) bool {
+	if !block.IsContractBlock() {
+		return false
+	}
+	if block.GetType() == types.ContractSend {
+		if contractaddress.IsRewardContractAddress(types.Address(block.GetLink())) {
+			return true
+		}
+	}
+	if block.Type == types.ContractReward {
+		if linkblk, err := ls.Ledger.GetStateBlock(block.GetLink()); err == nil {
+			if contractaddress.IsRewardContractAddress(types.Address(linkblk.GetLink())) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (ls *LedgerService) removeUselessTrie() error {
