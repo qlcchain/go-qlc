@@ -31,7 +31,7 @@ type StateBlock struct {
 	Data           []byte    `msg:"data" json:"data,omitempty"`
 	PoVHeight      uint64    `msg:"povHeight" json:"povHeight"`
 	Timestamp      int64     `msg:"timestamp" json:"timestamp"`
-	Extra          *Hash     `msg:"extra,extension" json:"extra,omitempty,omitempty"`
+	Extra          *Hash     `msg:"extra,extension" json:"extra,omitempty"`
 	Representative Address   `msg:"representative,extension" json:"representative"`
 
 	PrivateFrom    string   `msg:"priFrom,omitempty" json:"privateFrom,omitempty"`
