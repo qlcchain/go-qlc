@@ -154,7 +154,7 @@ func (m *MintageAPI) GetRewardBlock(input *types.StateBlock) (*types.StateBlock,
 		if h == nil {
 			return nil, errors.New("trie hash is nil")
 		}
-		reward.Extra = *h
+		reward.Extra = h
 		return reward, nil
 	}
 
@@ -194,14 +194,14 @@ func (m *MintageAPI) GetWithdrawMintageBlock(param *WithdrawParams) (*types.Stat
 		return nil, fmt.Errorf("get pov header error: %s", err)
 	}
 	send := &types.StateBlock{
-		Type:           types.ContractSend,
-		Token:          tm.Type,
-		Address:        param.SelfAddr,
-		Balance:        tm.Balance,
-		Vote:           types.ZeroBalance,
-		Network:        types.ZeroBalance,
-		Storage:        types.ZeroBalance,
-		Oracle:         types.ZeroBalance,
+		Type:    types.ContractSend,
+		Token:   tm.Type,
+		Address: param.SelfAddr,
+		Balance: tm.Balance,
+		//Vote:           types.ZeroBalance,
+		//Network:        types.ZeroBalance,
+		//Storage:        types.ZeroBalance,
+		//Oracle:         types.ZeroBalance,
 		Previous:       tm.Header,
 		Link:           types.Hash(contractaddress.MintageAddress),
 		Representative: tm.Representative,
@@ -240,7 +240,7 @@ func (m *MintageAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.Sta
 		reward.PoVHeight = povHeader.GetHeight()
 		reward.Timestamp = common.TimeNow().Unix()
 		h := vmstore.TrieHash(blocks[0].VMContext)
-		reward.Extra = *h
+		reward.Extra = h
 		return reward, nil
 	}
 

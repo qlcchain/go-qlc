@@ -678,11 +678,11 @@ func handleReceive(ctx *vmstore.VMContext, block *types.StateBlock, input *types
 	block.Address = input.Address
 	block.Link = txHash
 	block.Token = input.Token
-	block.Extra = types.ZeroHash
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
+	//block.Extra = types.ZeroHash
+	//block.Vote = types.ZeroBalance
+	//block.Network = types.ZeroBalance
+	//block.Oracle = types.ZeroBalance
+	//block.Storage = types.ZeroBalance
 
 	block.Balance = txToken.Balance
 	block.Previous = txToken.Header

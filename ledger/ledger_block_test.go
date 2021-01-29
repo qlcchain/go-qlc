@@ -20,6 +20,9 @@ func addStateBlock(t *testing.T, l *Ledger) *types.StateBlock {
 	if err := l.AddStateBlock(blk); err != nil {
 		t.Fatal(err)
 	}
+	if err := l.AddStateBlock(blk); err != nil {
+		t.Fatal(err)
+	}
 	return blk
 }
 

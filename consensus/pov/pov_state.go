@@ -188,10 +188,10 @@ func (bc *PovBlockChain) updateRepState(sdb *statedb.PovGlobalStateDB, tx *types
 
 		// new(current) representative plus new account balance
 		currRepNewRs.Balance = currRepNewRs.Balance.Add(block.Balance)
-		currRepNewRs.Vote = currRepNewRs.Vote.Add(block.Vote)
-		currRepNewRs.Network = currRepNewRs.Network.Add(block.Network)
-		currRepNewRs.Oracle = currRepNewRs.Oracle.Add(block.Oracle)
-		currRepNewRs.Storage = currRepNewRs.Storage.Add(block.Storage)
+		currRepNewRs.Vote = currRepNewRs.Vote.Add(block.GetVote())
+		currRepNewRs.Network = currRepNewRs.Network.Add(block.GetNetwork())
+		currRepNewRs.Oracle = currRepNewRs.Oracle.Add(block.GetOracle())
+		currRepNewRs.Storage = currRepNewRs.Storage.Add(block.GetStorage())
 		currRepNewRs.Total = currRepNewRs.Total.Add(block.TotalBalance())
 
 		err = sdb.SetRepState(newBlkTs.Representative, currRepNewRs)

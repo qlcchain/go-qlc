@@ -132,6 +132,13 @@ func (b Balance) Compare(n Balance) BalanceComp {
 	}
 }
 
+func ToBalance(b Balance) *Balance {
+	if b.Int == nil || b.Compare(ZeroBalance) == BalanceCompEqual {
+		return nil
+	}
+	return &b
+}
+
 //ExtensionType implements Extension.ExtensionType interface
 func (b *Balance) ExtensionType() int8 {
 	return BalanceExtensionType

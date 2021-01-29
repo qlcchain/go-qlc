@@ -201,10 +201,10 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 		Previous:       tm.Header,
 		Representative: tm.Representative,
 
-		Vote:    am.CoinVote,
-		Network: am.CoinNetwork,
-		Oracle:  am.CoinOracle,
-		Storage: am.CoinStorage,
+		Vote:    types.ToBalance(am.CoinVote),
+		Network: types.ToBalance(am.CoinNetwork),
+		Oracle:  types.ToBalance(am.CoinOracle),
+		Storage: types.ToBalance(am.CoinStorage),
 
 		Link:      types.Hash(contractaddress.RepAddress),
 		Data:      data,
@@ -221,7 +221,7 @@ func (r *RepApi) GetRewardSendBlock(param *RepRewardParam) (*types.StateBlock, e
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 
 	return send, nil

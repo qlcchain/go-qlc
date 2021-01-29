@@ -322,7 +322,7 @@ func initData(ledger *ledger.Ledger) {
 	blk2 := mock.StateBlockWithoutWork()
 	blk2.Sender = ph2
 	blk2.Receiver = ph1
-	blk2.Message = mHash
+	blk2.Message = &mHash
 	if err := ledger.AddStateBlock(blk1); err != nil {
 		fmt.Println(err)
 		return

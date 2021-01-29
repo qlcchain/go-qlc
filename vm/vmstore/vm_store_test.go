@@ -398,6 +398,7 @@ func TestVMContext_Relation(t *testing.T) {
 		t.Fatal(err)
 	}
 	var b types.BlockHash
+	_ = l.Flush()
 	if err := ctx.GetRelation(&b, fmt.Sprintf("select * from blockhash where hash = '%s'", blk.GetHash())); err != nil {
 		t.Fatal(err)
 	} else {

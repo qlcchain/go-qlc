@@ -193,10 +193,10 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	if am != nil {
 		tm := am.Token(cfg.ChainToken())
 		block.Balance = am.CoinBalance
-		block.Vote = am.CoinVote
-		block.Network = am.CoinNetwork
-		block.Oracle = am.CoinOracle
-		block.Storage = am.CoinStorage
+		block.Vote = &am.CoinVote
+		block.Network = &am.CoinNetwork
+		block.Oracle = &am.CoinOracle
+		block.Storage = &am.CoinStorage
 		if tm != nil {
 			block.Previous = tm.Header
 			block.Representative = tm.Representative
@@ -205,10 +205,10 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 			block.Representative = input.Representative
 		}
 	} else {
-		block.Vote = types.ZeroBalance
-		block.Network = types.ZeroBalance
-		block.Oracle = types.ZeroBalance
-		block.Storage = types.ZeroBalance
+		//block.Vote = types.ZeroBalance
+		//block.Network = types.ZeroBalance
+		//block.Oracle = types.ZeroBalance
+		//block.Storage = types.ZeroBalance
 		block.Previous = types.ZeroHash
 		block.Representative = input.Representative
 	}
@@ -222,13 +222,13 @@ func (*Nep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBl
 	//TODO: query snapshot balance
 	switch cabi.PledgeType(param.PType) {
 	case cabi.Network:
-		block.Network = block.GetNetwork().Add(amount)
+		block.Network = types.ToBalance(block.GetNetwork().Add(amount))
 	case cabi.Oracle:
-		block.Oracle = block.GetOracle().Add(amount)
+		block.Oracle = types.ToBalance(block.GetOracle().Add(amount))
 	case cabi.Storage:
-		block.Storage = block.GetStorage().Add(amount)
+		block.Storage = types.ToBalance(block.GetStorage().Add(amount))
 	case cabi.Vote:
-		block.Vote = block.GetVote().Add(amount)
+		block.Vote = types.ToBalance(block.GetVote().Add(amount))
 	default:
 		break
 	}
@@ -359,10 +359,10 @@ func (*WithdrawNep5Pledge) DoReceive(ctx *vmstore.VMContext, block, input *types
 		block.Token = input.Token
 		block.Link = input.GetHash()
 		block.Data = pledgeData
-		block.Vote = am.CoinVote
-		block.Network = am.CoinNetwork
-		block.Oracle = am.CoinOracle
-		block.Storage = am.CoinStorage
+		block.Vote = &am.CoinVote
+		block.Network = &am.CoinNetwork
+		block.Oracle = &am.CoinOracle
+		block.Storage = &am.CoinStorage
 		block.Previous = tm.Header
 		block.Representative = tm.Representative
 		block.Balance = am.CoinBalance.Add(amount)

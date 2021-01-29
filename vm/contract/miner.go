@@ -232,10 +232,10 @@ func (m *MinerReward) DoReceive(ctx *vmstore.VMContext, block, input *types.Stat
 	block.Timestamp = common.TimeNow().Unix()
 
 	// pledge fields only for QLC token
-	block.Vote = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
-	block.Network = types.ZeroBalance
+	//block.Vote = types.ZeroBalance
+	//block.Oracle = types.ZeroBalance
+	//block.Storage = types.ZeroBalance
+	//block.Network = types.ZeroBalance
 
 	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {
