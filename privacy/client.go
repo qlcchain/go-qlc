@@ -7,7 +7,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"strings"
+
+	"go.uber.org/zap"
+
+	"github.com/qlcchain/go-qlc/log"
 )
 
 type Transport interface {
@@ -20,9 +25,13 @@ type Client struct {
 	rootPath   string
 	transport  Transport
 	httpClient *http.Client
+	debug      bool
+	logger     *zap.SugaredLogger
 }
 
-func NewClient(ptmNode string) *Client {
+type ClientOption func(client *Client) error
+
+func NewClient(ptmNode string, options ...ClientOption) *Client {
 	ptmNode = strings.TrimSpace(ptmNode)
 	ptmNode = strings.TrimRight(ptmNode, "/")
 
@@ -36,7 +45,7 @@ func NewClient(ptmNode string) *Client {
 	}
 	rootPath := ptmNode[len(parts[0])+1:]
 
-	c := &Client{scheme: scheme, rootPath: rootPath}
+	c := &Client{scheme: scheme, rootPath: rootPath, logger: log.NewLogger("ptm_client")}
 	c.httpClient = &http.Client{}
 
 	if c.scheme == "http+unix" {
@@ -47,7 +56,12 @@ func NewClient(ptmNode string) *Client {
 		return nil
 	}
 	c.httpClient.Transport = c.transport
-
+	for _, op := range options {
+		err := op(c)
+		if err != nil {
+			c.logger.Error(err)
+		}
+	}
 	return c
 }
 
@@ -58,7 +72,7 @@ func (c *Client) formatPath(path string) string {
 	return c.scheme + ":" + c.rootPath + path
 }
 
-func (c *Client) Upcheck() (bool, error) {
+func (c *Client) UpCheck() (bool, error) {
 	res, err := c.httpClient.Get(c.formatPath("/upcheck"))
 	if res != nil {
 		defer res.Body.Close()
@@ -84,6 +98,15 @@ func (c *Client) SendPayload(pl []byte, b64From string, b64To []string) ([]byte,
 	}
 	req.Header.Set("c11n-to", strings.Join(b64To, ","))
 	req.Header.Set("Content-Type", "application/octet-stream")
+
+	if c.debug {
+		if data, err := httputil.DumpRequest(req, true); err == nil {
+			c.logger.Warn(string(data))
+		} else {
+			c.logger.Error(err)
+		}
+	}
+
 	res, err := c.httpClient.Do(req)
 
 	if res != nil {
@@ -93,6 +116,11 @@ func (c *Client) SendPayload(pl []byte, b64From string, b64To []string) ([]byte,
 		return nil, err
 	}
 	if res.StatusCode != 200 {
+		if data, err := ioutil.ReadAll(res.Body); err == nil {
+			c.logger.Error(string(data))
+		} else {
+			c.logger.Error(err)
+		}
 		return nil, fmt.Errorf("non-200 status code: %d(%s)", res.StatusCode, res.Status)
 	}
 
@@ -105,6 +133,15 @@ func (c *Client) ReceivePayload(key []byte) ([]byte, error) {
 		return nil, err
 	}
 	req.Header.Set("c11n-key", base64.StdEncoding.EncodeToString(key))
+
+	if c.debug {
+		if data, err := httputil.DumpRequest(req, true); err == nil {
+			c.logger.Warn(string(data))
+		} else {
+			c.logger.Error(err)
+		}
+	}
+
 	res, err := c.httpClient.Do(req)
 
 	if res != nil {

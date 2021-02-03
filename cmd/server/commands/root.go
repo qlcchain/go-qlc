@@ -23,6 +23,8 @@ import (
 	"github.com/abiosoft/readline"
 	"github.com/spf13/cobra"
 
+	"github.com/qlcchain/go-qlc/common/util"
+
 	"github.com/qlcchain/go-qlc/chain"
 	"github.com/qlcchain/go-qlc/chain/context"
 	cmdutil "github.com/qlcchain/go-qlc/cmd/util"
@@ -252,6 +254,10 @@ func start() error {
 		chainContext.EventBus().Publish(topic.EventPovSyncState, topic.SyncDone)
 		chainContext.EventBus().Publish(topic.EventAddP2PStream, &topic.EventAddP2PStreamMsg{PeerID: cfg.P2P.ID.PeerID})
 	}
+
+	c, _ := cm.Config()
+	log.Root.Info(util.ToIndentString(c))
+
 	err = chainContext.Start()
 
 	if err != nil {
