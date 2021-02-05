@@ -386,7 +386,7 @@ func (d *DoDSettlementAPI) GetPendingRequest(address types.Address) ([]*DoDPendi
 		}
 
 		if sendBlock.Type == types.ContractSend && sendBlock.Link == contractaddress.DoDSettlementAddress.ToHash() {
-			method, err := abi.DoDSettlementABI.MethodById(sendBlock.Data)
+			method, err := abi.DoDSettlementABI.MethodById(sendBlock.GetPayload())
 			if err != nil {
 				return err
 			}
