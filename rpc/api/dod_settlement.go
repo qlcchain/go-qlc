@@ -386,7 +386,7 @@ func (d *DoDSettlementAPI) GetPendingRequest(address types.Address) ([]*DoDPendi
 		}
 
 		if sendBlock.Type == types.ContractSend && sendBlock.Link == contractaddress.DoDSettlementAddress.ToHash() {
-			method, err := abi.DoDSettlementABI.MethodById(sendBlock.Data)
+			method, err := abi.DoDSettlementABI.MethodById(sendBlock.GetPayload())
 			if err != nil {
 				return err
 			}
@@ -434,14 +434,15 @@ func (d *DoDSettlementAPI) GetPendingResourceCheck(address types.Address) ([]*Do
 		}
 
 		if sendBlock.Type == types.ContractSend && sendBlock.Link == contractaddress.DoDSettlementAddress.ToHash() {
-			method, err := abi.DoDSettlementABI.MethodById(sendBlock.Data)
+			payload := sendBlock.GetPayload()
+			method, err := abi.DoDSettlementABI.MethodById(payload)
 			if err != nil {
 				return err
 			}
 
 			if method.Name == abi.MethodNameDoDSettleUpdateOrderInfo {
 				param := new(abi.DoDSettleUpdateOrderInfoParam)
-				err = param.FromABI(sendBlock.Data)
+				err = param.FromABI(payload)
 				if err != nil {
 					return err
 				}

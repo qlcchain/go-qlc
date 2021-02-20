@@ -52,9 +52,9 @@ func (blockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBlock) 
 
 	if block.GetType() == types.ContractReward {
 		// check private tx
-		if block.IsPrivate() && !block.IsRecipient() {
-			return Progress, nil
-		}
+		//if block.IsPrivate() && !block.IsRecipient() {
+		//	return Progress, nil
+		//}
 
 		linkBlk, err := lv.l.GetStateBlockConfirmed(block.GetLink())
 		if err != nil {
@@ -117,9 +117,9 @@ func (cacheBlockBaseInfoCheck) baseInfo(lv *LedgerVerifier, block *types.StateBl
 
 	if block.GetType() == types.ContractReward {
 		// check private tx
-		if block.IsPrivate() && !block.IsRecipient() {
-			return Progress, nil
-		}
+		//if block.IsPrivate() && !block.IsRecipient() {
+		//	return Progress, nil
+		//}
 
 		linkBlk, err := lv.l.GetStateBlock(block.GetLink())
 		if err != nil {

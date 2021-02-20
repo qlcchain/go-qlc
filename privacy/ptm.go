@@ -45,7 +45,10 @@ var (
 func NewPTM(cfg *config.Config) *PTM {
 	m := &PTM{cfg: cfg}
 	m.clientPool.New = func() interface{} {
-		return NewClient(m.cfg.Privacy.PtmNode)
+		return NewClient(m.cfg.Privacy.PtmNode, func(client *Client) error {
+			client.debug = m.cfg.LogLevel != "error"
+			return nil
+		})
 	}
 	m.status.Store(ptmNodeUnknown)
 	return m
@@ -55,7 +58,10 @@ func (m *PTM) Init() error {
 	m.cache = gcache.New(common.DPoSMaxBlocks).LRU().Build()
 	m.logger = log.NewLogger("privacy_ptm")
 
-	m.mainClient = NewClient(m.cfg.Privacy.PtmNode)
+	m.mainClient = NewClient(m.cfg.Privacy.PtmNode, func(client *Client) error {
+		client.debug = m.cfg.LogLevel != "error"
+		return nil
+	})
 	if m.mainClient == nil {
 		return errors.New("invalid ptm node")
 	}
@@ -101,7 +107,7 @@ func (m *PTM) Send(data []byte, from string, to []string) (out []byte, err error
 	out, err = cli.SendPayload(data, from, to)
 	if err != nil {
 		m.statRspErr.Inc()
-		m.logger.Infof("failed to send payload, %s", err)
+		m.logger.Errorf("failed to send payload, %s", err)
 		return nil, ErrPtmAPIFailed
 	}
 	m.statRspOk.Inc()
@@ -142,7 +148,7 @@ func (m *PTM) Receive(data []byte) ([]byte, error) {
 	pl, err := cli.ReceivePayload(data)
 	if err != nil {
 		m.statRspErr.Inc()
-		m.logger.Infof("failed to recv payload, %s", err)
+		m.logger.Errorf("failed to recv payload, %s", err)
 		return nil, ErrPtmAPIFailed
 	}
 	m.statRspOk.Inc()
@@ -175,7 +181,7 @@ func (m *PTM) onUpCheckTicker() {
 	oldStatus := m.status.Load()
 	newStatus := int32(ptmNodeUnknown)
 
-	chkOk, chkErr := m.mainClient.Upcheck()
+	chkOk, chkErr := m.mainClient.UpCheck()
 	if chkOk {
 		newStatus = int32(ptmNodeRunning)
 	} else {
@@ -187,7 +193,7 @@ func (m *PTM) onUpCheckTicker() {
 	}
 
 	if newStatus == int32(ptmNodeRunning) {
-		m.logger.Infof("ptm node is online, url %s", m.cfg.Privacy.PtmNode)
+		m.logger.Warnf("ptm node is online, url %s", m.cfg.Privacy.PtmNode)
 	} else {
 		m.logger.Errorf("ptm node is offline, url [%s], err [%s]", m.cfg.Privacy.PtmNode, chkErr)
 	}
