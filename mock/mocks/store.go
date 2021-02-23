@@ -4208,6 +4208,20 @@ func (_m *Store) UpdateStateBlock(block *types.StateBlock, c storage.Cache) erro
 	return r0
 }
 
+// WalkGapDoDSettleStateBlock provides a mock function with given fields: visit
+func (_m *Store) WalkGapDoDSettleStateBlock(visit types.GapDoDSettleStateBlockWalkFunc) error {
+	ret := _m.Called(visit)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(types.GapDoDSettleStateBlockWalkFunc) error); ok {
+		r0 = rf(visit)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // WalkGapPovBlocks provides a mock function with given fields: visit
 func (_m *Store) WalkGapPovBlocks(visit types.GapPovBlockWalkFunc) error {
 	ret := _m.Called(visit)

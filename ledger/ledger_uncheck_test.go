@@ -497,6 +497,45 @@ func TestLedger_AddGapDoDSettleStateBlock(t *testing.T) {
 	}
 }
 
+func TestLedger_WalkGapDoDSettleStateBlock(t *testing.T) {
+	teardownTestCase, l := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	internalId := mock.Hash()
+	block := mock.StateBlockWithoutWork()
+	err := l.AddGapDoDSettleStateBlock(internalId, block, types.UnSynchronized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count := 0
+	if err := l.WalkGapDoDSettleStateBlock(func(blk *types.StateBlock, sync types.SynchronizedKind) error {
+		count++
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatal("error count", count)
+	}
+
+	err = l.DeleteGapDoDSettleStateBlock(internalId, block.GetHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count = 0
+	if err := l.WalkGapDoDSettleStateBlock(func(blk *types.StateBlock, sync types.SynchronizedKind) error {
+		count++
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatal("error count", count)
+	}
+}
+
 func TestLedger_PovHeightAddGap(t *testing.T) {
 	teardownTestCase, l := setupTestCase(t)
 	defer teardownTestCase(t)
