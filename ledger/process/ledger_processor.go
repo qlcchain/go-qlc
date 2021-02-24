@@ -334,6 +334,7 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 	case types.ContractSend:
 		// check private tx
 		if block.IsPrivate() && !block.IsRecipient() {
+			lv.logger.Warnf("it's private transaction: %s", block.GetHash())
 			return nil
 		}
 
@@ -344,6 +345,8 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 				if pendingKey, pendingInfo, err := c.DoPending(block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
+				} else {
+					lv.logger.Warnf("can not get pending, %s, hash:%s", err, block.GetHash())
 				}
 			case contract.SpecVer2:
 				vmCtx := vmstore.NewVMContextWithBlock(lv.l, block)
@@ -353,10 +356,14 @@ func (lv *LedgerVerifier) updatePending(block *types.StateBlock, tm *types.Token
 				if pendingKey, pendingInfo, err := c.ProcessSend(vmCtx, block); err == nil && pendingKey != nil {
 					lv.logger.Debug("contractSend add pending , ", pendingKey)
 					return lv.l.AddPending(pendingKey, pendingInfo, cache)
+				} else {
+					lv.logger.Warnf("can not get pending:%s, hash:%s", err, block.GetHash())
 				}
 			default:
 				return fmt.Errorf("unsupported chain contract version %d", d.GetVersion())
 			}
+		} else {
+			lv.logger.Warnf("get chain contract:%s, hash:%s", err, block.GetHash())
 		}
 		return nil
 	case types.ContractReward:
@@ -552,6 +559,8 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 					}
 					return nil
 				}
+			} else {
+				lv.logger.Warn("DoReceive contract length is 0")
 			}
 			return errors.New("invalid contract data")
 		case types.ContractSend:
@@ -581,6 +590,8 @@ func (lv *LedgerVerifier) updateContractData(block *types.StateBlock, cache *led
 						lv.logger.Errorf("process send error, %s", err)
 					}
 				}
+			} else {
+				lv.logger.Warnf("get chain contract:%s, hash:%s", err, block.GetHash())
 			}
 		}
 	}
