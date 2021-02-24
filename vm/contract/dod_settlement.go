@@ -585,6 +585,7 @@ func (uo *DoDSettleUpdateOrderInfo) DoReceive(ctx *vmstore.VMContext, block *typ
 	}
 
 	if block.Address.IsZero() {
+
 		// generate contract reward block
 		block.Type = types.ContractReward
 		block.Address = order.Seller.Address
