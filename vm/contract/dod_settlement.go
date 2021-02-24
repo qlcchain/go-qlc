@@ -244,39 +244,40 @@ func (co *DoDSettleCreateOrder) DoReceive(ctx *vmstore.VMContext, block *types.S
 	}
 
 	// generate contract reward block
-	block.Type = types.ContractReward
-	block.Address = order.Seller.Address
-	block.Token = cfg.GasToken()
-	block.Link = input.GetHash()
-	block.PoVHeight = input.PoVHeight
-	block.Timestamp = common.TimeNow().Unix()
+	if block.Address.IsZero() {
+		block.Type = types.ContractReward
+		block.Address = order.Seller.Address
+		block.Token = cfg.GasToken()
+		block.Link = input.GetHash()
+		block.PoVHeight = input.PoVHeight
 
-	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+		// pledge fields only for QLC token
+		block.Vote = types.NewBalance(0)
+		block.Oracle = types.NewBalance(0)
+		block.Storage = types.NewBalance(0)
+		block.Network = types.NewBalance(0)
 
-	am, _ := ctx.GetAccountMeta(block.Address)
-	if am != nil {
-		tm := am.Token(cfg.GasToken())
-		if tm != nil {
-			block.Balance = tm.Balance
-			block.Representative = tm.Representative
-			block.Previous = tm.Header
+		am, _ := ctx.GetAccountMeta(block.Address)
+		if am != nil {
+			tm := am.Token(cfg.GasToken())
+			if tm != nil {
+				block.Balance = tm.Balance
+				block.Representative = tm.Representative
+				block.Previous = tm.Header
+			} else {
+				block.Balance = types.NewBalance(0)
+				if len(am.Tokens) > 0 {
+					block.Representative = am.Tokens[0].Representative
+				} else {
+					block.Representative = input.Representative
+				}
+				block.Previous = types.ZeroHash
+			}
 		} else {
 			block.Balance = types.NewBalance(0)
-			if len(am.Tokens) > 0 {
-				block.Representative = am.Tokens[0].Representative
-			} else {
-				block.Representative = input.Representative
-			}
+			block.Representative = input.Representative
 			block.Previous = types.ZeroHash
 		}
-	} else {
-		block.Balance = types.NewBalance(0)
-		block.Representative = input.Representative
-		block.Previous = types.ZeroHash
 	}
 
 	track := &abi.DoDSettleOrderLifeTrack{
@@ -588,40 +589,41 @@ func (uo *DoDSettleUpdateOrderInfo) DoReceive(ctx *vmstore.VMContext, block *typ
 		return nil, fmt.Errorf("order state is fail, can not become complete")
 	}
 
-	// generate contract reward block
-	block.Type = types.ContractReward
-	block.Address = order.Seller.Address
-	block.Token = cfg.GasToken()
-	block.Link = input.GetHash()
-	block.PoVHeight = input.PoVHeight
-	block.Timestamp = common.TimeNow().Unix()
+	if block.Address.IsZero() {
+		// generate contract reward block
+		block.Type = types.ContractReward
+		block.Address = order.Seller.Address
+		block.Token = cfg.GasToken()
+		block.Link = input.GetHash()
+		block.PoVHeight = input.PoVHeight
 
-	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+		// pledge fields only for QLC token
+		block.Vote = types.NewBalance(0)
+		block.Oracle = types.NewBalance(0)
+		block.Storage = types.NewBalance(0)
+		block.Network = types.NewBalance(0)
 
-	am, _ := ctx.GetAccountMeta(block.Address)
-	if am != nil {
-		tm := am.Token(cfg.GasToken())
-		if tm != nil {
-			block.Balance = tm.Balance
-			block.Representative = tm.Representative
-			block.Previous = tm.Header
+		am, _ := ctx.GetAccountMeta(block.Address)
+		if am != nil {
+			tm := am.Token(cfg.GasToken())
+			if tm != nil {
+				block.Balance = tm.Balance
+				block.Representative = tm.Representative
+				block.Previous = tm.Header
+			} else {
+				block.Balance = types.NewBalance(0)
+				if len(am.Tokens) > 0 {
+					block.Representative = am.Tokens[0].Representative
+				} else {
+					block.Representative = input.Representative
+				}
+				block.Previous = types.ZeroHash
+			}
 		} else {
 			block.Balance = types.NewBalance(0)
-			if len(am.Tokens) > 0 {
-				block.Representative = am.Tokens[0].Representative
-			} else {
-				block.Representative = input.Representative
-			}
+			block.Representative = input.Representative
 			block.Previous = types.ZeroHash
 		}
-	} else {
-		block.Balance = types.NewBalance(0)
-		block.Representative = input.Representative
-		block.Previous = types.ZeroHash
 	}
 
 	track := &abi.DoDSettleOrderLifeTrack{
@@ -921,40 +923,41 @@ func (co *DoDSettleChangeOrder) DoReceive(ctx *vmstore.VMContext, block *types.S
 		order.ContractState = abi.DoDSettleContractStateRejected
 	}
 
-	// generate contract reward block
-	block.Type = types.ContractReward
-	block.Address = order.Seller.Address
-	block.Token = cfg.GasToken()
-	block.Link = input.GetHash()
-	block.PoVHeight = input.PoVHeight
-	block.Timestamp = common.TimeNow().Unix()
+	if block.Address.IsZero() {
+		// generate contract reward block
+		block.Type = types.ContractReward
+		block.Address = order.Seller.Address
+		block.Token = cfg.GasToken()
+		block.Link = input.GetHash()
+		block.PoVHeight = input.PoVHeight
 
-	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+		// pledge fields only for QLC token
+		block.Vote = types.NewBalance(0)
+		block.Oracle = types.NewBalance(0)
+		block.Storage = types.NewBalance(0)
+		block.Network = types.NewBalance(0)
 
-	am, _ := ctx.GetAccountMeta(block.Address)
-	if am != nil {
-		tm := am.Token(cfg.GasToken())
-		if tm != nil {
-			block.Balance = tm.Balance
-			block.Representative = tm.Representative
-			block.Previous = tm.Header
+		am, _ := ctx.GetAccountMeta(block.Address)
+		if am != nil {
+			tm := am.Token(cfg.GasToken())
+			if tm != nil {
+				block.Balance = tm.Balance
+				block.Representative = tm.Representative
+				block.Previous = tm.Header
+			} else {
+				block.Balance = types.NewBalance(0)
+				if len(am.Tokens) > 0 {
+					block.Representative = am.Tokens[0].Representative
+				} else {
+					block.Representative = input.Representative
+				}
+				block.Previous = types.ZeroHash
+			}
 		} else {
 			block.Balance = types.NewBalance(0)
-			if len(am.Tokens) > 0 {
-				block.Representative = am.Tokens[0].Representative
-			} else {
-				block.Representative = input.Representative
-			}
+			block.Representative = input.Representative
 			block.Previous = types.ZeroHash
 		}
-	} else {
-		block.Balance = types.NewBalance(0)
-		block.Representative = input.Representative
-		block.Previous = types.ZeroHash
 	}
 
 	track := &abi.DoDSettleOrderLifeTrack{
@@ -1168,40 +1171,41 @@ func (to *DoDSettleTerminateOrder) DoReceive(ctx *vmstore.VMContext, block *type
 		order.ContractState = abi.DoDSettleContractStateRejected
 	}
 
-	// generate contract reward block
-	block.Type = types.ContractReward
-	block.Address = order.Seller.Address
-	block.Token = cfg.GasToken()
-	block.Link = input.GetHash()
-	block.PoVHeight = input.PoVHeight
-	block.Timestamp = common.TimeNow().Unix()
+	if block.Address.IsZero() {
+		// generate contract reward block
+		block.Type = types.ContractReward
+		block.Address = order.Seller.Address
+		block.Token = cfg.GasToken()
+		block.Link = input.GetHash()
+		block.PoVHeight = input.PoVHeight
 
-	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+		// pledge fields only for QLC token
+		block.Vote = types.NewBalance(0)
+		block.Oracle = types.NewBalance(0)
+		block.Storage = types.NewBalance(0)
+		block.Network = types.NewBalance(0)
 
-	am, _ := ctx.GetAccountMeta(block.Address)
-	if am != nil {
-		tm := am.Token(cfg.GasToken())
-		if tm != nil {
-			block.Balance = tm.Balance
-			block.Representative = tm.Representative
-			block.Previous = tm.Header
+		am, _ := ctx.GetAccountMeta(block.Address)
+		if am != nil {
+			tm := am.Token(cfg.GasToken())
+			if tm != nil {
+				block.Balance = tm.Balance
+				block.Representative = tm.Representative
+				block.Previous = tm.Header
+			} else {
+				block.Balance = types.NewBalance(0)
+				if len(am.Tokens) > 0 {
+					block.Representative = am.Tokens[0].Representative
+				} else {
+					block.Representative = input.Representative
+				}
+				block.Previous = types.ZeroHash
+			}
 		} else {
 			block.Balance = types.NewBalance(0)
-			if len(am.Tokens) > 0 {
-				block.Representative = am.Tokens[0].Representative
-			} else {
-				block.Representative = input.Representative
-			}
+			block.Representative = input.Representative
 			block.Previous = types.ZeroHash
 		}
-	} else {
-		block.Balance = types.NewBalance(0)
-		block.Representative = input.Representative
-		block.Previous = types.ZeroHash
 	}
 
 	track := &abi.DoDSettleOrderLifeTrack{
