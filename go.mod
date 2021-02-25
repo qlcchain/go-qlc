@@ -27,14 +27,13 @@ require (
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lib/pq v1.9.0
 	github.com/libp2p/go-libp2p v0.13.0
-	github.com/libp2p/go-libp2p-core v0.8.0
+	github.com/libp2p/go-libp2p-core v0.8.5
 	github.com/libp2p/go-libp2p-discovery v0.5.0
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1
 	github.com/libp2p/go-libp2p-pubsub v0.4.0
 	github.com/libp2p/go-libp2p-swarm v0.4.0
 	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/multiformats/go-multiaddr v0.3.1
-	github.com/philhofer/fwd v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/qlcchain/jsonrpc2 v0.0.7
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
@@ -43,7 +42,7 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
-	github.com/tinylib/msgp v1.1.2
+	github.com/tinylib/msgp v1.1.5
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
 	go.uber.org/atomic v1.7.0
