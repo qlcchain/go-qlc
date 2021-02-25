@@ -702,10 +702,10 @@ func (r *PKDReward) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, i
 	block.Timestamp = common.TimeNow().Unix()
 
 	// pledge fields only for QLC token
-	block.Vote = types.NewBalance(0)
-	block.Oracle = types.NewBalance(0)
-	block.Storage = types.NewBalance(0)
-	block.Network = types.NewBalance(0)
+	//block.Vote = types.NewBalance(0)
+	//block.Oracle = types.NewBalance(0)
+	//block.Storage = types.NewBalance(0)
+	//block.Network = types.NewBalance(0)
 
 	amBnf, _ := ctx.GetAccountMeta(param.Beneficial)
 	if amBnf != nil {

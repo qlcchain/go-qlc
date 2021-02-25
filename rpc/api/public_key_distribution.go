@@ -120,10 +120,10 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 		Address:        param.Account,
 		Balance:        tm.Balance,
 		Previous:       tm.Header,
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
+		Vote:           types.ToBalance(am.CoinVote),
+		Network:        types.ToBalance(am.CoinNetwork),
+		Oracle:         types.ToBalance(am.CoinOracle),
+		Storage:        types.ToBalance(am.CoinStorage),
 		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
@@ -139,7 +139,7 @@ func (p *PublicKeyDistributionApi) GetVerifierRegisterBlock(param *VerifierRegPa
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 
 	return send, nil
@@ -191,10 +191,10 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 		Address:        param.Account,
 		Balance:        tm.Balance,
 		Previous:       tm.Header,
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
+		Vote:           types.ToBalance(am.CoinVote),
+		Network:        types.ToBalance(am.CoinNetwork),
+		Oracle:         types.ToBalance(am.CoinOracle),
+		Storage:        types.ToBalance(am.CoinStorage),
 		Link:           types.Hash(contractaddress.PubKeyDistributionAddress),
 		Representative: tm.Representative,
 		Data:           data,
@@ -210,7 +210,7 @@ func (p *PublicKeyDistributionApi) GetVerifierUnregisterBlock(param *VerifierUnR
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 
 	return send, nil
@@ -531,7 +531,7 @@ func (p *PublicKeyDistributionApi) GetPublishBlock(param *PublishParam) (*Publis
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 
 	ret := &PublishRet{
@@ -609,7 +609,7 @@ func (p *PublicKeyDistributionApi) GetUnPublishBlock(param *UnPublishParam) (*ty
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 
 	return send, nil
@@ -858,7 +858,7 @@ func (p *PublicKeyDistributionApi) GetOracleBlock(param *OracleParam) (*types.St
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 
 	return send, nil
@@ -1028,10 +1028,10 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 		Previous:       tm.Header,
 		Representative: tm.Representative,
 
-		Vote:    types.ZeroBalance,
-		Network: types.ZeroBalance,
-		Oracle:  types.ZeroBalance,
-		Storage: types.ZeroBalance,
+		//Vote:    types.ZeroBalance,
+		//Network: types.ZeroBalance,
+		//Oracle:  types.ZeroBalance,
+		//Storage: types.ZeroBalance,
 
 		Link:      types.Hash(contractaddress.PubKeyDistributionAddress),
 		Data:      data,
@@ -1048,7 +1048,7 @@ func (p *PublicKeyDistributionApi) GetRewardSendBlock(param *PKDRewardParam) (*t
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 
 	return send, nil

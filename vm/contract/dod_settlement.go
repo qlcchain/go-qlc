@@ -252,11 +252,6 @@ func (co *DoDSettleCreateOrder) DoReceive(ctx *vmstore.VMContext, block *types.S
 		block.PoVHeight = input.PoVHeight
 
 		// pledge fields only for QLC token
-		block.Vote = types.NewBalance(0)
-		block.Oracle = types.NewBalance(0)
-		block.Storage = types.NewBalance(0)
-		block.Network = types.NewBalance(0)
-
 		am, _ := ctx.GetAccountMeta(block.Address)
 		if am != nil {
 			tm := am.Token(cfg.GasToken())
@@ -598,11 +593,6 @@ func (uo *DoDSettleUpdateOrderInfo) DoReceive(ctx *vmstore.VMContext, block *typ
 		block.PoVHeight = input.PoVHeight
 
 		// pledge fields only for QLC token
-		block.Vote = types.NewBalance(0)
-		block.Oracle = types.NewBalance(0)
-		block.Storage = types.NewBalance(0)
-		block.Network = types.NewBalance(0)
-
 		am, _ := ctx.GetAccountMeta(block.Address)
 		if am != nil {
 			tm := am.Token(cfg.GasToken())
@@ -931,12 +921,6 @@ func (co *DoDSettleChangeOrder) DoReceive(ctx *vmstore.VMContext, block *types.S
 		block.Link = input.GetHash()
 		block.PoVHeight = input.PoVHeight
 
-		// pledge fields only for QLC token
-		block.Vote = types.NewBalance(0)
-		block.Oracle = types.NewBalance(0)
-		block.Storage = types.NewBalance(0)
-		block.Network = types.NewBalance(0)
-
 		am, _ := ctx.GetAccountMeta(block.Address)
 		if am != nil {
 			tm := am.Token(cfg.GasToken())
@@ -1180,11 +1164,6 @@ func (to *DoDSettleTerminateOrder) DoReceive(ctx *vmstore.VMContext, block *type
 		block.PoVHeight = input.PoVHeight
 
 		// pledge fields only for QLC token
-		block.Vote = types.NewBalance(0)
-		block.Oracle = types.NewBalance(0)
-		block.Storage = types.NewBalance(0)
-		block.Network = types.NewBalance(0)
-
 		am, _ := ctx.GetAccountMeta(block.Address)
 		if am != nil {
 			tm := am.Token(cfg.GasToken())

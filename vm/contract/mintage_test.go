@@ -96,14 +96,14 @@ func TestMintage(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		blk := &types.StateBlock{
-			Type:           types.ContractSend,
-			Token:          tm.Type,
-			Address:        a,
-			Balance:        tm.Balance,
-			Vote:           types.ZeroBalance,
-			Network:        types.ZeroBalance,
-			Storage:        types.ZeroBalance,
-			Oracle:         types.ZeroBalance,
+			Type:    types.ContractSend,
+			Token:   tm.Type,
+			Address: a,
+			Balance: tm.Balance,
+			//Vote:           types.ZeroBalance,
+			//Network:        types.ZeroBalance,
+			//Storage:        types.ZeroBalance,
+			//Oracle:         types.ZeroBalance,
 			Previous:       tm.Header,
 			Link:           types.Hash(contractaddress.MintageAddress),
 			Representative: tm.Representative,

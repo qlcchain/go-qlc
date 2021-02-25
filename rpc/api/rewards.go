@@ -243,14 +243,14 @@ func (r *RewardsAPI) generateSend(param *sendParam, methodName string) (*types.S
 
 	if singedData, err := param.ToSignedABI(methodName); err == nil {
 		return &types.StateBlock{
-			Type:           types.ContractSend,
-			Token:          param.tm.Type,
-			Address:        *param.self,
-			Balance:        param.tm.Balance.Sub(types.Balance{Int: param.Amount}),
-			Vote:           types.ZeroBalance,
-			Network:        types.ZeroBalance,
-			Oracle:         types.ZeroBalance,
-			Storage:        types.ZeroBalance,
+			Type:    types.ContractSend,
+			Token:   param.tm.Type,
+			Address: *param.self,
+			Balance: param.tm.Balance.Sub(types.Balance{Int: param.Amount}),
+			//Vote:           types.ZeroBalance,
+			//Network:        types.ZeroBalance,
+			//Oracle:         types.ZeroBalance,
+			//Storage:        types.ZeroBalance,
 			Previous:       param.tm.Header,
 			Link:           types.Hash(contractaddress.RewardsAddress),
 			Representative: param.tm.Representative,
@@ -295,7 +295,7 @@ func (r *RewardsAPI) GetReceiveRewardBlock(send *types.Hash) (*types.StateBlock,
 			rev.PoVHeight = povHeader.GetHeight()
 			h := vmstore.TrieHash(result[0].VMContext)
 			if h != nil {
-				rev.Extra = *h
+				rev.Extra = h
 			}
 			return rev, nil
 		} else {

@@ -426,10 +426,10 @@ func (l *Ledger) GenerateSendBlock(block *types.StateBlock, amount types.Balance
 		block.Previous = tm.Header
 		block.Representative = tm.Representative
 		block.Timestamp = common.TimeNow().Unix()
-		block.Vote = prev.GetVote()
-		block.Network = prev.GetNetwork()
-		block.Oracle = prev.GetOracle()
-		block.Storage = prev.GetStorage()
+		block.Vote = prev.Vote
+		block.Network = prev.Network
+		block.Oracle = prev.Oracle
+		block.Storage = prev.Storage
 		block.PoVHeight = povHeader.GetHeight()
 
 		if prk != nil {
@@ -489,33 +489,33 @@ func (l *Ledger) GenerateReceiveBlock(sendBlock *types.StateBlock, prk ed25519.P
 				Type:           types.Receive,
 				Address:        rxAccount,
 				Balance:        rxTm.Balance.Add(info.Amount),
-				Vote:           prev.GetVote(),
-				Oracle:         prev.GetOracle(),
-				Network:        prev.GetNetwork(),
-				Storage:        prev.GetStorage(),
+				Vote:           prev.Vote,
+				Oracle:         prev.Oracle,
+				Network:        prev.Network,
+				Storage:        prev.Storage,
 				Previous:       rxTm.Header,
 				Link:           hash,
 				Representative: rxTm.Representative,
 				Token:          rxTm.Type,
-				Extra:          types.ZeroHash,
-				Timestamp:      common.TimeNow().Unix(),
+				//Extra:          types.ZeroHash,
+				Timestamp: common.TimeNow().Unix(),
 			}
 		}
 	} else {
 		sb = types.StateBlock{
-			Type:           types.Open,
-			Address:        rxAccount,
-			Balance:        info.Amount,
-			Vote:           types.ZeroBalance,
-			Oracle:         types.ZeroBalance,
-			Network:        types.ZeroBalance,
-			Storage:        types.ZeroBalance,
+			Type:    types.Open,
+			Address: rxAccount,
+			Balance: info.Amount,
+			//Vote:           types.ZeroBalance,
+			//Oracle:         types.ZeroBalance,
+			//Network:        types.ZeroBalance,
+			//Storage:        types.ZeroBalance,
 			Previous:       types.ZeroHash,
 			Link:           hash,
 			Representative: sendBlock.GetRepresentative(), //Representative: genesis.Owner,
 			Token:          sendBlock.GetToken(),
-			Extra:          types.ZeroHash,
-			Timestamp:      common.TimeNow().Unix(),
+			//Extra:          types.ZeroHash,
+			Timestamp: common.TimeNow().Unix(),
 		}
 	}
 	povHeader, err := l.GetLatestPovHeader()
@@ -556,17 +556,17 @@ func (l *Ledger) GenerateChangeBlock(account types.Address, representative types
 		Type:           types.Change,
 		Address:        account,
 		Balance:        tm.Balance,
-		Vote:           prev.GetVote(),
-		Oracle:         prev.GetOracle(),
-		Network:        prev.GetNetwork(),
-		Storage:        prev.GetStorage(),
+		Vote:           prev.Vote,
+		Oracle:         prev.Oracle,
+		Network:        prev.Network,
+		Storage:        prev.Storage,
 		Previous:       tm.Header,
 		Link:           types.ZeroHash,
 		PoVHeight:      povHeader.GetHeight(),
 		Representative: representative,
 		Token:          tm.Type,
-		Extra:          types.ZeroHash,
-		Timestamp:      common.TimeNow().Unix(),
+		//Extra:          types.ZeroHash,
+		Timestamp: common.TimeNow().Unix(),
 	}
 	if prk != nil {
 		acc := types.NewAccount(prk)
@@ -598,17 +598,17 @@ func (l *Ledger) GenerateOnlineBlock(account types.Address, prk ed25519.PrivateK
 		Type:           types.Online,
 		Address:        account,
 		Balance:        tm.Balance,
-		Vote:           prev.GetVote(),
-		Oracle:         prev.GetOracle(),
-		Network:        prev.GetNetwork(),
-		Storage:        prev.GetStorage(),
+		Vote:           prev.Vote,
+		Oracle:         prev.Oracle,
+		Network:        prev.Network,
+		Storage:        prev.Storage,
 		Previous:       tm.Header,
 		Link:           types.ZeroHash,
 		Representative: tm.Representative,
 		Token:          tm.Type,
-		Extra:          types.ZeroHash,
-		Timestamp:      common.TimeNow().Unix(),
-		PoVHeight:      povHeight,
+		//Extra:          types.ZeroHash,
+		Timestamp: common.TimeNow().Unix(),
+		PoVHeight: povHeight,
 	}
 	if prk != nil {
 		acc := types.NewAccount(prk)

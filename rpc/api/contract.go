@@ -205,10 +205,10 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 	sendBlk.Balance = tm.Balance.Sub(para.Amount)
 	sendBlk.Previous = tm.Header
 	sendBlk.Representative = tm.Representative
-	sendBlk.Vote = prev.GetVote()
-	sendBlk.Network = prev.GetNetwork()
-	sendBlk.Oracle = prev.GetOracle()
-	sendBlk.Storage = prev.GetStorage()
+	sendBlk.Vote = prev.Vote
+	sendBlk.Network = prev.Network
+	sendBlk.Oracle = prev.Oracle
+	sendBlk.Storage = prev.Storage
 
 	sendBlk.Timestamp = common.TimeNow().Unix()
 	sendBlk.PoVHeight = povHeader.GetHeight()
@@ -223,7 +223,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 
 		h := vmstore.TrieHash(vmCtx)
 		if h != nil {
-			sendBlk.Extra = *h
+			sendBlk.Extra = h
 		}
 	} else if cd.GetVersion() == contract.SpecVer2 {
 		_, _, err := cm.ProcessSend(vmCtx, sendBlk)
@@ -233,7 +233,7 @@ func (c *ContractApi) GenerateSendBlock(para *ContractSendBlockPara) (*types.Sta
 
 		h := vmstore.TrieHash(vmCtx)
 		if h != nil {
-			sendBlk.Extra = *h
+			sendBlk.Extra = h
 		}
 	} else {
 		return nil, errors.New("invalid contract version")
@@ -364,7 +364,7 @@ func (c *ContractApi) GenerateRewardBlock(para *ContractRewardBlockPara) (*types
 
 	h := vmstore.TrieHash(g[0].VMContext)
 	if h != nil {
-		recvBlk.Extra = *h
+		recvBlk.Extra = h
 	}
 
 	return recvBlk, nil

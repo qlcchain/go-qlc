@@ -170,10 +170,10 @@ func (m *Mintage) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock, inp
 	block.Data = tokenInfo
 	block.Previous = types.ZeroHash
 	block.Balance = totalSupply
-	block.Vote = types.ZeroBalance
-	block.Storage = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
+	//block.Vote = types.ZeroBalance
+	//block.Storage = types.ZeroBalance
+	//block.Network = types.ZeroBalance
+	//block.Oracle = types.ZeroBalance
 
 	if _, err := ctx.GetStorage(contractaddress.MintageAddress[:], param.TokenId[:]); err == nil {
 		return nil, fmt.Errorf("invalid token")
@@ -309,10 +309,10 @@ func (m *WithdrawMintage) DoReceive(ctx *vmstore.VMContext, block, input *types.
 	block.Link = input.GetHash()
 	block.Data = newTokenInfo
 	block.Balance = tm.Balance.Add(types.Balance{Int: tokenInfo.PledgeAmount})
-	block.Vote = am.CoinVote
-	block.Oracle = am.CoinOracle
-	block.Storage = am.CoinStorage
-	block.Network = am.CoinNetwork
+	//block.Vote = am.CoinVote
+	//block.Oracle = am.CoinOracle
+	//block.Storage = am.CoinStorage
+	//block.Network = am.CoinNetwork
 	block.Previous = tm.Header
 
 	var pledgeData []byte

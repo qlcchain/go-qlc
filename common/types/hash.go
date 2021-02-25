@@ -200,6 +200,13 @@ func (h *Hash) FromBigInt(num *big.Int) error {
 	return nil
 }
 
+func ToHash(h Hash) *Hash {
+	if h.IsZero() {
+		return nil
+	}
+	return &h
+}
+
 func HashData(data []byte) Hash {
 	h, _ := HashBytes(data)
 	return h

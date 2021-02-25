@@ -233,7 +233,7 @@ func mockAccountTrie(l *ledger.Ledger, t *testing.T) {
 	blk := mock.StateBlock()
 	blk.Type = types.ContractSend
 	blk.Previous = types.ZeroHash
-	blk.Extra = *root
+	blk.Extra = root
 
 	if err := l.AddStateBlock(blk); err != nil {
 		t.Fatal(err)

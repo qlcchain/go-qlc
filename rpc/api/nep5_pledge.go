@@ -114,10 +114,10 @@ func (p *NEP5PledgeAPI) GetPledgeBlock(param *PledgeParam) (*types.StateBlock, e
 		Token:          tm.Type,
 		Address:        param.PledgeAddress,
 		Balance:        tm.Balance.Sub(param.Amount),
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
+		Vote:           types.ToBalance(am.CoinVote),
+		Network:        types.ToBalance(am.CoinNetwork),
+		Oracle:         types.ToBalance(am.CoinOracle),
+		Storage:        types.ToBalance(am.CoinStorage),
 		Previous:       tm.Header,
 		Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 		Representative: tm.Representative,
@@ -157,7 +157,7 @@ func (p *NEP5PledgeAPI) GetPledgeRewardBlock(input *types.StateBlock) (*types.St
 		reward.PoVHeight = povHeader.GetHeight()
 		h := vmstore.TrieHash(blocks[0].VMContext)
 		if h != nil {
-			reward.Extra = *h
+			reward.Extra = h
 		}
 
 		return reward, nil
@@ -237,10 +237,10 @@ func (p *NEP5PledgeAPI) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 		Token:          tm.Type,
 		Address:        param.Beneficial,
 		Balance:        am.CoinBalance,
-		Vote:           am.CoinVote,
-		Network:        am.CoinNetwork,
-		Oracle:         am.CoinOracle,
-		Storage:        am.CoinStorage,
+		Vote:           types.ToBalance(am.CoinVote),
+		Network:        types.ToBalance(am.CoinNetwork),
+		Oracle:         types.ToBalance(am.CoinOracle),
+		Storage:        types.ToBalance(am.CoinStorage),
 		Previous:       tm.Header,
 		Link:           types.Hash(contractaddress.NEP5PledgeAddress),
 		Representative: tm.Representative,
@@ -251,11 +251,11 @@ func (p *NEP5PledgeAPI) GetWithdrawPledgeBlock(param *WithdrawPledgeParam) (*typ
 
 	switch strings.ToLower(param.PType) {
 	case "network", "confidant":
-		send.Network = send.Network.Sub(param.Amount)
+		send.Network = types.ToBalance(send.GetNetwork().Sub(param.Amount))
 	case "vote":
-		send.Vote = send.Vote.Sub(param.Amount)
+		send.Vote = types.ToBalance(send.GetVote().Sub(param.Amount))
 	case "oracle":
-		send.Oracle = send.Oracle.Sub(param.Amount)
+		send.Oracle = types.ToBalance(send.GetOracle().Sub(param.Amount))
 		//TODO: support soon
 	//case "storage":
 	//	send.Storage = send.Storage.Sub(param.Amount)
@@ -297,7 +297,7 @@ func (p *NEP5PledgeAPI) GetWithdrawRewardBlock(input *types.StateBlock) (*types.
 
 		h := vmstore.TrieHash(blocks[0].VMContext)
 		if h != nil {
-			reward.Extra = *h
+			reward.Extra = h
 		}
 		return reward, nil
 	}

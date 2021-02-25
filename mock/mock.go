@@ -104,10 +104,10 @@ func StateBlock() *types.StateBlock {
 	i, _ := random.Intn(math.MaxInt16)
 	sb.Type = types.State
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
-	sb.Vote = types.ZeroBalance
-	sb.Oracle = types.ZeroBalance
-	sb.Network = types.ZeroBalance
-	sb.Storage = types.ZeroBalance
+	//sb.Vote = types.ZeroBalance
+	//sb.Oracle = types.ZeroBalance
+	//sb.Network = types.ZeroBalance
+	//sb.Storage = types.ZeroBalance
 	sb.Address = a.Address()
 	sb.Token = config.ChainToken()
 	sb.Previous = Hash()
@@ -152,10 +152,10 @@ func StateBlockWithoutWork() *types.StateBlock {
 	i, _ := random.Intn(math.MaxInt16)
 	sb.Type = types.Open
 	sb.Balance = types.Balance{Int: big.NewInt(int64(i))}
-	sb.Vote = types.NewBalance(0)
-	sb.Network = types.NewBalance(0)
-	sb.Oracle = types.NewBalance(0)
-	sb.Storage = types.NewBalance(0)
+	//sb.Vote = types.NewBalance(0)
+	//sb.Network = types.NewBalance(0)
+	//sb.Oracle = types.NewBalance(0)
+	//sb.Storage = types.NewBalance(0)
 	sb.Address = a.Address()
 	sb.Token = config.ChainToken()
 	sb.Previous = types.ZeroHash
@@ -163,7 +163,8 @@ func StateBlockWithoutWork() *types.StateBlock {
 	sb.Timestamp = common.TimeNow().Unix()
 	//addr := Address()
 	sb.Link = Hash()
-	sb.Message = Hash()
+	message := Hash()
+	sb.Message = &message
 	return sb
 }
 
@@ -180,7 +181,8 @@ func StateBlockWithAddress(addr types.Address) *types.StateBlock {
 	sb.Timestamp = common.TimeNow().Unix()
 	//addr := Address()
 	sb.Link = Hash()
-	sb.Message = Hash()
+	message := Hash()
+	sb.Message = &message
 	return sb
 }
 
@@ -312,14 +314,15 @@ func createBlock(t types.BlockType, ac types.Account, pre types.Hash, token type
 	blk.Previous = pre
 	blk.Token = token
 	blk.Balance = balance
-	blk.Vote = types.ZeroBalance
-	blk.Oracle = types.ZeroBalance
-	blk.Network = types.ZeroBalance
-	blk.Storage = types.ZeroBalance
+	//blk.Vote = types.ZeroBalance
+	//blk.Oracle = types.ZeroBalance
+	//blk.Network = types.ZeroBalance
+	//blk.Storage = types.ZeroBalance
 	blk.Timestamp = common.TimeNow().Unix()
 	blk.Link = link
 	blk.Representative = rep
-	blk.Message = Hash()
+	message := Hash()
+	blk.Message = &message
 	blk.Sender = []byte("15811110000")
 	blk.Receiver = []byte("15800001111")
 	blk.Signature = ac.Sign(blk.GetHash())

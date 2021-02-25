@@ -82,10 +82,10 @@ func (p *PtmKeyApi) GetPtmKeyUpdateBlock(param *PtmKeyUpdateParam) (*types.State
 		Address:        param.Account,
 		Balance:        tm.Balance,
 		Previous:       tm.Header,
-		Vote:           ac.CoinVote,
-		Network:        ac.CoinNetwork,
-		Oracle:         ac.CoinOracle,
-		Storage:        ac.CoinStorage,
+		Vote:           types.ToBalance(ac.CoinVote),
+		Network:        types.ToBalance(ac.CoinNetwork),
+		Oracle:         types.ToBalance(ac.CoinOracle),
+		Storage:        types.ToBalance(ac.CoinStorage),
 		Link:           types.Hash(contractaddress.PtmKeyKVAddress),
 		Representative: tm.Representative,
 		Data:           data,
@@ -102,7 +102,7 @@ func (p *PtmKeyApi) GetPtmKeyUpdateBlock(param *PtmKeyUpdateParam) (*types.State
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 	return send, nil
 }
@@ -146,10 +146,10 @@ func (p *PtmKeyApi) GetPtmKeyDeleteBlock(param *PtmKeyDeleteParam) (*types.State
 		Address:        param.Account,
 		Balance:        tm.Balance,
 		Previous:       tm.Header,
-		Vote:           ac.CoinVote,
-		Network:        ac.CoinNetwork,
-		Oracle:         ac.CoinOracle,
-		Storage:        ac.CoinStorage,
+		Vote:           types.ToBalance(ac.CoinVote),
+		Network:        types.ToBalance(ac.CoinNetwork),
+		Oracle:         types.ToBalance(ac.CoinOracle),
+		Storage:        types.ToBalance(ac.CoinStorage),
 		Link:           types.Hash(contractaddress.PtmKeyKVAddress),
 		Representative: tm.Representative,
 		Data:           data,
@@ -165,7 +165,7 @@ func (p *PtmKeyApi) GetPtmKeyDeleteBlock(param *PtmKeyDeleteParam) (*types.State
 
 	h := vmstore.TrieHash(vmContext)
 	if h != nil {
-		send.Extra = *h
+		send.Extra = h
 	}
 	return send, nil
 }

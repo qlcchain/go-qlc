@@ -125,11 +125,11 @@ func (b *BlackHole) DoReceive(ctx *vmstore.VMContext, block *types.StateBlock,
 	block.Address = input.Address
 	block.Link = txHash
 	block.Token = input.Token
-	block.Extra = types.ZeroHash
-	block.Vote = types.ZeroBalance
-	block.Network = types.ZeroBalance
-	block.Oracle = types.ZeroBalance
-	block.Storage = types.ZeroBalance
+	//block.Extra = types.ZeroHash
+	//block.Vote = types.ZeroBalance
+	//block.Network = types.ZeroBalance
+	//block.Oracle = types.ZeroBalance
+	//block.Storage = types.ZeroBalance
 
 	block.Balance = rxToken.Balance
 	block.Previous = rxToken.Header
