@@ -657,7 +657,7 @@ func (l *DebugApi) UncheckBlock(hash types.Hash) ([]*UncheckInfo, error) {
 
 func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 	unchecks := make([]*APIUncheckBlock, 0)
-	err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
+	if err := l.ledger.GetUncheckedBlocks(func(block *types.StateBlock, link types.Hash, unCheckType types.UncheckedKind, sync types.SynchronizedKind) error {
 		uncheck := new(APIUncheckBlock)
 		uncheck.Block = block
 		uncheck.Hash = block.GetHash()
@@ -677,12 +677,11 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 		uncheck.SyncType = sync
 		unchecks = append(unchecks, uncheck)
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
-	err = l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
+	if err := l.ledger.WalkGapPovBlocks(func(blk *types.StateBlock, height uint64, sync types.SynchronizedKind) error {
 		uncheck := new(APIUncheckBlock)
 		uncheck.Block = blk
 		uncheck.Hash = blk.GetHash()
@@ -691,11 +690,21 @@ func (l *DebugApi) UncheckBlocks() ([]*APIUncheckBlock, error) {
 		uncheck.Height = height
 		unchecks = append(unchecks, uncheck)
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
+	if err := l.ledger.WalkGapDoDSettleStateBlock(func(blk *types.StateBlock, sync types.SynchronizedKind) error {
+		uncheck := new(APIUncheckBlock)
+		uncheck.Block = blk
+		uncheck.Hash = blk.GetHash()
+		uncheck.UnCheckType = "GapDoDSettleState"
+		uncheck.SyncType = sync
+		unchecks = append(unchecks, uncheck)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 	return unchecks, nil
 }
 
@@ -729,6 +738,15 @@ func (l *DebugApi) UncheckBlocksCount() (map[string]int, error) {
 		unchecks["Total"] = unchecks["Total"] + 1
 		return nil
 	})
+
+	if err := l.ledger.WalkGapDoDSettleStateBlock(func(blk *types.StateBlock, sync types.SynchronizedKind) error {
+		unchecks["GapDoDSettleState"] = unchecks["GapDoDSettleState"] + 1
+		unchecks["Total"] = unchecks["Total"] + 1
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -33,6 +33,7 @@ type UncheckedBlockStore interface {
 	AddGapDoDSettleStateBlock(key types.Hash, block *types.StateBlock, sync types.SynchronizedKind) error
 	GetGapDoDSettleStateBlock(key types.Hash, visit types.GapDoDSettleStateBlockWalkFunc) error
 	DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error
+	WalkGapDoDSettleStateBlock(visit types.GapDoDSettleStateBlockWalkFunc) error
 
 	PovHeightAddGap(height uint64) error
 	PovHeightHasGap(height uint64) (bool, error)
@@ -431,6 +432,25 @@ func (l *Ledger) DeleteGapDoDSettleStateBlock(key, blkHash types.Hash) error {
 	}
 
 	return l.deleteUnchecked(k)
+}
+
+func (l *Ledger) WalkGapDoDSettleStateBlock(visit types.GapDoDSettleStateBlockWalkFunc) error {
+	prefix, _ := storage.GetKeyOfParts(storage.KeyPrefixGapDoDSettleState)
+
+	return l.iteratorUnchecked(prefix, nil, func(key []byte, val interface{}) error {
+		u, ok := val.(*types.Unchecked)
+		if !ok {
+			return fmt.Errorf("invalid uncheck object")
+		}
+
+		if u.Block.IsPrivate() {
+			pl, err := l.GetBlockPrivatePayload(u.Block.GetHash())
+			if err == nil {
+				u.Block.SetPrivatePayload(pl)
+			}
+		}
+		return visit(u.Block, u.Kind)
+	})
 }
 
 func (l *Ledger) setUnchecked(key []byte, unchecked *types.Unchecked) error {

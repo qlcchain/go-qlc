@@ -35,7 +35,14 @@ func addLedgerInitLedgerByIshell(parentCmd *ishell.Cmd) {
 		Usage: "seed of receive accounts",
 		Value: []string{},
 	}
-	args := []util.Flag{from, to}
+
+	amount := util.Flag{
+		Name:  "amount",
+		Must:  false,
+		Usage: "transfer amount, if zero, will calculate the average according to the number of `to`",
+		Value: "0",
+	}
+	args := []util.Flag{from, to, amount}
 	c := &ishell.Cmd{
 		Name:                "init",
 		Help:                "init ledger",
@@ -50,11 +57,13 @@ func addLedgerInitLedgerByIshell(parentCmd *ishell.Cmd) {
 			}
 			fromSeedP := util.StringVar(c.Args, from)
 			toSeedsP := util.StringSliceVar(c.Args, to)
+			amountP := util.StringVar(c.Args, amount)
+
 			if len(toSeedsP) == 0 {
 				util.Info("to account is empty, pls check")
 				return
 			}
-			err := initLedger(fromSeedP, toSeedsP)
+			err := initLedger(fromSeedP, toSeedsP, amountP)
 			if err != nil {
 				util.Info(err)
 				return
@@ -69,11 +78,12 @@ func addLedgerInitLedgerByIshell(parentCmd *ishell.Cmd) {
 func addLedgerInityCobra(parentCmd *cobra.Command) {
 	var fromAccountP string
 	var toAccountsP []string
+	var amountP string
 	var generateTestLedgerCmd = &cobra.Command{
 		Use:   "init",
 		Short: "init ledger",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := initLedger(fromAccountP, toAccountsP)
+			err := initLedger(fromAccountP, toAccountsP, amountP)
 			if err != nil {
 				cmd.Println(err)
 				return
@@ -82,11 +92,13 @@ func addLedgerInityCobra(parentCmd *cobra.Command) {
 		},
 	}
 	generateTestLedgerCmd.Flags().StringVar(&fromAccountP, "from", "", "seed of genesis account")
+	generateTestLedgerCmd.Flags().StringVar(&amountP, "amount", "0",
+		"transfer amount, if zero, will calculate the average according to the number of `to`")
 	generateTestLedgerCmd.Flags().StringSliceVar(&toAccountsP, "to", []string{}, "seed of receive accounts")
 	parentCmd.AddCommand(generateTestLedgerCmd)
 }
 
-func initLedger(fromSeed string, toSeeds []string) error {
+func initLedger(fromSeed string, toSeeds []string, amount string) error {
 	_, qlc, _ := types.KeypairFromSeed(fromSeed, 0)
 	_, gqas, _ := types.KeypairFromSeed(fromSeed, 1)
 	qlcAccount := types.NewAccount(qlc)
@@ -98,8 +110,8 @@ func initLedger(fromSeed string, toSeeds []string) error {
 		to := types.NewAccount(prvKey)
 		toAccounts[idx] = to
 	}
-
-	err := sendAndReceiveTokenAction(qlcAccount, toAccounts, "QLC", nil)
+	a := stringToInt64(amount)
+	err := sendAndReceiveTokenAction(qlcAccount, toAccounts, "QLC", a)
 	if err != nil {
 		return err
 	}
@@ -137,19 +149,19 @@ func sendAndReceiveTokenAction(
 				break
 			}
 		}
-		if amount != nil {
+		if isZero(amount) {
+			a, err := totalBalance.Div(int64(l))
+			if err != nil {
+				return err
+			}
+			toAmount = a
+		} else {
 			exp := big.NewInt(0).Mul(amount, big.NewInt(int64(l)))
 			if totalBalance == nil || totalBalance.Cmp(exp) < 0 {
 				return fmt.Errorf("not enough balance, exp: %s, got: %s", exp, totalBalance)
 			} else {
 				toAmount = types.Balance{Int: amount}
 			}
-		} else {
-			a, err := totalBalance.Div(int64(l))
-			if err != nil {
-				return err
-			}
-			toAmount = a
 		}
 		fmt.Printf("%s, totalBalance is [%s], amount is [%s]\n", token, totalBalance, toAmount)
 	} else {
@@ -210,4 +222,16 @@ func sendAndReceiveTokenAction(
 		//}
 	}
 	return nil
+}
+
+func stringToInt64(amount string) *big.Int {
+	if flt, _, err := big.ParseFloat(amount, 10, 0, big.ToNearestEven); err == nil {
+		i, _ := flt.Int(big.NewInt(0))
+		return i
+	}
+	return nil
+}
+
+func isZero(amount *big.Int) bool {
+	return amount == nil || amount.Cmp(big.NewInt(0)) == 0
 }
