@@ -9,6 +9,7 @@ ignore:
 - "**/*_gen.go"
 - "**/*.pb.go"
 - "**/proto/*"
+- "cmd/**/*"
 
 #comment: false
 
