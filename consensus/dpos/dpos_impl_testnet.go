@@ -504,8 +504,13 @@ func (dps *DPoS) processPrivateBlocks() {
 
 		case bs := <-dps.privateRecvBlocks:
 			if bs.Block.IsPrivate() {
-				recvReq := &topic.EventPrivacyRecvReqMsg{EnclaveKey: bs.Block.GetData(), ReqData: bs, RspChan: dps.privateRecvRspCh}
-				dps.eb.Publish(topic.EventPrivacySendReq, recvReq)
+				if dps.cfg.Privacy.Enable {
+					recvReq := &topic.EventPrivacyRecvReqMsg{EnclaveKey: bs.Block.GetData(), ReqData: bs, RspChan: dps.privateRecvRspCh}
+					dps.eb.Publish(topic.EventPrivacySendReq, recvReq)
+				} else {
+					rspMsg := &topic.EventPrivacyRecvRspMsg{ReqData: bs}
+					dps.privateRecvRspCh <- rspMsg
+				}
 			}
 
 		case recvRsp := <-dps.privateRecvRspCh:
