@@ -38,7 +38,7 @@ require (
 	github.com/qlcchain/jsonrpc2 v0.0.7
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/sahilm/fuzzy v0.1.0
-	github.com/shirou/gopsutil/v3 v3.20.12
+	github.com/shirou/gopsutil/v3 v3.21.2
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
@@ -48,7 +48,6 @@ require (
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/sys v0.0.0-20201101102859-da207088b7d1 // indirect
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
 	google.golang.org/grpc v1.36.0
 	google.golang.org/protobuf v1.25.0
