@@ -3,11 +3,12 @@ package contract
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/qlcchain/go-qlc/common/types"
 	cfg "github.com/qlcchain/go-qlc/config"
 	"github.com/qlcchain/go-qlc/vm/contract/abi"
 	"github.com/qlcchain/go-qlc/vm/vmstore"
-	"time"
 )
 
 var QGasSwapContract = NewChainContract(
