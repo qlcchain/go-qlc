@@ -10,11 +10,11 @@ import (
 func TestMigrationV10ToV11_Migration(t *testing.T) {
 	dir := filepath.Join(QlcTestDataDir(), "config")
 	defer func() { _ = os.RemoveAll(dir) }()
-	cfg8, err := DefaultConfigV8(dir)
+	cfg10, err := DefaultConfigV10(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bytes, err := json.Marshal(cfg8)
+	bytes, err := json.Marshal(cfg10)
 	if err != nil {
 		t.Fatal(err)
 	}

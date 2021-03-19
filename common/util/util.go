@@ -224,7 +224,3 @@ func RandomFixedStringWithSeed(length int, seed int64) string {
 func VerifyEmailFormat(email string) bool {
 	return emailRegexp.MatchString(email)
 }
-
-func IsValidETHAddress(addr string) bool {
-	return true
-}

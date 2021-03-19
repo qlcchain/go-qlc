@@ -147,6 +147,7 @@ type QGasWithdrawParams struct {
 	WithdrawAddress types.Address `json:"withdrawAddress"`
 	Amount          types.Balance `json:"amount"`
 	FromAddress     types.Address `json:"fromAddress"`
+	LinkHash        types.Hash    `json:"linkHash"`
 }
 
 func (q *QGasSwapAPI) GetWithdrawSendBlock(param *QGasWithdrawParams) (*types.StateBlock, error) {
@@ -179,6 +180,7 @@ func (q *QGasSwapAPI) GetWithdrawSendBlock(param *QGasWithdrawParams) (*types.St
 		WithdrawAddress: param.WithdrawAddress,
 		Amount:          param.Amount.Int,
 		FromAddress:     param.FromAddress,
+		LinkHash:        param.LinkHash,
 	}
 	data, err := withdrawParam.ToABI()
 	if err != nil {
