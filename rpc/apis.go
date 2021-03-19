@@ -150,6 +150,13 @@ func (r *RPC) getApi(apiModule string) rpc.API {
 			Service:   api.NewPtmKeyApi(r.cfgFile, r.ledger),
 			Public:    true,
 		}
+	case "qgasswap":
+		return rpc.API{
+			Namespace: "qgasswap",
+			Version:   "1.0",
+			Service:   api.NewQGasSwapAPI(r.ledger, r.cfgFile),
+			Public:    true,
+		}
 	default:
 		return rpc.API{}
 	}

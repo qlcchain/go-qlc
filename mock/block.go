@@ -14,6 +14,7 @@ func init() {
 	_ = json.Unmarshal([]byte(jsonTestGasSend), &TestSendGasBlock)
 	_ = json.Unmarshal([]byte(jsonTestGasReceive), &TestReceiveGasBlock)
 	_ = json.Unmarshal([]byte(jsonTestChangeRepresentative), &TestChangeRepresentative)
+	_ = json.Unmarshal([]byte(jsonTestQGasOpen), &TestQGasOpenBlock)
 }
 
 var (
@@ -22,6 +23,7 @@ var (
 	TestSendGasBlock         types.StateBlock
 	TestReceiveGasBlock      types.StateBlock
 	TestChangeRepresentative types.StateBlock
+	TestQGasOpenBlock        types.StateBlock
 )
 
 var (
@@ -293,4 +295,18 @@ var (
 		"signature": "7e00646271232de77b7ec1b4cac8d4039687eb5a4170501987de40047d19bdf4c871b60dfd8ffa810013af3ef75a5cf7fa4e1274f1d423d2b4383380e2d9de0f"
 	}
 ]`
+
+	jsonTestQGasOpen = `
+    "type": "Open",
+    "token": "ea842234e4dc5b17c33b35f99b5b86111a3af0bd8e4a8822602b866711de6d81",
+    "address": "qlc_1je9h6w3o5b386oig7sb8j71sf6xr9f5ipemw8gojfcqjpk6r5hiu7z3jx3z",
+    "balance": "2000000000000",
+    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+    "link": "10daf31f1777ca04d1f74ee4011bcb8f0f0b7038a0fc319961e308c53e1cc036",
+    "povHeight": 0,
+    "timestamp": 1616115937,
+    "representative": "qlc_1t1uynkmrs597z4ns6ymppwt65baksgdjy1dnw483ubzm97oayyo38ertg44",
+    "work": "0000000001e8767a",
+    "signature": "85feb213927672478aac2efc48d6c54499c3d84e7642144ccd188b132b2b82701fefcd6caf9b9bcb68ec02cd6d10beed734d5da18b124cebcdcb810154fde50d"
+`
 )
