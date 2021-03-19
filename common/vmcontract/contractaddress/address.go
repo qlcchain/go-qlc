@@ -18,10 +18,11 @@ var (
 	PtmKeyKVAddress, _           = GenerateBuiltinContractAddress(28)
 	DoDSettlementAddress, _      = GenerateBuiltinContractAddress(29)
 	KYCAddress, _                = GenerateBuiltinContractAddress(30)
+	QGasSwapAddress, _           = GenerateBuiltinContractAddress(31)
 
 	ChainContractAddressList = []types.Address{NEP5PledgeAddress, MintageAddress, RewardsAddress, MinerAddress,
 		BlackHoleAddress, RepAddress, PubKeyDistributionAddress, SettlementAddress, PermissionAddress,
-		PrivacyDemoKVAddress, PtmKeyKVAddress, DoDSettlementAddress, KYCAddress,
+		PrivacyDemoKVAddress, PtmKeyKVAddress, DoDSettlementAddress, KYCAddress, QGasSwapAddress,
 	}
 	RewardContractAddressList   = []types.Address{MinerAddress, RepAddress}
 	PovContractStateAddressList = []types.Address{KYCAddress, PermissionAddress, PubKeyDistributionAddress}
