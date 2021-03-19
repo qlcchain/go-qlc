@@ -269,7 +269,7 @@ func (q *QGasSwapAPI) GetAllSwapInfos(count int, offset int, isPledge *bool) ([]
 	if err != nil {
 		return nil, err
 	}
-	infos := make([]*abi.QGasSwapInfo, 0)
+	var infos []*abi.QGasSwapInfo
 	if isPledge == nil {
 		infos, err = abi.GetQGasSwapInfos(q.l, types.ZeroAddress, abi.QGasAll)
 	} else {
@@ -294,7 +294,7 @@ func (q *QGasSwapAPI) GetSwapInfosByAddress(addr types.Address, count int, offse
 	if err != nil {
 		return nil, err
 	}
-	infos := make([]*abi.QGasSwapInfo, 0)
+	var infos []*abi.QGasSwapInfo
 	if isPledge == nil {
 		infos, err = abi.GetQGasSwapInfos(q.l, addr, abi.QGasAll)
 	} else {
