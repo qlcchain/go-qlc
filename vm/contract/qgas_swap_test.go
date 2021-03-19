@@ -14,12 +14,11 @@ import (
 )
 
 var (
-	mAccount1      = mock.Account3
-	mAddress1      = mAccount1.Address()
-	mAccount2      = mock.Account2
-	mAddress2      = mAccount2.Address()
-	pledgeAmount   = types.Balance{Int: big.NewInt(1000000)}
-	withdrawAmount = types.Balance{Int: big.NewInt(500000)}
+	mAccount1    = mock.Account3
+	mAddress1    = mAccount1.Address()
+	mAccount2    = mock.Account2
+	mAddress2    = mAccount2.Address()
+	pledgeAmount = types.Balance{Int: big.NewInt(1000000)}
 )
 
 func TestQGasPledge_ProcessSend(t *testing.T) {

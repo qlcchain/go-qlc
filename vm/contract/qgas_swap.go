@@ -62,71 +62,60 @@ func (q *QGasPledge) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 	pledgeKey := abi.GetQGasSwapKey(param.PledgeAddress, block.GetHash())
 	if _, err := ctx.GetStorage(nil, pledgeKey); err == nil {
 		return nil, nil, errors.New("repeatedly pledge info")
+	}
+	pledgeInfo := abi.QGasSwapInfo{
+		SwapType:    abi.QGasPledge,
+		SendHash:    block.GetHash(),
+		Amount:      param.Amount,
+		FromAddress: param.PledgeAddress,
+		ToAddress:   param.ToAddress,
+		LinkHash:    types.ZeroHash,
+		Time:        time.Now().Unix(),
+	}
+
+	pledgeData, err := pledgeInfo.ToABI()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error pledge info abi: %s", err)
+	}
+	err = ctx.SetStorage(nil, pledgeKey, pledgeData)
+	if err != nil {
+		return nil, nil, ErrSetStorage
 	} else {
-		pledgeInfo := abi.QGasSwapInfo{
-			Amount:      param.Amount,
-			FromAddress: param.PledgeAddress,
-			ToAddress:   param.ToAddress,
-			SendHash:    block.GetHash(),
-			LinkHash:    types.ZeroHash,
-			SwapType:    abi.QGasPledge,
-			Time:        time.Now().Unix(),
-		}
-
-		pledgeData, err := pledgeInfo.ToABI()
-		if err != nil {
-			return nil, nil, fmt.Errorf("error pledge info abi: %s", err)
-		}
-		err = ctx.SetStorage(nil, pledgeKey, pledgeData)
-		if err != nil {
-			return nil, nil, ErrSetStorage
-		}
-
 		return &types.PendingKey{
 				Address: param.ToAddress,
 				Hash:    block.GetHash(),
 			}, &types.PendingInfo{
+				Type:   block.Token,
 				Source: param.PledgeAddress,
 				Amount: types.Balance{Int: param.Amount},
-				Type:   block.Token,
 			}, nil
 	}
 }
 
 func (q *QGasPledge) DoReceive(ctx *vmstore.VMContext, block, input *types.StateBlock) ([]*ContractBlock, error) {
-	param, err := abi.ParseQGasPledgeParam(input.Data)
-	if err != nil {
-		return nil, err
-	}
-	// verify block data
-	if _, err := param.Verify(); err != nil {
-		return nil, err
-	}
-
-	if param.PledgeAddress != input.Address {
-		return nil, ErrAccountInvalid
-	}
-
 	if block.Link != input.GetHash() {
 		return nil, fmt.Errorf("invalid link %s, %s", block.Link, input.GetHash())
 	}
 
+	pledgeParam, err := abi.ParseQGasPledgeParam(input.Data)
+	if err != nil {
+		return nil, err
+	} else {
+		if pledgeParam.PledgeAddress != input.Address {
+			return nil, ErrAccountInvalid
+		}
+		if _, err := pledgeParam.Verify(); err != nil {
+			return nil, err
+		}
+	}
+
 	if block.Address.IsZero() {
 		// generate contract reward block
-		block.Address = param.ToAddress
+		block.Address = pledgeParam.ToAddress
 		am, _ := ctx.GetAccountMeta(block.Address)
 		if am != nil {
 			tm := am.Token(cfg.GasToken())
-			if tm != nil {
-				block.Balance = tm.Balance.Add(types.Balance{Int: param.Amount})
-				block.Vote = types.ToBalance(am.CoinVote)
-				block.Network = types.ToBalance(am.CoinNetwork)
-				block.Oracle = types.ToBalance(am.CoinOracle)
-				block.Storage = types.ToBalance(am.CoinStorage)
-
-				block.Representative = tm.Representative
-				block.Previous = tm.Header
-			} else {
+			if tm == nil {
 				block.Balance = types.NewBalance(0)
 				if len(am.Tokens) > 0 {
 					block.Representative = am.Tokens[0].Representative
@@ -134,22 +123,31 @@ func (q *QGasPledge) DoReceive(ctx *vmstore.VMContext, block, input *types.State
 					block.Representative = input.Representative
 				}
 				block.Previous = types.ZeroHash
+			} else {
+				block.Balance = tm.Balance.Add(types.Balance{Int: pledgeParam.Amount})
+				block.Vote = types.ToBalance(am.CoinVote)
+				block.Network = types.ToBalance(am.CoinNetwork)
+				block.Oracle = types.ToBalance(am.CoinOracle)
+				block.Storage = types.ToBalance(am.CoinStorage)
+
+				block.Representative = tm.Representative
+				block.Previous = tm.Header
 			}
 		} else {
-			block.Balance = types.Balance{Int: param.Amount}
-			block.Representative = input.Representative
+			block.Balance = types.Balance{Int: pledgeParam.Amount}
 			block.Previous = types.ZeroHash
+			block.Representative = input.Representative
 		}
 	}
 
 	return []*ContractBlock{
 		{
-			VMContext: ctx,
-			Block:     block,
-			ToAddress: param.ToAddress,
 			BlockType: types.ContractReward,
-			Amount:    types.Balance{Int: param.Amount},
+			VMContext: ctx,
 			Token:     cfg.GasToken(),
+			Block:     block,
+			ToAddress: pledgeParam.ToAddress,
+			Amount:    types.Balance{Int: pledgeParam.Amount},
 			Data:      []byte{},
 		},
 	}, nil

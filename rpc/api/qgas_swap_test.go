@@ -26,7 +26,7 @@ var (
 	withdrawAmount = types.Balance{Int: big.NewInt(500000)}
 )
 
-func setupQGasSwapTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *QGasSwapAPI, ledger.Store) {
+func setupQGasSwapTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVerifier, *QGasSwapAPI) {
 	dir := filepath.Join(config.QlcTestDataDir(), "api", uuid.New().String())
 	_ = os.RemoveAll(dir)
 	cm := config.NewCfgManager(dir)
@@ -66,11 +66,11 @@ func setupQGasSwapTestCase(t *testing.T) (func(t *testing.T), *process.LedgerVer
 			t.Fatal(err)
 		}
 		_ = cc.Stop()
-	}, verifier, api, l
+	}, verifier, api
 }
 
 func TestQGasSwapAPI_GetPledgeSendBlock(t *testing.T) {
-	teardownTestCase, verifier, api, _ := setupQGasSwapTestCase(t)
+	teardownTestCase, verifier, api := setupQGasSwapTestCase(t)
 	defer teardownTestCase(t)
 
 	// pledge
@@ -154,7 +154,7 @@ func TestQGasSwapAPI_GetPledgeSendBlock(t *testing.T) {
 }
 
 func TestQGasSwapAPI_Check(t *testing.T) {
-	teardownTestCase, _, api, _ := setupQGasSwapTestCase(t)
+	teardownTestCase, _, api := setupQGasSwapTestCase(t)
 	defer teardownTestCase(t)
 
 	if _, err := api.GetPledgeSendBlock(nil); err != ErrParameterNil {
