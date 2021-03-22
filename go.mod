@@ -21,7 +21,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
-	github.com/ipfs/go-log v1.0.4
+	github.com/ipfs/go-log v1.0.5
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jmoiron/sqlx v1.2.1-0.20190826204134-d7d95172beb5
 	github.com/kylelemons/godebug v1.1.0 // indirect
