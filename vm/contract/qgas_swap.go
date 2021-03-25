@@ -170,7 +170,7 @@ func (q *QGasPledge) DoReceive(ctx *vmstore.VMContext, block, input *types.State
 				Block:     block,
 				ToAddress: pledgeParam.ToAddress,
 				Amount:    types.Balance{Int: pledgeParam.Amount},
-				Data:      []byte{},
+				Data:      data,
 			},
 		}, nil
 	}
@@ -314,7 +314,7 @@ func (q *QGasWithdraw) DoReceive(ctx *vmstore.VMContext, block, input *types.Sta
 				BlockType: types.ContractReward,
 				Amount:    types.Balance{Int: param.Amount},
 				Token:     cfg.GasToken(),
-				Data:      []byte{},
+				Data:      data,
 			},
 		}, nil
 	}
