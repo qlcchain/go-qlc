@@ -28,7 +28,7 @@ const (
 		  "name": "QGasPledge",
 		  "inputs": [
 		    {
-		      "name": "pledgeAddress",
+		      "name": "fromAddress",
 		      "type": "address"
 		    },
 		    {
@@ -46,7 +46,7 @@ const (
 		  "name": "QGasWithdraw",
 		  "inputs": [
 		    {
-		      "name": "withdrawAddress",
+		      "name": "toAddress",
 		      "type": "address"
 		    },
 		    {
@@ -83,6 +83,10 @@ const (
 		      "name": "sendHash",
 		      "type": "hash"
 		    },
+			{
+		      "name": "rewardHash",
+		      "type": "hash"
+		    },
 		    {
 		      "name": "linkHash",
 		      "type": "hash"
@@ -109,13 +113,13 @@ var (
 )
 
 type QGasPledgeParam struct {
-	PledgeAddress types.Address `msg:"pledgeAddress" json:"pledgeAddress"`
-	Amount        *big.Int      `msg:"amount" json:"amount"`
-	ToAddress     types.Address `msg:"toAddress" json:"toAddress"`
+	FromAddress types.Address `msg:"fromAddress" json:"fromAddress"`
+	Amount      *big.Int      `msg:"amount" json:"amount"`
+	ToAddress   types.Address `msg:"toAddress" json:"toAddress"`
 }
 
 func (q *QGasPledgeParam) ToABI() ([]byte, error) {
-	return QGasSwapABI.PackMethod(MethodQGasPledge, q.PledgeAddress, q.Amount, q.ToAddress)
+	return QGasSwapABI.PackMethod(MethodQGasPledge, q.FromAddress, q.Amount, q.ToAddress)
 }
 
 func ParseQGasPledgeParam(data []byte) (*QGasPledgeParam, error) {
@@ -139,14 +143,14 @@ func (q *QGasPledgeParam) Verify() (bool, error) {
 }
 
 type QGasWithdrawParam struct {
-	WithdrawAddress types.Address `msg:"withdrawAddress" json:"withdrawAddress"`
-	Amount          *big.Int      `msg:"amount" json:"amount"`
-	FromAddress     types.Address `msg:"fromAddress" json:"fromAddress"`
-	LinkHash        types.Hash    `msg:"linkHash" json:"linkHash"`
+	ToAddress   types.Address `msg:"toAddress" json:"toAddress"`
+	Amount      *big.Int      `msg:"amount" json:"amount"`
+	FromAddress types.Address `msg:"fromAddress" json:"fromAddress"`
+	LinkHash    types.Hash    `msg:"linkHash" json:"linkHash"`
 }
 
 func (q *QGasWithdrawParam) ToABI() ([]byte, error) {
-	return QGasSwapABI.PackMethod(MethodQGasWithdraw, q.WithdrawAddress, q.Amount, q.FromAddress, q.LinkHash)
+	return QGasSwapABI.PackMethod(MethodQGasWithdraw, q.ToAddress, q.Amount, q.FromAddress, q.LinkHash)
 }
 
 func ParseQGasWithdrawParam(data []byte) (*QGasWithdrawParam, error) {
@@ -198,6 +202,7 @@ type QGasSwapInfo struct {
 	FromAddress types.Address
 	ToAddress   types.Address
 	SendHash    types.Hash
+	RewardHash  types.Hash
 	LinkHash    types.Hash
 	SwapType    uint32
 	Time        int64
@@ -205,7 +210,7 @@ type QGasSwapInfo struct {
 
 func (info *QGasSwapInfo) ToABI() ([]byte, error) {
 	return QGasSwapABI.PackVariable(VariableQGasSwapInfo, info.Amount, info.FromAddress,
-		info.ToAddress, info.SendHash, info.LinkHash, info.SwapType, info.Time)
+		info.ToAddress, info.SendHash, info.RewardHash, info.LinkHash, info.SwapType, info.Time)
 }
 
 func ParseQGasSwapInfo(data []byte) (*QGasSwapInfo, error) {

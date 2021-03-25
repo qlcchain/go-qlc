@@ -35,9 +35,9 @@ func NewQGasSwapAPI(l ledger.Store, cfgFile string) *QGasSwapAPI {
 }
 
 type QGasPledgeParams struct {
-	PledgeAddress types.Address `json:"pledgeAddress"`
-	Amount        types.Balance `json:"amount"`
-	ToAddress     types.Address `json:"toAddress"`
+	FromAddress types.Address `json:"fromAddress"`
+	Amount      types.Balance `json:"amount"`
+	ToAddress   types.Address `json:"toAddress"`
 }
 
 func (q *QGasSwapAPI) GetPledgeSendBlock(param *QGasPledgeParams) (*types.StateBlock, error) {
@@ -49,17 +49,17 @@ func (q *QGasSwapAPI) GetPledgeSendBlock(param *QGasPledgeParams) (*types.StateB
 		return nil, ErrParameterNil
 	}
 
-	am, err := q.l.GetAccountMeta(param.PledgeAddress)
+	am, err := q.l.GetAccountMeta(param.FromAddress)
 	if am == nil {
-		return nil, fmt.Errorf("invalid user account:%s, %s", param.PledgeAddress.String(), err)
+		return nil, fmt.Errorf("invalid user account, %s, %s", param.FromAddress.String(), err)
 	}
 
 	tm := am.Token(config.GasToken())
 	if tm == nil {
-		return nil, fmt.Errorf("%s do not have any chain token", param.PledgeAddress.String())
+		return nil, fmt.Errorf("%s do not have any chain token", param.FromAddress.String())
 	}
 	if tm.Balance.Compare(param.Amount) == types.BalanceCompSmaller {
-		return nil, fmt.Errorf("%s have no enough balance, want pledge %s, but only %s", param.PledgeAddress.String(), param.Amount.String(), tm.Balance.String())
+		return nil, fmt.Errorf("%s have no enough balance, want pledge %s, but only %s", param.FromAddress.String(), param.Amount.String(), tm.Balance.String())
 	}
 	povHeader, err := q.l.GetLatestPovHeader()
 	if err != nil {
@@ -69,9 +69,9 @@ func (q *QGasSwapAPI) GetPledgeSendBlock(param *QGasPledgeParams) (*types.StateB
 	ctx := vmstore.NewVMContext(q.l, &contractaddress.QGasSwapAddress)
 
 	pledgeParam := &abi.QGasPledgeParam{
-		PledgeAddress: param.PledgeAddress,
-		Amount:        param.Amount.Int,
-		ToAddress:     param.ToAddress,
+		FromAddress: param.FromAddress,
+		Amount:      param.Amount.Int,
+		ToAddress:   param.ToAddress,
 	}
 	data, err := pledgeParam.ToABI()
 	if err != nil {
@@ -81,7 +81,7 @@ func (q *QGasSwapAPI) GetPledgeSendBlock(param *QGasPledgeParams) (*types.StateB
 	block := &types.StateBlock{
 		Type:           types.ContractSend,
 		Token:          tm.Type,
-		Address:        param.PledgeAddress,
+		Address:        param.FromAddress,
 		Balance:        tm.Balance.Sub(param.Amount),
 		Vote:           types.ToBalance(am.CoinVote),
 		Network:        types.ToBalance(am.CoinNetwork),
@@ -131,7 +131,7 @@ func (q *QGasSwapAPI) GetPledgeRewardBlock(sendHash types.Hash) (*types.StateBlo
 		Timestamp: common.TimeNow().Unix(),
 	}
 
-	vmContext := vmstore.NewVMContext(q.l, &contractaddress.RepAddress)
+	vmContext := vmstore.NewVMContext(q.l, &contractaddress.QGasSwapAddress)
 	blocks, err := q.pledgeContract.DoReceive(vmContext, rewardBlk, sendBlk)
 	if err != nil {
 		return nil, fmt.Errorf("qgas pledge DoReceive error: %s", err)
@@ -144,10 +144,14 @@ func (q *QGasSwapAPI) GetPledgeRewardBlock(sendHash types.Hash) (*types.StateBlo
 }
 
 type QGasWithdrawParams struct {
-	WithdrawAddress types.Address `json:"withdrawAddress"`
-	Amount          types.Balance `json:"amount"`
-	FromAddress     types.Address `json:"fromAddress"`
-	LinkHash        types.Hash    `json:"linkHash"`
+	ToAddress   types.Address `json:"toAddress"`
+	Amount      types.Balance `json:"amount"`
+	FromAddress types.Address `json:"fromAddress"`
+	LinkHash    types.Hash    `json:"linkHash"`
+}
+
+func (q *QGasSwapAPI) ParseWithdrawParam(data []byte) (*abi.QGasWithdrawParam, error) {
+	return abi.ParseQGasWithdrawParam(data)
 }
 
 func (q *QGasSwapAPI) GetWithdrawSendBlock(param *QGasWithdrawParams) (*types.StateBlock, error) {
@@ -177,10 +181,10 @@ func (q *QGasSwapAPI) GetWithdrawSendBlock(param *QGasWithdrawParams) (*types.St
 	}
 
 	withdrawParam := &abi.QGasWithdrawParam{
-		WithdrawAddress: param.WithdrawAddress,
-		Amount:          param.Amount.Int,
-		FromAddress:     param.FromAddress,
-		LinkHash:        param.LinkHash,
+		ToAddress:   param.ToAddress,
+		Amount:      param.Amount.Int,
+		FromAddress: param.FromAddress,
+		LinkHash:    param.LinkHash,
 	}
 	data, err := withdrawParam.ToABI()
 	if err != nil {
@@ -244,7 +248,7 @@ func (q *QGasSwapAPI) GetWithdrawRewardBlock(sendHash types.Hash) (*types.StateB
 	ctx := vmstore.NewVMContext(q.l, &contractaddress.QGasSwapAddress)
 	blocks, err := q.withdrawContract.DoReceive(ctx, rewardBlk, sendBlk)
 	if err != nil {
-		return nil, fmt.Errorf("qgas pledge DoReceive error: %s", err)
+		return nil, fmt.Errorf("qgas withdraw DoReceive error: %s", err)
 	}
 	if len(blocks) > 0 {
 		return rewardBlk, nil
@@ -321,10 +325,8 @@ func (q *QGasSwapAPI) toSwapInfo(info *abi.QGasSwapInfo) *QGasSwapInfo {
 	pInfo.FromAddress = info.FromAddress
 	pInfo.ToAddress = info.ToAddress
 	pInfo.SendHash = info.SendHash
+	pInfo.RewardHash = info.RewardHash
 	pInfo.LinkHash = info.LinkHash
-	if h, err := q.l.GetBlockLink(pInfo.SendHash); err == nil {
-		pInfo.RewardHash = h
-	}
 	pInfo.Time = time.Unix(info.Time, 0).Format(time.RFC3339)
 	return pInfo
 }

@@ -59,7 +59,7 @@ func (q *QGasPledge) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		return nil, nil, err
 	}
 
-	pledgeKey := abi.GetQGasSwapKey(param.PledgeAddress, block.GetHash())
+	pledgeKey := abi.GetQGasSwapKey(param.FromAddress, block.GetHash())
 	if _, err := ctx.GetStorage(nil, pledgeKey); err == nil {
 		return nil, nil, errors.New("repeatedly pledge info")
 	}
@@ -67,7 +67,7 @@ func (q *QGasPledge) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 		SwapType:    abi.QGasPledge,
 		SendHash:    block.GetHash(),
 		Amount:      param.Amount,
-		FromAddress: param.PledgeAddress,
+		FromAddress: param.FromAddress,
 		ToAddress:   param.ToAddress,
 		LinkHash:    types.ZeroHash,
 		Time:        time.Now().Unix(),
@@ -86,7 +86,7 @@ func (q *QGasPledge) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlock
 				Hash:    block.GetHash(),
 			}, &types.PendingInfo{
 				Type:   block.Token,
-				Source: param.PledgeAddress,
+				Source: param.FromAddress,
 				Amount: types.Balance{Int: param.Amount},
 			}, nil
 	}
@@ -101,12 +101,25 @@ func (q *QGasPledge) DoReceive(ctx *vmstore.VMContext, block, input *types.State
 	if err != nil {
 		return nil, err
 	} else {
-		if pledgeParam.PledgeAddress != input.Address {
+		if pledgeParam.FromAddress != input.Address {
 			return nil, ErrAccountInvalid
 		}
 		if _, err := pledgeParam.Verify(); err != nil {
 			return nil, err
 		}
+	}
+
+	pledgeKey := abi.GetQGasSwapKey(pledgeParam.FromAddress, input.GetHash())
+	pledgeData, err := ctx.GetStorage(nil, pledgeKey)
+	if err != nil {
+		return nil, fmt.Errorf("swap info not found, %s", err)
+	}
+	pledgeInfo, err := abi.ParseQGasSwapInfo(pledgeData)
+	if err != nil {
+		return nil, fmt.Errorf("parse SwapInfo error: %s", err)
+	}
+	if pledgeInfo.RewardHash != types.ZeroHash {
+		return nil, fmt.Errorf("repeatedly reward block")
 	}
 
 	if block.Address.IsZero() {
@@ -140,17 +153,27 @@ func (q *QGasPledge) DoReceive(ctx *vmstore.VMContext, block, input *types.State
 		}
 	}
 
-	return []*ContractBlock{
-		{
-			BlockType: types.ContractReward,
-			VMContext: ctx,
-			Token:     cfg.GasToken(),
-			Block:     block,
-			ToAddress: pledgeParam.ToAddress,
-			Amount:    types.Balance{Int: pledgeParam.Amount},
-			Data:      []byte{},
-		},
-	}, nil
+	pledgeInfo.RewardHash = block.GetHash()
+	data, err := pledgeInfo.ToABI()
+	if err != nil {
+		return nil, fmt.Errorf("pledge info abi: %s", err)
+	}
+	err = ctx.SetStorage(nil, pledgeKey, data)
+	if err != nil {
+		return nil, ErrSetStorage
+	} else {
+		return []*ContractBlock{
+			{
+				BlockType: types.ContractReward,
+				VMContext: ctx,
+				Token:     cfg.GasToken(),
+				Block:     block,
+				ToAddress: pledgeParam.ToAddress,
+				Amount:    types.Balance{Int: pledgeParam.Amount},
+				Data:      data,
+			},
+		}, nil
+	}
 }
 
 type QGasWithdraw struct {
@@ -177,14 +200,14 @@ func (q *QGasWithdraw) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 		return nil, nil, err
 	}
 
-	pledgeKey := abi.GetQGasSwapKey(param.WithdrawAddress, param.LinkHash)
+	pledgeKey := abi.GetQGasSwapKey(param.ToAddress, param.LinkHash)
 	if _, err := ctx.GetStorage(nil, pledgeKey); err == nil {
 		return nil, nil, errors.New("repeatedly pledge info")
 	} else {
 		pledgeInfo := abi.QGasSwapInfo{
 			Amount:      param.Amount,
 			FromAddress: param.FromAddress,
-			ToAddress:   param.WithdrawAddress,
+			ToAddress:   param.ToAddress,
 			SendHash:    block.GetHash(),
 			LinkHash:    param.LinkHash,
 			SwapType:    abi.QGasWithdraw,
@@ -201,7 +224,7 @@ func (q *QGasWithdraw) ProcessSend(ctx *vmstore.VMContext, block *types.StateBlo
 		}
 
 		return &types.PendingKey{
-				Address: param.WithdrawAddress,
+				Address: param.ToAddress,
 				Hash:    block.GetHash(),
 			}, &types.PendingInfo{
 				Source: param.FromAddress,
@@ -229,9 +252,23 @@ func (q *QGasWithdraw) DoReceive(ctx *vmstore.VMContext, block, input *types.Sta
 		return nil, fmt.Errorf("invalid link %s, %s", block.Link, input.GetHash())
 	}
 
+	pledgeKey := abi.GetQGasSwapKey(param.ToAddress, param.LinkHash)
+	pledgeData, err := ctx.GetStorage(nil, pledgeKey)
+	if err != nil {
+		return nil, fmt.Errorf("swap info not found: %s", err)
+	}
+	pledgeInfo, err := abi.ParseQGasSwapInfo(pledgeData)
+	if err != nil {
+		return nil, fmt.Errorf("parse SwapInfo error: %s", err)
+	}
+
+	if pledgeInfo.RewardHash != types.ZeroHash {
+		return nil, fmt.Errorf("repeatedly reward block")
+	}
+
 	if block.Address.IsZero() {
 		// generate contract reward block
-		block.Address = param.WithdrawAddress
+		block.Address = param.ToAddress
 		am, _ := ctx.GetAccountMeta(block.Address)
 		if am != nil {
 			tm := am.Token(cfg.GasToken())
@@ -260,15 +297,25 @@ func (q *QGasWithdraw) DoReceive(ctx *vmstore.VMContext, block, input *types.Sta
 		}
 	}
 
-	return []*ContractBlock{
-		{
-			VMContext: ctx,
-			Block:     block,
-			ToAddress: param.WithdrawAddress,
-			BlockType: types.ContractReward,
-			Amount:    types.Balance{Int: param.Amount},
-			Token:     cfg.GasToken(),
-			Data:      []byte{},
-		},
-	}, nil
+	pledgeInfo.RewardHash = block.GetHash()
+	data, err := pledgeInfo.ToABI()
+	if err != nil {
+		return nil, fmt.Errorf("pledge info abi: %s", err)
+	}
+	err = ctx.SetStorage(nil, pledgeKey, data)
+	if err != nil {
+		return nil, ErrSetStorage
+	} else {
+		return []*ContractBlock{
+			{
+				VMContext: ctx,
+				Block:     block,
+				ToAddress: param.ToAddress,
+				BlockType: types.ContractReward,
+				Amount:    types.Balance{Int: param.Amount},
+				Token:     cfg.GasToken(),
+				Data:      data,
+			},
+		}, nil
+	}
 }

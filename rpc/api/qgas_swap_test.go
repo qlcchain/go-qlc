@@ -75,9 +75,9 @@ func TestQGasSwapAPI_GetPledgeSendBlock(t *testing.T) {
 
 	// pledge
 	pledgeParams := &QGasPledgeParams{
-		PledgeAddress: mAddress1,
-		Amount:        pledgeAmount,
-		ToAddress:     mAddress2,
+		FromAddress: mAddress1,
+		Amount:      pledgeAmount,
+		ToAddress:   mAddress2,
 	}
 	pledgeSendBlk, err := api.GetPledgeSendBlock(pledgeParams)
 	if err != nil {
@@ -101,9 +101,9 @@ func TestQGasSwapAPI_GetPledgeSendBlock(t *testing.T) {
 
 	// withdraw
 	withdrawParams := &QGasWithdrawParams{
-		WithdrawAddress: mAddress1,
-		Amount:          withdrawAmount,
-		FromAddress:     mAddress2,
+		ToAddress:   mAddress1,
+		Amount:      withdrawAmount,
+		FromAddress: mAddress2,
 	}
 	withdrawSendBlk, err := api.GetWithdrawSendBlock(withdrawParams)
 	if err != nil {
@@ -162,9 +162,9 @@ func TestQGasSwapAPI_Check(t *testing.T) {
 	}
 
 	pledgeParams := &QGasPledgeParams{
-		PledgeAddress: mock.Address(),
-		Amount:        pledgeAmount,
-		ToAddress:     mAddress2,
+		FromAddress: mock.Address(),
+		Amount:      pledgeAmount,
+		ToAddress:   mAddress2,
 	}
 	if _, err := api.GetPledgeSendBlock(pledgeParams); err == nil {
 		t.Fatal(err)
