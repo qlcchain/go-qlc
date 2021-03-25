@@ -38,9 +38,9 @@ func TestQGasPledge_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 	pledgeParam := abi.QGasPledgeParam{
-		PledgeAddress: mAddress1,
-		Amount:        pledgeAmount.Int,
-		ToAddress:     mAddress2,
+		FromAddress: mAddress1,
+		Amount:      pledgeAmount.Int,
+		ToAddress:   mAddress2,
 	}
 	data, err := pledgeParam.ToABI()
 	if err != nil {
@@ -52,7 +52,7 @@ func TestQGasPledge_ProcessSend(t *testing.T) {
 	sendBlk := &types.StateBlock{
 		Type:      types.ContractSend,
 		Token:     cfg.GasToken(),
-		Address:   pledgeParam.PledgeAddress,
+		Address:   pledgeParam.FromAddress,
 		Balance:   types.Balance{Int: pledgeParam.Amount},
 		Data:      data,
 		PoVHeight: 0,
@@ -60,6 +60,10 @@ func TestQGasPledge_ProcessSend(t *testing.T) {
 	}
 
 	if _, _, err := q.ProcessSend(ctx, sendBlk); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -135,9 +139,10 @@ func TestQGasWithdraw_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 	withdrawParam := abi.QGasWithdrawParam{
-		WithdrawAddress: mAddress2,
-		Amount:          pledgeAmount.Int,
-		FromAddress:     mAddress1,
+		ToAddress:   mAddress2,
+		Amount:      pledgeAmount.Int,
+		FromAddress: mAddress1,
+		LinkHash:    mock.Hash(),
 	}
 	data, err := withdrawParam.ToABI()
 	if err != nil {
@@ -160,6 +165,10 @@ func TestQGasWithdraw_ProcessSend(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
+		t.Fatal(err)
+	}
+
 	// receive - reward addr qgas not found
 	ctx1 := vmstore.NewVMContext(l, &contractaddress.QGasSwapAddress)
 	receiveBlk := &types.StateBlock{
@@ -175,7 +184,7 @@ func TestQGasWithdraw_ProcessSend(t *testing.T) {
 	}
 
 	// receive - reward addr found, but not qgas
-	am2 := mock.AccountMeta(withdrawParam.WithdrawAddress)
+	am2 := mock.AccountMeta(withdrawParam.ToAddress)
 	if err := l.AddAccountMeta(am2, l.Cache().GetCache()); err != nil {
 		t.Fatal(err)
 	}
@@ -194,8 +203,8 @@ func TestQGasWithdraw_ProcessSend(t *testing.T) {
 	}
 
 	// receive - reward addr found, but not qgas
-	tm3 := mock.TokenMeta2(withdrawParam.WithdrawAddress, cfg.GasToken())
-	am3 := mock.AccountMeta(withdrawParam.WithdrawAddress)
+	tm3 := mock.TokenMeta2(withdrawParam.ToAddress, cfg.GasToken())
+	am3 := mock.AccountMeta(withdrawParam.ToAddress)
 	am3.Tokens = append(am3.Tokens, tm3)
 	if err := l.UpdateAccountMeta(am3, l.Cache().GetCache()); err != nil {
 		t.Fatal(err)

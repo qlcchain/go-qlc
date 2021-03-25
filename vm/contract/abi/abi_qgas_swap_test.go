@@ -14,9 +14,9 @@ import (
 
 func TestQGasPledgeParam(t *testing.T) {
 	pledgeParam := QGasPledgeParam{
-		PledgeAddress: mock.Address(),
-		Amount:        big.NewInt(1000),
-		ToAddress:     mock.Address(),
+		FromAddress: mock.Address(),
+		Amount:      big.NewInt(1000),
+		ToAddress:   mock.Address(),
 	}
 	bs, err := pledgeParam.ToABI()
 	if err != nil {
@@ -29,7 +29,7 @@ func TestQGasPledgeParam(t *testing.T) {
 	if b, err := param.Verify(); !b || err != nil {
 		t.Fatal(err)
 	}
-	if param.Amount.Cmp(pledgeParam.Amount) != 0 || param.PledgeAddress != pledgeParam.PledgeAddress {
+	if param.Amount.Cmp(pledgeParam.Amount) != 0 || param.FromAddress != pledgeParam.FromAddress {
 		t.Fatal(err)
 	}
 
@@ -43,10 +43,10 @@ func TestQGasPledgeParam(t *testing.T) {
 
 func TestQGasWithdrawParam(t *testing.T) {
 	withdrawParam := QGasWithdrawParam{
-		FromAddress:     mock.Address(),
-		Amount:          big.NewInt(1000),
-		WithdrawAddress: mock.Address(),
-		LinkHash:        mock.Hash(),
+		FromAddress: mock.Address(),
+		Amount:      big.NewInt(1000),
+		ToAddress:   mock.Address(),
+		LinkHash:    mock.Hash(),
 	}
 	bs, err := withdrawParam.ToABI()
 	if err != nil {
@@ -59,7 +59,7 @@ func TestQGasWithdrawParam(t *testing.T) {
 	if b, err := param.Verify(); !b || err != nil {
 		t.Fatal(err)
 	}
-	if param.Amount.Cmp(withdrawParam.Amount) != 0 || param.WithdrawAddress != withdrawParam.WithdrawAddress {
+	if param.Amount.Cmp(withdrawParam.Amount) != 0 || param.ToAddress != withdrawParam.ToAddress {
 		t.Fatal(err)
 	}
 
