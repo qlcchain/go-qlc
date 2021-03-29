@@ -35,7 +35,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/pkg/errors v0.9.1
-	github.com/qlcchain/jsonrpc2 v0.0.7
+	github.com/qlcchain/jsonrpc2 v0.0.8
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/sahilm/fuzzy v0.1.0
 	github.com/shirou/gopsutil/v3 v3.21.2
