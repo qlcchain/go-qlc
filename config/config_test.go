@@ -7,7 +7,7 @@ import (
 )
 
 func TestConfig_Dir(t *testing.T) {
-	cfg, err := DefaultConfigV10(DefaultDataDir())
+	cfg, err := DefaultConfigV11(DefaultDataDir())
 	if err != nil {
 		t.Fatal(err)
 	}
