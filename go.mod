@@ -49,7 +49,7 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20210317152858-513c2a44f670
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
-	google.golang.org/grpc v1.36.1
+	google.golang.org/grpc v1.37.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/validator.v2 v2.0.0-20180514200540-135c24b11c19
