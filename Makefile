@@ -16,7 +16,7 @@ MAIN = cmd/main.go
 BUILDDIR = build
 GITREV = $(shell git rev-parse --short HEAD)
 BUILDTIME = $(shell date +'%FT%TZ%z')
-GO_BUILDER_VERSION=v1.15.1
+GO_BUILDER_VERSION=v1.16.2
 
 deps:
 	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
@@ -28,7 +28,7 @@ build:
 	go build -ldflags "-X github.com/qlcchain/go-qlc/chain/version.Version=${VERSION} \
 		-X github.com/qlcchain/go-qlc/chain/version.GitRev=${GITREV} \
         -X github.com/qlcchain/go-qlc/chain/version.BuildTime=${BUILDTIME} \
-        -X github.com/qlcchain/go-qlc/chain/version.Mode=MainNet" -i -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
+        -X github.com/qlcchain/go-qlc/chain/version.Mode=MainNet" -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
 	@echo "Build $(BINARY) done."
 	@echo "Run \"$(shell pwd)/$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
 
@@ -36,7 +36,7 @@ build-test:
 	go build -tags "testnet" -ldflags "-X github.com/qlcchain/go-qlc/chain/version.Version=${VERSION} \
 		-X github.com/qlcchain/go-qlc/chain/version.GitRev=${GITREV} \
 		-X github.com/qlcchain/go-qlc/chain/version.BuildTime=${BUILDTIME} \
-		-X github.com/qlcchain/go-qlc/chain/version.Mode=TestNet" -i -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
+		-X github.com/qlcchain/go-qlc/chain/version.Mode=TestNet" -o $(shell pwd)/$(BUILDDIR)/$(BINARY) $(shell pwd)/$(MAIN)
 	@echo "Build testnet $(BINARY) done."
 	@echo "Run \"$(BUILDDIR)/$(BINARY)\" to start $(BINARY)."
 
