@@ -50,7 +50,8 @@ func TestQlcNode(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:18889", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 	//start bootNode

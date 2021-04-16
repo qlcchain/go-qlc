@@ -7,7 +7,7 @@ jobs:
 
   build:
     name: Publish qlc builder Docker image to DockerHub
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
 
     - name: Check out
@@ -15,7 +15,7 @@ jobs:
       with:
         fetch-depth: 10
     - 
-      uses: docker://goreng/publish-docker-github-action:v2.4
+      uses: elgohr/Publish-Docker-Github-Action@3.02
       with:
         name: qlcchain/go-qlc-builder
         username: ${{ secrets.DOCKER_USERNAME }}

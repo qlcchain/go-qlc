@@ -8,7 +8,7 @@ jobs:
 
   release:
     name: Release artifacts and docker images
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
  
     steps:
       - name: Check out code into the Go module directory
@@ -19,31 +19,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          GIT_CHGLOG_VERION: 0.9.1
+          GIT_CHGLOG_VERSION: 0.14.1
         run: |
-          sudo wget -O /usr/local/bin/git-chglog https://github.com/git-chglog/git-chglog/releases/download/${GIT_CHGLOG_VERION}/git-chglog_linux_amd64
+          GIT_CHGLOG_DOWNLOAD_FILE=git-chglog_linux_amd64.tar.gz
+          GIT_CHGLOG_DOWNLOAD_URL=https://github.com/git-chglog/git-chglog/releases/download/v${GIT_CHGLOG_VERSION}/git-chglog_${GIT_CHGLOG_VERSION}_linux_amd64.tar.gz
+          sudo wget -O ${GIT_CHGLOG_DOWNLOAD_FILE} ${GIT_CHGLOG_DOWNLOAD_URL}
+          tar -xzf $GIT_CHGLOG_DOWNLOAD_FILE -C /usr/local/bin git-chglog
           sudo chmod +x /usr/local/bin/git-chglog
+          rm $GIT_CHGLOG_DOWNLOAD_FILE
           export PATH=$PATH:/usr/local/bin
           export TAG=${GITHUB_REF/refs\/tags\//}
           make VERSION=${TAG} release
       - name: Publish mainnet Docker image to DockerHub
-        uses: docker://goreng/publish-docker-github-action:v2.4
+        uses: elgohr/Publish-Docker-Github-Action@3.02
         with:
           name: qlcchain/go-qlc
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: docker/Dockerfile
           buildargs: BUILD_ACT=build
+          tag_names: true
       - name: Publish testnet Docker image to DockerHub
-        uses: docker://goreng/publish-docker-github-action:v2.4
+        uses: elgohr/Publish-Docker-Github-Action@3.02
         with:
           name: qlcchain/go-qlc-test
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: docker/Dockerfile
           buildargs: BUILD_ACT=build-test
+          tag_names: true
       - name: Publish the Docker image to GitHub Packages
-        uses: docker://goreng/publish-docker-github-action:v2.4
+        uses: elgohr/Publish-Docker-Github-Action@3.02
         with:
           name: docker.pkg.github.com/qlcchain/go-qlc/node-cli
           username: ${{ secrets.DOCKER_GITHUB_USERNAME }}
@@ -51,3 +57,4 @@ jobs:
           registry: docker.pkg.github.com
           dockerfile: docker/Dockerfile
           buildargs: BUILD_ACT=build
+          tag_names: true

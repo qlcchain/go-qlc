@@ -45,12 +45,11 @@ func (m *HashMap) Get(key interface{}) (value interface{}, ok bool) {
 // GetUintKey retrieves an element from the map under given integer key.
 func (m *HashMap) GetUintKey(key uintptr) (value interface{}, ok bool) {
 	// inline getUintptrHash()
-	bh := reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(&key)),
-		Len:  intSizeBytes,
-		Cap:  intSizeBytes,
-	}
-	buf := *(*[]byte)(unsafe.Pointer(&bh))
+	var buf []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
+	hdr.Data = uintptr(unsafe.Pointer(&key))
+	hdr.Len = intSizeBytes
+	hdr.Cap = intSizeBytes
 	h := uintptr(siphash.Hash(sipHashKey1, sipHashKey2, buf))
 
 	data, element := m.indexElement(h)
@@ -77,12 +76,11 @@ func (m *HashMap) GetUintKey(key uintptr) (value interface{}, ok bool) {
 func (m *HashMap) GetStringKey(key string) (value interface{}, ok bool) {
 	// inline getStringHash()
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&key))
-	bh := reflect.SliceHeader{
-		Data: sh.Data,
-		Len:  sh.Len,
-		Cap:  sh.Len,
-	}
-	buf := *(*[]byte)(unsafe.Pointer(&bh))
+	var buf []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
+	hdr.Data = sh.Data
+	hdr.Len = sh.Len
+	hdr.Cap = sh.Len
 	h := uintptr(siphash.Hash(sipHashKey1, sipHashKey2, buf))
 
 	data, element := m.indexElement(h)

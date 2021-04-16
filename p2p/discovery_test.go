@@ -31,7 +31,8 @@ func TestMDNS(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:19533", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 
@@ -50,7 +51,8 @@ func TestMDNS(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:19534", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 
@@ -126,7 +128,8 @@ func TestNodeDiscovery(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:19636", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 

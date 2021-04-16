@@ -35,7 +35,8 @@ func TestNewP2PService(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:19362", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 	params := []string{"p2p.bootNode=127.0.0.1:19362/ps"}

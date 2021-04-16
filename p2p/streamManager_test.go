@@ -33,7 +33,8 @@ func Test_StreamManager(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe(":19647", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 

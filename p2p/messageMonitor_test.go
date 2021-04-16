@@ -34,7 +34,8 @@ func Test_MessageService_Stop(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:19639", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 
@@ -338,7 +339,8 @@ func Test_SendMessage(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:19640", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 

@@ -1757,7 +1757,8 @@ func TestProcessCDR_save(t *testing.T) {
 					t.Log(err)
 				} else {
 					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
-						t.Fatal(err)
+						t.Error(err)
+						return
 					}
 				}
 			}
@@ -1781,7 +1782,8 @@ func TestProcessCDR_save(t *testing.T) {
 					t.Log(err)
 				} else {
 					if err := l.SaveStorage(vmstore.ToCache(ctx)); err != nil {
-						t.Fatal(err)
+						t.Error(err)
+						return
 					}
 				}
 			}
