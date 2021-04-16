@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -922,7 +923,7 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	dbDayCnt := 0
 	lastDayIndex := uint32(0)
 
-	fmt.Println("span1: ", time.Now().Sub(time1))
+	fmt.Println("span1 total: ", time.Now().Sub(time1))
 	time2 := time.Now()
 
 	err := api.l.GetAllPovMinerStats(func(stat *types.PovMinerDayStat) error {
@@ -962,8 +963,8 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 		return nil, err
 	}
 
-	fmt.Println("span2: ", time.Now().Sub(time2))
-	fmt.Println("dbDayCnt: ", dbDayCnt)
+	fmt.Println("span2 total: ", time.Now().Sub(time2))
+	fmt.Println("span2 loopCount ", dbDayCnt)
 	time3 := time.Now()
 
 	// scan best block not in miner stats per day
@@ -977,9 +978,10 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	notStatHeightEnd := latestHeader.GetHeight()
 
 	var height uint64
-	loopIndex := 0
+	loopCount := 0
 	for height = notStatHeightStart; height <= notStatHeightEnd; height += common.DPosOnlinePeriod {
-		loopIndex++
+		time31 := time.Now()
+		loopCount++
 		header, _ := api.l.GetPovHeaderByHeight(height)
 		if header == nil {
 			break
@@ -998,6 +1000,8 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 
 		// calc total reward of all blocks in period
 		var i uint64
+		fmt.Println("span3 - 1: ", time.Now().Sub(time31))
+		time32 := time.Now()
 		for i = 0; i < common.DPosOnlinePeriod; i++ {
 			rspMap.TotalBlockNum++
 
@@ -1032,10 +1036,12 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 				repStat.MainRewardAmount = repStat.MainRewardAmount.Add(amount)
 			}
 		}
+		fmt.Println("span3 - 2: ", time.Now().Sub(time32))
 	}
 
-	fmt.Println("span3: ", time.Now().Sub(time3))
-	fmt.Println("loopIndex: ", loopIndex)
+	fmt.Println("span3 total: ", time.Now().Sub(time3))
+	fmt.Println("span3 loopIndex: ", loopCount)
+
 	time4 := time.Now()
 
 	lastHeader, err := api.l.GetPovHeaderByHeight(height - common.DPosOnlinePeriod)
@@ -1049,7 +1055,11 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	}
 
 	rspMap.TotalPeriod = rspMap.TotalBlockNum / uint32(common.DPosOnlinePeriod)
+	fmt.Println("span4 total: ", time.Now().Sub(time4))
+	time5 := time.Now()
+
 	for acc, r := range rspMap.RepStats {
+		time51 := time.Now()
 		rspMap.RepCount++
 		rspMap.TotalRewardAmount = rspMap.TotalRewardAmount.Add(r.MainRewardAmount)
 		r.MainOnlinePeriod = r.MainBlockNum / uint32(common.DPosOnlinePeriod)
@@ -1066,18 +1076,24 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 
 			r.LastOnlineTime = time.Unix(int64(pb.GetTimestamp()), 0)
 		}
+		fmt.Println("span5-1: ", time.Now().Sub(time51))
 
+		time52 := time.Now()
 		for _, ac := range ols {
 			if ac == acc {
 				r.IsOnline = true
 				break
 			}
 		}
+		fmt.Println("span5-2: ", time.Now().Sub(time52))
 	}
 
-	fmt.Println("span4: ", time.Now().Sub(time4))
-	fmt.Println("RepStats: ", len(rspMap.RepStats))
-
+	fmt.Println("span5 total: ", time.Now().Sub(time5))
+	fmt.Println("span5 loopCount ", len(rspMap.RepStats))
+	str, err := json.Marshal(rspMap)
+	if err == nil {
+		fmt.Println("return rspMap value: ", string(str))
+	}
 	return rspMap, nil
 }
 
