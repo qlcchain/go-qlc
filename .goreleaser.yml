@@ -8,12 +8,12 @@ before:
   hooks:
     # - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
     # you may remove this if you don't use vgo
-    - go mod download
+    # - go mod download
     # you may remove this if you don't need go generate
     # - go generate ./..
 builds:
 # Mainnet
-- id: gqlc-darwin
+- id: gqlc-darwin-amd64
   ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=MainNet
   binary: gqlc
   env:
@@ -25,6 +25,18 @@ builds:
     - darwin
   goarch:
     - amd64
+- id: gqlc-darwin-arm64
+  ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=MainNet
+  binary: gqlc
+  env:
+    - CGO_ENABLED=1  
+    - CC=aarch64-apple-darwin20.2-clang
+    - CXX=aarch64-apple-darwin20.2-clang++
+  main: ./cmd/main.go 
+  goos:
+    - darwin
+  goarch:
+    - arm64
 - id: gqlc-linux
   ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=MainNet
   binary: gqlc
@@ -47,34 +59,6 @@ builds:
     - windows
   goarch:
     - amd64
-- id: gqlc-windows-i386
-  ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=MainNet -buildmode=exe
-  binary: gqlc
-  env:
-    - CGO_ENABLED=1
-    - CC=i686-w64-mingw32-gcc-posix
-    - CXX=i686-w64-mingw32-g++-posix
-  main: ./cmd/main.go
-  goos:
-    - windows
-  goarch:
-    - 386
-- id: gqlc-confidant
-  flags:
-    - -tags=confidant
-  ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=MainNet
-  binary: gqlc
-  env:
-    - CGO_ENABLED=1
-    - CC=arm-linux-gnueabihf-gcc
-    - CXX=arm-linux-gnueabihf-g++
-  main: ./cmd/main.go
-  goos:
-    - linux
-  goarch:
-    - arm
-  goarm:
-    - 7
 
 # Test net
 - id: gqlc-darwin-enterprise
@@ -91,6 +75,20 @@ builds:
     - darwin
   goarch:
     - amd64
+- id: gqlc-darwin-arm64-enterprise
+  flags:
+    - -tags=testnet
+  ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=TestNet
+  binary: gqlce
+  env:
+    - CGO_ENABLED=1  
+    - CC=aarch64-apple-darwin20.2-clang
+    - CXX=aarch64-apple-darwin20.2-clang++
+  main: ./cmd/main.go 
+  goos:
+    - darwin
+  goarch:
+    - arm64
 - id: gqlc-linux-enterprise
   flags:
     - -tags=testnet
@@ -117,23 +115,6 @@ builds:
     - windows
   goarch:
     - amd64
-    # - 386
-- id: gqlc-confidant-enterprise
-  flags:
-    - -tags="confidant testnet"
-  ldflags: -X github.com/qlcchain/go-qlc/chain/version.Version={{ .Version }} -X github.com/qlcchain/go-qlc/chain/version.GitRev={{ .ShortCommit }} -X github.com/qlcchain/go-qlc/chain/version.BuildTime={{ .Date }} -X github.com/qlcchain/go-qlc/chain/version.Mode=TestNet
-  binary: gqlce
-  env:
-    - CGO_ENABLED=1
-    - CC=arm-linux-gnueabihf-gcc
-    - CXX=arm-linux-gnueabihf-g++
-  main: ./cmd/main.go
-  goos:
-    - linux
-  goarch:
-    - arm
-  goarm:
-      - 7
 
 archives:
 - format: tar.gz
@@ -143,8 +124,6 @@ archives:
   name_template: "{{ .Binary }}-v{{ .Version }}-{{ .ShortCommit }}-{{ .Os }}-{{ .Arch }}"
   replacements:
     amd64: x64
-    386: i386
-    arm: Confidant
     arm64: ARM64
     darwin: macOS
     linux: Linux
@@ -152,6 +131,7 @@ archives:
   files:
   - README.md
   - LICENSE
+  allow_different_binary_count: true
 
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
@@ -159,15 +139,15 @@ checksum:
 snapshot:
   name_template: SNAPSHOT-{{.ShortCommit}}
 
-changelog:
-  sort: asc
-  filters:
-    exclude:
-    - '^docs:'
-    - '^test:'
-    - '^chore:'
-    - Merge pull request
-    - Merge branch
+# changelog:
+#   sort: asc
+#   filters:
+#     exclude:
+#     - '^docs:'
+#     - '^test:'
+#     - '^chore:'
+#     - Merge pull request
+#     - Merge branch
 
 signs:
   -
