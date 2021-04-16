@@ -160,7 +160,8 @@ func TestLedgerApi_Subscription(t *testing.T) {
 			Amount:    amount,
 		}, nil)
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 		pendingKey := &types.PendingKey{
 			Address: ac2.Address(),
@@ -172,11 +173,13 @@ func TestLedgerApi_Subscription(t *testing.T) {
 			Amount: amount,
 		}
 		if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 
 		if err := l.AddStateBlock(sendBlk); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 

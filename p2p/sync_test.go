@@ -33,7 +33,8 @@ func TestServiceSync(t *testing.T) {
 	})
 	go func() {
 		if err := http.ListenAndServe(":29647", nil); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 

@@ -75,21 +75,21 @@ func getKeyHash(key interface{}) uintptr {
 
 func getStringHash(s string) uintptr {
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	bh := reflect.SliceHeader{
-		Data: sh.Data,
-		Len:  sh.Len,
-		Cap:  sh.Len,
-	}
-	buf := *(*[]byte)(unsafe.Pointer(&bh))
+	var buf []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
+	hdr.Data = sh.Data
+	hdr.Len = sh.Len
+	hdr.Cap = sh.Len
+
 	return uintptr(siphash.Hash(sipHashKey1, sipHashKey2, buf))
 }
 
 func getUintptrHash(num uintptr) uintptr {
-	bh := reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(&num)),
-		Len:  intSizeBytes,
-		Cap:  intSizeBytes,
-	}
-	buf := *(*[]byte)(unsafe.Pointer(&bh))
+	var buf []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
+	hdr.Data = uintptr(unsafe.Pointer(&num))
+	hdr.Len = intSizeBytes
+	hdr.Cap = intSizeBytes
+
 	return uintptr(siphash.Hash(sipHashKey1, sipHashKey2, buf))
 }

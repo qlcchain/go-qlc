@@ -878,10 +878,12 @@ func TestLedgerAPI_NewBlock(t *testing.T) {
 		})
 		sendBlk, err := toOriginStateBlock(sendBlk1)
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 		pendingKey := &types.PendingKey{
 			Address: ac2.Address(),
@@ -893,11 +895,13 @@ func TestLedgerAPI_NewBlock(t *testing.T) {
 			Amount: amount,
 		}
 		if err := l.AddPending(pendingKey, pendingInfo, l.Cache().GetCache()); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 
 		if err := l.AddStateBlock(sendBlk); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 	}()
 

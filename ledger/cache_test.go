@@ -205,7 +205,8 @@ func TestCache_PutConcurrency(t *testing.T) {
 					block := mock.StateBlockWithoutWork()
 					k, _ := storage.GetKeyOfParts(storage.KeyPrefixBlock, block.GetHash())
 					if err := cache.Put(k, block); err != nil {
-						t.Fatal(err)
+						t.Error(err)
+						return
 					}
 				}
 			}

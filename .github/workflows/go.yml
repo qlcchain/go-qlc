@@ -34,7 +34,7 @@ jobs:
             exit 1
           fi
           go vet `go list ./...`
-          go vet -tags testnet -v `go list ./...`
+          go vet -tags testnet `go list ./...`
           echo "" > "coverage.txt"
           for d in $(go list ./... | egrep -v 'mocks'); do
             go test -tags testnet -coverprofile=profile.out -covermode=atomic "$d"
