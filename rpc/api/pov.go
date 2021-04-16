@@ -986,10 +986,14 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 		if header == nil {
 			break
 		}
+		fmt.Println("span3 - 1: ", time.Now().Sub(time31))
+		time32 := time.Now()
 
 		// calc repReward
 		repStates := api.GetAllOnlineRepStates(header)
 		api.logger.Debugf("get online rep states %d at block height %d", len(repStates), height)
+		fmt.Println("span3 - 2: ", time.Now().Sub(time32))
+		time33 := time.Now()
 
 		// calc total weight of all reps
 		repWeightTotal := types.NewBalance(0)
@@ -1000,8 +1004,8 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 
 		// calc total reward of all blocks in period
 		var i uint64
-		fmt.Println("span3 - 1: ", time.Now().Sub(time31))
-		time32 := time.Now()
+		fmt.Println("span3 - 3: ", time.Now().Sub(time33))
+		time34 := time.Now()
 		for i = 0; i < common.DPosOnlinePeriod; i++ {
 			rspMap.TotalBlockNum++
 
@@ -1036,7 +1040,7 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 				repStat.MainRewardAmount = repStat.MainRewardAmount.Add(amount)
 			}
 		}
-		fmt.Println("span3 - 2: ", time.Now().Sub(time32))
+		fmt.Println("span3 - 4: ", time.Now().Sub(time34))
 	}
 
 	fmt.Println("span3 total: ", time.Now().Sub(time3))
@@ -1064,8 +1068,11 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 		rspMap.TotalRewardAmount = rspMap.TotalRewardAmount.Add(r.MainRewardAmount)
 		r.MainOnlinePeriod = r.MainBlockNum / uint32(common.DPosOnlinePeriod)
 		r.StableOnlinePeriod = r.StableBlockNum / uint32(common.DPosOnlinePeriod)
-
+		fmt.Println("span5-1: ", time.Now().Sub(time51))
+		time52 := time.Now()
 		rs := api.GetRepStatesByHeightAndAccount(lastHeader, acc)
+		fmt.Println("span5-2: ", time.Now().Sub(time52))
+		time53 := time.Now()
 		if rs != nil {
 			r.LastOnlineHeight = rs.Height / common.DPosOnlinePeriod * common.DPosOnlinePeriod
 
@@ -1076,16 +1083,16 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 
 			r.LastOnlineTime = time.Unix(int64(pb.GetTimestamp()), 0)
 		}
-		fmt.Println("span5-1: ", time.Now().Sub(time51))
+		fmt.Println("span5-3: ", time.Now().Sub(time53))
 
-		time52 := time.Now()
+		time54 := time.Now()
 		for _, ac := range ols {
 			if ac == acc {
 				r.IsOnline = true
 				break
 			}
 		}
-		fmt.Println("span5-2: ", time.Now().Sub(time52))
+		fmt.Println("span5-4: ", time.Now().Sub(time54))
 	}
 
 	fmt.Println("span5 total: ", time.Now().Sub(time5))
