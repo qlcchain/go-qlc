@@ -1,0 +1,14 @@
+# Compile stage
+FROM golang:1.16 AS build-env
+
+# Build Delve
+RUN go get github.com/go-delve/delve/cmd/dlv
+
+COPY . /app
+WORKDIR /app
+
+RUN go mod download
+
+EXPOSE 40000
+
+ENTRYPOINT ["dlv", "--listen=:40000", "--headless=true", "--api-version=2", "--accept-multiclient", "debug", "/app/cmd/"]
