@@ -901,6 +901,7 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 }
 
 func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
+	time1 := time.Now()
 	checkAddrMap := make(map[types.Address]bool)
 	if len(addrs) > 0 {
 		for _, addr := range addrs {
@@ -920,6 +921,10 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	// scan rep stats per day
 	dbDayCnt := 0
 	lastDayIndex := uint32(0)
+
+	fmt.Println("span1: ", time.Now().Sub(time1))
+	time2 := time.Now()
+
 	err := api.l.GetAllPovMinerStats(func(stat *types.PovMinerDayStat) error {
 		dbDayCnt++
 		if stat.DayIndex > lastDayIndex {
@@ -957,6 +962,10 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 		return nil, err
 	}
 
+	fmt.Println("span2: ", time.Now().Sub(time2))
+	fmt.Println("dbDayCnt: ", dbDayCnt)
+	time3 := time.Now()
+
 	// scan best block not in miner stats per day
 	latestHeader, _ := api.l.GetLatestPovHeader()
 	rspMap.LatestBlockHeight = latestHeader.GetHeight()
@@ -968,7 +977,9 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 	notStatHeightEnd := latestHeader.GetHeight()
 
 	var height uint64
+	loopIndex := 0
 	for height = notStatHeightStart; height <= notStatHeightEnd; height += common.DPosOnlinePeriod {
+		loopIndex++
 		header, _ := api.l.GetPovHeaderByHeight(height)
 		if header == nil {
 			break
@@ -1023,6 +1034,10 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 		}
 	}
 
+	fmt.Println("span3: ", time.Now().Sub(time3))
+	fmt.Println("loopIndex: ", loopIndex)
+	time4 := time.Now()
+
 	lastHeader, err := api.l.GetPovHeaderByHeight(height - common.DPosOnlinePeriod)
 	if err != nil {
 		return nil, fmt.Errorf("get pov header[%d] err", height)
@@ -1059,6 +1074,9 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 			}
 		}
 	}
+
+	fmt.Println("span4: ", time.Now().Sub(time4))
+	fmt.Println("RepStats: ", len(rspMap.RepStats))
 
 	return rspMap, nil
 }
