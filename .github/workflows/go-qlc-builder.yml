@@ -15,7 +15,7 @@ jobs:
       with:
         fetch-depth: 10
     - 
-      uses: elgohr/Publish-Docker-Github-Action@3.02
+      uses: elgohr/Publish-Docker-Github-Action@3.03
       with:
         name: qlcchain/go-qlc-builder
         username: ${{ secrets.DOCKER_USERNAME }}
