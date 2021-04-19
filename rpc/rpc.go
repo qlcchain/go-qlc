@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
 	"go.uber.org/zap"
@@ -239,8 +240,14 @@ func (r *RPC) StartRPC() error {
 	}
 
 	if r.config.RPC.Enable && r.config.RPC.HTTPEnabled {
+		timeouts := rpc.HTTPTimeouts{
+			ReadTimeout:  100 * time.Second,
+			WriteTimeout: 100 * time.Second,
+			IdleTimeout:  120 * time.Second,
+		}
+
 		apis := r.GetHttpApis(r.config.RPC.PublicModules)
-		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, rpc.HTTPTimeouts{}); err != nil {
+		if err := r.startHTTP(r.config.RPC.HTTPEndpoint, apis, nil, r.config.RPC.HTTPCors, r.config.RPC.HttpVirtualHosts, timeouts); err != nil {
 			r.logger.Info(err)
 			r.stopInProcess()
 			r.stopIPC()
