@@ -35,6 +35,7 @@ type PovApi struct {
 	dayIndex uint32
 	trieMap  *sync.Map
 	cc       *chainctx.ChainContext
+	ctx      context.Context
 }
 
 type PovStatus struct {
@@ -178,6 +179,7 @@ func NewPovApi(ctx context.Context, cfg *config.Config, l ledger.Store, eb event
 		cc:       cc,
 		trieMap:  new(sync.Map),
 		dayIndex: 0,
+		ctx:      ctx,
 	}
 	go api.initTrieMap()
 	return api
@@ -190,6 +192,8 @@ func (api *PovApi) initTrieMap() {
 		select {
 		case <-vTicker.C:
 			api.initTrie()
+		case <-api.ctx.Done():
+			return
 		}
 	}
 }
@@ -223,6 +227,7 @@ func (api *PovApi) initTrie() {
 	notStatHeightEnd := latestHeader.GetHeight()
 	var height uint64
 	loopCount := 0
+	simpleTrie := trie.NewSimpleTrieNodePool()
 	for height = notStatHeightStart; height <= notStatHeightEnd; height += common.DPosOnlinePeriod {
 		loopCount++
 		header, _ := api.l.GetPovHeaderByHeight(height)
@@ -232,7 +237,7 @@ func (api *PovApi) initTrie() {
 
 		stateHash := header.GetStateHash()
 		if _, ok := api.trieMap.Load(stateHash); !ok {
-			stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
+			stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, simpleTrie)
 			if stateTrie != nil {
 				api.trieMap.Store(stateHash, stateTrie)
 			}
