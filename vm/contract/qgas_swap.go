@@ -18,7 +18,7 @@ var QGasSwapContract = NewChainContract(
 				Describe: Describe{
 					specVer:   SpecVer2,
 					signature: true,
-					work:      true,
+					work:      false,
 				},
 			},
 		},
@@ -27,7 +27,7 @@ var QGasSwapContract = NewChainContract(
 				Describe: Describe{
 					specVer:   SpecVer2,
 					signature: true,
-					work:      true,
+					work:      false,
 				},
 			},
 		},
