@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -25,13 +26,15 @@ import (
 )
 
 type PovApi struct {
-	cfg    *config.Config
-	l      ledger.Store
-	logger *zap.SugaredLogger
-	eb     event.EventBus
-	feb    *event.FeedEventBus
-	pubsub *PovSubscription
-	cc     *chainctx.ChainContext
+	cfg      *config.Config
+	l        ledger.Store
+	logger   *zap.SugaredLogger
+	eb       event.EventBus
+	feb      *event.FeedEventBus
+	pubsub   *PovSubscription
+	dayIndex uint32
+	trieMap  *sync.Map
+	cc       *chainctx.ChainContext
 }
 
 type PovStatus struct {
@@ -166,15 +169,76 @@ type PovRepStats struct {
 
 func NewPovApi(ctx context.Context, cfg *config.Config, l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *PovApi {
 	api := &PovApi{
-		cfg:    cfg,
-		l:      l,
-		eb:     eb,
-		feb:    cc.FeedEventBus(),
-		pubsub: NewPovSubscription(ctx, eb),
-		logger: log.NewLogger("rpc/pov"),
-		cc:     cc,
+		cfg:      cfg,
+		l:        l,
+		eb:       eb,
+		feb:      cc.FeedEventBus(),
+		pubsub:   NewPovSubscription(ctx, eb),
+		logger:   log.NewLogger("rpc/pov"),
+		cc:       cc,
+		trieMap:  new(sync.Map),
+		dayIndex: 0,
 	}
+	go api.initTrieMap()
 	return api
+}
+
+func (api *PovApi) initTrieMap() {
+	api.initTrie()
+	vTicker := time.NewTicker(1 * time.Hour)
+	for {
+		select {
+		case <-vTicker.C:
+			api.initTrie()
+		}
+	}
+}
+
+func (api *PovApi) initTrie() {
+	dbDayCnt := 0
+	lastDayIndex := uint32(0)
+	if err := api.l.GetAllPovMinerStats(func(stat *types.PovMinerDayStat) error {
+		dbDayCnt++
+		if stat.DayIndex > lastDayIndex {
+			lastDayIndex = stat.DayIndex
+		}
+		return nil
+	}); err != nil {
+		return
+	}
+
+	if lastDayIndex != api.dayIndex {
+		api.dayIndex = lastDayIndex
+		api.trieMap = new(sync.Map)
+	}
+
+	latestHeader, _ := api.l.GetLatestPovHeader()
+	if latestHeader == nil {
+		return
+	}
+	notStatHeightStart := uint64(0)
+	if dbDayCnt > 0 {
+		notStatHeightStart = uint64(lastDayIndex+1)*uint64(common.POVChainBlocksPerDay) + common.DPosOnlinePeriod - 1
+	}
+	notStatHeightEnd := latestHeader.GetHeight()
+	var height uint64
+	loopCount := 0
+	for height = notStatHeightStart; height <= notStatHeightEnd; height += common.DPosOnlinePeriod {
+		loopCount++
+		header, _ := api.l.GetPovHeaderByHeight(height)
+		if header == nil {
+			break
+		}
+
+		stateHash := header.GetStateHash()
+		if _, ok := api.trieMap.Load(stateHash); !ok {
+			stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
+			if stateTrie != nil {
+				api.trieMap.Store(stateHash, stateTrie)
+			}
+		}
+	}
+	return
 }
 
 func (api *PovApi) GetPovStatus() (*PovStatus, error) {
@@ -898,6 +962,23 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 	}
 
 	return apiRsp, nil
+}
+
+func (api *PovApi) getPovTrie(stateHash types.Hash) *trie.Trie {
+	value, ok := api.trieMap.Load(stateHash)
+	if ok {
+		if stateTrie, t := value.(*trie.Trie); t {
+			return stateTrie
+		}
+	}
+
+	trie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
+	if trie == nil {
+		return nil
+	}
+	api.trieMap.Store(stateHash, trie)
+	return trie
+
 }
 
 func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
@@ -1632,7 +1713,8 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
 	stateHash := header.GetStateHash()
-	stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
+	//stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
+	stateTrie := api.getPovTrie(stateHash)
 	if stateTrie == nil {
 		return nil
 	}
@@ -1676,7 +1758,8 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 
 func (api *PovApi) GetRepStatesByHeightAndAccount(header *types.PovHeader, acc types.Address) *types.PovRepState {
 	stateHash := header.GetStateHash()
-	stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
+	//stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
+	stateTrie := api.getPovTrie(stateHash)
 	if stateTrie == nil {
 		return nil
 	}
