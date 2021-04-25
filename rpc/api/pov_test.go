@@ -465,7 +465,7 @@ func TestPovAPI_ManyBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = md.api.GetAllOnlineRepStates(latestHdr)
+	_ = md.api.GetAllOnlineRepStates(latestHdr, 0)
 
 	_, err = md.api.GetLatestAccountState(minerAcc.Address())
 	_, err = md.api.GetAccountStateByBlockHash(minerAcc.Address(), latestHdr.GetHash())
