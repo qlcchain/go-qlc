@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync"
 	"time"
 
 	rpc "github.com/qlcchain/jsonrpc2"
@@ -26,16 +25,17 @@ import (
 )
 
 type PovApi struct {
-	cfg      *config.Config
-	l        ledger.Store
-	logger   *zap.SugaredLogger
-	eb       event.EventBus
-	feb      *event.FeedEventBus
-	pubsub   *PovSubscription
-	cc       *chainctx.ChainContext
-	ctx      context.Context
-	dayIndex uint32
-	trieMap  *sync.Map
+	cfg        *config.Config
+	l          ledger.Store
+	logger     *zap.SugaredLogger
+	eb         event.EventBus
+	feb        *event.FeedEventBus
+	pubsub     *PovSubscription
+	cc         *chainctx.ChainContext
+	ctx        context.Context
+	dayIndex   uint32
+	allRssMap  map[types.Hash][]*types.PovRepState
+	headerTrie map[types.Hash]*trie.Trie
 }
 
 type PovStatus struct {
@@ -170,80 +170,19 @@ type PovRepStats struct {
 
 func NewPovApi(ctx context.Context, cfg *config.Config, l ledger.Store, eb event.EventBus, cc *chainctx.ChainContext) *PovApi {
 	api := &PovApi{
-		cfg:      cfg,
-		l:        l,
-		eb:       eb,
-		feb:      cc.FeedEventBus(),
-		pubsub:   NewPovSubscription(ctx, eb),
-		logger:   log.NewLogger("rpc/pov"),
-		cc:       cc,
-		trieMap:  new(sync.Map),
-		dayIndex: 0,
-		ctx:      ctx,
+		cfg:        cfg,
+		l:          l,
+		eb:         eb,
+		feb:        cc.FeedEventBus(),
+		pubsub:     NewPovSubscription(ctx, eb),
+		logger:     log.NewLogger("rpc/pov"),
+		cc:         cc,
+		dayIndex:   0,
+		ctx:        ctx,
+		allRssMap:  make(map[types.Hash][]*types.PovRepState),
+		headerTrie: make(map[types.Hash]*trie.Trie),
 	}
-	go api.initTrieMap()
 	return api
-}
-
-func (api *PovApi) initTrieMap() {
-	api.initTrie()
-	vTicker := time.NewTicker(1 * time.Hour)
-	for {
-		select {
-		case <-vTicker.C:
-			api.initTrie()
-		case <-api.ctx.Done():
-			return
-		}
-	}
-}
-
-func (api *PovApi) initTrie() {
-	dbDayCnt := 0
-	lastDayIndex := uint32(0)
-	if err := api.l.GetAllPovMinerStats(func(stat *types.PovMinerDayStat) error {
-		dbDayCnt++
-		if stat.DayIndex > lastDayIndex {
-			lastDayIndex = stat.DayIndex
-		}
-		return nil
-	}); err != nil {
-		return
-	}
-
-	if lastDayIndex != api.dayIndex {
-		api.dayIndex = lastDayIndex
-		api.trieMap = new(sync.Map)
-	}
-
-	latestHeader, _ := api.l.GetLatestPovHeader()
-	if latestHeader == nil {
-		return
-	}
-	notStatHeightStart := uint64(0)
-	if dbDayCnt > 0 {
-		notStatHeightStart = uint64(lastDayIndex+1)*uint64(common.POVChainBlocksPerDay) + common.DPosOnlinePeriod - 1
-	}
-	notStatHeightEnd := latestHeader.GetHeight()
-	var height uint64
-	loopCount := 0
-	simpleTrie := trie.NewSimpleTrieNodePool()
-	for height = notStatHeightStart; height <= notStatHeightEnd; height += common.DPosOnlinePeriod {
-		loopCount++
-		header, _ := api.l.GetPovHeaderByHeight(height)
-		if header == nil {
-			break
-		}
-
-		stateHash := header.GetStateHash()
-		if _, ok := api.trieMap.Load(stateHash); !ok {
-			stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, simpleTrie)
-			if stateTrie != nil {
-				api.trieMap.Store(stateHash, stateTrie)
-			}
-		}
-	}
-	return
 }
 
 func (api *PovApi) GetPovStatus() (*PovStatus, error) {
@@ -970,20 +909,16 @@ func (api *PovApi) GetMinerStats(addrs []types.Address) (*PovMinerStats, error) 
 }
 
 func (api *PovApi) getPovTrie(stateHash types.Hash) *trie.Trie {
-	value, ok := api.trieMap.Load(stateHash)
-	if ok {
-		if stateTrie, t := value.(*trie.Trie); t {
-			return stateTrie
-		}
+	if t, ok := api.headerTrie[stateHash]; ok {
+		return t
 	}
 
 	trie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
 	if trie == nil {
 		return nil
 	}
-	api.trieMap.Store(stateHash, trie)
+	api.headerTrie[stateHash] = trie
 	return trie
-
 }
 
 func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
@@ -1061,7 +996,7 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 		}
 
 		// calc repReward
-		repStates := api.GetAllOnlineRepStates(header)
+		repStates := api.GetAllOnlineRepStates(header, lastDayIndex)
 		api.logger.Debugf("get online rep states %d at block height %d", len(repStates), height)
 
 		// calc total weight of all reps
@@ -1146,6 +1081,7 @@ func (api *PovApi) GetRepStats(addrs []types.Address) (*PovRepStats, error) {
 		}
 	}
 
+	delete(api.headerTrie, lastHeader.GetStateHash())
 	return rspMap, nil
 }
 
@@ -1711,23 +1647,39 @@ func (api *PovApi) GetLastNHourInfo(endHeight uint64, timeSpan uint32) (*PovApiG
 
 	return apiRsp, nil
 }
+func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader, lastDayIndex uint32) []*types.PovRepState {
+	api.getAllOnlineRepStates(header, lastDayIndex)
+	if rss, ok := api.allRssMap[header.GetStateHash()]; ok {
+		return rss
+	}
+	return nil
+}
 
-func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRepState {
+func (api *PovApi) getAllOnlineRepStates(header *types.PovHeader, lastDayIndex uint32) {
+	if lastDayIndex != api.dayIndex {
+		api.dayIndex = lastDayIndex
+		api.allRssMap = make(map[types.Hash][]*types.PovRepState)
+		api.headerTrie = make(map[types.Hash]*trie.Trie)
+	}
+
+	stateHash := header.GetStateHash()
+	if _, ok := api.allRssMap[stateHash]; ok {
+		return
+	}
+
 	var allRss []*types.PovRepState
 	supply := config.GenesisBlock().Balance
 	minVoteWeight, _ := supply.Div(common.DposVoteDivisor)
 
-	stateHash := header.GetStateHash()
-	//stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
-	stateTrie := api.getPovTrie(stateHash)
+	stateTrie := trie.NewTrie(api.l.DBStore(), &stateHash, nil)
 	if stateTrie == nil {
-		return nil
+		return
 	}
 
 	repPrefix := statedb.PovCreateGlobalStateKey(statedb.PovGlobalStatePrefixRep, nil)
 	it := stateTrie.NewIterator(repPrefix)
 	if it == nil {
-		return nil
+		return
 	}
 
 	key, valBytes, ok := it.Next()
@@ -1740,7 +1692,7 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 		err := rs.Deserialize(valBytes)
 		if err != nil {
 			api.logger.Errorf("deserialize old rep state, key %s err %s", hex.EncodeToString(key), err)
-			return nil
+			return
 		}
 
 		if rs.Status != statedb.PovStatusOnline {
@@ -1758,7 +1710,8 @@ func (api *PovApi) GetAllOnlineRepStates(header *types.PovHeader) []*types.PovRe
 		allRss = append(allRss, rs)
 	}
 
-	return allRss
+	api.allRssMap[stateHash] = allRss
+	//return allRss
 }
 
 func (api *PovApi) GetRepStatesByHeightAndAccount(header *types.PovHeader, acc types.Address) *types.PovRepState {
