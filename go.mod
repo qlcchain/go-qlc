@@ -25,7 +25,7 @@ require (
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jmoiron/sqlx v1.2.1-0.20190826204134-d7d95172beb5
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/lib/pq v1.10.0
+	github.com/lib/pq v1.10.2
 	github.com/libp2p/go-libp2p v0.13.1-0.20210319000852-ffd67fd3dcf6
 	github.com/libp2p/go-libp2p-core v0.8.5
 	github.com/libp2p/go-libp2p-discovery v0.5.0
