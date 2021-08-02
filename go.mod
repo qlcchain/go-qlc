@@ -38,7 +38,7 @@ require (
 	github.com/qlcchain/jsonrpc2 v0.0.8
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/sahilm/fuzzy v0.1.0
-	github.com/shirou/gopsutil/v3 v3.21.3
+	github.com/shirou/gopsutil/v3 v3.21.7
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
