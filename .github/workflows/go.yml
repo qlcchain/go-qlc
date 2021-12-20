@@ -78,7 +78,7 @@ jobs:
           mkdir -p artifact && cp dist/*.{tar.gz,zip,txt,sig} artifact/
 
       - name: Upload snapshot artifacts
-        uses: actions/upload-artifact@v2.2.3
+        uses: actions/upload-artifact@v2.3.1
         with:
           name: gqlc-artifact
           path: artifact/
