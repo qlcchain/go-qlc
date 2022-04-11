@@ -31,7 +31,7 @@ jobs:
           export TAG=${GITHUB_REF/refs\/tags\//}
           make VERSION=${TAG} release
       - name: Publish mainnet Docker image to DockerHub
-        uses: elgohr/Publish-Docker-Github-Action@3.03
+        uses: elgohr/Publish-Docker-Github-Action@v4
         with:
           name: qlcchain/go-qlc
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -40,7 +40,7 @@ jobs:
           buildargs: BUILD_ACT=build
           tag_names: true
       - name: Publish testnet Docker image to DockerHub
-        uses: elgohr/Publish-Docker-Github-Action@3.03
+        uses: elgohr/Publish-Docker-Github-Action@v4
         with:
           name: qlcchain/go-qlc-test
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -49,7 +49,7 @@ jobs:
           buildargs: BUILD_ACT=build-test
           tag_names: true
       - name: Publish the Docker image to GitHub Packages
-        uses: elgohr/Publish-Docker-Github-Action@3.03
+        uses: elgohr/Publish-Docker-Github-Action@v4
         with:
           name: qlcchain/go-qlc/node-cli
           username: ${{ secrets.DOCKER_GITHUB_USERNAME }}
