@@ -8,8 +8,6 @@ require (
 	github.com/beevik/ntp v0.3.0
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
 	github.com/cheekybits/genny v1.0.0
-	github.com/chzyer/logex v1.1.10 // indirect
-	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/dchest/siphash v1.2.2
 	github.com/dgraph-io/badger/v2 v2.0.0-20200630163423-09dfa663bbc3
 	github.com/fatih/color v1.13.0
@@ -20,20 +18,21 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
+	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/ipfs/go-log v1.0.5
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jmoiron/sqlx v1.2.1-0.20190826204134-d7d95172beb5
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lib/pq v1.10.4
-	github.com/libp2p/go-libp2p v0.13.1-0.20210319000852-ffd67fd3dcf6
-	github.com/libp2p/go-libp2p-core v0.8.5
+	github.com/libp2p/go-libp2p v0.20.0
+	github.com/libp2p/go-libp2p-core v0.16.1
 	github.com/libp2p/go-libp2p-discovery v0.5.0
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1
 	github.com/libp2p/go-libp2p-pubsub v0.4.1
-	github.com/libp2p/go-libp2p-swarm v0.4.3
+	github.com/libp2p/go-libp2p-swarm v0.11.0
+	github.com/libp2p/go-yamux v1.4.1 // indirect
 	github.com/mattn/go-sqlite3 v1.14.6
-	github.com/multiformats/go-multiaddr v0.3.1
+	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/qlcchain/jsonrpc2 v0.0.8
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
@@ -45,10 +44,11 @@ require (
 	github.com/tinylib/msgp v1.1.5
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
+	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.7.0
-	go.uber.org/zap v1.16.0
-	golang.org/x/crypto v0.0.0-20210317152858-513c2a44f670
-	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
+	go.uber.org/zap v1.19.1
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+	google.golang.org/genproto v0.0.0-20200825200019-8632dd797987
 	google.golang.org/grpc v1.36.1
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
