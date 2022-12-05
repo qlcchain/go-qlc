@@ -16,7 +16,7 @@ require (
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.4
@@ -38,10 +38,10 @@ require (
 	github.com/qlcchain/jsonrpc2 v0.0.8
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 	github.com/sahilm/fuzzy v0.1.0
-	github.com/shirou/gopsutil/v3 v3.22.2
+	github.com/shirou/gopsutil/v3 v3.22.11
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tinylib/msgp v1.1.5
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
