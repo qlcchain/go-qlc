@@ -7,9 +7,11 @@ require (
 	github.com/awnumar/memguard v0.22.2
 	github.com/beevik/ntp v0.3.0
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
+	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/cheekybits/genny v1.0.0
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
+	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/dchest/siphash v1.2.2
 	github.com/dgraph-io/badger/v2 v2.0.0-20200630163423-09dfa663bbc3
 	github.com/fatih/color v1.13.0
@@ -26,13 +28,26 @@ require (
 	github.com/jmoiron/sqlx v1.2.1-0.20190826204134-d7d95172beb5
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lib/pq v1.10.4
-	github.com/libp2p/go-libp2p v0.13.1-0.20210319000852-ffd67fd3dcf6
+	github.com/libp2p/go-conn-security v0.1.0 // indirect
+	github.com/libp2p/go-libp2p v6.0.23+incompatible
 	github.com/libp2p/go-libp2p-core v0.8.5
 	github.com/libp2p/go-libp2p-discovery v0.5.0
+	github.com/libp2p/go-libp2p-host v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-interface-connmgr v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-interface-pnet v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1
+	github.com/libp2p/go-libp2p-metrics v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-net v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-protocol v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-pubsub v0.4.1
 	github.com/libp2p/go-libp2p-swarm v0.4.3
+	github.com/libp2p/go-libp2p-transport v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-yamux v0.5.1 // indirect
+	github.com/libp2p/go-netroute v0.1.5 // indirect
+	github.com/libp2p/go-testutil v0.1.0 // indirect
+	github.com/libp2p/go-ws-transport v0.4.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.6
+	github.com/miekg/dns v1.1.40 // indirect
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/pkg/errors v0.9.1
 	github.com/qlcchain/jsonrpc2 v0.0.8
@@ -43,8 +58,13 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tinylib/msgp v1.1.5
+	github.com/whyrusleeping/go-smux-multiplex v3.0.16+incompatible // indirect
+	github.com/whyrusleeping/go-smux-multistream v2.0.2+incompatible // indirect
+	github.com/whyrusleeping/go-smux-yamux v2.0.9+incompatible // indirect
+	github.com/whyrusleeping/yamux v1.2.0 // indirect
 	github.com/yireyun/go-queue v0.0.0-20180809062148-5e6897360dac
 	gitlab.com/samli88/go-x11-hash v0.0.0-20180610202919-e5ce9e6dea1c
+	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20210317152858-513c2a44f670
